@@ -17,7 +17,9 @@ const tweenSpec = fc.record({
   ),
 });
 
-const build = (specs: fc.RecordValue<typeof tweenSpec>[]) =>
+type TweenInput = typeof tweenSpec extends fc.Arbitrary<infer T> ? T : never;
+
+const build = (specs: readonly TweenInput[]) =>
   specs
     .reduce<TimelineBuilder>(
       (tl, s) =>

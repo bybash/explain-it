@@ -93,13 +93,16 @@ describe("stagger", () => {
   });
 
   it('counts as one block for "<" and ">"', () => {
-    const tl = timeline()
-      .stagger(["a", "b"], { from: { x: 0 }, to: { x: 1 }, duration: 1 }, 0.5)
+    const stagger = () =>
+      timeline().stagger(["a", "b"], { from: { x: 0 }, to: { x: 1 }, duration: 1 }, 0.5);
+    const after = stagger()
       .add({ ...fade("c"), at: ">" })
+      .build();
+    const alongside = stagger()
       .add({ ...fade("d"), at: "<" })
       .build();
-    expect(tl.seek(2).c?.opacity).toBe(0.5);
-    expect(tl.seek(1.5).d?.opacity).toBe(0.5);
+    expect(after.seek(2).c?.opacity).toBe(0.5);
+    expect(alongside.seek(0.5).d?.opacity).toBe(0.5);
   });
 });
 
