@@ -1,0 +1,225 @@
+{
+  "$id": "https://raw.githubusercontent.com/bybash/explain-it/main/schemas/config.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "description": "The JSON Schema for this file, for editors. Ignored by explAIn-it.",
+      "type": "string"
+    },
+    "theme": {
+      "default": {},
+      "type": "object",
+      "properties": {
+        "palette": {
+          "default": "default",
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]*$"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "background": {
+                  "type": "string",
+                  "pattern": "^#[0-9a-fA-F]{6}$"
+                },
+                "surface": {
+                  "type": "string",
+                  "pattern": "^#[0-9a-fA-F]{6}$"
+                },
+                "text": {
+                  "type": "string",
+                  "pattern": "^#[0-9a-fA-F]{6}$"
+                },
+                "muted": {
+                  "type": "string",
+                  "pattern": "^#[0-9a-fA-F]{6}$"
+                },
+                "accent": {
+                  "type": "string",
+                  "pattern": "^#[0-9a-fA-F]{6}$"
+                },
+                "categories": {
+                  "maxItems": 6,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "pattern": "^#[0-9a-fA-F]{6}$"
+                  },
+                  "description": "Colours for node, edge and zone categories, in order."
+                },
+                "dark": {
+                  "description": "The dark variant; generated from the light palette when missing.",
+                  "type": "object",
+                  "properties": {
+                    "background": {
+                      "type": "string",
+                      "pattern": "^#[0-9a-fA-F]{6}$"
+                    },
+                    "surface": {
+                      "type": "string",
+                      "pattern": "^#[0-9a-fA-F]{6}$"
+                    },
+                    "text": {
+                      "type": "string",
+                      "pattern": "^#[0-9a-fA-F]{6}$"
+                    },
+                    "muted": {
+                      "type": "string",
+                      "pattern": "^#[0-9a-fA-F]{6}$"
+                    },
+                    "accent": {
+                      "type": "string",
+                      "pattern": "^#[0-9a-fA-F]{6}$"
+                    },
+                    "categories": {
+                      "maxItems": 6,
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "pattern": "^#[0-9a-fA-F]{6}$"
+                      },
+                      "description": "Colours for node, edge and zone categories, in order."
+                    }
+                  },
+                  "required": [
+                    "background",
+                    "surface",
+                    "text",
+                    "muted",
+                    "accent",
+                    "categories"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "background",
+                "surface",
+                "text",
+                "muted",
+                "accent",
+                "categories"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        },
+        "mode": {
+          "default": "light",
+          "type": "string",
+          "enum": [
+            "light",
+            "dark",
+            "both"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "font": {
+      "default": "inter",
+      "description": "A bundled font id or an uploaded font.",
+      "type": "string",
+      "minLength": 1
+    },
+    "voice": {
+      "default": {},
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "default": true,
+          "type": "boolean"
+        },
+        "id": {
+          "default": "af_heart",
+          "description": "A Kokoro voice id.",
+          "type": "string",
+          "minLength": 1
+        },
+        "speed": {
+          "default": 1,
+          "type": "number",
+          "minimum": 0.5,
+          "maximum": 2
+        }
+      },
+      "additionalProperties": false
+    },
+    "captions": {
+      "default": {},
+      "type": "object",
+      "properties": {
+        "narration": {
+          "default": true,
+          "type": "boolean"
+        },
+        "step": {
+          "default": true,
+          "type": "boolean"
+        },
+        "size": {
+          "default": "M",
+          "type": "string",
+          "enum": [
+            "S",
+            "M",
+            "L"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "music": {
+      "default": {},
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "default": true,
+          "type": "boolean"
+        },
+        "mood": {
+          "default": "calm",
+          "type": "string",
+          "enum": [
+            "calm",
+            "upbeat",
+            "technical"
+          ]
+        },
+        "seed": {
+          "default": 1,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "volumeDb": {
+          "default": -24,
+          "type": "number",
+          "minimum": -60,
+          "maximum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "output": {
+      "default": {},
+      "type": "object",
+      "properties": {
+        "resolution": {
+          "default": "1080p",
+          "type": "string",
+          "enum": [
+            "1080p",
+            "720p"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "description": "Style and output settings. Every field has a default."
+}

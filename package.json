@@ -14,12 +14,20 @@
     "format": "biome check --write .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "schemas": "node scripts/generate-schemas.ts",
+    "deps": "depcruise src scripts --config .dependency-cruiser.cjs"
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.8",
+    "@swc/core": "1.16.22",
     "@types/node": "24.19.2",
+    "dependency-cruiser": "18.8.0",
+    "fast-check": "4.10.3",
     "typescript": "7.0.2",
     "vitest": "5.1.1"
+  },
+  "dependencies": {
+    "zod": "4.6.7"
   }
 }

@@ -1,0 +1,11 @@
+{
+  "$schema": "../../schemas/config.schema.json",
+  "theme": {
+    "palette": "default",
+    "mode": "both"
+  },
+  "music": {
+    "mood": "technical",
+    "seed": 7
+  }
+}

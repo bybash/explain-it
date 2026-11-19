@@ -15,7 +15,7 @@ one thing and leave `main` working.
 1. Fork the repo (or branch, if you have access) from `main`.
 2. Name the branch after the slice: `1.3-isometric-primitives`.
 3. Keep to the slice. Note other problems in the PR description.
-4. Run `npm run lint`, `npm run typecheck` and `npm test`.
+4. Run `npm run lint`, `npm run typecheck`, `npm run deps` and `npm test`.
 5. Open a pull request and fill in the template. Show the result: test
    output, a screenshot, a still or a clip.
 6. If the change alters the design, update `SPEC.md` in the same PR.

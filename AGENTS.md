@@ -40,16 +40,21 @@ Never push to `main`, force-push a shared branch, or merge your own PR.
 
 ## Commands
 
-Use Node 24 (`nvm use` reads `.nvmrc`). Run lint, typecheck and test before
-opening a PR; CI runs the same three.
+Use Node 24 (`nvm use` reads `.nvmrc`). Run lint, typecheck, deps and test
+before opening a PR; CI runs the same four.
 
 ```sh
 npm install
 npm run lint        # Biome: lint and format check (code and JSON, not Markdown)
 npm run format      # Biome: apply fixes and formatting
 npm run typecheck   # tsc --noEmit
+npm run deps        # dependency-cruiser: module boundaries (.dependency-cruiser.cjs)
 npm test            # Vitest
+npm run schemas     # regenerate schemas/ after changing a zod schema
 ```
+
+After changing anything in `src/schema/`, run `npm run schemas` and commit
+`schemas/`; a test fails when the files are out of date.
 
 Source files import each other with the `.ts` extension
 (`import { VERSION } from "./version.ts"`), so Node 24 can run them directly.

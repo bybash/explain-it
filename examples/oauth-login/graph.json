@@ -1,0 +1,108 @@
+{
+  "$schema": "../../schemas/graph.schema.json",
+  "version": 1,
+  "title": "Signing in with OAuth",
+  "nodes": [
+    {
+      "id": "user",
+      "label": "User",
+      "kind": "actor",
+      "icon": "user"
+    },
+    {
+      "id": "browser",
+      "label": "Browser",
+      "kind": "service",
+      "icon": "globe"
+    },
+    {
+      "id": "app",
+      "label": "Web app",
+      "kind": "service",
+      "icon": "app-window",
+      "zone": "backend"
+    },
+    {
+      "id": "sessions",
+      "label": "Sessions",
+      "kind": "database",
+      "icon": "database",
+      "zone": "backend"
+    },
+    {
+      "id": "api",
+      "label": "Photos API",
+      "kind": "service",
+      "icon": "image",
+      "zone": "backend"
+    },
+    {
+      "id": "idp",
+      "label": "Identity provider",
+      "kind": "external",
+      "icon": "shield-check"
+    }
+  ],
+  "edges": [
+    {
+      "id": "click",
+      "from": "user",
+      "to": "browser",
+      "label": "Sign in"
+    },
+    {
+      "id": "login",
+      "from": "browser",
+      "to": "app",
+      "label": "GET /login"
+    },
+    {
+      "id": "authorize",
+      "from": "browser",
+      "to": "idp",
+      "label": "authorize"
+    },
+    {
+      "id": "code",
+      "from": "idp",
+      "to": "browser",
+      "label": "authorization code"
+    },
+    {
+      "id": "callback",
+      "from": "browser",
+      "to": "app",
+      "label": "callback with code"
+    },
+    {
+      "id": "exchange",
+      "from": "app",
+      "to": "idp",
+      "label": "code + client secret"
+    },
+    {
+      "id": "token",
+      "from": "idp",
+      "to": "app",
+      "label": "access token"
+    },
+    {
+      "id": "store",
+      "from": "app",
+      "to": "sessions",
+      "label": "save session"
+    },
+    {
+      "id": "fetch",
+      "from": "app",
+      "to": "api",
+      "label": "GET /photos + token"
+    }
+  ],
+  "zones": [
+    {
+      "id": "backend",
+      "label": "Your backend"
+    }
+  ]
+}
