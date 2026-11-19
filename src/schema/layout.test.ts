@@ -57,6 +57,18 @@ describe("parseLayout", () => {
     ]);
   });
 
+  it("names a stale file: a position that differs from its override, a route kept for it", () => {
+    expect(
+      errorsFor({
+        ...validLayout(),
+        overrides: { db: { x: 9, y: 9 } },
+      }),
+    ).toEqual([
+      "positions.db: differs from its override, so the layout is stale",
+      'routes.e1: must be null while "db" is overridden, so the layout is stale',
+    ]);
+  });
+
   it("requires routes of at least two points", () => {
     expect(errorsFor({ ...validLayout(), routes: { e1: [{ x: 0, y: 0 }] } })).toEqual([
       "routes.e1: 1 items, min 2",

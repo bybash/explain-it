@@ -28,7 +28,10 @@ export const LayoutSchema = z
 export type Layout = z.output<typeof LayoutSchema>;
 export type FloorPoint = z.output<typeof FloorPointSchema>;
 
-/** Validates shape first, then that the layout covers exactly the graph's nodes and edges. */
+/**
+ * Validates shape first, then that the layout covers exactly the graph's
+ * nodes and edges, then that it is not stale against its own overrides.
+ */
 export const parseLayout = (data: unknown, graph: Graph): Validated<Layout> => {
   const shape = parseWith(LayoutSchema, data);
   if (!shape.ok) return shape;
@@ -53,6 +56,22 @@ export const parseLayout = (data: unknown, graph: Graph): Validated<Layout> => {
   }
   for (const id of Object.keys(layout.routes)) {
     if (!edgeIds.has(id)) add(["routes", id], `unknown edge "${id}"`);
+  }
+  if (errors.length > 0) return fail(errors);
+
+  // Stale: overrides must have been applied, and routes to overridden nodes dropped.
+  for (const [id, override] of Object.entries(layout.overrides)) {
+    const position = layout.positions[id];
+    if (position && (position.x !== override.x || position.y !== override.y))
+      add(["positions", id], "differs from its override, so the layout is stale");
+  }
+  for (const edge of graph.edges) {
+    const overridden = [edge.from, edge.to].find((id) => id in layout.overrides);
+    if (overridden !== undefined && layout.routes[edge.id] !== null)
+      add(
+        ["routes", edge.id],
+        `must be null while "${overridden}" is overridden, so the layout is stale`,
+      );
   }
   return errors.length === 0 ? shape : fail(errors);
 };

@@ -3,6 +3,7 @@ const CORE = "^src/(schema|layout|engine|mermaid|guidance)/";
 // checks/ is split into pure rules and browser measurement in slice 2.5, so it is in neither list yet.
 const SHELL = "^src/(server|mcp|render|audio|llm|cli|web)/";
 const TEST = "\\.test\\.ts$";
+const TEST_SUPPORT = "\\.(test|testing)\\.ts$";
 
 module.exports = {
   forbidden: [
@@ -51,8 +52,9 @@ module.exports = {
     {
       name: "no-imports-from-tests",
       severity: "error",
-      from: { pathNot: TEST },
-      to: { path: TEST },
+      comment: "Tests and their support files (*.testing.ts) stay out of production code.",
+      from: { pathNot: TEST_SUPPORT },
+      to: { path: TEST_SUPPORT },
     },
   ],
   options: {
