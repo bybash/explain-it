@@ -43,7 +43,7 @@ export type Timeline = {
    * The state at time `t`, computed from `t` alone: seeking in any order
    * gives the same result. For a property animated by several tweens, the
    * one that started last wins (on a tie, the one added last); before any
-   * has started, it holds the first tween's `from` value.
+   * has started, it holds the `from` of the one that starts earliest.
    */
   seek(t: number): State;
 };
@@ -62,21 +62,34 @@ export type TimelineBuilder = {
   build(): Timeline;
 };
 
-const POSITION = /^(<|>|[A-Za-z_]\w*)?(?:([+-])=(\d*\.?\d+))?$/;
+const NAME = /[A-Za-z_]\w*/.source;
+const LABEL_NAME = new RegExp(`^${NAME}$`);
+// Offsets may use exponent notation, as numbers print that way in template strings.
+const POSITION = new RegExp(`^(<|>|${NAME})?(?:([+-])=(\\d*\\.?\\d+(?:[eE][+-]?\\d+)?))?$`);
+
+const finite = (where: string, n: number): number => {
+  if (!Number.isFinite(n)) throw new Error(`${where}: expected a finite number, got ${n}`);
+  return n;
+};
+
+const endOf = (tween: Tween): number => tween.start + tween.duration;
+
+const sameKeys = (a: readonly string[], b: readonly string[]): boolean =>
+  a.length === b.length && a.every((key, i) => key === b[i]);
 
 /**
- * Builds a timeline. Misuse (an unknown label, a malformed position) is a
- * bug in the caller, so it throws.
+ * Builds a timeline. Misuse (an unknown label, a malformed position, a number
+ * that is not finite) is a bug in the caller, so it throws.
  */
 export const timeline = (): TimelineBuilder => {
   const tweens: Tween[] = [];
-  const labels: Record<string, number> = {};
+  const labels = new Map<string, number>();
   let end = 0;
   let previous = { start: 0, end: 0 };
 
-  const resolve = (at: Position | undefined): number => {
+  const resolve = (at: Position | undefined, where: string): number => {
     if (at === undefined) return end;
-    if (typeof at === "number") return Math.max(0, at);
+    if (typeof at === "number") return Math.max(0, finite(`${where}.at`, at));
     const match = POSITION.exec(at);
     if (!match || at === "") throw new Error(`invalid position "${at}"`);
     const [, base, sign, amount] = match;
@@ -84,7 +97,7 @@ export const timeline = (): TimelineBuilder => {
     if (base === "<") time = previous.start;
     else if (base === ">") time = previous.end;
     else if (base !== undefined) {
-      const label = labels[base];
+      const label = labels.get(base);
       if (label === undefined) throw new Error(`unknown label "${base}"`);
       time = label;
     }
@@ -92,71 +105,80 @@ export const timeline = (): TimelineBuilder => {
     return Math.max(0, time);
   };
 
+  const finiteProps = (where: string, props: Props): Props => {
+    for (const [prop, value] of Object.entries(props)) finite(`${where}.${prop}`, value);
+    return Object.freeze({ ...props });
+  };
+
   const place = (spec: Omit<TweenSpec, "at">, start: number): Tween => {
     const fromKeys = Object.keys(spec.from).toSorted();
     const toKeys = Object.keys(spec.to).toSorted();
-    if (fromKeys.join() !== toKeys.join())
-      throw new Error("from and to must have the same properties");
-    const tween: Tween = {
+    if (!sameKeys(fromKeys, toKeys))
+      throw new Error(
+        `${spec.target}: from and to must have the same properties (from: ${fromKeys.join(", ")}; to: ${toKeys.join(", ")})`,
+      );
+    const tween: Tween = Object.freeze({
       target: spec.target,
-      from: { ...spec.from },
-      to: { ...spec.to },
+      from: finiteProps(`${spec.target}.from`, spec.from),
+      to: finiteProps(`${spec.target}.to`, spec.to),
       start,
-      duration: Math.max(0, spec.duration),
+      duration: Math.max(0, finite(`${spec.target}.duration`, spec.duration)),
       ease: spec.ease ?? "linear",
-    };
+    });
     tweens.push(tween);
     return tween;
   };
 
-  const block = (start: number, blockEnd: number) => {
+  const markBlock = (start: number, blockEnd: number) => {
     previous = { start, end: blockEnd };
     end = Math.max(end, blockEnd);
   };
 
   const builder: TimelineBuilder = {
     add(spec) {
-      const tween = place(spec, resolve(spec.at));
-      block(tween.start, tween.start + tween.duration);
+      const tween = place(spec, resolve(spec.at, spec.target));
+      markBlock(tween.start, endOf(tween));
       return builder;
     },
     stagger(targets, spec, each) {
-      const start = resolve(spec.at);
-      let blockEnd = start;
-      targets.forEach((target, i) => {
-        const tween = place({ ...spec, target }, start + i * each);
-        blockEnd = Math.max(blockEnd, tween.start + tween.duration);
-      });
-      block(start, blockEnd);
+      finite("stagger each", each);
+      const start = resolve(spec.at, "stagger");
+      const placed = targets.map((target, i) =>
+        place({ ...spec, target }, Math.max(0, start + i * each)),
+      );
+      // A negative gap places later targets earlier, so the block spans them all.
+      markBlock(
+        Math.min(start, ...placed.map((tween) => tween.start)),
+        Math.max(start, ...placed.map(endOf)),
+      );
       return builder;
     },
     label(name, at) {
-      if (name in labels) throw new Error(`duplicate label "${name}"`);
-      labels[name] = resolve(at);
+      if (!LABEL_NAME.test(name)) throw new Error(`invalid label name "${name}"`);
+      if (labels.has(name)) throw new Error(`duplicate label "${name}"`);
+      labels.set(name, resolve(at, `label ${name}`));
       return builder;
     },
     wait(seconds) {
-      block(end, end + Math.max(0, seconds));
+      markBlock(end, end + Math.max(0, finite("wait", seconds)));
       return builder;
     },
-    build: () => freeze(tweens, labels, end),
+    build: () => toTimeline(tweens, Object.fromEntries(labels), end),
   };
   return builder;
 };
 
 type Track = { readonly target: string; readonly prop: string; readonly tweens: readonly Tween[] };
 
-const freeze = (
+const toTimeline = (
   tweens: readonly Tween[],
   labels: Readonly<Record<string, number>>,
   duration: number,
 ): Timeline => {
-  const frozen = tweens.map((tween) => Object.freeze({ ...tween }));
-
   // One track per animated property, its tweens in start order. The sort is
   // stable, so tweens that start together stay in the order they were added.
   const byKey = new Map<string, { target: string; prop: string; tweens: Tween[] }>();
-  for (const tween of frozen) {
+  for (const tween of tweens) {
     for (const prop of Object.keys(tween.to)) {
       const key = `${tween.target}\u0000${prop}`;
       const track = byKey.get(key) ?? { target: tween.target, prop, tweens: [] };
@@ -172,9 +194,9 @@ const freeze = (
   return Object.freeze({
     duration,
     labels: Object.freeze({ ...labels }),
-    tweens: Object.freeze(frozen),
+    tweens: Object.freeze([...tweens]),
     seek(t: number): State {
-      const time = Math.min(Math.max(t, 0), duration);
+      const time = Math.min(Math.max(finite("seek", t), 0), duration);
       const state: State = {};
       for (const track of tracks) {
         const props = state[track.target] ?? {};
@@ -197,7 +219,7 @@ const valueAt = (track: Track, time: number): number => {
 
   const from = active.from[prop] ?? 0;
   const to = active.to[prop] ?? 0;
-  if (time >= active.start + active.duration) return to;
+  if (time >= endOf(active)) return to;
   const progress = (time - active.start) / active.duration;
   return from + (to - from) * EASES[active.ease](progress);
 };

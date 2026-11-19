@@ -47,6 +47,17 @@ describe("placement", () => {
     expect(tl.duration).toBe(4.5);
   });
 
+  it("accepts offsets in exponent notation, as numbers print in template strings", () => {
+    const tl = timeline()
+      .add(fade("a"))
+      .add({ ...fade("b"), at: `<+=${1e-7}` })
+      .add({ ...fade("c"), at: "+=1e0" })
+      .build();
+    const [, b, c] = tl.tweens;
+    expect(b?.start).toBe(1e-7);
+    expect(c?.start).toBeCloseTo(2.0000001, 12);
+  });
+
   it("places at labels", () => {
     const tl = timeline()
       .add(fade("a", 2))
@@ -77,7 +88,45 @@ describe("placement", () => {
   it("requires from and to to animate the same properties", () => {
     expect(() =>
       timeline().add({ target: "a", from: { opacity: 0 }, to: { y: 1 }, duration: 1 }),
+    ).toThrow("a: from and to must have the same properties");
+    expect(() =>
+      timeline().add({ target: "a", from: { "x,y": 0 }, to: { x: 1, y: 2 }, duration: 1 }),
     ).toThrow("from and to must have the same properties");
+  });
+
+  it("treats labels as plain names, even ones every object has", () => {
+    const tl = timeline()
+      .add(fade("a"))
+      .label("constructor")
+      .add({ ...fade("b"), at: "constructor" })
+      .build();
+    expect(tl.labels).toEqual({ constructor: 1 });
+    expect(() => timeline().add({ ...fade("a"), at: "toString" })).toThrow(
+      'unknown label "toString"',
+    );
+  });
+
+  it("rejects label names that a position cannot refer to", () => {
+    expect(() => timeline().label("beat-2")).toThrow('invalid label name "beat-2"');
+  });
+
+  it("rejects numbers that are not finite, naming where they came from", () => {
+    expect(() => timeline().add({ ...fade("a"), duration: Number.NaN })).toThrow(
+      "a.duration: expected a finite number, got NaN",
+    );
+    expect(() => timeline().add({ ...fade("a"), at: Number.POSITIVE_INFINITY })).toThrow(
+      "a.at: expected a finite number, got Infinity",
+    );
+    expect(() =>
+      timeline().add({ target: "a", from: { x: Number.NaN }, to: { x: 1 }, duration: 1 }),
+    ).toThrow("a.from.x: expected a finite number, got NaN");
+    expect(() => timeline().stagger(["a"], fade("a"), Number.NaN)).toThrow(
+      "stagger each: expected a finite number, got NaN",
+    );
+    expect(() => timeline().wait(Number.NaN)).toThrow("wait: expected a finite number, got NaN");
+    expect(() => timeline().add(fade("a")).build().seek(Number.NaN)).toThrow(
+      "seek: expected a finite number, got NaN",
+    );
   });
 });
 
@@ -104,6 +153,14 @@ describe("stagger", () => {
     expect(after.seek(2).c?.opacity).toBe(0.5);
     expect(alongside.seek(0.5).d?.opacity).toBe(0.5);
   });
+
+  it("never starts a target before zero, even with a negative gap", () => {
+    const tl = timeline()
+      .stagger(["a", "b"], { from: { x: 0 }, to: { x: 1 }, duration: 1 }, -1)
+      .build();
+    expect(tl.tweens.map((tween) => tween.start)).toEqual([0, 0]);
+    expect(tl.seek(0)).toEqual({ a: { x: 0 }, b: { x: 0 } });
+  });
 });
 
 describe("wait", () => {
@@ -120,6 +177,20 @@ describe("seek", () => {
       .add({ ...fade("a"), at: 1 })
       .build();
     expect(tl.seek(0)).toEqual({ a: { opacity: 0 } });
+  });
+
+  it("before anything starts, holds the from of the earliest tween, not the first added", () => {
+    const tl = timeline()
+      .add({ target: "a", from: { x: 5 }, to: { x: 6 }, duration: 1, at: 4 })
+      .add({ target: "a", from: { x: 1 }, to: { x: 2 }, duration: 1, at: 2 })
+      .build();
+    expect(tl.seek(0).a?.x).toBe(1);
+  });
+
+  it("cannot be changed through the tweens it exposes", () => {
+    const tl = timeline().add(fade("a")).build();
+    expect(Object.isFrozen(tl.tweens[0]?.from)).toBe(true);
+    expect(Object.isFrozen(tl.tweens[0]?.to)).toBe(true);
   });
 
   it("applies the ease", () => {
