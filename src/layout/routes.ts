@@ -35,8 +35,9 @@ const withoutRedundantPoints = (route: readonly Point[]): Point[] => {
 /**
  * Straightens jogs: interior segments shorter than `minimum`, left between two
  * parallel runs when snapping moved the boxes at either end by different
- * amounts. One of the runs moves across to line up with the other. A run
- * does not move when:
+ * amounts. One of the runs moves across to line up with the other; when both
+ * end on boxes and neither can move alone, both slide to a line their boxes
+ * share. A run does not move when:
  * - it ends on a box and its end would leave that box's side;
  * - its far neighbour would turn back on itself;
  * - the stub into a box would get shorter than `minimum`;
@@ -94,14 +95,33 @@ const straightenOne = (
                 keepsStub(points, next, outer, beyond, minimum));
       if (allowed && !crossesABox(next, moved, boxes)) return next;
     }
+    // Both runs end on boxes and neither can move alone: try a straight line
+    // where both boxes' sides allow one, as near the jog as possible.
+    if (i === 1 && last === 3) {
+      const [fromLow, fromHigh] = sideRange(key, from);
+      const [toLow, toHigh] = sideRange(key, to);
+      const low = Math.max(fromLow, toLow);
+      const high = Math.min(fromHigh, toHigh);
+      if (low <= high) {
+        const value = Math.min(Math.max((a[key] + b[key]) / 2, low), high);
+        const next = points.map((p) => ({ ...p, [key]: value }));
+        if (!crossesABox(next, [0, 1, 2, 3], boxes)) return next;
+      }
+    }
   }
   return undefined;
 };
 
-const staysOnSide = (value: number, key: "x" | "y", box: Footprint): boolean => {
+/** Where a route end may sit along one side of a box: the side minus its corners. */
+const sideRange = (key: "x" | "y", box: Footprint): [number, number] => {
   const start = box[key];
   const size = key === "x" ? box.w : box.d;
-  return value >= start + END_INSET && value <= start + size - END_INSET;
+  return [start + END_INSET, start + size - END_INSET];
+};
+
+const staysOnSide = (value: number, key: "x" | "y", box: Footprint): boolean => {
+  const [low, high] = sideRange(key, box);
+  return value >= low && value <= high;
 };
 
 const lengthOf = (a: Point, b: Point): number => Math.abs(a.x - b.x) + Math.abs(a.y - b.y);

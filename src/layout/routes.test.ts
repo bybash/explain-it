@@ -16,6 +16,13 @@ describe("withoutJogs", () => {
     expect(withoutJogs(route, box(0, 0), box(5, 0), MIN)).toEqual(pts([2, 1], [5, 1]));
   });
 
+  it("slides both ends to a line both boxes share when neither can move alone", () => {
+    // Alone, each end would come within a quarter unit of its box's corner; together they
+    // meet at y 1.75, the one line both sides allow.
+    const route = pts([2, 1.5], [3, 1.5], [3, 1.9], [5, 1.9]);
+    expect(withoutJogs(route, box(0, 0), box(5, 1.5), MIN)).toEqual(pts([2, 1.75], [5, 1.75]));
+  });
+
   it("keeps a jog when straightening it would slide an end off its box", () => {
     const route = pts([2, 1.9], [3, 1.9], [3, 2.1], [5, 2.1]);
     expect(withoutJogs(route, box(0, 0), box(5, 2), MIN)).toEqual(route);
