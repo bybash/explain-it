@@ -15,10 +15,11 @@ const points = (polygon: Polygon): string =>
   polygon.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
 
 /**
- * Draws a scene into `root` as SVG: floor, then zones, then nodes in depth
- * order. Colours come from CSS custom properties, so themes need no code.
- * This is the thin browser edge of the engine; the geometry is all in
- * `buildScene`, which is unit-tested.
+ * Draws a scene into `root` as SVG: floor, then zones, an empty `.edges`
+ * layer, nodes in depth order, and an empty `.edge-labels` layer. The empty
+ * layers are filled by `renderEdges`. Colours come from CSS custom
+ * properties, so themes need no code. This is the thin browser edge of the
+ * engine; the geometry is all in `buildScene`, which is unit-tested.
  */
 export const renderScene = (root: SVGSVGElement, scene: Scene): void => {
   root.replaceChildren();
@@ -48,6 +49,9 @@ export const renderScene = (root: SVGSVGElement, scene: Scene): void => {
     }
   }
 
+  // Edges lie on the floor, so they go over the zones and under the nodes.
+  element("g", { class: "edges" }, root);
+
   const nodes = element("g", { class: "nodes" }, root);
   for (const node of scene.nodes) {
     const g = element("g", { class: `node kind-${node.kind}`, "data-id": node.id }, nodes);
@@ -64,6 +68,9 @@ export const renderScene = (root: SVGSVGElement, scene: Scene): void => {
     label.textContent = node.label;
     fitWidth(label as SVGTextElement, width * LABEL_WIDTH);
   }
+
+  // Edge labels stand upright above everything, so a box never hides one.
+  element("g", { class: "edge-labels" }, root);
 };
 
 /**

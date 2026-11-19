@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Isometric primitives · dev</title>
+    <title>Isometric scene · dev</title>
     <style>
       :root {
         --bg: #f6f7fb;
@@ -15,6 +15,8 @@
         --face-left: #e4e7ef;
         --face-right: #d3d8e4;
         --edge: #c3c9d6;
+        --flow: #6d28d9;
+        --flow-dash: #ffffff;
         --text: #18181b;
         --kind-actor: #2563eb;
         --kind-service: #6d28d9;
@@ -44,12 +46,42 @@
         stroke-width: 1.5;
         stroke-dasharray: 6 5;
       }
-      .debug-routes polyline {
+      .edge-line {
         fill: none;
-        stroke: #6d28d9;
-        stroke-opacity: 0.45;
+        stroke: var(--flow);
+        stroke-opacity: 0.85;
+        stroke-width: 6;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .edge-dashes {
+        fill: none;
+        stroke: var(--flow-dash);
+        stroke-width: 2.4;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        stroke-dasharray: 1 16;
+      }
+      .edge-arrow {
+        fill: var(--flow);
+        stroke: var(--flow);
         stroke-width: 2;
-        stroke-dasharray: 4 6;
+        stroke-linejoin: round;
+      }
+      .edge-dot {
+        fill: var(--flow);
+        stroke: var(--face-top);
+        stroke-width: 3;
+      }
+      .edge-label rect {
+        fill: var(--face-top);
+        stroke: var(--flow);
+        stroke-width: 2;
+      }
+      .edge-label text {
+        fill: var(--text);
+        font-size: 16px;
+        font-weight: 500;
       }
       .zone text {
         fill: var(--zone-text);

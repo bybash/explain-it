@@ -13,3 +13,4 @@ later record supersedes an earlier one and says so.
 | [001](001-v1-product-and-stack.md) | v1 product shape and stack |
 | [002](002-mcp-first.md) | MCP before the in-app LLM |
 | [003](003-engineering-practices.md) | Engineering practices |
+| [004](004-edge-routes-and-labels.md) | Edge routes and labels |

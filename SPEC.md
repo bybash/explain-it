@@ -206,7 +206,11 @@ for frame capture, so what the user approves is what gets rendered.
   label. The floor is a dotted grid. Elements are depth-sorted.
 - **Edges.** The routed path is drawn on the floor. `flow` draws it in, then
   sends a dot along it; flowing dashes follow the timeline. The label sits on
-  the longest visible segment.
+  the longest visible segment, in a pill drawn above the nodes. Layout
+  straightens jogs shorter than a grid step that snapping leaves in a route.
+  Where the layout dropped a route (an end was overridden), the engine draws
+  a simple orthogonal one: straight between boxes that share enough of a
+  side, otherwise with one bend.
 - **Overlays.** HTML on top of the SVG: callout cards, badges, step caption,
   narration caption, scene title. Anchored to projected node positions.
 - **Timeline.** Our own, not GSAP. Tweens with eases, staggers and labels;
