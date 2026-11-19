@@ -72,29 +72,45 @@ The goal: the CLI renders a hand-written example to an MP4, with no LLM and no v
 | 3.8 | **Preview gate**: the player with a scrubber and beat list, voice generation with progress, check warnings that jump to the beat, the contact sheet | The example can be previewed with voice |
 | 3.9 | **Render gate**: the job queue, progress over SSE, cancel, downloads | The example renders from the UI |
 
-## Milestone 4: LLM
+## Milestone 4: MCP
+
+The goal: make a video end to end from an IDE, with no LLM in explAIn-it.
 
 | ID | Slice | Done when |
 |---|---|---|
-| 4.1 | **LLM client**: AI SDK with OpenRouter and OpenAI-compatible providers, structured calls, the repair loop, fixture recording and replay | Tests replay fixtures without a key |
-| 4.2 | **Context**: pasted text and file upload, the 100k-character limit, storing files in `context/` | Oversized context is refused with a clear message |
-| 4.3 | **Graph drafting**: chat and context to `graph.json`, streamed into the Mermaid view, at most two questions | Fixtures: three described flows give valid graphs |
-| 4.4 | **Script drafting**: graph to scenes and beats, validated by the schema and the checks, repaired on failure | Fixtures: the three graphs give valid storyboards |
-| 4.5 | **Edits through chat**: JSON Patches for the graph and the storyboard | Fixtures: "rename X", "add a retry step", "shorten beat 3" |
-| 4.6 | **Layout repair**: check failures the layout engine cannot fix go back to the LLM | A crowded fixture is fixed |
+| 4.1 | **MCP endpoint and project tools**: `/mcp` over Streamable HTTP with the MCP TypeScript SDK; `list_projects`, `get_project`, `create_project`, `update_graph`, `set_storyboard`, `set_style`; `origin` and `sources` on the project; a preview link in every result | Tests call each tool through an in-memory MCP client; invalid input returns readable errors |
+| 4.2 | **Guidance and the `explain_flow` prompt**: authoring guidance in `src/guidance/` (schemas, limits, node kinds, actions, beats, approval steps), served as an MCP prompt and in the tool descriptions | The prompt lists correctly in an MCP client; the guidance is one source the LLM slices can reuse |
+| 4.3 | **Check and render tools**: `check` (voice, checks, contact sheet returned as an image), `render`, `render_status` | A test project goes from `create_project` to an MP4 through tools alone |
+| 4.4 | **IDE setup**: README configuration for Claude Code, Cursor and VS Code; a walkthrough explaining a feature of this repository | A video of an explAIn-it feature made from Claude Code, attached to the PR |
 
-## Milestone 5: ship
+## Milestone 5: LLM in the web app
 
 | ID | Slice | Done when |
 |---|---|---|
-| 5.1 | **Docker**: a slim image with Chromium and ffmpeg, volumes for projects and cache, a GHCR publish workflow on tags | `docker run` works on a clean machine |
-| 5.2 | **Examples**: `ci-pipeline` and `checkout`, approved and rendered | All three examples render without a key |
-| 5.3 | **Golden stills in CI**: stills of each example compared against stored images | CI fails on a visual regression |
-| 5.4 | **Docs**: README with a demo video, `docs/ARCHITECTURE.md`, final `CONTRIBUTING.md`, tested models list | A new contributor can run the app from the README alone |
-| 5.5 | **Release v0.1.0**: changelog, tag, image | The release is published |
+| 5.1 | **LLM client**: AI SDK with OpenRouter and OpenAI-compatible providers, structured calls, the repair loop, fixture recording and replay | Tests replay fixtures without a key |
+| 5.2 | **Context**: pasted text and file upload, the 100k-character limit, storing files in `context/` | Oversized context is refused with a clear message |
+| 5.3 | **Graph drafting**: chat and context to `graph.json`, streamed into the Mermaid view, at most two questions | Fixtures: three described flows give valid graphs |
+| 5.4 | **Script drafting**: graph to scenes and beats, validated by the schema and the checks, repaired on failure | Fixtures: the three graphs give valid storyboards |
+| 5.5 | **Edits through chat**: JSON Patches for the graph and the storyboard | Fixtures: "rename X", "add a retry step", "shorten beat 3" |
+| 5.6 | **Layout repair**: check failures the layout engine cannot fix go back to the LLM | A crowded fixture is fixed |
+
+## Milestone 6: ship
+
+| ID | Slice | Done when |
+|---|---|---|
+| 6.1 | **Docker**: a slim image with Chromium and ffmpeg, volumes for projects and cache, a GHCR publish workflow on tags | `docker run` works on a clean machine |
+| 6.2 | **Examples**: `ci-pipeline` and `checkout`, approved and rendered | All three examples render without a key |
+| 6.3 | **Golden stills in CI**: stills of each example compared against stored images | CI fails on a visual regression |
+| 6.4 | **Docs**: README with a demo video, `docs/ARCHITECTURE.md`, final `CONTRIBUTING.md`, tested models list | A new contributor can run the app from the README alone |
+| 6.5 | **Release v0.1.0**: changelog, tag, image | The release is published |
 
 ## Later
 
-Sequence diagrams, images as input, Git repository exploration (the place
-where an agent framework such as LangGraph may fit), more voices and languages,
-9:16 vertical, GIF output, camera moves within a scene.
+- Sequence diagrams; images as input.
+- Git repository exploration inside the web app (the place where an agent
+  framework such as LangGraph may fit).
+- MCP: exporting a project into the user's repository, a stdio shim that
+  starts the app, elicitation for approvals, a check that lists `sources`
+  changed since the video was made.
+- More voices and languages, 9:16 vertical, GIF output, camera moves within a
+  scene.

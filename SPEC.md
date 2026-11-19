@@ -8,6 +8,13 @@ watch a preview, and download the video.
 It is open source (MIT), runs on your own machine (`npm` or Docker), and uses
 your own LLM key. Nothing is hosted by the project.
 
+There are two ways in, both writing the same project folders:
+
+- **The web app**: a chat in the browser, using your LLM key.
+- **MCP**: your IDE's agent (Claude Code, Cursor, VS Code and others) connects
+  to the running app, reads your repository itself, and writes the graph and
+  script through tools. No LLM key is needed in explAIn-it.
+
 This document is the source of truth for v1. Decisions that change it are made
 in a pull request that edits this file.
 
@@ -18,15 +25,18 @@ in a pull request that edits this file.
 - No hand-placed timings or positions: narration sets timing, the engine lays out.
 - Easy to clone and run: one language (TypeScript), no database, no Python.
 - Deterministic rendering: the same project renders the same frames.
+- Usable from the IDE: explain a feature of the repository you are working in.
 
 ## Non-goals for v1
 
 - Hosting, accounts, login, telemetry.
-- Cloning or exploring a Git repository (only pasted or uploaded text).
+- explAIn-it cloning or exploring a Git repository itself. The web app takes
+  pasted or uploaded text; through MCP, the IDE's agent reads the repository.
 - Images or whiteboard photos as input; Mermaid diagram types other than `flowchart`.
 - Voices in languages other than English (captions can be any language).
 - Flat 2D style, camera moves within a scene, 9:16 vertical, GIF output.
-- Checking a video against source code.
+- Checking a video against source code. Sources are recorded (see Project)
+  but not yet checked.
 
 ## User flow
 
@@ -164,6 +174,24 @@ projects/<slug>/
 Projects are plain folders: they can be committed, diffed and shared. There is
 no database.
 
+### Project (`project.json`)
+
+```ts
+type Project = {
+  version: 1;
+  name: string;
+  gate: "graph" | "script" | "style" | "preview" | "render";
+  staleBeats: string[];
+  origin: "web" | "mcp";
+  sources?: { path: string; commit?: string }[];  // files the video explains, filled in over MCP
+  createdAt: string;
+  updatedAt: string;
+};
+```
+
+`sources` is stored but not checked in v1. It allows a later check that lists
+the files changed since the video was made.
+
 ## Engine
 
 The engine runs in the browser. The same page is used for the live preview and
@@ -258,6 +286,46 @@ The **contact sheet** is one still per beat on a single image.
 - The README lists models tested for structured output. Local models are best
   effort.
 
+## MCP
+
+The running app serves an MCP endpoint at `http://127.0.0.1:3000/mcp`
+(Streamable HTTP), using the official MCP TypeScript SDK. It shares the
+process, project folders, render queue and preview pages with the web app, and
+works the same under Docker. The app must be running for the IDE to connect.
+
+In MCP mode explAIn-it makes no LLM calls. The IDE's agent reads the user's
+repository, writes the graph and storyboard, and calls the tools below. The
+server validates, lays out, checks, previews and renders.
+
+| Tool | Does | Returns |
+|---|---|---|
+| `list_projects` | Lists projects | Names, gates, last update |
+| `get_project` | Reads one project | Its files and the current gate |
+| `create_project` | Creates a project from a graph, with optional `sources` | Validation errors or the Mermaid, and a preview link |
+| `update_graph` | Replaces the graph or applies a JSON Patch | Errors or the Mermaid; stale beats |
+| `set_storyboard` | Replaces the storyboard or applies a JSON Patch | Errors, estimated timing, check warnings |
+| `set_style` | Updates `config.json` | The config, a preview link |
+| `check` | Generates the voice if needed and runs the checks | The report and the contact sheet as an image |
+| `render` | Queues a render | A job id |
+| `render_status` | Reads a render job | Progress, then the output paths |
+
+**Guidance.** An MCP prompt, `explain_flow`, and the tool descriptions carry
+what the agent needs to write good files: the schemas, the limits, the node
+kinds and actions, how to tell the story in beats, and when to stop for the
+user's approval. The in-app LLM prompts are built from the same guidance.
+
+**Approval.** The prompt tells the agent to show the user the Mermaid, then
+the script, in the IDE chat and to wait for approval before moving on. Every
+tool result includes a link to the project in the web app for a visual
+preview. The server never blocks a render on approval. MCP elicitation may
+replace this once clients support it widely.
+
+**Projects** created over MCP live in the server's `projects/` folder, like any
+other. Exporting a project into the user's repository comes later.
+
+**Setup.** The README gives a one-line configuration for Claude Code, Cursor
+and VS Code. A stdio shim that starts the app when it is not running comes later.
+
 ## Mermaid
 
 - Input: `flowchart` (and `graph`) only. Subgraphs become zones.
@@ -318,7 +386,9 @@ src/
   checks/      overlap, frame, reading speed, narration fit, loudness, contact sheet
   render/      capture, encode, outputs, job queue
   mermaid/     parse and generate
+  guidance/    authoring guidance shared by the MCP prompt and the LLM prompts
   llm/         client, calls, repair loop, prompts/, fixtures
+  mcp/         MCP endpoint and tools
   server/      Hono app, projects API, SSE, settings
   web/         React app: chat, gates, panels, player
   cli/         render and check
@@ -344,8 +414,11 @@ key and also serve as test fixtures:
 2. **Audio and checks.** Voice, narration-first timing, music, mix, checks,
    contact sheet.
 3. **Web app.** The five gates, Mermaid round-trip, editors, preview, render queue.
-4. **LLM.** Graph and script drafting, repair loops, edits through chat.
-5. **Ship.** Docker on GHCR, three examples, docs, v0.1.0.
+4. **MCP.** The endpoint, the tools and the `explain_flow` prompt: the first
+   way to make a video end to end, from the IDE, with no LLM in explAIn-it.
+5. **LLM.** Graph and script drafting in the web app, repair loops, edits
+   through chat.
+6. **Ship.** Docker on GHCR, three examples, docs, v0.1.0.
 
 The pull requests that make up each milestone are listed in [`ROADMAP.md`](ROADMAP.md).
 
@@ -353,6 +426,7 @@ The pull requests that make up each milestone are listed in [`ROADMAP.md`](ROADM
 
 - explAIn-it is MIT. The videos people make are theirs.
 - Dependencies: Mermaid (MIT), Playwright (Apache-2.0), Kokoro-82M and
-  kokoro-js (Apache-2.0), AI SDK (Apache-2.0), Lucide (ISC), elkjs (EPL-2.0),
+  kokoro-js (Apache-2.0), AI SDK (Apache-2.0), MCP TypeScript SDK (MIT),
+  Lucide (ISC), elkjs (EPL-2.0),
   fonts (OFL), ffmpeg (LGPL/GPL, called as a separate program).
 - No GSAP and no MusicGen.
