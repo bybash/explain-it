@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "name": "OAuth login",
+  "gate": "render",
+  "staleBeats": [],
+  "origin": "web",
+  "createdAt": "2026-11-19T12:00:00.000Z",
+  "updatedAt": "2026-11-19T12:00:00.000Z"
+}

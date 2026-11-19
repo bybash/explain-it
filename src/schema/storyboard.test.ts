@@ -93,8 +93,8 @@ describe("parseStoryboard", () => {
     const storyboard = validStoryboard();
     const scene = storyboard.scenes[0];
     if (!scene) throw new Error("fixture");
-    scene.nodes = ["browser", "cache"];
-    expect(errorsFor(storyboard)).toEqual(['scenes[0].nodes[1]: unknown node "cache"']);
+    scene.nodes = ["browser", "app", "cache"];
+    expect(errorsFor(storyboard)).toEqual(['scenes[0].nodes[2]: unknown node "cache"']);
   });
 
   it("rejects actions on nodes outside their scene", () => {

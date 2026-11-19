@@ -18,19 +18,17 @@ const kind = fc.constantFrom(
 );
 
 /** Graphs that are valid by construction: unique ids, edges between existing nodes. */
-const validGraph = fc
-  .uniqueArray(id, { minLength: 1, maxLength: MAX_GRAPH_NODES })
-  .chain((ids) =>
-    fc.record({
-      version: fc.constant(1),
-      title: label,
-      nodes: fc.tuple(...ids.map((nodeId) => fc.record({ id: fc.constant(nodeId), label, kind }))),
-      edges: fc
-        .array(fc.tuple(fc.constantFrom(...ids), fc.constantFrom(...ids)), { maxLength: 20 })
-        .map((pairs) => pairs.map(([from, to], i) => ({ id: `edge_${i}`, from, to }))),
-      zones: fc.constant([]),
-    }),
-  );
+const validGraph = fc.uniqueArray(id, { minLength: 1, maxLength: MAX_GRAPH_NODES }).chain((ids) =>
+  fc.record({
+    version: fc.constant(1),
+    title: label,
+    nodes: fc.tuple(...ids.map((nodeId) => fc.record({ id: fc.constant(nodeId), label, kind }))),
+    edges: fc
+      .array(fc.tuple(fc.constantFrom(...ids), fc.constantFrom(...ids)), { maxLength: 20 })
+      .map((pairs) => pairs.map(([from, to], i) => ({ id: `edge_${i}`, from, to }))),
+    zones: fc.constant([]),
+  }),
+);
 
 describe("schema properties", () => {
   it("never throws, whatever the input", () => {

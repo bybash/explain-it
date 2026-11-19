@@ -14,6 +14,11 @@ describe("formatPath", () => {
   it("starts with an index when the root is an array", () => {
     expect(formatPath([0, "id"])).toBe("[0].id");
   });
+
+  it("quotes keys that are not plain identifiers", () => {
+    expect(formatPath([""])).toBe('[""]');
+    expect(formatPath(["nodes", "my key"])).toBe('nodes["my key"]');
+  });
 });
 
 describe("parseWith", () => {

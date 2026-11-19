@@ -57,7 +57,9 @@ describe("parseGraph", () => {
       kind: "service",
     }));
     graph.edges = [];
-    expect(errorsFor(graph)).toEqual([`nodes: ${MAX_GRAPH_NODES + 1} items, max ${MAX_GRAPH_NODES}`]);
+    expect(errorsFor(graph)).toEqual([
+      `nodes: ${MAX_GRAPH_NODES + 1} items, max ${MAX_GRAPH_NODES}`,
+    ]);
   });
 
   it("rejects duplicate ids across nodes, edges and zones", () => {
