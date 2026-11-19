@@ -19,6 +19,7 @@
     "deps": "depcruise src scripts dev --config .dependency-cruiser.cjs",
     "dev:engine": "vite --open /dev/iso.html",
     "screenshot": "node scripts/dev-screenshot.ts",
+    "clip": "node scripts/dev-clip.ts",
     "layout": "node scripts/layout.ts"
   },
   "devDependencies": {

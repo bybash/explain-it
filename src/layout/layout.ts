@@ -6,6 +6,7 @@ import type { Validated } from "../schema/errors.ts";
 import type { Graph, GraphNode } from "../schema/graph.ts";
 import type { Layout, FloorPoint as Point } from "../schema/layout.ts";
 import { fail, ok } from "../schema/result.ts";
+import { type Footprint, withoutJogs } from "./routes.ts";
 
 /**
  * ELK's default spacings assume pixel-sized numbers, so grid units go in
@@ -99,6 +100,13 @@ export const layoutGraph = async (
   };
   visit(result, 0, 0);
 
+  const footprintOf = (id: string): Footprint => {
+    const node = graph.nodes.find((n) => n.id === id);
+    const position = positions[id];
+    if (!node || !position) throw new Error(`no position for node "${id}"`);
+    return { ...position, w: KIND_SIZES[node.kind].w, d: KIND_SIZES[node.kind].d };
+  };
+
   const routes: Record<string, Point[] | null> = {};
   for (const edge of result.edges ?? []) {
     const graphEdge = graph.edges.find((e) => e.id === edge.id);
@@ -122,7 +130,12 @@ export const layoutGraph = async (
       snapOffsets.get(graphEdge.from) ?? { x: 0, y: 0 },
       snapOffsets.get(graphEdge.to) ?? { x: 0, y: 0 },
     ).map(roundOffNoise);
-    routes[edge.id] = withoutRedundantPoints(routes[edge.id] ?? []);
+    routes[edge.id] = withoutJogs(
+      routes[edge.id] ?? [],
+      footprintOf(graphEdge.from),
+      footprintOf(graphEdge.to),
+      GRID,
+    );
   }
 
   const snappedOverrides = Object.fromEntries(
@@ -136,7 +149,6 @@ export const layoutGraph = async (
   });
 };
 
-/** Rounds away floating-point noise, so points on one segment share coordinates exactly. */
 /** Rounds to 1e-6 to clear floating-point noise, so points on one segment share coordinates exactly. */
 const roundOffNoise = (p: Point): Point => ({
   x: Math.round(p.x * 1e6) / 1e6,
@@ -190,27 +202,4 @@ const followSnapping = (route: readonly Point[], fromOffset: Point, toOffset: Po
   const bend = points[n - 2] ?? beforeLast;
   points[n - 2] = lastIsHorizontal ? { x: bend.x, y: end.y } : { x: end.x, y: bend.y };
   return points;
-};
-
-/**
- * Drops repeated points and points in the middle of a straight run. ELK splits
- * an edge between zones into sections whose joints repeat a point, and
- * snapping can line up a jog; neither should reach the drawing as a bend.
- */
-const withoutRedundantPoints = (route: readonly Point[]): Point[] => {
-  const kept: Point[] = [];
-  for (const point of route) {
-    const last = kept.at(-1);
-    if (last && last.x === point.x && last.y === point.y) continue;
-    const beforeLast = kept.at(-2);
-    if (
-      last &&
-      beforeLast &&
-      ((beforeLast.x === last.x && last.x === point.x) ||
-        (beforeLast.y === last.y && last.y === point.y))
-    )
-      kept.pop();
-    kept.push(point);
-  }
-  return kept;
 };

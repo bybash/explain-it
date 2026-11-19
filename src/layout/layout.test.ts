@@ -54,6 +54,23 @@ describe("layoutGraph", () => {
     expect(dropped).toEqual(["click"]);
   });
 
+  it("leaves no near-zero jogs from snapping in the example's routes", async () => {
+    const layout = await laidOut(example);
+    const jogs = Object.entries(layout.routes).flatMap(([id, route]) =>
+      (route ?? []).slice(1, -2).flatMap((a, i) => {
+        const b = route?.[i + 2];
+        const length = b ? Math.abs(a.x - b.x) + Math.abs(a.y - b.y) : Infinity;
+        return length < GRID ? [`${id} segment ${i + 1}: ${length}`] : [];
+      }),
+    );
+    expect(jogs).toEqual([]);
+    // click ran user → browser with a 0.1 jog; their sides overlap, so it is now straight.
+    expect(layout.routes.click).toEqual([
+      { x: 2.6, y: 2.7 },
+      { x: 5, y: 2.7 },
+    ]);
+  });
+
   it("gives the same layout every time for the same graph", async () => {
     expect(await laidOut(example)).toEqual(await laidOut(example));
   });
