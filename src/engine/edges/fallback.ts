@@ -1,11 +1,8 @@
 import type { Graph } from "../../schema/graph.ts";
 import type { FloorPoint, Layout } from "../../schema/layout.ts";
-import type { Box } from "../iso/scene.ts";
-import { KIND_SIZES } from "../iso/sizes.ts";
+import { type Footprint, footprintOf } from "../iso/sizes.ts";
 
-export type Footprint = Omit<Box, "h">;
-
-/** Boxes must share at least this much of a side for a straight route, so it never grazes a corner. */
+/** How much of a side two boxes must share for a straight route, so it never grazes a corner. */
 const MIN_SHARED = 0.5;
 
 type Span = { readonly start: number; readonly end: number };
@@ -17,7 +14,8 @@ const shared = (a: Span, b: Span): Span => ({
   start: Math.max(a.start, b.start),
   end: Math.min(a.end, b.end),
 });
-const apart = (a: Span, b: Span): boolean => a.end <= b.start || b.end <= a.start;
+/** Strictly apart: boxes that touch have no room for a route between them. */
+const apart = (a: Span, b: Span): boolean => a.end < b.start || b.end < a.start;
 /** The side of `a` that faces `b`, and the side of `b` that faces `a`, along one axis. */
 const facing = (a: Span, b: Span): [number, number] =>
   a.end <= b.start ? [a.end, b.start] : [a.start, b.end];
@@ -62,13 +60,10 @@ export const fallbackRoute = (from: Footprint, to: Footprint): FloorPoint[] => {
       { x, y: entryY },
     ];
   }
-  // Overlapping boxes (an override placed one on another): join the centres.
-  const end = centre(ty);
-  return [
-    { x: centre(fx), y },
-    { x, y },
-    { x, y: end },
-  ];
+  // Touching or overlapping boxes (an override placed one on another): join the centres.
+  const start = { x: centre(fx), y };
+  const end = { x, y: centre(ty) };
+  return end.y === y ? [start, end] : [start, { x, y }, end];
 };
 
 /**
@@ -80,8 +75,7 @@ export const edgeRoutes = (graph: Graph, layout: Layout): Record<string, FloorPo
     const node = graph.nodes.find((n) => n.id === id);
     const position = layout.positions[id];
     if (!node || !position) throw new Error(`no position for node "${id}"`);
-    const { w, d } = KIND_SIZES[node.kind];
-    return { x: position.x, y: position.y, w, d };
+    return footprintOf(node.kind, position);
   };
   return Object.fromEntries(
     graph.edges.map((edge) => [

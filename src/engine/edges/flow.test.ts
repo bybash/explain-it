@@ -24,6 +24,13 @@ describe("flowTweens", () => {
     expect(edgeAt(START + draw + 1).label).toBe(1);
   });
 
+  it("fades the label in only once the line beneath it is drawn", () => {
+    for (let t = START; t <= START + draw; t += 0.01) {
+      const edge = edgeAt(t);
+      if ((edge.label ?? 0) > 0) expect(edge.draw).toBeGreaterThan(0.99);
+    }
+  });
+
   it("sends the dot along the drawn edge, and fades it out at the target", () => {
     const sending = edgeAt(START + draw + send / 2);
     expect(sending.draw).toBe(1);

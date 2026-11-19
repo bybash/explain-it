@@ -1,12 +1,5 @@
+import type { Footprint } from "../engine/iso/sizes.ts";
 import type { FloorPoint as Point } from "../schema/layout.ts";
-
-/** A node's footprint on the floor, in grid units. */
-export type Footprint = {
-  readonly x: number;
-  readonly y: number;
-  readonly w: number;
-  readonly d: number;
-};
 
 /**
  * How far a route end stays from the corners of its box when a jog is
@@ -21,7 +14,7 @@ const near = (a: number, b: number): boolean => Math.abs(a - b) < 1e-6;
  * an edge between zones into sections whose joints repeat a point, and
  * snapping can line up a jog; neither should reach the drawing as a bend.
  */
-export const withoutRedundantPoints = (route: readonly Point[]): Point[] => {
+const withoutRedundantPoints = (route: readonly Point[]): Point[] => {
   const kept: Point[] = [];
   for (const point of route) {
     const last = kept.at(-1);

@@ -8,8 +8,11 @@ import type { TweenSpec } from "../timeline.ts";
  */
 export const EDGE_TIMING = {
   draw: 0.9,
-  /** The label starts fading in this far into the draw-in, as a share of it. */
-  labelAt: 0.6,
+  /**
+   * The label starts fading in this far into the draw-in, as a share of it:
+   * late enough that the eased line is all but drawn, so it never shows ahead of it.
+   */
+  labelAt: 0.9,
   labelFade: 0.35,
   send: 1.1,
   dotFade: 0.15,

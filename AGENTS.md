@@ -51,6 +51,10 @@ npm run typecheck   # tsc --noEmit
 npm run deps        # dependency-cruiser: module boundaries (.dependency-cruiser.cjs)
 npm test            # Vitest
 npm run schemas     # regenerate schemas/ after changing a zod schema
+npm run layout -- examples/oauth-login   # recompute a project's layout.json
+npm run dev:engine  # the engine dev page in a browser
+npm run screenshot -- "dev/iso.html?t=4" out.png   # a still of a dev page
+npm run clip -- dev/iso.html out.mp4               # a clip of a dev page (needs ffmpeg)
 ```
 
 After changing anything in `src/schema/`, run `npm run schemas` and commit

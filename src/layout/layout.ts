@@ -1,12 +1,12 @@
 import elkBundled from "elkjs/lib/elk.bundled.js";
 import type { ELKConstructorArguments, ELK as ElkInstance, ElkNode } from "elkjs/lib/elk-api.js";
-import { KIND_SIZES, ZONE_MARGIN } from "../engine/iso/sizes.ts";
+import { type Footprint, footprintOf, KIND_SIZES, ZONE_MARGIN } from "../engine/iso/sizes.ts";
 import { referenceErrors } from "../schema/common.ts";
 import type { Validated } from "../schema/errors.ts";
 import type { Graph, GraphNode } from "../schema/graph.ts";
 import type { Layout, FloorPoint as Point } from "../schema/layout.ts";
 import { fail, ok } from "../schema/result.ts";
-import { type Footprint, withoutJogs } from "./routes.ts";
+import { withoutJogs } from "./routes.ts";
 
 /**
  * ELK's default spacings assume pixel-sized numbers, so grid units go in
@@ -100,11 +100,11 @@ export const layoutGraph = async (
   };
   visit(result, 0, 0);
 
-  const footprintOf = (id: string): Footprint => {
+  const footprint = (id: string): Footprint => {
     const node = graph.nodes.find((n) => n.id === id);
     const position = positions[id];
     if (!node || !position) throw new Error(`no position for node "${id}"`);
-    return { ...position, w: KIND_SIZES[node.kind].w, d: KIND_SIZES[node.kind].d };
+    return footprintOf(node.kind, position);
   };
 
   const routes: Record<string, Point[] | null> = {};
@@ -132,8 +132,8 @@ export const layoutGraph = async (
     ).map(roundOffNoise);
     routes[edge.id] = withoutJogs(
       routes[edge.id] ?? [],
-      footprintOf(graphEdge.from),
-      footprintOf(graphEdge.to),
+      footprint(graphEdge.from),
+      footprint(graphEdge.to),
       GRID,
     );
   }

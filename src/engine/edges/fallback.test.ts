@@ -44,6 +44,13 @@ describe("fallbackRoute", () => {
     ]);
   });
 
+  it("never gives an empty route between boxes that touch", () => {
+    expect(fallbackRoute(box(0, 0), box(2, 0))).toEqual([
+      { x: 1, y: 1 },
+      { x: 3, y: 1 },
+    ]);
+  });
+
   it("joins the centres with one bend when the boxes overlap, which the checks report", () => {
     expect(fallbackRoute(box(0, 0, 4, 4), box(2, 2, 4, 4))).toEqual([
       { x: 2, y: 2 },

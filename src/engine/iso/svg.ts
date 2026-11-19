@@ -17,9 +17,9 @@ const points = (polygon: Polygon): string =>
 /**
  * Draws a scene into `root` as SVG: floor, then zones, an empty `.edges`
  * layer, nodes in depth order, and an empty `.edge-labels` layer. The empty
- * layers are filled by `renderEdges`. Colours come from CSS
- * custom properties, so themes need no code. This is the thin browser edge of the engine; the geometry is all in
- * `buildScene`, which is unit-tested.
+ * layers are filled by `renderEdges`. Colours come from CSS custom
+ * properties, so themes need no code. This is the thin browser edge of the
+ * engine; the geometry is all in `buildScene`, which is unit-tested.
  */
 export const renderScene = (root: SVGSVGElement, scene: Scene): void => {
   root.replaceChildren();

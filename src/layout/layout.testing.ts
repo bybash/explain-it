@@ -1,12 +1,10 @@
 // Test support: what is wrong with a layout, in words. Used by the layout
 // tests only; dependency-cruiser keeps production code from importing it.
 import { buildScene } from "../engine/iso/scene.ts";
-import { KIND_SIZES } from "../engine/iso/sizes.ts";
+import { footprintOf, type Footprint as Rect } from "../engine/iso/sizes.ts";
 import type { Graph } from "../schema/graph.ts";
 import type { FloorPoint, Layout } from "../schema/layout.ts";
 import { GRID } from "./layout.ts";
-
-type Rect = { x: number; y: number; w: number; d: number };
 
 /** Layout coordinates are rounded to 1e-6, so this is as close as two of them need to be. */
 const TOLERANCE = 1e-6;
@@ -32,8 +30,7 @@ export const footprints = (graph: Graph, layout: Layout): Map<string, Rect> =>
     graph.nodes.map((node) => {
       const position = layout.positions[node.id];
       if (!position) throw new Error(`no position for ${node.id}`);
-      const { w, d } = KIND_SIZES[node.kind];
-      return [node.id, { ...position, w, d }];
+      return [node.id, footprintOf(node.kind, position)];
     }),
   );
 
