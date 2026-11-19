@@ -2,6 +2,7 @@ import { referenceErrors } from "../../schema/common.ts";
 import type { Validated, ValidationError } from "../../schema/errors.ts";
 import type { Graph, NodeKind } from "../../schema/graph.ts";
 import { fail, ok } from "../../schema/result.ts";
+import { DEFAULT_CATEGORY, KIND_STYLES } from "../theme/kinds.ts";
 import { project, type ScreenPoint, type View } from "./project.ts";
 import { KIND_SIZES, ZONE_MARGIN } from "./sizes.ts";
 
@@ -26,6 +27,10 @@ export type NodeShape = {
   readonly id: string;
   readonly kind: NodeKind;
   readonly label: string;
+  /** The palette category it is coloured with: its own, or its kind's. */
+  readonly category: string;
+  /** The Lucide icon on its top: its own, or its kind's. */
+  readonly icon: string;
   readonly box: Box;
   /** Faces in screen space. Left faces +y (towards the viewer, left), right faces +x. */
   readonly faces: { readonly top: Polygon; readonly left: Polygon; readonly right: Polygon };
@@ -44,6 +49,7 @@ export type NodeShape = {
 export type ZoneShape = {
   readonly id: string;
   readonly label: string;
+  readonly category: string;
   /** The platform in grid units, at floor level. */
   readonly rect: Omit<Box, "h">;
   readonly polygon: Polygon;
@@ -83,6 +89,8 @@ export const buildScene = (graph: Graph, positions: Positions, view: View): Vali
         id: node.id,
         kind: node.kind,
         label: node.label,
+        category: node.category ?? KIND_STYLES[node.kind].category,
+        icon: node.icon ?? KIND_STYLES[node.kind].icon,
         box,
         faces: facesOf(box, at),
         topContent: topContentOf(box, at, view.scale),
@@ -140,6 +148,7 @@ const zonesOf = (graph: Graph, nodes: readonly NodeShape[], at: Projector): Zone
       {
         id: zone.id,
         label: zone.label,
+        category: zone.category ?? DEFAULT_CATEGORY,
         rect: { x, y, w, d },
         polygon: [at(x, y, 0), at(x + w, y, 0), at(x + w, y + d, 0), at(x, y + d, 0)],
       },

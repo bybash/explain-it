@@ -2,6 +2,8 @@
 // every edge flowing in turn on one timeline.
 //   ?t=4.5      a still at 4.5 s instead of playing
 //   ?fallback   moves "user" by hand, so "click" takes the fallback route
+//   ?palette=ocean&mode=dark&font=barlow   another theme; the example's config by default
+import configJson from "../examples/oauth-login/config.json" with { type: "json" };
 import graphJson from "../examples/oauth-login/graph.json" with { type: "json" };
 import layoutJson from "../examples/oauth-login/layout.json" with { type: "json" };
 import { edgeRoutes } from "../src/engine/edges/fallback.ts";
@@ -11,7 +13,13 @@ import { renderEdges } from "../src/engine/edges/svg.ts";
 import { project, type View } from "../src/engine/iso/project.ts";
 import { buildScene, type Scene } from "../src/engine/iso/scene.ts";
 import { renderScene } from "../src/engine/iso/svg.ts";
+import { applyTheme, loadFont } from "../src/engine/theme/apply.ts";
+import { fontFor } from "../src/engine/theme/fonts.ts";
+import { DEFAULT_CATEGORY } from "../src/engine/theme/kinds.ts";
+import type { ThemeMode } from "../src/engine/theme/palettes.ts";
+import { themeFor } from "../src/engine/theme/theme.ts";
 import { timeline } from "../src/engine/timeline.ts";
+import { parseConfig } from "../src/schema/config.ts";
 import { formatErrors, type Validated } from "../src/schema/errors.ts";
 import { parseGraph } from "../src/schema/graph.ts";
 import { type Layout, parseLayout } from "../src/schema/layout.ts";
@@ -33,6 +41,14 @@ const params = new URLSearchParams(location.search);
 const stage = document.querySelector<SVGSVGElement>("#stage");
 if (!stage) throw new Error("missing #stage");
 const graph = unwrap(parseGraph(graphJson), "graph.json");
+const config = unwrap(parseConfig(configJson), "config.json");
+
+const mode: ThemeMode = params.get("mode") === "dark" ? "dark" : "light";
+const theme = unwrap(themeFor(params.get("palette") ?? config.theme.palette, mode), "theme");
+const font = unwrap(fontFor(params.get("font") ?? config.font), "font");
+applyTheme(document.documentElement, theme, font);
+// Vite rewrites a folder URL made from import.meta.url, so resolve it from the page.
+await loadFont(font, new URL("/assets/fonts/", location.href));
 
 /** The example with "user" moved by hand: layout drops its route, as layoutGraph would. */
 const withMovedUser = (layout: Layout): Layout => {
@@ -97,6 +113,7 @@ const apply = renderEdges(
     id: edge.id,
     geometry: edgeGeometry(routes[edge.id] ?? [], view, occluders),
     ...(edge.label === undefined ? {} : { label: edge.label }),
+    category: edge.category ?? DEFAULT_CATEGORY,
   })),
 );
 
