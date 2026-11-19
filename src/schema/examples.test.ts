@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { parseConfig } from "./config.ts";
 import { formatErrors } from "./errors.ts";
 import { parseGraph } from "./graph.ts";
+import { parseLayout } from "./layout.ts";
 import { parseProject } from "./project.ts";
 import { parseStoryboard } from "./storyboard.ts";
 
@@ -20,7 +21,7 @@ describe("examples", () => {
   });
 
   describe.each(examples)("%s", (example) => {
-    it("has a valid project, graph, storyboard and config", () => {
+    it("has a valid project, graph, storyboard, config and layout", () => {
       const project = parseProject(readJson(example, "project.json"));
       const graph = parseGraph(readJson(example, "graph.json"));
       const config = parseConfig(readJson(example, "config.json"));
@@ -30,6 +31,9 @@ describe("examples", () => {
 
       const storyboard = parseStoryboard(readJson(example, "storyboard.json"), graph.value);
       expect(storyboard.ok ? [] : formatErrors(storyboard.errors)).toEqual([]);
+
+      const layout = parseLayout(readJson(example, "layout.json"), graph.value);
+      expect(layout.ok ? [] : formatErrors(layout.errors)).toEqual([]);
     });
   });
 });

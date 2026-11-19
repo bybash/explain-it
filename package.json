@@ -18,7 +18,8 @@
     "schemas": "node scripts/generate-schemas.ts",
     "deps": "depcruise src scripts dev --config .dependency-cruiser.cjs",
     "dev:engine": "vite --open /dev/iso.html",
-    "screenshot": "node scripts/dev-screenshot.ts"
+    "screenshot": "node scripts/dev-screenshot.ts",
+    "layout": "node scripts/layout.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.8",
@@ -32,6 +33,7 @@
     "vitest": "5.1.1"
   },
   "dependencies": {
+    "elkjs": "0.12.1",
     "zod": "4.6.7"
   }
 }

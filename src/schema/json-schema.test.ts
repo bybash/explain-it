@@ -8,10 +8,11 @@ const STALE = "schemas/ is out of date: run `npm run schemas` and commit the res
 describe("generated JSON Schemas", () => {
   const generated = jsonSchemaFiles();
 
-  it("cover graph, storyboard, config and project", () => {
+  it("cover graph, storyboard, config, project and layout", () => {
     expect(Object.keys(generated).toSorted()).toEqual([
       "config.schema.json",
       "graph.schema.json",
+      "layout.schema.json",
       "project.schema.json",
       "storyboard.schema.json",
     ]);

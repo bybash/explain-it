@@ -1,0 +1,109 @@
+{
+  "$id": "https://raw.githubusercontent.com/bybash/explain-it/main/schemas/layout.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "description": "The JSON Schema for this file, for editors. Ignored by explAIn-it.",
+      "type": "string"
+    },
+    "version": {
+      "type": "number",
+      "const": 1
+    },
+    "positions": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "maxLength": 40,
+        "pattern": "^[a-z][a-z0-9_]*$"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "x": {
+            "type": "number"
+          },
+          "y": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "x",
+          "y"
+        ],
+        "additionalProperties": false
+      },
+      "description": "Where each node's footprint starts, snapped to the half-unit grid."
+    },
+    "overrides": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "maxLength": 40,
+        "pattern": "^[a-z][a-z0-9_]*$"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "x": {
+            "type": "number"
+          },
+          "y": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "x",
+          "y"
+        ],
+        "additionalProperties": false
+      },
+      "description": "Positions set by hand. They always win over computed ones."
+    },
+    "routes": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "maxLength": 40,
+        "pattern": "^[a-z][a-z0-9_]*$"
+      },
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "minItems": 2,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "x": {
+                  "type": "number"
+                },
+                "y": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "x",
+                "y"
+              ],
+              "additionalProperties": false
+            }
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "description": "Each edge's path, in horizontal and vertical segments; null when an end was overridden."
+    }
+  },
+  "required": [
+    "version",
+    "positions",
+    "overrides",
+    "routes"
+  ],
+  "additionalProperties": false,
+  "description": "Computed positions and edge routes for a graph."
+}

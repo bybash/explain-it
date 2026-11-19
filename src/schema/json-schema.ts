@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { ConfigSchema } from "./config.ts";
 import { GraphSchema } from "./graph.ts";
+import { LayoutSchema } from "./layout.ts";
 import { ProjectSchema } from "./project.ts";
 import { StoryboardSchema } from "./storyboard.ts";
 
@@ -9,6 +10,7 @@ const SCHEMAS = {
   storyboard: StoryboardSchema,
   config: ConfigSchema,
   project: ProjectSchema,
+  layout: LayoutSchema,
 } as const;
 
 const SCHEMA_BASE_URL = "https://raw.githubusercontent.com/bybash/explain-it/main/schemas/";
