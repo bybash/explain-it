@@ -40,14 +40,21 @@ Never push to `main`, force-push a shared branch, or merge your own PR.
 
 ## Commands
 
-Available from slice 0.2 on. Run all four before opening a PR.
+Use Node 24 (`nvm use` reads `.nvmrc`). Run lint, typecheck and test before
+opening a PR; CI runs the same three.
 
 ```sh
 npm install
-npm run lint        # Biome
+npm run lint        # Biome: lint and format check (code and JSON, not Markdown)
+npm run format      # Biome: apply fixes and formatting
 npm run typecheck   # tsc --noEmit
 npm test            # Vitest
 ```
+
+Source files import each other with the `.ts` extension
+(`import { VERSION } from "./version.ts"`), so Node 24 can run them directly.
+Use only TypeScript syntax that can be stripped: no `enum`, no `namespace`, no
+parameter properties.
 
 Later slices add `npm run dev`, `npm start` and the `explain-it` CLI. Keep this
 list current when you add a script.

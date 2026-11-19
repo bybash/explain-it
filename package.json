@@ -1,0 +1,25 @@
+{
+  "name": "explain-it",
+  "version": "0.0.0",
+  "description": "Turn any flow into an isometric explainer video.",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "repository": "github:bybash/explain-it",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "lint": "biome check .",
+    "format": "biome check --write .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.6.8",
+    "@types/node": "24.19.2",
+    "typescript": "7.0.2",
+    "vitest": "5.1.1"
+  }
+}
