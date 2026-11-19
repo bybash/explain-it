@@ -39,7 +39,10 @@ describe("eases", () => {
     for (const name of EASE_NAMES) {
       for (let i = 0; i <= 20; i++) {
         const p = i / 20;
-        expect(EASES[name](p), `${name}(${p})`).toBeCloseTo(closedForms[name]?.(p) ?? Number.NaN, 12);
+        expect(EASES[name](p), `${name}(${p})`).toBeCloseTo(
+          closedForms[name]?.(p) ?? Number.NaN,
+          12,
+        );
       }
     }
   });
