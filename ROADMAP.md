@@ -6,16 +6,17 @@ be reviewed in one sitting, and leaves `main` working. The design is in
 
 ## How we work
 
-1. Each slice below is one pull request. Its title starts with the slice ID
-   (for example `[1.3] Isometric primitives`). There are no issues for slices;
-   this file is the backlog.
+1. Each slice below is one pull request. Its title is a
+   [Conventional Commits](https://www.conventionalcommits.org/) title ending
+   with the slice ID, for example `feat(engine): isometric primitives [1.3]`.
+   There are no issues for slices; this file is the backlog.
 2. Work happens on a branch named after the slice: `1.3-isometric-primitives`.
 3. The pull request says what to look at and shows the result: test output,
    a screenshot, a still or a short clip.
 4. CI must pass (lint, typecheck, tests). `main` is protected: changes go in
    only through pull requests.
-5. A maintainer reviews, then the PR is squash-merged. The commit title follows
-   Conventional Commits (`feat(engine): isometric primitives`).
+5. A maintainer reviews, then the PR is squash-merged. The PR title becomes
+   the commit title on `main`.
 6. If review changes the design, the same PR updates `SPEC.md`.
 7. The slice's PR also marks it done here by adding ✅ before its ID.
 

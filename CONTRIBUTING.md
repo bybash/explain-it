@@ -16,13 +16,14 @@ one thing and leave `main` working.
 2. Name the branch after the slice: `1.3-isometric-primitives`.
 3. Keep to the slice. Note other problems in the PR description.
 4. Run `npm run lint`, `npm run typecheck` and `npm test`.
-5. Open a pull request titled `[<id>] <Slice name>` and fill in the template.
-   Show the result: test output, a screenshot, a still or a clip.
+5. Open a pull request and fill in the template. Show the result: test
+   output, a screenshot, a still or a clip.
 6. If the change alters the design, update `SPEC.md` in the same PR.
 
-PRs are squash-merged. The squash commit title follows
-[Conventional Commits](https://www.conventionalcommits.org/), for example
-`feat(engine): isometric primitives`.
+The PR title is a [Conventional Commits](https://www.conventionalcommits.org/)
+title ending with the slice ID, for example
+`feat(engine): isometric primitives [1.3]`. PRs are squash-merged, and the PR
+title becomes the commit title on `main`.
 
 ## Review
 

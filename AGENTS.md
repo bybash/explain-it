@@ -32,7 +32,9 @@ a design change is made by editing `SPEC.md` in the same pull request.
    test output, a screenshot, a still or a clip.
 5. Mark the slice ✅ in `ROADMAP.md` in the same PR.
 6. Open the PR with `.github/pull_request_template.md`. Title:
-   `[<id>] <Slice name>`. Do not merge it; a maintainer reviews and merges.
+   `<type>(<scope>): <slice name> [<id>]`, for example
+   `feat(engine): isometric primitives [1.3]`; it becomes the squash commit
+   title. Do not merge it; a maintainer reviews and merges.
 
 Never push to `main`, force-push a shared branch, or merge your own PR.
 

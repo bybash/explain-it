@@ -1,6 +1,6 @@
 ## Slice
 
-<!-- The roadmap ID and name, for example: [1.3] Isometric primitives -->
+<!-- The roadmap ID and name, for example: 1.3 Isometric primitives -->
 
 ## What changed and why
 
