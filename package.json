@@ -16,7 +16,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "schemas": "node scripts/generate-schemas.ts",
-    "deps": "depcruise src scripts --config .dependency-cruiser.cjs",
+    "deps": "depcruise src scripts dev --config .dependency-cruiser.cjs",
     "dev:engine": "vite --open /dev/iso.html",
     "screenshot": "node scripts/dev-screenshot.ts"
   },

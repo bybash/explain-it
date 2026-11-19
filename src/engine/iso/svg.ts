@@ -54,16 +54,23 @@ export const renderScene = (root: SVGSVGElement, scene: Scene): void => {
     element("polygon", { class: "face-left", points: points(node.faces.left) }, g);
     element("polygon", { class: "face-right", points: points(node.faces.right) }, g);
     element("polygon", { class: "face-top", points: points(node.faces.top) }, g);
-    const top = element("g", { transform: `matrix(${node.top.transform.join(",")})` }, g);
+    const { width, depth, transform } = node.topContent;
+    const top = element("g", { transform: `matrix(${transform.join(",")})` }, g);
     const label = element(
       "text",
-      { class: "label", x: node.top.width / 2, y: node.top.depth * 0.6, "text-anchor": "middle" },
+      { class: "label", x: width / 2, y: depth * LABEL_LINE, "text-anchor": "middle" },
       top,
     );
     label.textContent = node.label;
-    fitWidth(label as SVGTextElement, node.top.width * LABEL_WIDTH);
+    fitWidth(label as SVGTextElement, width * LABEL_WIDTH);
   }
 };
+
+/**
+ * Where the label's baseline sits, as a share of the top face's depth. The
+ * area above it is kept for the node's icon, which arrives with slice 1.6.
+ */
+const LABEL_LINE = 0.76;
 
 /** Share of the top face's width a label may use. */
 const LABEL_WIDTH = 0.82;

@@ -16,8 +16,12 @@ try {
   const errors: string[] = [];
   tab.on("pageerror", (error) => errors.push(error.message));
   await tab.goto(new URL(page, url).href);
-  await tab.waitForSelector("body[data-ready=true]", { timeout: 10_000 }).catch(() => undefined);
+  const ready = await tab
+    .waitForSelector("body[data-ready=true]", { timeout: 10_000 })
+    .then(() => true)
+    .catch(() => false);
   if (errors.length > 0) throw new Error(`page errors:\n${errors.join("\n")}`);
+  if (!ready) throw new Error(`${page} did not signal data-ready within 10 s`);
   await tab.screenshot({ path: out });
   console.log(`saved ${out}`);
 } finally {

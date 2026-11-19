@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { formatErrors } from "../../schema/errors.ts";
-import type { Graph, GraphNode } from "../../schema/graph.ts";
+import { type Graph, type GraphNode, NODE_KINDS } from "../../schema/graph.ts";
 import { project } from "./project.ts";
-import { buildScene, type Scene } from "./scene.ts";
+import { buildScene, type Positions, type Scene } from "./scene.ts";
 
 const view = { scale: 40, originX: 960, originY: 200 };
 
@@ -17,7 +17,7 @@ const graphOf = (nodes: GraphNode[], zones: Graph["zones"] = []): Graph => ({
 const node = (id: string, kind: GraphNode["kind"] = "service", zone?: string): GraphNode =>
   zone === undefined ? { id, label: id, kind } : { id, label: id, kind, zone };
 
-const sceneOf = (graph: Graph, positions: Record<string, { x: number; y: number }>): Scene => {
+const sceneOf = (graph: Graph, positions: Positions): Scene => {
   const result = buildScene(graph, positions, view);
   if (!result.ok) throw new Error(JSON.stringify(result.errors));
   return result.value;
@@ -53,9 +53,8 @@ describe("buildScene: nodes", () => {
   });
 
   it("sizes boxes by kind: databases stand taller, queues are low and long", () => {
-    const kinds = ["actor", "service", "database", "queue", "document", "decision", "external"];
-    const graph = graphOf(kinds.map((kind, i) => node(`n${i}`, kind as GraphNode["kind"])));
-    const positions = Object.fromEntries(kinds.map((_, i) => [`n${i}`, { x: i * 5, y: 0 }]));
+    const graph = graphOf(NODE_KINDS.map((kind, i) => node(`n${i}`, kind)));
+    const positions = Object.fromEntries(NODE_KINDS.map((_, i) => [`n${i}`, { x: i * 5, y: 0 }]));
     const boxes = new Map(sceneOf(graph, positions).nodes.map((n) => [n.kind, n.box]));
     for (const box of boxes.values()) {
       expect(Math.min(box.w, box.d, box.h)).toBeGreaterThan(0);
@@ -71,7 +70,7 @@ describe("buildScene: nodes", () => {
 });
 
 describe("buildScene: depth order", () => {
-  const order = (graph: Graph, positions: Record<string, { x: number; y: number }>) =>
+  const order = (graph: Graph, positions: Positions) =>
     sceneOf(graph, positions).nodes.map((n) => n.id);
 
   it("draws a box behind along x first, whatever the graph order", () => {
@@ -196,7 +195,7 @@ describe("buildScene: top face", () => {
     const [app] = sceneOf(graphOf([node("app")]), { app: { x: 2, y: 1 } }).nodes;
     if (!app) throw new Error("no node");
     const { x, y, w, d, h } = app.box;
-    const { width, depth, transform } = app.top;
+    const { width, depth, transform } = app.topContent;
     const [a, b, c, dd, e, f] = transform;
     const apply = (u: number, v: number) => ({ x: a * u + c * v + e, y: b * u + dd * v + f });
     const close = (p: { x: number; y: number }, q: { x: number; y: number }) => {

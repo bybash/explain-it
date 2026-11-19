@@ -2,7 +2,10 @@ import { referenceErrors } from "../../schema/common.ts";
 import type { Validated, ValidationError } from "../../schema/errors.ts";
 import type { Graph, NodeKind } from "../../schema/graph.ts";
 import { fail, ok } from "../../schema/result.ts";
-import { type GridPoint, project, type ScreenPoint, type View } from "./project.ts";
+import { project, type ScreenPoint, type View } from "./project.ts";
+
+/** Projects a grid point (x, y, height) to the screen, with the view already applied. */
+type Projector = (x: number, y: number, z: number) => ScreenPoint;
 
 /** Where each node's footprint starts, in grid units. Layout produces these. */
 export type Positions = Readonly<Record<string, { readonly x: number; readonly y: number }>>;
@@ -29,7 +32,7 @@ export type NodeShape = {
    * For drawing icons and labels flat on the top face: content laid out in a
    * `width` × `depth` pixel area, placed with the SVG `matrix(...transform)`.
    */
-  readonly top: {
+  readonly topContent: {
     readonly width: number;
     readonly depth: number;
     readonly transform: readonly [number, number, number, number, number, number];
@@ -83,7 +86,7 @@ export const buildScene = (graph: Graph, positions: Positions, view: View): Vali
   const errors = positionErrors(graph, positions);
   if (errors.length > 0) return fail(errors);
 
-  const at = (x: number, y: number, z: number): ScreenPoint => project({ x, y, z }, view);
+  const at: Projector = (x, y, z) => project({ x, y, z }, view);
   const nodes = graph.nodes.flatMap((node): NodeShape[] => {
     const position = positions[node.id];
     if (!position) return [];
@@ -95,7 +98,7 @@ export const buildScene = (graph: Graph, positions: Positions, view: View): Vali
         label: node.label,
         box,
         faces: facesOf(box, at),
-        top: topOf(box, at, view.scale),
+        topContent: topContentOf(box, at, view.scale),
       },
     ];
   });
@@ -107,10 +110,7 @@ export const buildScene = (graph: Graph, positions: Positions, view: View): Vali
   });
 };
 
-const floorOf = (
-  footprints: readonly Omit<Box, "h">[],
-  at: (x: number, y: number, z: number) => ScreenPoint,
-): FloorDot[] => {
+const floorOf = (footprints: readonly Omit<Box, "h">[], at: Projector): FloorDot[] => {
   if (footprints.length === 0) return [];
   const minX = Math.floor(Math.min(...footprints.map((f) => f.x)) - FLOOR_MARGIN);
   const minY = Math.floor(Math.min(...footprints.map((f) => f.y)) - FLOOR_MARGIN);
@@ -137,11 +137,10 @@ const floorOf = (
   return dots;
 };
 
-const zonesOf = (
-  graph: Graph,
-  nodes: readonly NodeShape[],
-  at: (x: number, y: number, z: number) => ScreenPoint,
-): ZoneShape[] =>
+const zonesOf = (graph: Graph, nodes: readonly NodeShape[], at: Projector): ZoneShape[] =>
+  // The platform is the bounding rectangle of the zone's members, so it can
+  // reach under a non-member placed between them. Layout (slice 1.4) must keep
+  // non-members out of a zone's rectangle.
   graph.zones.flatMap((zone): ZoneShape[] => {
     const memberIds = new Set(graph.nodes.filter((n) => n.zone === zone.id).map((n) => n.id));
     const boxes = nodes.filter((n) => memberIds.has(n.id)).map((n) => n.box);
@@ -186,8 +185,9 @@ const nearness = (box: Box): number => box.x + box.w / 2 + box.y + box.d / 2;
 
 /**
  * Painter's order: a topological sort over `isBehind`. Among boxes free to
- * go next, the one furthest back goes first, then graph order. Overlapping
- * footprints (a layout bug) can form a cycle; the furthest back box breaks it.
+ * go next, the one furthest back goes first, then graph order. `isBehind`
+ * cannot form a cycle for footprints that do not overlap; overlapping ones (a
+ * layout bug) are simply left unordered, and the fallback below is defensive.
  */
 const depthSorted = (nodes: readonly NodeShape[]): NodeShape[] => {
   const remaining = [...nodes];
@@ -206,11 +206,11 @@ const depthSorted = (nodes: readonly NodeShape[]): NodeShape[] => {
 };
 
 /** Maps one pixel along the top face's x and y edges to its screen direction. */
-const topOf = (
+const topContentOf = (
   { x, y, w, d, h }: Box,
-  at: (x: number, y: number, z: number) => ScreenPoint,
+  at: Projector,
   scale: number,
-): NodeShape["top"] => {
+): NodeShape["topContent"] => {
   const origin = at(x, y, h);
   const alongX = at(x + 1, y, h);
   const alongY = at(x, y + 1, h);
@@ -228,10 +228,7 @@ const topOf = (
   };
 };
 
-const facesOf = (
-  { x, y, w, d, h }: Box,
-  at: (x: number, y: number, z: GridPoint["z"]) => ScreenPoint,
-): NodeShape["faces"] => ({
+const facesOf = ({ x, y, w, d, h }: Box, at: Projector): NodeShape["faces"] => ({
   top: [at(x, y, h), at(x + w, y, h), at(x + w, y + d, h), at(x, y + d, h)],
   left: [at(x, y + d, h), at(x + w, y + d, h), at(x + w, y + d, 0), at(x, y + d, 0)],
   right: [at(x + w, y, h), at(x + w, y + d, h), at(x + w, y + d, 0), at(x + w, y, 0)],
