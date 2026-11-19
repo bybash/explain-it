@@ -9,3 +9,4 @@ cache/
 out/
 *.log
 .DS_Store
+.vitest/

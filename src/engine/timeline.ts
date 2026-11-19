@@ -177,7 +177,9 @@ const freeze = (
       const time = Math.min(Math.max(t, 0), duration);
       const state: State = {};
       for (const track of tracks) {
-        (state[track.target] ??= {})[track.prop] = valueAt(track, time);
+        const props = state[track.target] ?? {};
+        props[track.prop] = valueAt(track, time);
+        state[track.target] = props;
       }
       return state;
     },
