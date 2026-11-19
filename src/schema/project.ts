@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { IdSchema } from "./common.ts";
+import { IdSchema, SchemaKeySchema } from "./common.ts";
 import { parseWith, type Validated } from "./errors.ts";
 
 export const GATES = ["graph", "script", "style", "preview", "render"] as const;
@@ -16,6 +16,7 @@ export const SourceSchema = z.strictObject({
 
 export const ProjectSchema = z
   .strictObject({
+    $schema: SchemaKeySchema,
     version: z.literal(1),
     name: z.string().min(1).max(MAX_PROJECT_NAME),
     gate: z.enum(GATES).describe("The gate the project is at."),

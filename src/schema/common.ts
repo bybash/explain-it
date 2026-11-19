@@ -25,3 +25,12 @@ export const referenceErrors = () => {
     },
   };
 };
+
+/**
+ * `$schema` points editors at the JSON Schema for completion and checking.
+ * explAIn-it ignores it; every other unknown key is still an error.
+ */
+export const SchemaKeySchema = z
+  .string()
+  .optional()
+  .describe("The JSON Schema for this file, for editors. Ignored by explAIn-it.");

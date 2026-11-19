@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { IdSchema, referenceErrors } from "./common.ts";
+import { IdSchema, referenceErrors, SchemaKeySchema } from "./common.ts";
 import { parseWith, type Validated } from "./errors.ts";
 import { fail } from "./result.ts";
 
@@ -47,6 +47,7 @@ export const ZoneSchema = z.strictObject({
 
 export const GraphSchema = z
   .strictObject({
+    $schema: SchemaKeySchema,
     version: z.literal(1),
     title: z.string().min(1).max(MAX_TITLE),
     nodes: z.array(GraphNodeSchema).min(1).max(MAX_GRAPH_NODES),

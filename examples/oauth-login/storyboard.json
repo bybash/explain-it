@@ -1,4 +1,5 @@
 {
+  "$schema": "../../schemas/storyboard.schema.json",
   "version": 1,
   "scenes": [
     {
@@ -11,9 +12,18 @@
           "caption": "A user wants to sign in.",
           "say": "A user opens the app and clicks Sign in.",
           "actions": [
-            { "type": "appear", "node": "user" },
-            { "type": "appear", "node": "browser" },
-            { "type": "flow", "edge": "click" }
+            {
+              "type": "appear",
+              "node": "user"
+            },
+            {
+              "type": "appear",
+              "node": "browser"
+            },
+            {
+              "type": "flow",
+              "edge": "click"
+            }
           ]
         },
         {
@@ -21,10 +31,22 @@
           "caption": "The app hands off to the identity provider.",
           "say": "The app never sees the password. It sends the browser to an identity provider instead.",
           "actions": [
-            { "type": "appear", "node": "app" },
-            { "type": "flow", "edge": "login" },
-            { "type": "appear", "node": "idp" },
-            { "type": "flow", "edge": "authorize" }
+            {
+              "type": "appear",
+              "node": "app"
+            },
+            {
+              "type": "flow",
+              "edge": "login"
+            },
+            {
+              "type": "appear",
+              "node": "idp"
+            },
+            {
+              "type": "flow",
+              "edge": "authorize"
+            }
           ]
         },
         {
@@ -38,7 +60,10 @@
               "title": "One password",
               "text": "The user signs in with an account they already have."
             },
-            { "type": "highlight", "node": "idp" }
+            {
+              "type": "highlight",
+              "node": "idp"
+            }
           ]
         },
         {
@@ -46,15 +71,28 @@
           "caption": "The provider sends back a one-time code.",
           "say": "The provider redirects back with a short-lived, one-time code.",
           "actions": [
-            { "type": "flow", "edge": "code" },
-            { "type": "badge", "node": "browser", "text": "code", "tone": "info" }
+            {
+              "type": "flow",
+              "edge": "code"
+            },
+            {
+              "type": "badge",
+              "node": "browser",
+              "text": "code",
+              "tone": "info"
+            }
           ]
         },
         {
           "id": "callback",
           "caption": "The browser passes the code to the app.",
           "say": "The browser hands that code to the app.",
-          "actions": [{ "type": "flow", "edge": "callback" }]
+          "actions": [
+            {
+              "type": "flow",
+              "edge": "callback"
+            }
+          ]
         }
       ]
     },
@@ -68,7 +106,10 @@
           "caption": "The app swaps the code for a token.",
           "say": "Now the app talks to the provider directly, server to server, and swaps the code for a token.",
           "actions": [
-            { "type": "flow", "edge": "exchange" },
+            {
+              "type": "flow",
+              "edge": "exchange"
+            },
             {
               "type": "callout",
               "node": "app",
@@ -82,31 +123,62 @@
           "caption": "The provider returns an access token.",
           "say": "The provider checks the code and the secret, and returns an access token.",
           "actions": [
-            { "type": "flow", "edge": "token" },
-            { "type": "badge", "node": "app", "text": "token", "tone": "ok" }
+            {
+              "type": "flow",
+              "edge": "token"
+            },
+            {
+              "type": "badge",
+              "node": "app",
+              "text": "token",
+              "tone": "ok"
+            }
           ]
         },
         {
           "id": "session",
           "caption": "The app starts a session.",
           "say": "The app saves a session, so the user stays signed in.",
-          "actions": [{ "type": "appear", "node": "sessions" }, { "type": "flow", "edge": "store" }]
+          "actions": [
+            {
+              "type": "appear",
+              "node": "sessions"
+            },
+            {
+              "type": "flow",
+              "edge": "store"
+            }
+          ]
         },
         {
           "id": "fetch",
           "caption": "The token unlocks the user's photos.",
           "say": "With the token, the app can fetch the user's photos, and nothing else.",
           "actions": [
-            { "type": "appear", "node": "api" },
-            { "type": "flow", "edge": "fetch" },
-            { "type": "highlight", "node": "api" }
+            {
+              "type": "appear",
+              "node": "api"
+            },
+            {
+              "type": "flow",
+              "edge": "fetch"
+            },
+            {
+              "type": "highlight",
+              "node": "api"
+            }
           ]
         },
         {
           "id": "done",
           "caption": "Signed in, without sharing a password.",
           "say": "The user is in, and their password never touched the app.",
-          "actions": [{ "type": "dim", "except": ["browser", "app", "api"] }]
+          "actions": [
+            {
+              "type": "dim",
+              "except": ["browser", "app", "api"]
+            }
+          ]
         }
       ]
     }

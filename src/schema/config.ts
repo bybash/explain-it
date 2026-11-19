@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { SchemaKeySchema } from "./common.ts";
 import { parseWith, type Validated } from "./errors.ts";
 
 export const MAX_CATEGORY_COLOURS = 6;
@@ -37,6 +38,7 @@ const PaletteNameSchema = z
 
 export const ConfigSchema = z
   .strictObject({
+    $schema: SchemaKeySchema,
     theme: z
       .strictObject({
         palette: z.union([PaletteNameSchema, CustomPaletteSchema]).default("default"),

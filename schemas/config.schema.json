@@ -3,6 +3,10 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "properties": {
+    "$schema": {
+      "description": "The JSON Schema for this file, for editors. Ignored by explAIn-it.",
+      "type": "string"
+    },
     "theme": {
       "default": {},
       "type": "object",

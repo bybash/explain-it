@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { IdSchema, referenceErrors } from "./common.ts";
+import { IdSchema, referenceErrors, SchemaKeySchema } from "./common.ts";
 import { parseWith, type Validated } from "./errors.ts";
 import type { Graph } from "./graph.ts";
 import { fail } from "./result.ts";
@@ -79,6 +79,7 @@ export const SceneSchema = z.strictObject({
 
 export const StoryboardSchema = z
   .strictObject({
+    $schema: SchemaKeySchema,
     version: z.literal(1),
     scenes: z.array(SceneSchema).min(MIN_SCENES).max(MAX_SCENES),
   })
