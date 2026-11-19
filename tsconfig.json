@@ -15,7 +15,8 @@
     "erasableSyntaxOnly": true,
     "skipLibCheck": true,
     "types": ["node"],
-    "noEmit": true
+    "noEmit": true,
+    "resolveJsonModule": true
   },
-  "include": ["src", "scripts", "*.config.ts"]
+  "include": ["src", "scripts", "dev", "*.config.ts"]
 }

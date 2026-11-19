@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Isometric primitives · dev</title>
+    <style>
+      :root {
+        --bg: #f6f7fb;
+        --dot: #8b93a7;
+        --zone: rgb(109 40 217 / 0.07);
+        --zone-stroke: rgb(109 40 217 / 0.35);
+        --zone-text: #6d28d9;
+        --face-top: #ffffff;
+        --face-left: #e4e7ef;
+        --face-right: #d3d8e4;
+        --edge: #c3c9d6;
+        --text: #18181b;
+        --kind-actor: #2563eb;
+        --kind-service: #6d28d9;
+        --kind-database: #0f766e;
+        --kind-queue: #b45309;
+        --kind-document: #475569;
+        --kind-decision: #be185d;
+        --kind-external: #0369a1;
+      }
+      html,
+      body {
+        margin: 0;
+        background: var(--bg);
+      }
+      svg {
+        display: block;
+        width: 1920px;
+        height: 1080px;
+        font-family: system-ui, sans-serif;
+      }
+      .floor circle {
+        fill: var(--dot);
+      }
+      .zone polygon {
+        fill: var(--zone);
+        stroke: var(--zone-stroke);
+        stroke-width: 1.5;
+        stroke-dasharray: 6 5;
+      }
+      .zone text {
+        fill: var(--zone-text);
+        font-size: 18px;
+        font-weight: 600;
+      }
+      .node polygon {
+        stroke: var(--edge);
+        stroke-width: 1;
+        stroke-linejoin: round;
+      }
+      .face-top {
+        fill: var(--face-top);
+      }
+      .face-left {
+        fill: var(--face-left);
+      }
+      .face-right {
+        fill: var(--face-right);
+      }
+      .node .face-top {
+        stroke: var(--kind);
+        stroke-width: 2.5;
+      }
+      .label {
+        fill: var(--text);
+        font-size: 20px;
+        font-weight: 650;
+      }
+      .kind-actor { --kind: var(--kind-actor); }
+      .kind-service { --kind: var(--kind-service); }
+      .kind-database { --kind: var(--kind-database); }
+      .kind-queue { --kind: var(--kind-queue); }
+      .kind-document { --kind: var(--kind-document); }
+      .kind-decision { --kind: var(--kind-decision); }
+      .kind-external { --kind: var(--kind-external); }
+    </style>
+  </head>
+  <body>
+    <svg id="stage" viewBox="0 0 1920 1080" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Isometric scene"></svg>
+    <script type="module" src="./iso.ts"></script>
+  </body>
+</html>
