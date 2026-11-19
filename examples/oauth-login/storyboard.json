@@ -90,10 +90,7 @@
           "id": "session",
           "caption": "The app starts a session.",
           "say": "The app saves a session, so the user stays signed in.",
-          "actions": [
-            { "type": "appear", "node": "sessions" },
-            { "type": "flow", "edge": "store" }
-          ]
+          "actions": [{ "type": "appear", "node": "sessions" }, { "type": "flow", "edge": "store" }]
         },
         {
           "id": "fetch",

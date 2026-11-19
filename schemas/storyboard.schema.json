@@ -1,0 +1,256 @@
+{
+  "$id": "https://raw.githubusercontent.com/bybash/explain-it/main/schemas/storyboard.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "version": {
+      "type": "number",
+      "const": 1
+    },
+    "scenes": {
+      "minItems": 1,
+      "maxItems": 3,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 40,
+            "pattern": "^[a-z][a-z0-9_]*$"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60,
+            "description": "Shown as \"1 · Title\"."
+          },
+          "nodes": {
+            "minItems": 1,
+            "maxItems": 12,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 40,
+              "pattern": "^[a-z][a-z0-9_]*$"
+            },
+            "description": "The graph nodes shown in this scene."
+          },
+          "beats": {
+            "minItems": 3,
+            "maxItems": 10,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "maxLength": 40,
+                  "pattern": "^[a-z][a-z0-9_]*$"
+                },
+                "caption": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 60,
+                  "description": "The step caption shown on screen."
+                },
+                "say": {
+                  "description": "The narration line. Without it the beat is timed by its actions and caption.",
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 300
+                },
+                "actions": {
+                  "type": "array",
+                  "items": {
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "type": "string",
+                            "const": "appear"
+                          },
+                          "node": {
+                            "type": "string",
+                            "maxLength": 40,
+                            "pattern": "^[a-z][a-z0-9_]*$"
+                          }
+                        },
+                        "required": [
+                          "type",
+                          "node"
+                        ],
+                        "additionalProperties": false,
+                        "description": "The node rises into the scene."
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "type": "string",
+                            "const": "flow"
+                          },
+                          "edge": {
+                            "type": "string",
+                            "maxLength": 40,
+                            "pattern": "^[a-z][a-z0-9_]*$"
+                          },
+                          "label": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 60
+                          }
+                        },
+                        "required": [
+                          "type",
+                          "edge"
+                        ],
+                        "additionalProperties": false,
+                        "description": "The edge draws in and carries a moving dot."
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "type": "string",
+                            "const": "highlight"
+                          },
+                          "node": {
+                            "type": "string",
+                            "maxLength": 40,
+                            "pattern": "^[a-z][a-z0-9_]*$"
+                          }
+                        },
+                        "required": [
+                          "type",
+                          "node"
+                        ],
+                        "additionalProperties": false,
+                        "description": "The node pulses to draw attention."
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "type": "string",
+                            "const": "callout"
+                          },
+                          "node": {
+                            "type": "string",
+                            "maxLength": 40,
+                            "pattern": "^[a-z][a-z0-9_]*$"
+                          },
+                          "title": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 40
+                          },
+                          "text": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 140
+                          }
+                        },
+                        "required": [
+                          "type",
+                          "node",
+                          "text"
+                        ],
+                        "additionalProperties": false,
+                        "description": "A card with text next to the node, shown until the narration ends."
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "type": "string",
+                            "const": "dim"
+                          },
+                          "except": {
+                            "minItems": 1,
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "maxLength": 40,
+                              "pattern": "^[a-z][a-z0-9_]*$"
+                            }
+                          }
+                        },
+                        "required": [
+                          "type",
+                          "except"
+                        ],
+                        "additionalProperties": false,
+                        "description": "Everything but these nodes fades back."
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "type": "string",
+                            "const": "badge"
+                          },
+                          "node": {
+                            "type": "string",
+                            "maxLength": 40,
+                            "pattern": "^[a-z][a-z0-9_]*$"
+                          },
+                          "text": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 16
+                          },
+                          "tone": {
+                            "type": "string",
+                            "enum": [
+                              "info",
+                              "ok",
+                              "warn",
+                              "error"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "type",
+                          "node",
+                          "text",
+                          "tone"
+                        ],
+                        "additionalProperties": false,
+                        "description": "A small status chip on the node."
+                      }
+                    ]
+                  }
+                },
+                "notes": {
+                  "description": "The author's own notes; never shown.",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "caption",
+                "actions"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "nodes",
+          "beats"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "version",
+    "scenes"
+  ],
+  "additionalProperties": false,
+  "description": "The story told over a graph: scenes, and beats within them."
+}

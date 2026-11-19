@@ -1,0 +1,152 @@
+{
+  "$id": "https://raw.githubusercontent.com/bybash/explain-it/main/schemas/graph.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "version": {
+      "type": "number",
+      "const": 1
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80
+    },
+    "nodes": {
+      "minItems": 1,
+      "maxItems": 36,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 40,
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "description": "Stable id, used by edges, zones and the storyboard."
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 24,
+            "description": "Shown on the node top."
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "actor",
+              "service",
+              "database",
+              "queue",
+              "document",
+              "decision",
+              "external"
+            ],
+            "description": "Sets the default size, height and colour."
+          },
+          "icon": {
+            "description": "A Lucide icon name.",
+            "type": "string",
+            "minLength": 1
+          },
+          "zone": {
+            "description": "The id of the zone the node sits in.",
+            "type": "string",
+            "maxLength": 40,
+            "pattern": "^[a-z][a-z0-9_]*$"
+          },
+          "category": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_-]*$",
+            "description": "A palette category name; defaults by node kind."
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "kind"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 40,
+            "pattern": "^[a-z][a-z0-9_]*$"
+          },
+          "from": {
+            "type": "string",
+            "maxLength": 40,
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "description": "A node id."
+          },
+          "to": {
+            "type": "string",
+            "maxLength": 40,
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "description": "A node id."
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 24
+          },
+          "category": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_-]*$",
+            "description": "A palette category name; defaults by node kind."
+          }
+        },
+        "required": [
+          "id",
+          "from",
+          "to"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "zones": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 40,
+            "pattern": "^[a-z][a-z0-9_]*$"
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 24
+          },
+          "category": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_-]*$",
+            "description": "A palette category name; defaults by node kind."
+          }
+        },
+        "required": [
+          "id",
+          "label"
+        ],
+        "additionalProperties": false
+      },
+      "description": "Groups of nodes; Mermaid subgraphs."
+    }
+  },
+  "required": [
+    "version",
+    "title",
+    "nodes",
+    "edges",
+    "zones"
+  ],
+  "additionalProperties": false,
+  "description": "The structure of a flow. Mermaid is generated from it."
+}

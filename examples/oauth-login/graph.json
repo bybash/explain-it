@@ -5,7 +5,13 @@
     { "id": "user", "label": "User", "kind": "actor", "icon": "user" },
     { "id": "browser", "label": "Browser", "kind": "service", "icon": "globe" },
     { "id": "app", "label": "Web app", "kind": "service", "icon": "app-window", "zone": "backend" },
-    { "id": "sessions", "label": "Sessions", "kind": "database", "icon": "database", "zone": "backend" },
+    {
+      "id": "sessions",
+      "label": "Sessions",
+      "kind": "database",
+      "icon": "database",
+      "zone": "backend"
+    },
     { "id": "api", "label": "Photos API", "kind": "service", "icon": "image", "zone": "backend" },
     { "id": "idp", "label": "Identity provider", "kind": "external", "icon": "shield-check" }
   ],

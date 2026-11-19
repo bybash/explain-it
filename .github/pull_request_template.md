@@ -15,7 +15,7 @@
 ## Checklist
 
 - [ ] Only this slice; other findings are noted below
-- [ ] `npm run lint`, `npm run typecheck` and `npm test` pass
+- [ ] `npm run lint`, `npm run typecheck`, `npm run deps` and `npm test` pass
 - [ ] `SPEC.md` updated if the design changed
 - [ ] Slice marked ✅ in `ROADMAP.md`
 - [ ] New dependencies (if any) listed with their licence
