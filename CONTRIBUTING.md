@@ -27,9 +27,26 @@ title becomes the commit title on `main`.
 
 ## Review
 
-A maintainer checks the slice's **Done when** line in `ROADMAP.md`, the code
-rules in `AGENTS.md`, and the evidence in the PR. CI (lint, typecheck, tests)
-must pass.
+A maintainer checks the slice's **Done when** line in `ROADMAP.md`, the
+architecture, code rules and test rules in `AGENTS.md`, and the evidence in
+the PR. CI (lint, typecheck, tests) must pass, and the branch must be up to
+date with `main`.
+
+The short version of the engineering rules:
+
+- **Test first for logic; look first for visuals.** Core logic and handlers
+  are written test first. Visual work shows a screenshot or still, and gets a
+  golden still once approved.
+- **Functional core, imperative shell.** Pure functions inside; files,
+  browsers, ffmpeg, TTS, HTTP, MCP and the LLM at the edges, behind small
+  interfaces with test fakes.
+- **One source of truth.** Shapes and limits are defined once, in the zod
+  schemas, and everything else is derived from them.
+- **DRY for knowledge, rule of three for code.** Facts live in one place;
+  similar code is extracted on the third copy, not the second.
+- **Errors as values** for expected failures, with messages that name the
+  exact field.
+- **Decision records** in `docs/decisions/` when the design changes.
 
 ## Licence
 

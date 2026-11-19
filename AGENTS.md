@@ -59,34 +59,109 @@ parameter properties.
 Later slices add `npm run dev`, `npm start` and the `explain-it` CLI. Keep this
 list current when you add a script.
 
+## Architecture
+
+**Functional core, imperative shell.**
+
+- The **core** is pure functions over data: schemas, layout, timeline
+  building, `seek(t)`, beat timing, checks, Mermaid conversion, patch
+  application. No file, network, process, clock or randomness access.
+- The **shell** does the input and output: project files, Playwright, ffmpeg,
+  Kokoro, HTTP, MCP, the LLM. It calls the core; the core never calls it.
+
+**Ports for the outside world.** Five interfaces, each with a fake for tests:
+`TtsProvider`, `LlmClient`, `Renderer`, `ProjectStore`, `Clock`. Pass them in
+as plain function or constructor parameters. No dependency-injection
+container, no decorators. Do not add an interface until a second
+implementation or a test fake needs one.
+
+**Module boundaries** (see `SPEC.md`, Repository layout):
+
+- `src/engine/` runs in the browser: no Node imports.
+- `src/web/` never imports from `src/server/`; it talks to the API.
+- Only `src/llm/` imports the AI SDK. Only `src/audio/` produces sound.
+- Core modules never import shell modules.
+
+These are checked in CI with dependency-cruiser from slice 1.1 on.
+
+**One source of truth for every contract.** The zod schemas in `src/schema/`
+are the only place a shape or limit is defined. Everything else is derived:
+TypeScript types (`z.infer`), the JSON Schemas in `schemas/`, MCP tool input
+schemas, LLM structured-output schemas, and the limits in the authoring
+guidance (from `.describe()`, `.max()` and similar). Generated files are
+checked in, and CI fails when they are out of date. Never restate a limit as
+a literal somewhere else; import it.
+
 ## Code rules
 
 - **TypeScript strict.** No `any` without a comment saying why.
-- **Validate at the edges.** Every file read from disk, every API request and
-  every LLM result goes through its zod schema in `src/schema/`.
-- **Respect the module boundaries** in `SPEC.md` (Repository layout):
-  - `src/engine/` runs in the browser. No Node imports.
-  - `src/web/` never imports from `src/server/`; it talks to the API.
-  - Only `src/llm/` talks to an LLM. Only `src/audio/` produces sound.
+- **Validate at the edges.** Every file read from disk, every API request,
+  every MCP call and every LLM result goes through its zod schema.
+- **Errors as values for expected failures.** Validation errors, check
+  warnings and an LLM giving up return
+  `{ ok: true, value } | { ok: false, errors }`. Throw only for bugs and
+  broken environments (ffmpeg missing, disk full).
+- **Errors name the exact place.** For example
+  `scenes[1].beats[3].caption: 74 characters, max 60`. MCP agents and the
+  LLM repair loop read these messages to fix their own output.
 - **Rendering must be deterministic.** In `src/engine/`, the state at time `t`
   depends only on `t` and the project files. No `Date.now()`, no
   `Math.random()` (use the seeded generator), no `setInterval` or
   `requestAnimationFrame` loops that move things on their own.
+- **Functions and data first.** Use a class only where state really lives
+  (the render queue, a timeline instance). Treat core data as immutable:
+  `readonly` types, never mutate inputs.
+- **Named exports only.** No default exports (config files that a tool
+  requires are the exception). No barrel `index.ts` files that re-export a
+  folder; import from the file that defines the thing.
+- **Small files, plain names.** One concept per file; past about 300 lines,
+  consider splitting. Names over comments; a comment explains why, never what.
+- **DRY for knowledge, rule of three for code.** A fact (a limit, a default,
+  a list of kinds) lives in one place. Similar code may appear twice; extract
+  it on the third time, once the shared shape is clear. Two plain copies beat
+  one wrong abstraction.
 - **No GSAP and no Python.** Animation uses our own timeline; audio is
   TypeScript.
 - **Dependencies.** Prefer none. A new dependency needs a reason in the PR and
   a licence compatible with MIT (EPL-2.0 for elkjs is accepted). List it in
   the PR description.
-- **Small files, plain names.** One concept per module. Comments explain why,
-  not what.
 
 ## Tests
 
-- Write tests with the code (Vitest). Engine logic gets unit tests; visible
-  output gets a screenshot or still in the PR.
+**Test first for logic.** For anything in the core, and for server and MCP
+handlers, write a failing test, make it pass, then refactor. Reviewers may
+ask which test drove a change. Showing red-then-green in the commits is
+welcome but not required.
+
+**Look first for visuals.** Isometric drawing, overlays and themes are judged
+by eye: attach a screenshot or still to the PR. Once a look is approved, a
+golden still guards it.
+
+**Layers:**
+
+1. **Unit** (Vitest): most of the suite, on pure functions, no mocks needed.
+2. **Property-based** (`fast-check`) for invariants: seeking in any order
+   gives the same state; layout never overlaps boxes; Mermaid → graph →
+   Mermaid round-trips; applying a valid patch keeps the document valid.
+3. **Integration:** the server API against a temporary projects folder; MCP
+   through an in-memory client; a 2-second render with real Chromium and
+   ffmpeg.
+4. **Golden stills** of the examples, compared within a small tolerance.
+5. **End to end:** a few Playwright tests of the web UI, one per gate.
+
+Rules:
+
+- Test behaviour through public functions, not internals.
+- Use the fakes for ports; do not mock modules.
 - **No live LLM calls in tests.** Use recorded fixtures in `src/llm/fixtures/`.
   CI has no API key.
 - The examples in `examples/` are fixtures. If you change one, explain why.
+- There is no coverage percentage gate. Reviewers judge whether the tests are
+  meaningful.
+
+**Decision records.** When a PR changes `SPEC.md` in a meaningful way, add a
+short record in `docs/decisions/NNN-title.md`: context, decision, alternatives.
+`SPEC.md` says what the system is; the records say why it became that.
 
 ## Secrets and data
 
