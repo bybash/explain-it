@@ -135,6 +135,7 @@ export const layoutGraph = async (
       footprint(graphEdge.from),
       footprint(graphEdge.to),
       GRID,
+      graph.nodes.map((node) => footprint(node.id)),
     );
   }
 

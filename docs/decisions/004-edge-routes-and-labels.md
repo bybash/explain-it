@@ -12,8 +12,10 @@ the floor were also hidden by the boxes drawn after them.
 
 - **Layout straightens jogs.** A bend shorter than one grid step between two
   parallel runs is removed by moving one run across. A run that ends on a box
-  moves only while its end stays on that box's side. `layout.json` stays the
-  single place routes come from, and it is clean when written.
+  moves only while its end stays on that box's side. A run never moves into
+  a box, and never leaves the stub into a box shorter than a grid step; such
+  a jog is kept. `layout.json` stays the single place routes come from, and
+  it is clean when written.
 - **The engine draws a fallback route** where `routes` is `null`: straight
   between boxes that share at least half a unit of a side, otherwise out of
   the source along x and into the target along y. The layout format is
