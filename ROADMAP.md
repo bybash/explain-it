@@ -85,7 +85,7 @@ The goal: the CLI renders a hand-written example to an MP4, with no LLM and no v
 
 | ID | Slice | Done when |
 |---|---|---|
-| 3.1 | **Server and shell**: Hono, the projects API over folders, SSE, `127.0.0.1` by default, a Vite and React shell listing projects, `npm run dev` and `npm start` | Projects can be created, listed and opened |
+| ✅ 3.1 | **Server and shell**: Hono, the projects API over folders, SSE, `127.0.0.1` by default, a Vite and React shell listing projects, `npm run dev` and `npm start` | Projects can be created, listed and opened |
 | 3.2 | **Settings**: base URL, key and model read from and written to `.env`; keys are never logged or sent to the browser in full | Settings round-trip; the key is masked in the UI |
 | 3.3 | **Chat and gates**: the chat column, the gate stepper, the split layout, `chat.jsonl`; no LLM yet (a stub reply) | Messages persist across restarts |
 | 3.4 | **Mermaid round-trip**: Mermaid to graph (jsdom, pinned version) and graph to Mermaid, keeping kind, icon and category by id | Round-trip tests on all examples and a set of Mermaid fixtures |
@@ -156,6 +156,25 @@ that finishes it.
 - The page count defaults to 4 (`PAGES` in `src/render/render.ts`; only
   tests pass `pages`). On a machine with many more cores, choosing it from
   the CPU count would help more than running jobs side by side.
+
+### For 3.3 (chat and gates), from 3.1
+
+- The web app has no automated browser test yet. 3.1's flow was checked by
+  driving Chrome with Playwright from a one-off script: create a project,
+  open it, see a project made elsewhere appear on the list over SSE, and
+  get a named error for a long name. The first gate slice should turn
+  that flow into the first end-to-end test (AGENTS.md, Tests, layer 5).
+- The opened project shows its name, gate and files. The gate stepper
+  there is only a display; 3.3 makes it the real one.
+
+### For 6.1 (Docker), from 3.1
+
+- `npm start` serves `dist/web`, so the image must run `npm run build`.
+- The server listens on `127.0.0.1` unless `HOST` is set. Inside a
+  container it must listen on `0.0.0.0`, so the image sets `HOST=0.0.0.0`.
+  The `docker run` line in SPEC publishes the port on `127.0.0.1` only.
+- Projects live in `PROJECTS_DIR`, `./projects` by default. The image's
+  volume should mount there.
 
 ### For 6.1 (Docker), from 1.9
 

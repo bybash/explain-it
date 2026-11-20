@@ -1,0 +1,110 @@
+import { type FormEvent, useCallback, useEffect, useState } from "react";
+import type { ProjectList as List } from "../schema/api.ts";
+import { formatErrors, type ValidationError } from "../schema/errors.ts";
+import { createProject, listProjects, onServerEvent } from "./api.ts";
+import { GATE_LABELS, updatedLabel } from "./labels.ts";
+
+/** The projects, newest first, with a form to start a new one. */
+export const ProjectList = () => {
+  const [list, setList] = useState<List | undefined>();
+  const [loadErrors, setLoadErrors] = useState<readonly ValidationError[]>([]);
+  const [name, setName] = useState("");
+  const [formErrors, setFormErrors] = useState<readonly ValidationError[]>([]);
+  const [creating, setCreating] = useState(false);
+
+  const load = useCallback(async () => {
+    const result = await listProjects();
+    if (result.ok) {
+      setList(result.value);
+      setLoadErrors([]);
+    } else setLoadErrors(result.errors);
+  }, []);
+
+  // A project created elsewhere, in another tab or later over MCP, shows up here too.
+  useEffect(() => {
+    void load();
+    return onServerEvent(() => void load());
+  }, [load]);
+
+  const create = async (event: FormEvent) => {
+    event.preventDefault();
+    setCreating(true);
+    const result = await createProject(name.trim());
+    setCreating(false);
+    if (!result.ok) return setFormErrors(result.errors);
+    setFormErrors([]);
+    setName("");
+    location.hash = `#/projects/${result.value.slug}`;
+  };
+
+  return (
+    <section className="page">
+      <h1 className="page-title">Projects</h1>
+      <form className="new-project" onSubmit={create}>
+        <label htmlFor="new-project-name">New project</label>
+        <div className="new-project-row">
+          <input
+            id="new-project-name"
+            value={name}
+            placeholder="What does the video explain? For example: OAuth login"
+            onChange={(e) => setName(e.target.value)}
+            aria-invalid={formErrors.length > 0}
+            aria-describedby="new-project-errors"
+          />
+          <button type="submit" disabled={creating || name.trim() === ""}>
+            Create
+          </button>
+        </div>
+        <Errors id="new-project-errors" errors={formErrors} />
+      </form>
+
+      <Errors errors={loadErrors} />
+      {list === undefined ? (
+        loadErrors.length === 0 && <p className="muted">Loading…</p>
+      ) : list.projects.length === 0 ? (
+        <p className="muted">No projects yet. Name one above to start.</p>
+      ) : (
+        <ul className="project-list">
+          {list.projects.map((project) => (
+            <li key={project.slug}>
+              <a className="project-row" href={`#/projects/${project.slug}`}>
+                <span className="project-name">{project.name}</span>
+                <span className="gate-badge" data-gate={project.gate}>
+                  {GATE_LABELS[project.gate]}
+                </span>
+                <span className="muted project-updated">{updatedLabel(project.updatedAt)}</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {list && list.broken.length > 0 && (
+        <details className="broken">
+          <summary>
+            {list.broken.length} {list.broken.length === 1 ? "folder" : "folders"} in projects/
+            could not be read
+          </summary>
+          <ul>
+            {list.broken.map((broken) => (
+              <li key={broken.slug}>
+                <code>{broken.slug}</code>
+                <Errors errors={broken.errors} />
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+    </section>
+  );
+};
+
+/** Problems, one per line, each naming its place. */
+export const Errors = ({ errors, id }: { errors: readonly ValidationError[]; id?: string }) =>
+  errors.length === 0 ? null : (
+    <ul className="errors" id={id} role="alert">
+      {formatErrors(errors).map((line) => (
+        <li key={line}>{line}</li>
+      ))}
+    </ul>
+  );

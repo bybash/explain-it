@@ -429,6 +429,8 @@ and VS Code. A stdio shim that starts the app when it is not running comes later
 - `npm run dev` for development. `npm start` runs one Node process that
   serves the built UI and the API.
 - The server listens on `127.0.0.1:3000` by default. No login, no telemetry.
+  `HOST` and `PORT` change where it listens, and `PROJECTS_DIR` where the
+  projects folder is (`./projects` by default).
   Uploaded files are checked by type and size.
 - Keys: read from `.env`; the settings page writes to it. Docker users pass
   `-e OPENROUTER_API_KEY=…`.

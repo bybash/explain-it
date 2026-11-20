@@ -33,11 +33,12 @@ const HINTS: Readonly<Record<string, string>> = {
   "layout.json": "missing; run `npm run layout -- <project>`",
 };
 
-type Read =
+/** A JSON file read from a project folder: its data, or why it could not be read. */
+export type Read =
   | { readonly ok: true; readonly data: unknown }
   | { readonly ok: false; readonly missing: boolean; readonly error: ValidationError };
 
-const readJson = async (dir: string, file: string): Promise<Read> => {
+export const readJson = async (dir: string, file: string): Promise<Read> => {
   let text: string;
   try {
     text = await readFile(join(dir, file), "utf8");
@@ -57,7 +58,7 @@ const readJson = async (dir: string, file: string): Promise<Read> => {
 };
 
 /** Puts the file name in front of each error's path: `storyboard.json: scenes[0].title`. */
-const inFile = (file: string, errors: readonly ValidationError[]): ValidationError[] =>
+export const inFile = (file: string, errors: readonly ValidationError[]): ValidationError[] =>
   errors.map((e) => ({ path: `${file}: ${e.path}`, message: e.message }));
 
 /**

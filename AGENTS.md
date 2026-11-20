@@ -47,6 +47,9 @@ before opening a PR; CI runs the same four.
 
 ```sh
 npm install
+npm run dev         # the app on http://127.0.0.1:3000: Vite for the web app, the API on 3001 behind it
+npm run build       # build the web app into dist/web
+npm start           # the built web app and the API in one process (run `npm run build` first)
 npm run lint        # Biome: lint and format check (code and JSON, not Markdown)
 npm run format      # Biome: apply fixes and formatting
 npm run typecheck   # tsc --noEmit
@@ -69,8 +72,7 @@ Source files import each other with the `.ts` extension
 Use only TypeScript syntax that can be stripped: no `enum`, no `namespace`, no
 parameter properties.
 
-Later slices add `npm run dev` and `npm start`. Keep this list current when you
-add a script.
+Keep this list current when you add a script.
 
 ## Architecture
 
