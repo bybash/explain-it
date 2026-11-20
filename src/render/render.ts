@@ -10,6 +10,7 @@ import type { Resolution } from "../schema/config.ts";
 import { encodeArgs, posterArgs } from "./encode.ts";
 import { FPS, frameTimes, posterTime } from "./frames.ts";
 import type { ProjectFiles } from "./load.ts";
+import { captureInOrder } from "./parallel.ts";
 import { type SrtCue, toSrt } from "./srt.ts";
 
 /** What to render: one video per theme, at one resolution. */
@@ -33,9 +34,13 @@ export type RenderOptions = {
   readonly outDir: string;
   /** The served render page (see `page.ts`). */
   readonly pageUrl: string;
+  /** How many pages capture frames at once; 4 by default (SPEC, Rendering). */
+  readonly pages?: number;
   /** Called with a line of progress now and then. */
   readonly onProgress?: (message: string) => void;
 };
+
+const PAGES = 4;
 
 /** What the render page exposes once it is ready. */
 type Seekable = {
@@ -46,32 +51,62 @@ type Seekable = {
 
 const FFMPEG = process.env.FFMPEG ?? "ffmpeg";
 
+/**
+ * Rasterize every frame in full, in software. With partial or GPU raster,
+ * Chrome's anti-aliasing depends on what it painted before and on how busy
+ * it is, so the same frame came out differently on parallel pages.
+ */
+const DETERMINISTIC_RASTER = ["--disable-partial-raster", "--disable-gpu-rasterization"];
+
 /** Chrome by default; `CHROME_PATH` points at another Chromium, as in Docker. */
 const launch = (): Promise<Browser> =>
-  process.env.CHROME_PATH
-    ? chromium.launch({ executablePath: process.env.CHROME_PATH })
-    : chromium.launch({ channel: "chrome" });
+  chromium.launch({
+    args: DETERMINISTIC_RASTER,
+    ...(process.env.CHROME_PATH
+      ? { executablePath: process.env.CHROME_PATH }
+      : { channel: "chrome" }),
+  });
 
 /**
- * Renders a project once per theme: seeks the render page frame by frame at
- * 30 fps, pipes the frames into ffmpeg, and writes `video.mp4`,
- * `captions.srt` and `poster.png` into `<outDir>/<theme>/`. A missing Chrome
- * or ffmpeg, or a page that fails, is a broken environment, so it throws.
+ * Renders a project once per theme: several render pages, each in a browser
+ * of its own, seek every frame at 30 fps between them; the frames are piped
+ * into ffmpeg in order, which writes `video.mp4`, then `captions.srt` and
+ * `poster.png` go into `<outDir>/<theme>/`. A missing Chrome or ffmpeg, or a
+ * page that fails, is a broken environment, so it throws.
  */
 export const renderProject = async (options: RenderOptions): Promise<RenderedTheme[]> => {
-  const browser = await launch();
+  // A browser per page: pages in one browser share its screenshot pipeline and barely speed up.
+  const browsers = await allOrClose(
+    Array.from({ length: Math.max(1, options.pages ?? PAGES) }, launch),
+    (browser) => browser.close(),
+  );
   try {
     const rendered: RenderedTheme[] = [];
     for (const theme of options.settings.themes)
-      rendered.push(await renderTheme(browser, theme, options));
+      rendered.push(await renderTheme(browsers, theme, options));
     return rendered;
   } finally {
-    await browser.close();
+    await Promise.all(browsers.map((browser) => browser.close()));
   }
 };
 
+/** Waits for all of `starting`; if any fails, closes the ones that started and throws the first error. */
+const allOrClose = async <T>(
+  starting: readonly Promise<T>[],
+  close: (started: T) => Promise<void>,
+): Promise<T[]> => {
+  const settled = await Promise.allSettled(starting);
+  const started = settled.flatMap((s) => (s.status === "fulfilled" ? [s.value] : []));
+  const failed = settled.find((s) => s.status === "rejected");
+  if (failed) {
+    await Promise.all(started.map(close));
+    throw failed.reason;
+  }
+  return started;
+};
+
 const renderTheme = async (
-  browser: Browser,
+  browsers: readonly Browser[],
   theme: ThemeMode,
   { project, settings, outDir, pageUrl, onProgress }: RenderOptions,
 ): Promise<RenderedTheme> => {
@@ -83,32 +118,45 @@ const renderTheme = async (
     captions: join(dir, "captions.srt"),
     poster: join(dir, "poster.png"),
   };
-  const page = await openPage(browser, pageUrl, { ...project, mode: theme });
+  const injected = { ...project, mode: theme };
+  const open = await allOrClose(
+    browsers.map((browser) => openPage(browser, pageUrl, injected)),
+    (page) => page.close(),
+  );
   try {
-    const { duration, cues } = await page.evaluate(() => {
+    const [first] = open;
+    if (!first) throw new Error("no render page opened");
+    const { duration, cues } = await first.evaluate(() => {
       const w = window as unknown as Seekable;
       return { duration: w.__duration, cues: w.__cues };
     });
     const times = frameTimes(duration);
     const resolution = settings.resolution;
     let shown = 0;
-    await pipeFrames(encodeArgs({ fps: FPS, resolution, out: files.video }), async (write) => {
-      for (const [i, t] of times.entries()) {
-        await write(await frameAt(page, t));
-        const percent = Math.floor(((i + 1) / times.length) * 10) * 10;
-        if (percent > shown) {
-          shown = percent;
-          onProgress?.(`${theme}: ${percent}% (${i + 1}/${times.length} frames)`);
-        }
-      }
-    });
+    await pipeFrames(encodeArgs({ fps: FPS, resolution, out: files.video }), (write) =>
+      captureInOrder({
+        count: times.length,
+        workers: open.length,
+        // Two frames a page keeps every page busy while one waits on a slower neighbour.
+        ahead: 2 * open.length,
+        capture: (worker, i) => frameAt(open[worker] as Page, times[i] as number),
+        write: async (frame, i) => {
+          await write(frame);
+          const percent = Math.floor(((i + 1) / times.length) * 10) * 10;
+          if (percent > shown) {
+            shown = percent;
+            onProgress?.(`${theme}: ${percent}% (${i + 1}/${times.length} frames)`);
+          }
+        },
+      }),
+    );
     const plan = buildBeats(project.storyboard, project.graph);
-    const poster = await frameAt(page, Math.min(posterTime(plan), duration));
+    const poster = await frameAt(first, Math.min(posterTime(plan), duration));
     await pipeFrames(posterArgs({ resolution, out: files.poster }), (write) => write(poster));
     await writeFile(files.captions, toSrt(cues));
     return files;
   } finally {
-    await page.close();
+    await Promise.all(open.map((page) => page.close()));
   }
 };
 

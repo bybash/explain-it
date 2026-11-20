@@ -47,7 +47,7 @@ The goal: the CLI renders a hand-written example to an MP4, with no LLM and no v
 | ✅ 1.7 | **Overlays**: callout cards, badges, step and narration captions, the scene title, anchored to projected nodes | Screenshots in the PR |
 | ✅ 1.8 | **Beat builder**: storyboard to timeline, default action durations, estimated narration length, scene transitions; exposes `__seek`, `__duration`, `__cues` | The example plays end to end in the dev page |
 | ✅ 1.9 | **Capture and CLI render**: Playwright frame capture, ffmpeg encoding, `.srt`, poster, `explain-it render` | `explain-it render examples/oauth-login` writes an MP4, attached to the PR |
-| 1.10 | **Parallel capture**: 4 pages each render a chunk; chunks are joined | The output is identical to 1.9 and faster; timings in the PR |
+| ✅ 1.10 | **Parallel capture**: 4 pages each render a chunk; chunks are joined | The output is identical to 1.9 and faster; timings in the PR |
 | 1.11 | **Title card and logo**: `cards.title` and `logo` in the config schema; logo files in `assets/` (PNG, JPG or SVG, light and dark); the title card on screen from the first frame, held max(3 s, reading time), fading into the first scene; the logo in its corner on the title card or every frame; the poster is the title card (SPEC, Cards, Logo, Opening and ending; decision 009) | The example renders with a title card and its logo; stills of both, light and dark, in the PR |
 | 1.12 | **End card and ending**: `cards.end` in the config schema; the headline, link with its QR code, where to find the feature and credit; the last scene fades out and the closing card (end card, else title card, else the logo in the middle) fades in and holds to the last frame (SPEC, Cards, Opening and ending; decision 009) | The example ends on its end card with a scannable QR code; stills of the three closing cards, light and dark, in the PR |
 
@@ -114,12 +114,6 @@ The goal: make a video end to end from an IDE, with no LLM in explAIn-it.
 Work a finished slice left for a later one. Each list is removed by the slice
 that finishes it.
 
-### For 1.10 (parallel capture), from 1.9
-
-- One page captures every frame in turn: the example takes about 85 s a
-  theme at 1080p (1692 frames). `renderTheme` in `src/render/render.ts` is
-  the place to split the frames into chunks.
-
 ### For 2.4 (mix and outputs), from 1.9
 
 - Only `video.mp4` (silent, captions burned in), `captions.srt` and
@@ -137,6 +131,9 @@ that finishes it.
   at `CHROME_PATH`; the image should set `CHROME_PATH`. `explain-it render`
   rebuilds the render page only when Vite is installed, so the image must
   run `npm run build:engine`.
+- A render starts four Chrome processes (decision 010); give the container
+  memory for them. Check that the image's Chromium still gives identical
+  videos with 1 and 4 pages (the render test does).
 - The end-to-end render test skips itself without Chrome or ffmpeg. Check
   that CI has both, or it never runs there.
 
@@ -154,6 +151,11 @@ that finishes it.
   code` and `authorize` pills (label placement from 1.5).
 - An edge label pill can cover a node's label: `GET /photos + token` over
   `Photos API` in the example's second scene (label placement from 1.5).
+- A zone label can be hidden behind a node box: `Your…` behind `Web app`
+  in the example's first scene (zones from 1.3 and 1.4).
+- Seeking leaves stale attributes on hidden edges (points, dash offsets
+  set by a later time). Nothing hidden is drawn, so frames are unaffected,
+  but the DOM at time `t` depends on earlier seeks (edges from 1.5).
 
 ## Later
 
