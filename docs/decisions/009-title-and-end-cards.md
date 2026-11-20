@@ -11,12 +11,15 @@ on the roadmap PR.
 
 ## Decision
 
+- **Everything is optional except a card's main line.** The title card,
+  the end card and the logo can each be left out. A title card needs only
+  its title, and an end card only its headline.
 - **Cards and the logo live in `config.json`.** They describe how a team
   presents its videos, like the palette and the font. They don't describe
   the flow, which is what the storyboard holds.
-- **Title card:** a title (up to 60 characters) and an optional description
+- **Title card:** a title (up to 100 characters) and an optional description
   (up to 160 characters), wrapped, in the middle.
-- **End card:** a headline (up to 60 characters), then optional lines: a
+- **End card:** a headline (up to 100 characters), then optional lines: a
   link (an http(s) URL, up to 200 characters), where to find the feature
   and a credit (up to 80 characters each). The link is also drawn as a QR
   code, since nobody can click a URL in an MP4. 1.12 chooses the QR
@@ -29,7 +32,8 @@ on the roadmap PR.
     modes.
   - It sits in the top-right or bottom-right corner, top-right by default,
     since the narration caption runs along the bottom.
-  - It shows on the title card, the end card, both, or every frame.
+  - It shows on the title card, the end card, both (the default), or every
+    frame.
   - It is fitted inside 200×64 px at 1080p, keeping its aspect ratio.
   - It is drawn as an `<img>`, so an SVG can't run scripts.
 - **Timing:**

@@ -151,9 +151,9 @@ type Config = {
   music: { enabled: boolean; mood: "calm" | "upbeat" | "technical"; seed: number; volumeDb: number };
   output: { resolution: "1080p" | "720p" };
   cards?: {
-    title?: { title: string; description?: string };   // ≤ 60 and ≤ 160 characters, wrapped
+    title?: { title: string; description?: string };   // ≤ 100 and ≤ 160 characters, wrapped
     end?: {
-      headline: string;                 // ≤ 60 characters, wrapped
+      headline: string;                 // ≤ 100 characters, wrapped
       link?: string;                    // an http(s) URL, ≤ 200 characters; also drawn as a QR code
       where?: string;                   // where to find the feature, ≤ 80 characters
       credit?: string;                  // who made the video, or the company, ≤ 80 characters
@@ -162,8 +162,8 @@ type Config = {
   logo?: {
     light?: string;                     // a .png, .jpg or .svg in assets/, at most 2 MB;
     dark?: string;                      // at least one of the two; one serves both modes
-    corner: "top-right" | "bottom-right";               // default "top-right"
-    show: "start" | "end" | "both" | "all";             // the title card, the end card, both, or every frame
+    corner?: "top-right" | "bottom-right";              // default "top-right"
+    show?: "start" | "end" | "both" | "all";            // the title card, the end card, both (default), or every frame
   };
 };
 
@@ -252,9 +252,10 @@ for frame capture, so what the user approves is what gets rendered.
   card closes it, set in `config.json` (see Config). The title card shows
   the title in the middle with the description under it. The end card
   shows the headline, then the link with its QR code beside it, then where
-  to find the feature and the credit. Text wraps; the limits keep it to at
-  most two lines for a title or headline and three for a description.
-  Cards have no step or narration caption.
+  to find the feature and the credit. Only the title and the headline are
+  required; every other line, and the logo, can be left out. Text wraps, to
+  at most three lines for a title, headline or description. Cards have no
+  step or narration caption.
 - **Logo.** Drawn as an `<img>` (an SVG runs no script that way), fitted
   inside 200×64 px at 1080p in the chosen corner of the safe area, keeping
   its aspect ratio. On scene frames (`show: "all"`), the band in that
