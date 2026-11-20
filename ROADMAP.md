@@ -48,6 +48,8 @@ The goal: the CLI renders a hand-written example to an MP4, with no LLM and no v
 | 1.8 | **Beat builder**: storyboard to timeline, default action durations, estimated narration length, scene transitions; exposes `__seek`, `__duration`, `__cues` | The example plays end to end in the dev page |
 | 1.9 | **Capture and CLI render**: Playwright frame capture, ffmpeg encoding, `.srt`, poster, `explain-it render` | `explain-it render examples/oauth-login` writes an MP4, attached to the PR |
 | 1.10 | **Parallel capture**: 4 pages each render a chunk; chunks are joined | The output is identical to 1.9 and faster; timings in the PR |
+| 1.11 | **Title card**: an optional first card before the first scene, with a title in the middle, an optional short description under it, and an optional logo in the top or bottom right corner; it has its own place in the timeline, captions and poster rules | The example renders with a title card; a still of it, light and dark, in the PR |
+| 1.12 | **End card**: an optional last card after the last scene, with a closing line and optional details: a link, where to find the feature, who made the video or the company name, and the logo; the last scene hands over to it instead of stopping mid-fade | The example renders ending on its end card; a still of it, light and dark, in the PR |
 
 ## Milestone 2: audio and checks
 
@@ -127,6 +129,14 @@ that finishes it.
   whole graph there.
 - The beat loop in `dev/iso.ts` is a stand-in for the builder. Replace it;
   do not copy it into `src/`.
+
+### For 1.12 (end card), from 1.9
+
+- The video stops on a mixed last frame. The last scene has no fade-out, but
+  its title and badges finish their exit fade on the very last frame, so
+  they are caught half faded; the step caption is already gone for the
+  1.2 s tail. Without an end card, the ending still needs one rule: hold a
+  clean last frame, or fade the whole stage out.
 
 ### Found outside a slice
 
