@@ -112,6 +112,9 @@ describe("parseConfig", () => {
     expect(errorsFor({ cards: { end: { headline: "Hi", link: "ftp://example.com" } } })).toEqual([
       "cards.end.link: must be an http or https URL",
     ]);
+    expect(
+      errorsFor({ cards: { end: { headline: "Hi", link: "https://exa\u0000mple.com" } } }),
+    ).toEqual(["cards.end.link: must be an http or https URL"]);
     expect(errorsFor({ cards: { end: { link: "https://example.com" } } })).toEqual([
       "cards.end.headline: required",
     ]);

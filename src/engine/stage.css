@@ -339,10 +339,9 @@ body {
   margin: 40px auto 0;
 }
 
+/* Its size comes from qrPixels, larger for longer links. */
 .card-qr {
   flex: none;
-  width: 220px;
-  height: 220px;
   border-radius: 16px;
   overflow: hidden;
 }
@@ -376,10 +375,6 @@ body {
   margin: 20px auto 0;
   font-size: 24px;
   color: var(--muted);
-}
-
-.card-logo {
-  background: var(--bg);
 }
 
 .logo-middle {

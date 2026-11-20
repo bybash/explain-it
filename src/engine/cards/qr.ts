@@ -1,5 +1,16 @@
 import qrcode from "qrcode-generator";
 
+/** The light margin around the code, in modules, that a reader needs. */
+export const QR_QUIET = 4;
+/** Pixels per module at 1080p: 4 px after scaling to 720p, which readers manage off a screen. */
+const MODULE_PX = 6;
+/** The smallest the code is drawn, in pixels at 1080p, so a short link still stands out. */
+const MIN_PX = 220;
+
+/** How wide the code is drawn at 1080p, quiet zone included: larger for longer links. */
+export const qrPixels = (moduleCount: number): number =>
+  Math.max(MIN_PX, (moduleCount + 2 * QR_QUIET) * MODULE_PX);
+
 /**
  * A link as a QR code's modules, row by row; `true` is dark. The version is
  * the smallest that fits, with error correction level M (15% damage), which
@@ -7,7 +18,8 @@ import qrcode from "qrcode-generator";
  */
 export const qrModules = (text: string): boolean[][] => {
   const code = qrcode(0, "M");
-  code.addData(text, "Byte");
+  // The library turns each character into one byte; give it the UTF-8 bytes so readers decode non-ASCII links.
+  code.addData(String.fromCharCode(...new TextEncoder().encode(text)), "Byte");
   code.make();
   const size = code.getModuleCount();
   return Array.from({ length: size }, (_, row) =>

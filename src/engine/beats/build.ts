@@ -367,6 +367,7 @@ const textHold = (lines: readonly (string | undefined)[]): number =>
   );
 
 const titleText = (card: TitleCard) => [card.title, card.description];
+const endText = (card: EndCard) => [card.headline, card.link, card.where, card.credit];
 
 /** The card that closes the video and how long it holds (SPEC, Opening and ending). */
 const closingCard = ({
@@ -374,11 +375,7 @@ const closingCard = ({
   endCard,
   logo,
 }: BuildOptions): { id: CardPlan["id"]; hold: number } | undefined => {
-  if (endCard)
-    return {
-      id: "end",
-      hold: textHold([endCard.headline, endCard.link, endCard.where, endCard.credit]),
-    };
+  if (endCard) return { id: "end", hold: textHold(endText(endCard)) };
   if (titleCard) return { id: "title-again", hold: textHold(titleText(titleCard)) };
   if (logo) return { id: "logo", hold: CARD_MIN_HOLD };
   return undefined;

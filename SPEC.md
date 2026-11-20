@@ -163,7 +163,8 @@ type Config = {
     light?: string;                     // a file name in assets/ (no folders) ending in lower-case .png, .jpg, .jpeg or .svg, at most 2 MB;
     dark?: string;                      // at least one of the two; one serves both modes
     corner?: "top-right" | "bottom-right";              // default "top-right"
-    show?: "start" | "end" | "both" | "all";            // the title card, the end card, both (default), or every frame
+    show?: "start" | "end" | "both" | "all";            // the title card, the end card, both (default), or every frame;
+                                                        // the title card closing the video counts as the end card
   };
 };
 
@@ -252,7 +253,9 @@ for frame capture, so what the user approves is what gets rendered.
   card closes it, set in `config.json` (see Config). The title card shows
   the title in the middle with the description under it. The end card
   shows the headline, then the link with its QR code beside it, then where
-  to find the feature and the credit. Only the title and the headline are
+  to find the feature and the credit. The QR code is dark on a light tile
+  in both modes, encodes the link as UTF-8, and grows with the link so a
+  module stays at least 4 px at 720p. Only the title and the headline are
   required; every other line, and the logo, can be left out. Text wraps, to
   at most three lines for a title, headline or description. Cards have no
   step or narration caption.

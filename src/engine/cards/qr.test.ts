@@ -1,6 +1,6 @@
 import jsqr from "jsqr";
 import { describe, expect, it } from "vitest";
-import { qrModules, qrPath } from "./qr.ts";
+import { QR_QUIET, qrModules, qrPath, qrPixels } from "./qr.ts";
 
 /** Draws the modules as black squares on white, with the 4-module quiet zone a reader needs. */
 const pixels = (modules: readonly (readonly boolean[])[], scale = 4) => {
@@ -34,6 +34,7 @@ describe("qrModules", () => {
     for (const link of [
       "https://example.com",
       "https://example.com/docs/oauth?from=video#sign-in",
+      "https://example.com/über/straße",
       `https://example.com/${"long-path/".repeat(18)}`,
     ]) {
       const modules = qrModules(link);
@@ -47,6 +48,21 @@ describe("qrModules", () => {
     const modules = qrModules("https://example.com");
     expect(modules.every((row) => row.length === modules.length)).toBe(true);
     expect(qrModules("https://example.com")).toEqual(modules);
+  });
+});
+
+describe("qrPixels", () => {
+  it("keeps every module at least 4 px at 720p, even for the longest link", () => {
+    const longest = `https://example.com/${"x".repeat(200 - 20)}`;
+    for (const link of ["https://example.com", longest]) {
+      const modules = qrModules(link);
+      const perModuleAt720p =
+        (qrPixels(modules.length) / (modules.length + 2 * QR_QUIET)) * (2 / 3);
+      expect(perModuleAt720p).toBeGreaterThanOrEqual(4);
+      // And the code reads back when drawn that small.
+      const { data, size } = pixels(modules, Math.floor(perModuleAt720p));
+      expect(jsqr.default(data, size, size)?.data).toBe(link);
+    }
   });
 });
 

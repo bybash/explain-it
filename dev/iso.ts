@@ -47,9 +47,10 @@ const cards: Config["cards"] =
       : cardsParam === "end"
         ? { ...(end ? { end } : {}) }
         : example.cards;
-const { logo: _, cards: __, ...rest } = example;
+// Start from the example without its logo and cards, then add back what the URL keeps.
+const { logo: _exampleLogo, cards: _exampleCards, ...exampleStyle } = example;
 const config: Config = {
-  ...rest,
+  ...exampleStyle,
   ...(logoConfig ? { logo: logoConfig } : {}),
   ...(cards ? { cards } : {}),
   theme: { ...example.theme, palette: params.get("palette") ?? example.theme.palette },

@@ -255,7 +255,7 @@
               "description": "Also drawn as a QR code, since nobody can click a link in a video.",
               "type": "string",
               "maxLength": 200,
-              "pattern": "^https?:\\/\\/[^\\s/?#]+[^\\s]*$"
+              "pattern": "^https?:\\/\\/[^\\s\\p{Cc}/?#]+[^\\s\\p{Cc}]*$"
             },
             "where": {
               "description": "Where to find the feature.",

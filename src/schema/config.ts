@@ -112,7 +112,7 @@ export const EndCardSchema = z
     link: z
       .string()
       .max(CARD_LIMITS.link)
-      .regex(/^https?:\/\/[^\s/?#]+[^\s]*$/, { error: "must be an http or https URL" })
+      .regex(/^https?:\/\/[^\s\p{Cc}/?#]+[^\s\p{Cc}]*$/u, { error: "must be an http or https URL" })
       .optional()
       .describe("Also drawn as a QR code, since nobody can click a link in a video."),
     where: z

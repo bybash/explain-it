@@ -1,9 +1,9 @@
 import type { EndCard, Logo, TitleCard } from "../../schema/config.ts";
 import { type CardPlan, cardTarget } from "../beats/build.ts";
-import { logoBox } from "../overlays/regions.ts";
+import { logoBox, MIDDLE_LOGO_SIZE } from "../overlays/regions.ts";
 import type { State } from "../timeline.ts";
-import { qrModules, qrPath } from "./qr.ts";
-import { type LogoPlace, logoShowsOn } from "./show.ts";
+import { QR_QUIET, qrModules, qrPath, qrPixels } from "./qr.ts";
+import { logoPlaceOf, logoShowsOn } from "./show.ts";
 
 /** The logo to draw: the image for the current mode, and where and when it shows. */
 export type LogoDrawing = {
@@ -15,11 +15,6 @@ export type LogoDrawing = {
 /** Poses a layer from the timeline. */
 export type Poser = (state: State) => void;
 
-/** The logo in the middle of the closing card is fitted inside this box (SPEC, Logo). */
-export const MIDDLE_LOGO_SIZE = { width: 480, height: 160 } as const;
-
-/** The QR code's quiet zone, in modules: the light margin a reader needs around it. */
-const QR_QUIET = 4;
 const SVG_NS = "http://www.w3.org/2000/svg";
 
 const element = <K extends keyof HTMLElementTagNameMap>(
@@ -70,11 +65,11 @@ const cardLayer = (
   id: CardPlan["id"],
   body: HTMLElement,
   logo: LogoDrawing | undefined,
-  place: LogoPlace,
 ): Poser => {
-  const layer = element("div", `card-layer card-${id}`);
+  const layer = element("div", `card-layer card-layer-${id}`);
   layer.append(body);
-  if (logo && logoShowsOn(logo.show, place)) layer.append(logoImage(logo));
+  if (logo && id !== "logo" && logoShowsOn(logo.show, logoPlaceOf(id)))
+    layer.append(logoImage(logo));
   frame.append(layer);
   return fadeLayer(layer, cardTarget(id));
 };
@@ -93,7 +88,7 @@ export const renderTitleCard = (
   body.append(element("h1", "card-title", card.title), element("div", "card-rule"));
   if (card.description !== undefined)
     body.append(element("p", "card-description", card.description));
-  return cardLayer(frame, id, body, logo, "title");
+  return cardLayer(frame, id, body, logo);
 };
 
 /** The link as a QR code: dark modules on a light tile in both modes, as readers expect. */
@@ -104,6 +99,8 @@ const qrCode = (link: string): SVGSVGElement => {
   svg.setAttribute("class", "card-qr");
   svg.setAttribute("viewBox", `${-QR_QUIET} ${-QR_QUIET} ${size} ${size}`);
   svg.setAttribute("shape-rendering", "crispEdges");
+  const px = `${qrPixels(modules.length)}px`;
+  Object.assign(svg.style, { width: px, height: px });
   const tile = document.createElementNS(SVG_NS, "rect");
   tile.setAttribute("class", "card-qr-tile");
   for (const [name, value] of Object.entries({
@@ -142,7 +139,7 @@ export const renderEndCard = (
   }
   if (card.where !== undefined) body.append(element("p", "card-where", card.where));
   if (card.credit !== undefined) body.append(element("p", "card-credit", card.credit));
-  return cardLayer(frame, "end", body, logo, "end");
+  return cardLayer(frame, "end", body, logo);
 };
 
 /** Draws the closing card made of the logo alone, in the middle, larger than in its corner. */
@@ -152,7 +149,7 @@ export const renderLogoCard = (frame: HTMLElement, src: string): Poser => {
     width: `${MIDDLE_LOGO_SIZE.width}px`,
     height: `${MIDDLE_LOGO_SIZE.height}px`,
   });
-  const layer = element("div", "card-layer card-logo");
+  const layer = element("div", "card-layer card-layer-logo");
   layer.append(img);
   frame.append(layer);
   return fadeLayer(layer, cardTarget("logo"));

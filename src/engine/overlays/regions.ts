@@ -49,6 +49,8 @@ const TITLE_PADDING = 10;
 
 /** The logo is fitted inside this box at 1080p, keeping its aspect ratio (SPEC, Logo). */
 export const LOGO_SIZE = { width: 200, height: 64 } as const;
+/** The logo alone as the closing card is fitted inside this box, in the middle (SPEC, Logo). */
+export const MIDDLE_LOGO_SIZE = { width: 480, height: 160 } as const;
 
 const safeArea = (): Rect => {
   const mx = STAGE.width * SAFE_MARGIN;
