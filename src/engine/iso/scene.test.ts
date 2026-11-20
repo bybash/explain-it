@@ -208,3 +208,47 @@ describe("buildScene: top face", () => {
     close(apply(0, depth), at(x, y + d, h));
   });
 });
+
+describe("buildScene: style", () => {
+  const styleOf = (graph: Graph, positions: Positions) =>
+    sceneOf(graph, positions).nodes.map(({ id, category, icon }) => ({ id, category, icon }));
+
+  it("gives a node without a category or icon its kind's", () => {
+    const graph = graphOf([node("user", "actor"), node("db", "database")]);
+    expect(styleOf(graph, { user: { x: 0, y: 0 }, db: { x: 5, y: 0 } })).toEqual([
+      { id: "user", category: "c1", icon: "user" },
+      { id: "db", category: "c2", icon: "database" },
+    ]);
+  });
+
+  it("gives every kind a category and an icon", () => {
+    const graph = graphOf(NODE_KINDS.map((kind, i) => node(`n${i}`, kind)));
+    const positions = Object.fromEntries(NODE_KINDS.map((_, i) => [`n${i}`, { x: i * 5, y: 0 }]));
+    for (const style of styleOf(graph, positions)) {
+      expect(style.category).toMatch(/^[a-z]/);
+      expect(style.icon).toMatch(/^[a-z]/);
+    }
+  });
+
+  it("keeps a node's own category and icon", () => {
+    const graph = graphOf([{ ...node("app"), category: "c4", icon: "rocket" }]);
+    expect(styleOf(graph, { app: { x: 0, y: 0 } })).toEqual([
+      { id: "app", category: "c4", icon: "rocket" },
+    ]);
+  });
+
+  it("colours a zone with the accent unless it names a category", () => {
+    const graph = graphOf(
+      [node("a", "service", "plain"), node("b", "service", "named")],
+      [
+        { id: "plain", label: "Plain" },
+        { id: "named", label: "Named", category: "c3" },
+      ],
+    );
+    const zones = sceneOf(graph, { a: { x: 0, y: 0 }, b: { x: 8, y: 0 } }).zones;
+    expect(zones.map(({ id, category }) => ({ id, category }))).toEqual([
+      { id: "plain", category: "accent" },
+      { id: "named", category: "c3" },
+    ]);
+  });
+});

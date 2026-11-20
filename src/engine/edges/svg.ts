@@ -1,4 +1,5 @@
 import type { ScreenPoint } from "../iso/project.ts";
+import { categoryStyle } from "../theme/kinds.ts";
 import type { State } from "../timeline.ts";
 import { edgeTarget } from "./flow.ts";
 import type { EdgeGeometry } from "./geometry.ts";
@@ -21,6 +22,8 @@ export type EdgeDrawing = {
   readonly id: string;
   readonly geometry: EdgeGeometry;
   readonly label?: string;
+  /** The palette category it is coloured with. */
+  readonly category: string;
 };
 
 /** Sets every edge from the timeline's state; edges missing from it stay hidden. */
@@ -37,19 +40,20 @@ export type EdgeLayers = { readonly lines: SVGGElement; readonly labels: SVGGEle
 /**
  * Draws edges and returns the function that poses them for a moment of the
  * timeline. Each edge is a solid line, flowing dashes over it, an arrowhead
- * at the tip of the drawn part, a travelling dot, and a label pill. Colours
- * come from CSS.
+ * at the tip of the drawn part, a travelling dot, and a label pill, all in
+ * the edge's category colour from the theme.
  */
 export const renderEdges = (layers: EdgeLayers, edges: readonly EdgeDrawing[]): ApplyEdges => {
   layers.lines.replaceChildren();
   layers.labels.replaceChildren();
-  const posers = edges.map(({ id, geometry, label }) => {
-    const g = element("g", { class: "edge", "data-id": id }, layers.lines);
+  const posers = edges.map(({ id, geometry, label, category }) => {
+    const style = categoryStyle(category);
+    const g = element("g", { class: "edge", "data-id": id, style }, layers.lines);
     const line = element("polyline", { class: "edge-line" }, g);
     const dashes = element("polyline", { class: "edge-dashes" }, g);
     const arrow = element("polygon", { class: "edge-arrow" }, g);
     const dot = element("circle", { class: "edge-dot", r: 8 }, g);
-    const pill = label ? labelPill(layers.labels, id, label, geometry.label) : undefined;
+    const pill = label ? labelPill(layers.labels, id, label, geometry.label, style) : undefined;
 
     return (state: State): void => {
       const s = state[edgeTarget(id)] ?? {};
@@ -87,8 +91,14 @@ const arrowHead = (geometry: EdgeGeometry, draw: number): ScreenPoint[] => {
 };
 
 /** An upright pill centred on `at`; it measures its text, so it needs a live DOM. */
-const labelPill = (parent: Element, id: string, text: string, at: ScreenPoint): SVGElement => {
-  const g = element("g", { class: "edge-label", "data-id": id, opacity: 0 }, parent);
+const labelPill = (
+  parent: Element,
+  id: string,
+  text: string,
+  at: ScreenPoint,
+  style: string,
+): SVGElement => {
+  const g = element("g", { class: "edge-label", "data-id": id, opacity: 0, style }, parent);
   const rect = element("rect", {}, g);
   const label = element(
     "text",

@@ -80,6 +80,24 @@ describe("parseGraph", () => {
     expect(errorsFor(graph)).toEqual(['nodes[2].zone: unknown zone "storage"']);
   });
 
+  it("rejects icons Lucide does not have", () => {
+    const graph = validGraph();
+    graph.nodes[1] = { id: "app", label: "App", kind: "service", zone: "backend", icon: "sever" };
+    expect(errorsFor(graph)).toEqual(['nodes[1].icon: unknown Lucide icon "sever"']);
+  });
+
+  it("accepts Lucide names with digits", () => {
+    const graph = validGraph();
+    graph.nodes[1] = {
+      id: "app",
+      label: "App",
+      kind: "service",
+      zone: "backend",
+      icon: "clock-10",
+    };
+    expect(parseGraph(graph).ok).toBe(true);
+  });
+
   it("rejects unknown keys, to catch typos", () => {
     const graph = { ...validGraph(), colour: "red" };
     expect(errorsFor(graph)).toEqual(["colour: unknown key"]);

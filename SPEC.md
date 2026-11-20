@@ -99,8 +99,11 @@ type GraphEdge = { id: string; from: string; to: string; label?: string; categor
 type Zone = { id: string; label: string; category?: string };
 ```
 
-Each kind has a default box size and height. A zone is drawn as a tinted
-platform under its nodes.
+Each kind has a default box size, height, category and icon. A zone is drawn
+as a tinted platform under its nodes. Categories are `accent`, `muted` and
+`c1` to `c6`; a palette with fewer than six category colours repeats them in
+order, and an unknown category draws in the accent colour. Edges and zones
+without a category use the accent.
 
 ### Storyboard (`storyboard.json`)
 
@@ -204,6 +207,13 @@ for frame capture, so what the user approves is what gets rendered.
 - **Isometric drawing.** One projection function maps grid positions to the
   screen. A node is three faces of a box with a flat top carrying the icon and
   label. The floor is a dotted grid. Elements are depth-sorted.
+- **Theme.** A palette (a preset or a custom palette) and a mode become CSS
+  custom properties on the page; the stylesheet only refers to them. Presets
+  carry a hand-picked dark variant; a custom palette without one gets a
+  generated dark variant that keeps every hue and meets fixed contrast
+  (text 7:1, muted text 4.5:1, accent and categories 3:1 on the background).
+  Fonts are bundled as woff2 files and loaded before the scene is drawn, since
+  labels are fitted by measuring them.
 - **Edges.** The routed path is drawn on the floor. `flow` draws it in, then
   sends a dot along it; flowing dashes follow the timeline. The label sits on
   the longest visible segment, in a pill drawn above the nodes. Layout
@@ -396,7 +406,7 @@ src/
   server/      Hono app, projects API, SSE, settings
   web/         React app: chat, gates, panels, player
   cli/         render and check
-assets/        fonts, palettes, icons
+assets/        bundled fonts with their licences (palettes are in src/engine/theme; icons come from lucide)
 examples/      oauth-login, ci-pipeline, checkout (approved projects)
 schemas/       generated JSON Schemas
 docs/          ARCHITECTURE.md and other docs

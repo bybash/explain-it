@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { IdSchema, referenceErrors, SchemaKeySchema } from "./common.ts";
 import { parseWith, type Validated } from "./errors.ts";
+import { lucideIcon } from "./icons.ts";
 import { fail } from "./result.ts";
 
 export const MAX_GRAPH_NODES = 36;
@@ -89,6 +90,8 @@ const graphReferenceErrors = (graph: Graph) => {
   const nodeIds = new Set(graph.nodes.map((node) => node.id));
   const zoneIds = new Set(graph.zones.map((zone) => zone.id));
   graph.nodes.forEach((node, i) => {
+    if (node.icon !== undefined && lucideIcon(node.icon) === undefined)
+      add(["nodes", i, "icon"], `unknown Lucide icon "${node.icon}"`);
     if (node.zone !== undefined && !zoneIds.has(node.zone))
       add(["nodes", i, "zone"], `unknown zone "${node.zone}"`);
   });
