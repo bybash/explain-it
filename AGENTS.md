@@ -57,6 +57,8 @@ npm run layout -- examples/oauth-login   # recompute a project's layout.json
 npm run dev:engine  # the engine dev page in a browser
 npm run screenshot -- "dev/iso.html?t=4" out.png   # a still of a dev page
 npm run clip -- dev/iso.html out.mp4               # a clip of a dev page (needs ffmpeg)
+npm run build:engine                               # build the render page into dist/render
+npx explain-it render examples/oauth-login         # render a project to out/ (needs Chrome and ffmpeg)
 ```
 
 After changing anything in `src/schema/`, run `npm run schemas` and commit
@@ -67,8 +69,8 @@ Source files import each other with the `.ts` extension
 Use only TypeScript syntax that can be stripped: no `enum`, no `namespace`, no
 parameter properties.
 
-Later slices add `npm run dev`, `npm start` and the `explain-it` CLI. Keep this
-list current when you add a script.
+Later slices add `npm run dev` and `npm start`. Keep this list current when you
+add a script.
 
 ## Architecture
 

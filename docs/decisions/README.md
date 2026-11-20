@@ -15,3 +15,6 @@ later record supersedes an earlier one and says so.
 | [003](003-engineering-practices.md) | Engineering practices |
 | [004](004-edge-routes-and-labels.md) | Edge routes and labels |
 | [005](005-theme-tokens.md) | Theme tokens, kind defaults and bundled fonts |
+| [006](006-overlay-bands-and-callout-placement.md) | Overlay bands, callout placement and badge tones |
+| [007](007-beat-builder.md) | Beat builder timing, cues and scene layers |
+| [008](008-render-page-and-capture.md) | Render page, capture and outputs |
