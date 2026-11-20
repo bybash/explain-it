@@ -48,8 +48,8 @@ The goal: the CLI renders a hand-written example to an MP4, with no LLM and no v
 | 1.8 | **Beat builder**: storyboard to timeline, default action durations, estimated narration length, scene transitions; exposes `__seek`, `__duration`, `__cues` | The example plays end to end in the dev page |
 | 1.9 | **Capture and CLI render**: Playwright frame capture, ffmpeg encoding, `.srt`, poster, `explain-it render` | `explain-it render examples/oauth-login` writes an MP4, attached to the PR |
 | 1.10 | **Parallel capture**: 4 pages each render a chunk; chunks are joined | The output is identical to 1.9 and faster; timings in the PR |
-| 1.11 | **Title card**: an optional first card before the first scene, with a title in the middle, an optional short description under it, and an optional logo in the top or bottom right corner; it has its own place in the timeline, captions and poster rules | The example renders with a title card; a still of it, light and dark, in the PR |
-| 1.12 | **End card**: an optional last card after the last scene, with a closing line and optional details: a link, where to find the feature, who made the video or the company name, and the logo; the last scene hands over to it instead of stopping mid-fade | The example renders ending on its end card; a still of it, light and dark, in the PR |
+| 1.11 | **Title card and logo**: `cards.title` and `logo` in the config schema; logo files in `assets/` (PNG, JPG or SVG, light and dark); the title card on screen from the first frame, held max(3 s, reading time), fading into the first scene; the logo in its corner on the title card or every frame; the poster is the title card (SPEC, Cards, Logo, Opening and ending; decision 009) | The example renders with a title card and its logo; stills of both, light and dark, in the PR |
+| 1.12 | **End card and ending**: `cards.end` in the config schema; the headline, link with its QR code, where to find the feature and credit; the last scene fades out and the closing card (end card, else title card, else the logo in the middle) fades in and holds to the last frame (SPEC, Cards, Opening and ending; decision 009) | The example ends on its end card with a scannable QR code; stills of the three closing cards, light and dark, in the PR |
 
 ## Milestone 2: audio and checks
 
@@ -73,7 +73,7 @@ The goal: the CLI renders a hand-written example to an MP4, with no LLM and no v
 | 3.4 | **Mermaid round-trip**: Mermaid to graph (jsdom, pinned version) and graph to Mermaid, keeping kind, icon and category by id | Round-trip tests on all examples and a set of Mermaid fixtures |
 | 3.5 | **Graph gate panel**: a Mermaid editor with the rendered diagram, approve and edit | Editing the Mermaid updates `graph.json` |
 | 3.6 | **Script gate panel**: the scene and beat editor; stale beats after graph edits | Changing a node marks only its beats as stale |
-| 3.7 | **Style gate panel**: palettes, custom palette, fonts and font upload, voice picker with a sample, captions, music, output | Changes show in the preview straight away |
+| 3.7 | **Style gate panel**: palettes, custom palette, fonts and font upload, voice picker with a sample, captions, music, output, title and end cards, logo upload | Changes show in the preview straight away |
 | 3.8 | **Preview gate**: the player with a scrubber and beat list, voice generation with progress, check warnings that jump to the beat, the contact sheet | The example can be previewed with voice |
 | 3.9 | **Render gate**: the job queue, progress over SSE, cancel, downloads | The example renders from the UI |
 
@@ -83,7 +83,7 @@ The goal: make a video end to end from an IDE, with no LLM in explAIn-it.
 
 | ID | Slice | Done when |
 |---|---|---|
-| 4.1 | **MCP endpoint and project tools**: `/mcp` over Streamable HTTP with the MCP TypeScript SDK; `list_projects`, `get_project`, `create_project`, `update_graph`, `set_storyboard`, `set_style`; `origin` and `sources` on the project; a preview link in every result | Tests call each tool through an in-memory MCP client; invalid input returns readable errors |
+| 4.1 | **MCP endpoint and project tools**: `/mcp` over Streamable HTTP with the MCP TypeScript SDK; `list_projects`, `get_project`, `create_project`, `update_graph`, `set_storyboard`, `set_style` (with the cards, and the logo as a file path or data URL copied into `assets/`); `origin` and `sources` on the project; a preview link in every result | Tests call each tool through an in-memory MCP client; invalid input returns readable errors |
 | 4.2 | **Guidance and the `explain_flow` prompt**: authoring guidance in `src/guidance/` (schemas, limits, node kinds, actions, beats, approval steps), served as an MCP prompt and in the tool descriptions | The prompt lists correctly in an MCP client; the guidance is one source the LLM slices can reuse |
 | 4.3 | **Check and render tools**: `check` (voice, checks, contact sheet returned as an image), `render`, `render_status` | A test project goes from `create_project` to an MP4 through tools alone |
 | 4.4 | **IDE setup**: README configuration for Claude Code, Cursor and VS Code; a walkthrough explaining a feature of this repository | A video of an explAIn-it feature made from Claude Code, attached to the PR |
@@ -95,7 +95,7 @@ The goal: make a video end to end from an IDE, with no LLM in explAIn-it.
 | 5.1 | **LLM client**: AI SDK with OpenRouter and OpenAI-compatible providers, structured calls, the repair loop, fixture recording and replay | Tests replay fixtures without a key |
 | 5.2 | **Context**: pasted text and file upload, the 100k-character limit, storing files in `context/` | Oversized context is refused with a clear message |
 | 5.3 | **Graph drafting**: chat and context to `graph.json`, streamed into the Mermaid view, at most two questions | Fixtures: three described flows give valid graphs |
-| 5.4 | **Script drafting**: graph to scenes and beats, validated by the schema and the checks, repaired on failure | Fixtures: the three graphs give valid storyboards |
+| 5.4 | **Script drafting**: graph to scenes and beats, and a suggested title card, validated by the schema and the checks, repaired on failure | Fixtures: the three graphs give valid storyboards |
 | 5.5 | **Edits through chat**: JSON Patches for the graph and the storyboard | Fixtures: "rename X", "add a retry step", "shorten beat 3" |
 | 5.6 | **Layout repair**: check failures the layout engine cannot fix go back to the LLM | A crowded fixture is fixed |
 
@@ -135,8 +135,8 @@ that finishes it.
 - The video stops on a mixed last frame. The last scene has no fade-out, but
   its title and badges finish their exit fade on the very last frame, so
   they are caught half faded; the step caption is already gone for the
-  1.2 s tail. Without an end card, the ending still needs one rule: hold a
-  clean last frame, or fade the whole stage out.
+  1.2 s tail. Decision 009 settles the ending: the last scene fades out
+  and a closing card holds to the last frame.
 
 ### Found outside a slice
 

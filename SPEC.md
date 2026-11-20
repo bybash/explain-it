@@ -150,6 +150,21 @@ type Config = {
   captions: { narration: boolean; step: boolean; size: "S" | "M" | "L" };
   music: { enabled: boolean; mood: "calm" | "upbeat" | "technical"; seed: number; volumeDb: number };
   output: { resolution: "1080p" | "720p" };
+  cards?: {
+    title?: { title: string; description?: string };   // ≤ 60 and ≤ 160 characters, wrapped
+    end?: {
+      headline: string;                 // ≤ 60 characters, wrapped
+      link?: string;                    // an http(s) URL, ≤ 200 characters; also drawn as a QR code
+      where?: string;                   // where to find the feature, ≤ 80 characters
+      credit?: string;                  // who made the video, or the company, ≤ 80 characters
+    };
+  };
+  logo?: {
+    light?: string;                     // a .png, .jpg or .svg in assets/, at most 2 MB;
+    dark?: string;                      // at least one of the two; one serves both modes
+    corner: "top-right" | "bottom-right";               // default "top-right"
+    show: "start" | "end" | "both" | "all";             // the title card, the end card, both, or every frame
+  };
 };
 
 type CustomPalette = {
@@ -170,6 +185,7 @@ projects/<slug>/
   layout.json         computed positions plus the user's manual overrides
   storyboard.json
   config.json
+  assets/             the logo, referred to from config.json
   cache/tts/          <hash of text + voice + speed>.wav
   out/<timestamp>/    rendered outputs
 ```
@@ -232,6 +248,18 @@ for frame capture, so what the user approves is what gets rendered.
   label. A badge stands on its node's back corner. Badge tones keep fixed
   hues in every palette (info is the accent, ok green, warn amber, error
   red), lightened or darkened to the accent's contrast.
+- **Cards.** An optional title card opens the video and an optional end
+  card closes it, set in `config.json` (see Config). The title card shows
+  the title in the middle with the description under it. The end card
+  shows the headline, then the link with its QR code beside it, then where
+  to find the feature and the credit. Text wraps; the limits keep it to at
+  most two lines for a title or headline and three for a description.
+  Cards have no step or narration caption.
+- **Logo.** Drawn as an `<img>` (an SVG runs no script that way), fitted
+  inside 200×64 px at 1080p in the chosen corner of the safe area, keeping
+  its aspect ratio. On scene frames (`show: "all"`), the band in that
+  corner leaves room for it. Without an end card and a title card, the
+  ending shows it in the middle, fitted inside 480×160 px.
 - **Timeline.** Our own, not GSAP. Tweens with eases, staggers and labels;
   `seek(t)` sets the whole scene from `t` alone, so any frame can be rendered
   in any order. The page exposes `__seek(t)`, `__duration` and `__cues`.
@@ -243,6 +271,14 @@ for frame capture, so what the user approves is what gets rendered.
   3. Actions are spread across the beat; callouts stay until the narration ends.
   Before the Preview gate, narration length is estimated at 2.5 words per
   second; from the Preview gate on, it is measured from the audio.
+- **Opening and ending.** A card holds for max(3 s, its text length ÷ 15
+  characters per second). The title card is on screen from the first frame,
+  and fades out over the scene transition (0.8 s) as the first scene fades
+  in. The video ends by fading the last scene out over the scene
+  transition; the closing card then fades in and holds to the last frame.
+  The closing card is the end card, or else the title card again, or else
+  the logo in the middle. With none of them, the video ends on the empty
+  background.
 
 ## Audio
 
@@ -285,7 +321,8 @@ The **contact sheet** is one still per beat on a single image.
   - `video-clean.mp4`: no burned-in captions, with audio
   - `captions.srt`
   - `audio.wav`
-  - `poster.png`
+  - `poster.png`: the title card when there is one, otherwise a frame from
+    the first scene
   - `contact-sheet.png`
 
 ## LLM

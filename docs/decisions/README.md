@@ -15,3 +15,4 @@ later record supersedes an earlier one and says so.
 | [003](003-engineering-practices.md) | Engineering practices |
 | [004](004-edge-routes-and-labels.md) | Edge routes and labels |
 | [005](005-theme-tokens.md) | Theme tokens, kind defaults and bundled fonts |
+| [009](009-title-and-end-cards.md) | Title and end cards, and the logo |
