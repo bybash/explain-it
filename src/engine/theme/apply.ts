@@ -1,10 +1,6 @@
 import type { BundledFont } from "./fonts.ts";
 import type { Theme } from "./theme.ts";
 
-/** The custom property an element sets to its palette category's colour. */
-export const categoryStyle = (category: string): string =>
-  `--cat: var(--cat-${category}, var(--cat-accent))`;
-
 /** Sets a theme's tokens and the font family on `root`, usually `document.documentElement`. */
 export const applyTheme = (root: HTMLElement, theme: Theme, font: BundledFont): void => {
   for (const [name, value] of Object.entries(theme.tokens)) root.style.setProperty(name, value);

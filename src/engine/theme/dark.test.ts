@@ -2,7 +2,7 @@ import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { MAX_CATEGORY_COLOURS } from "../../schema/config.ts";
 import { contrast, luminance } from "./colour.ts";
-import { darkVariant, type PaletteColours } from "./dark.ts";
+import { darkVariant, MIN_CONTRAST, type PaletteColours } from "./dark.ts";
 
 const hex = fc
   .tuple(fc.nat(255), fc.nat(255), fc.nat(255))
@@ -55,11 +55,11 @@ describe("darkVariant", () => {
       fc.property(palette, (p) => {
         const dark = darkVariant(p);
         expect(luminance(dark.background)).toBeLessThan(0.03);
-        expect(contrast(dark.text, dark.background)).toBeGreaterThanOrEqual(7);
+        expect(contrast(dark.text, dark.background)).toBeGreaterThanOrEqual(MIN_CONTRAST.text);
         expect(contrast(dark.text, dark.surface)).toBeGreaterThanOrEqual(4.5);
-        expect(contrast(dark.muted, dark.background)).toBeGreaterThanOrEqual(4.5);
+        expect(contrast(dark.muted, dark.background)).toBeGreaterThanOrEqual(MIN_CONTRAST.muted);
         for (const colour of [dark.accent, ...dark.categories])
-          expect(contrast(colour, dark.background)).toBeGreaterThanOrEqual(3);
+          expect(contrast(colour, dark.background)).toBeGreaterThanOrEqual(MIN_CONTRAST.accent);
       }),
     );
   });

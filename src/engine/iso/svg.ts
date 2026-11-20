@@ -1,5 +1,5 @@
 import { type IconNode, lucideIcon } from "../../schema/icons.ts";
-import { categoryStyle } from "../theme/apply.ts";
+import { categoryStyle } from "../theme/kinds.ts";
 import type { Polygon, Scene } from "./scene.ts";
 
 const SVG_NS = "http://www.w3.org/2000/svg";

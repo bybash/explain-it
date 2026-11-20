@@ -7,6 +7,7 @@ import {
 } from "../../schema/config.ts";
 import { formatErrors } from "../../schema/errors.ts";
 import { contrast, luminance } from "./colour.ts";
+import { MIN_CONTRAST } from "./dark.ts";
 import { PALETTES, type ThemeMode } from "./palettes.ts";
 import { type Theme, themeFor } from "./theme.ts";
 
@@ -48,7 +49,7 @@ describe("themeFor: palettes", () => {
   it("generates the dark variant of a custom palette without one", () => {
     const dark = themeOf(custom, "dark").colours;
     expect(luminance(dark.background)).toBeLessThan(luminance(custom.background));
-    expect(contrast(dark.text, dark.background)).toBeGreaterThanOrEqual(7);
+    expect(contrast(dark.text, dark.background)).toBeGreaterThanOrEqual(MIN_CONTRAST.text);
   });
 
   it("names the field and the presets for an unknown palette", () => {
@@ -117,10 +118,12 @@ describe("palette presets", () => {
 
   it.each(cases)("%s %s is readable", (_, __, colours) => {
     expect(colours.categories).toHaveLength(MAX_CATEGORY_COLOURS);
-    expect(contrast(colours.text, colours.background)).toBeGreaterThanOrEqual(7);
-    expect(contrast(colours.text, colours.surface)).toBeGreaterThanOrEqual(7);
-    expect(contrast(colours.muted, colours.background)).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(colours.text, colours.background)).toBeGreaterThanOrEqual(MIN_CONTRAST.text);
+    expect(contrast(colours.text, colours.surface)).toBeGreaterThanOrEqual(MIN_CONTRAST.text);
+    expect(contrast(colours.muted, colours.background)).toBeGreaterThanOrEqual(MIN_CONTRAST.muted);
     for (const colour of [colours.accent, ...colours.categories])
-      expect(contrast(colour, colours.background), colour).toBeGreaterThanOrEqual(3);
+      expect(contrast(colour, colours.background), colour).toBeGreaterThanOrEqual(
+        MIN_CONTRAST.accent,
+      );
   });
 });

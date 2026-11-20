@@ -5,7 +5,7 @@ import { contrast, hexOfHsl, hslOf } from "./colour.ts";
 export type PaletteColours = Omit<CustomPalette, "dark">;
 
 /** Contrast the generated dark palette guarantees against its background. */
-const MIN_CONTRAST = { text: 7, muted: 4.5, accent: 3 };
+export const MIN_CONTRAST = { text: 7, muted: 4.5, accent: 3 } as const;
 
 /** The hue of `hex` at a fixed lightness, with its saturation capped. */
 const toned = (hex: string, l: number, maxSaturation = 1): string => {

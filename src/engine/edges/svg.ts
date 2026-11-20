@@ -1,5 +1,5 @@
 import type { ScreenPoint } from "../iso/project.ts";
-import { categoryStyle } from "../theme/apply.ts";
+import { categoryStyle } from "../theme/kinds.ts";
 import type { State } from "../timeline.ts";
 import { edgeTarget } from "./flow.ts";
 import type { EdgeGeometry } from "./geometry.ts";

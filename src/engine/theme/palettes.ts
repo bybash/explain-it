@@ -1,7 +1,8 @@
+import type { THEME_MODES } from "../../schema/config.ts";
 import type { PaletteColours } from "./dark.ts";
 
 /** One rendered look. `config.theme.mode` "both" renders each in turn. */
-export type ThemeMode = "light" | "dark";
+export type ThemeMode = Exclude<(typeof THEME_MODES)[number], "both">;
 
 export type Preset = Readonly<Record<ThemeMode, PaletteColours>>;
 

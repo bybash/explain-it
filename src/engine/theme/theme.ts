@@ -37,7 +37,9 @@ const coloursFor = (
  * dark themes towards the background.
  */
 const SHADE = { left: 0.08, right: 0.16, edge: 0.24 };
-const DARK_SHADE = { left: 0.35, right: 0.6, edge: -0.35 };
+const DARK_SHADE = { left: 0.35, right: 0.6 };
+/** In the dark a box's outline is lighter than its faces, catching the light. */
+const DARK_EDGE_LIGHT = 0.35;
 
 const tokensOf = (colours: PaletteColours, mode: ThemeMode): Tokens => {
   const { background, surface, text, muted, accent, categories } = colours;
@@ -57,8 +59,7 @@ const tokensOf = (colours: PaletteColours, mode: ThemeMode): Tokens => {
       : {
           "--face-left": mix(surface, background, DARK_SHADE.left),
           "--face-right": mix(surface, background, DARK_SHADE.right),
-          // In the dark a box's outline is lighter than its faces, catching the light.
-          "--face-edge": mix(surface, text, -DARK_SHADE.edge),
+          "--face-edge": mix(surface, text, DARK_EDGE_LIGHT),
         };
   return {
     "--bg": background,
