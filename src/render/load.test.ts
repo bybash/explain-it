@@ -1,4 +1,5 @@
 import {
+  chmodSync,
   cpSync,
   mkdirSync,
   mkdtempSync,
@@ -123,6 +124,21 @@ describe("loadProject", () => {
       expect(await errorsOf(dir)).toEqual([
         "config.json: logo.light: assets/mark.png is not a PNG image",
         "config.json: logo.dark: assets/folder.svg is not a file",
+      ]);
+    });
+
+    it("reads a self-closing SVG after an XML declaration", async () => {
+      const svg = '<?xml version="1.0"?>\n<svg/>';
+      const dir = withLogo({ light: "mark.svg" }, { "mark.svg": svg });
+      const result = await loadProject(dir);
+      expect(result.ok).toBe(true);
+    });
+
+    it("names the field of a file it may not read", async () => {
+      const dir = withLogo({ light: "locked.svg" }, { "locked.svg": SVG });
+      chmodSync(join(dir, "assets", "locked.svg"), 0o000);
+      expect(await errorsOf(dir)).toEqual([
+        "config.json: logo.light: assets/locked.svg could not be read (EACCES)",
       ]);
     });
   });
