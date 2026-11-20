@@ -161,7 +161,8 @@ that finishes it.
   or running job, and announces every change as a \`render\` event on
   \`/api/events\`. 3.9 adds the UI, an API for it, and downloads.
 - Jobs are kept in memory, so a restart forgets them; their files stay in
-  the project's \`out/\`.
+  the project's \`out/\`. Progress counts the whole job (each theme the
+  same), and a cancelled or failed render removes its \`out/<time>/\` folder.
 
 ### For 3.9 (render gate), from 1.10
 

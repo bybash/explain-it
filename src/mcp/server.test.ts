@@ -36,6 +36,7 @@ beforeEach(async () => {
     now: () => new Date(NOW),
     events,
     previewUrl: preview,
+    missingRenderTools: async () => [],
     // These tests never render; render-tools.test.ts covers the render tools.
     renders: new RenderQueue({
       now: () => new Date(NOW),

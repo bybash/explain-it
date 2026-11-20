@@ -1,7 +1,8 @@
 import { z } from "zod";
-import { SlugSchema } from "./api.ts";
-import { LOGO_CORNERS, LOGO_SHOWS, RESOLUTIONS, THEME_MODES } from "./config.ts";
+import { SlugSchema } from "./common.ts";
+import { LOGO_CORNERS, LOGO_SHOWS } from "./config.ts";
 import { ProjectSchema } from "./project.ts";
+import { JobIdSchema, RenderRequestSchema } from "./render.ts";
 
 /**
  * The MCP tools' arguments. The documents they carry (graph, storyboard,
@@ -97,19 +98,8 @@ export const SetStyleArgsSchema = z.strictObject({
 
 export const CheckArgsSchema = z.strictObject({ slug: SlugSchema });
 
-export const RenderArgsSchema = z.strictObject({
-  slug: SlugSchema,
-  theme: z
-    .enum(THEME_MODES)
-    .optional()
-    .describe("Which theme to render, or both; the project's config by default."),
-  resolution: z
-    .enum(RESOLUTIONS)
-    .optional()
-    .describe("The video's resolution; the project's config by default."),
-});
+/** \`render\`: what to render (see \`render.ts\`). */
+export const RenderArgsSchema = RenderRequestSchema;
 
-/** `render_status` and `cancel_render`: the job id `render` returned. */
-export const RenderJobArgsSchema = z.strictObject({
-  job: z.string().min(1).describe("The id of a job that render returned."),
-});
+/** \`render_status\` and \`cancel_render\`: the job id \`render\` returned. */
+export const RenderJobArgsSchema = z.strictObject({ job: JobIdSchema });

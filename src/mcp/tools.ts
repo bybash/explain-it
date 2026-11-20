@@ -38,6 +38,8 @@ export type ToolContext = {
   readonly previewUrl: (slug: string) => string;
   /** The render jobs, shared with the web app. */
   readonly renders: RenderQueue;
+  /** What a render needs from this machine and cannot find (see \`missingRenderTools\`). */
+  readonly missingRenderTools: () => Promise<readonly string[]>;
 };
 
 type Args = Readonly<Record<string, unknown>>;

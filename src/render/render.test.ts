@@ -75,7 +75,7 @@ describe.skipIf(!hasFfmpeg || !hasChrome)("renderProject (Chrome and ffmpeg)", (
   let server: Awaited<ReturnType<typeof serveRenderPage>>;
 
   beforeAll(async () => {
-    buildRenderPage();
+    await buildRenderPage();
     server = await serveRenderPage();
   }, 60_000);
   afterAll(async () => {

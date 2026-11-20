@@ -7,8 +7,8 @@ import {
   type ProjectList,
   type ProjectSummary,
   ProjectSummarySchema,
-  SlugSchema,
 } from "../schema/api.ts";
+import { SlugSchema } from "../schema/common.ts";
 import { parseConfig } from "../schema/config.ts";
 import type { Validated, ValidationError } from "../schema/errors.ts";
 import { parseWith } from "../schema/errors.ts";

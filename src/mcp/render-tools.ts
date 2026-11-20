@@ -1,5 +1,4 @@
 import { loadProject } from "../render/load.ts";
-import { renderSettings } from "../render/settings.ts";
 import { formatErrors, parseWith } from "../schema/errors.ts";
 import { CheckArgsSchema, RenderArgsSchema, RenderJobArgsSchema } from "../schema/mcp.ts";
 import { fail, ok } from "../schema/result.ts";
@@ -25,7 +24,8 @@ const noProject = (slug: string) => fail([{ path: "slug", message: `no project "
 
 /**
  * Whether a project can render, and why not: every file it needs, read the
- * way the renderer reads it. Also its stale beats and estimated timing.
+ * way the renderer reads it, and Chrome and ffmpeg on this machine. Also its
+ * stale beats and estimated timing.
  */
 export const checkTool = async (context: ToolContext, input: Args) => {
   const args = parseWith(CheckArgsSchema, input);
@@ -34,10 +34,14 @@ export const checkTool = async (context: ToolContext, input: Args) => {
   const opened = await openProject(context.projectsDir, slug);
   if (!opened) return noProject(slug);
   if (!opened.ok) return opened;
-  const loaded = await loadProject(projectDir(context.projectsDir, slug));
+  const [loaded, missing] = await Promise.all([
+    loadProject(projectDir(context.projectsDir, slug)),
+    context.missingRenderTools(),
+  ]);
+  const problems = [...(loaded.ok ? [] : formatErrors(loaded.errors)), ...missing];
   return ok({
-    ready: loaded.ok,
-    problems: loaded.ok ? [] : formatErrors(loaded.errors),
+    ready: problems.length === 0,
+    problems,
     staleBeats: opened.value.project.staleBeats,
     timing: loaded.ok
       ? timingOf(loaded.value.storyboard, loaded.value.graph, loaded.value.config)
@@ -51,15 +55,11 @@ export const checkTool = async (context: ToolContext, input: Args) => {
 export const renderTool = async (context: ToolContext, input: Args) => {
   const args = parseWith(RenderArgsSchema, input);
   if (!args.ok) return args;
-  const { slug, theme, resolution } = args.value;
+  const { slug } = args.value;
   if (!(await openProject(context.projectsDir, slug))) return noProject(slug);
   const loaded = await loadProject(projectDir(context.projectsDir, slug));
   if (!loaded.ok) return loaded;
-  const settings = renderSettings(
-    { ...(theme ? { theme } : {}), ...(resolution ? { resolution } : {}) },
-    loaded.value.config,
-  );
-  const job = context.renders.add({ slug, ...settings });
+  const job = context.renders.add(args.value);
   return ok({ job, preview: context.previewUrl(slug) });
 };
 

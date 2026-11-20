@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { chromium } from "playwright-core";
@@ -102,19 +102,22 @@ describe.skipIf(!hasFfmpeg || !hasChrome)(
       expect(existsSync(light.poster)).toBe(true);
     }, 180_000);
 
-    it("cancels a running render and leaves no video behind", async () => {
+    it("cancels a running render and leaves none of its files behind", async () => {
       const { slug } = await tool("create_project", { name: "Long", graph });
       await tool("set_storyboard", { slug, storyboard: storyboard(10) });
-      const { job } = await tool("render", { slug, theme: "light", resolution: "720p" });
-      await follow(job.id, (status) => status.state === "running" && status.progress !== undefined);
+      // Both themes, cancelled in the second: the first theme's finished files must go too.
+      const { job } = await tool("render", { slug, theme: "both", resolution: "720p" });
+      await follow(
+        job.id,
+        (status) =>
+          status.state === "running" &&
+          (status.progress as { themeIndex?: number } | undefined)?.themeIndex === 1,
+      );
       await tool("cancel_render", { job: job.id });
       const ended = await follow(job.id);
       expect(ended.state).toBe("cancelled");
       const out = join(projectsDir, slug, "out");
-      const videos = existsSync(out)
-        ? execFileSync("find", [out, "-name", "video.mp4"]).toString().trim()
-        : "";
-      expect(videos).toBe("");
+      expect(existsSync(out) ? readdirSync(out) : []).toEqual([]);
     }, 180_000);
   },
 );

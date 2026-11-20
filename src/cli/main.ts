@@ -31,7 +31,9 @@ const render = async (argv: readonly string[]): Promise<void> => {
         settings,
         now: new Date(),
         onProgress: ({ theme, done, total }) =>
-          console.log(`${theme}: ${Math.round((done / total) * 100)}% (${done}/${total} frames)`),
+          console.log(
+            `${theme}: ${Math.floor((done / total) * 10) * 10}% (${done}/${total} frames)`,
+          ),
       });
       for (const r of rendered)
         console.log(`${r.theme}: ${r.video}\n       ${r.captions}\n       ${r.poster}`);

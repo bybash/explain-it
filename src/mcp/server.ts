@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { authoringGuide, graphSummary, storyboardSummary } from "../guidance/guide.ts";
+import { RESOLUTIONS, THEME_MODES } from "../schema/config.ts";
 import { formatErrors, type Validated } from "../schema/errors.ts";
 import {
   CheckArgsSchema,
@@ -17,6 +18,7 @@ import {
   TOOL_NAMES,
   UpdateGraphArgsSchema,
 } from "../schema/mcp.ts";
+import { RENDER_STATES } from "../schema/render.ts";
 import { isSlug } from "../server/projects.ts";
 import { VERSION } from "../version.ts";
 import { cancelRenderTool, checkTool, renderStatusTool, renderTool } from "./render-tools.ts";
@@ -71,6 +73,9 @@ const previewOf = (context: ToolContext, args: Readonly<Record<string, unknown>>
     ? context.previewUrl(slug)
     : undefined;
 };
+
+/** A list of allowed values for a description, from the schema's own list. */
+const oneOf = (values: readonly string[]) => values.join(", ");
 
 const TOOLS = [
   {
@@ -131,21 +136,19 @@ const TOOLS = [
     schema: CheckArgsSchema,
     run: checkTool,
     description:
-      "Checks whether a project can render: every file it needs, read the way the renderer reads it. Returns whether it is ready, what is missing or broken, the stale beats, the estimated timing, what cannot be checked yet, and a preview link.",
+      "Checks whether a project can render: every file it needs, read the way the renderer reads it, and Chrome and ffmpeg on this machine. Returns whether it is ready, what is missing or broken, the stale beats, the estimated timing, what cannot be checked yet, and a preview link.",
   },
   {
     name: TOOL_NAMES.render,
     schema: RenderArgsSchema,
     run: renderTool,
-    description:
-      "Queues a render of a project that is ready (see check): an MP4, its captions (.srt) and a poster per theme, into the project's out/ folder. `theme` (light, dark or both) and `resolution` (1080p or 720p) default to the project's config. Renders run one at a time and take about half a minute per minute of video; returns the job, to follow with render_status.",
+    description: `Queues a render of a project that is ready (see ${TOOL_NAMES.check}): an MP4, its captions (.srt) and a poster per theme, into the project's out/<time>/ folder. \`theme\` (${oneOf(THEME_MODES)}) and \`resolution\` (${oneOf(RESOLUTIONS)}) default to the project's config when the render starts. Renders run one at a time; returns the job, to follow with ${TOOL_NAMES.renderStatus}.`,
   },
   {
     name: TOOL_NAMES.renderStatus,
     schema: RenderJobArgsSchema,
     run: renderStatusTool,
-    description:
-      "Reads a render job by the id render returned: its state (queued, running, done, failed or cancelled), its progress, then the paths of the files it wrote, or why it failed.",
+    description: `Reads a render job by the id ${TOOL_NAMES.render} returned: its state (${oneOf(RENDER_STATES)}), its progress over the whole job, then the paths of the files it wrote, or why it failed.`,
   },
   {
     name: TOOL_NAMES.cancelRender,

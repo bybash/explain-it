@@ -34,3 +34,12 @@ export const SchemaKeySchema = z
   .string()
   .optional()
   .describe("The JSON Schema for this file, for editors. Ignored by explAIn-it.");
+
+/** The longest slug, so folder names stay readable. */
+export const MAX_SLUG = 60;
+
+/** A project's folder name, as the server makes it from the project's name. */
+export const SlugSchema = z
+  .string()
+  .max(MAX_SLUG)
+  .regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, { error: "must be lower-case words joined by hyphens" });

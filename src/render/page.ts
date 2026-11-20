@@ -1,10 +1,11 @@
-import { execFileSync } from "node:child_process";
+import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
 import { extname, join, normalize, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
 
 const ROOT = fileURLToPath(new URL("../../", import.meta.url));
 /** Where `vite.render.config.ts` writes the render page. */
@@ -28,13 +29,14 @@ const TYPES: Readonly<Record<string, string>> = {
  * repository), so a render always shows the current engine. Without Vite, the
  * page must already be built.
  */
-export const buildRenderPage = (): void => {
-  if (existsSync(VITE)) {
-    execFileSync(VITE, ["build", "--config", "vite.render.config.ts", "--logLevel", "error"], {
-      cwd: ROOT,
-      stdio: ["ignore", "ignore", "inherit"],
-    });
-  }
+export const buildRenderPage = async (): Promise<void> => {
+  // Not execFileSync: the server keeps answering while a render builds its page.
+  if (existsSync(VITE))
+    await promisify(execFile)(
+      VITE,
+      ["build", "--config", "vite.render.config.ts", "--logLevel", "error"],
+      { cwd: ROOT },
+    );
   if (!existsSync(join(DIST, PAGE)))
     throw new Error(`the render page is not built: run \`npm run build:engine\` (${DIST})`);
 };

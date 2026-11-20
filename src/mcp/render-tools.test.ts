@@ -6,7 +6,8 @@ import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import graphJson from "../../examples/oauth-login/graph.json" with { type: "json" };
 import storyboardJson from "../../examples/oauth-login/storyboard.json" with { type: "json" };
-import { type RenderJob, RenderQueue, type RenderRequest } from "../render/queue.ts";
+import { RenderQueue } from "../render/queue.ts";
+import type { RenderJob, RenderRequest } from "../schema/render.ts";
 import { createEvents } from "../server/events.ts";
 import { createMcpServer } from "./server.ts";
 
@@ -18,12 +19,15 @@ const preview = (slug: string) => `http://127.0.0.1:3000/#/projects/${slug}`;
 let projectsDir: string;
 let client: Client;
 let requests: RenderRequest[];
+/** What the fake machine lacks for a render; nothing unless a test says so. */
+let missing: string[];
 /** Renders wait on this; a test that needs a job to stay running holds it shut. */
 let gate: Promise<void> = Promise.resolve();
 beforeEach(async () => {
   gate = Promise.resolve();
   projectsDir = mkdtempSync(join(tmpdir(), "explain-it-render-tools-"));
   requests = [];
+  missing = [];
   // A renderer that finishes at once, writing nothing: the tools are under test, not the render.
   const renders = new RenderQueue({
     now: () => new Date(NOW),
@@ -31,8 +35,8 @@ beforeEach(async () => {
     run: async (request, { onProgress }) => {
       requests.push(request);
       await gate;
-      onProgress({ theme: request.themes[0] ?? "light", done: 1, total: 1 });
-      return request.themes.map((theme) => ({
+      onProgress({ theme: "light", done: 1, total: 1, themeIndex: 0, themes: 1 });
+      return (["light"] as const).map((theme) => ({
         theme,
         video: join(projectsDir, request.slug, "out", theme, "video.mp4"),
         captions: join(projectsDir, request.slug, "out", theme, "captions.srt"),
@@ -46,6 +50,7 @@ beforeEach(async () => {
     events: createEvents(),
     previewUrl: preview,
     renders,
+    missingRenderTools: async () => missing,
   });
   const [serverSide, clientSide] = InMemoryTransport.createLinkedPair();
   client = new Client({ name: "test", version: "1.0.0" });
@@ -93,14 +98,14 @@ describe("render", () => {
       state: expect.stringMatching(/queued|running/),
     });
     await settle();
-    expect(requests).toEqual([{ slug, themes: ["light"], resolution: "1080p" }]);
+    expect(requests).toEqual([{ slug }]);
   });
 
-  it("takes the themes and resolution, else the project's config", async () => {
+  it("passes on the theme and resolution asked for; the config fills the rest when it starts", async () => {
     const slug = await project();
     await succeeds("render", { slug, theme: "both", resolution: "720p" });
     await settle();
-    expect(requests[0]).toEqual({ slug, themes: ["light", "dark"], resolution: "720p" });
+    expect(requests[0]).toEqual({ slug, theme: "both", resolution: "720p" });
   });
 
   it("names what stops a project from rendering, and queues nothing", async () => {
@@ -124,7 +129,7 @@ describe("render_status and cancel_render", () => {
     const status: RenderJob = await succeeds("render_status", { job: job.id });
     expect(status).toMatchObject({
       state: "done",
-      progress: { theme: "light", done: 1, total: 1, percent: 100 },
+      progress: { theme: "light", done: 1, total: 1, themeIndex: 0, themes: 1, percent: 100 },
       outputs: [{ theme: "light", video: join(projectsDir, slug, "out", "light", "video.mp4") }],
     });
   });
@@ -177,6 +182,11 @@ describe("check", () => {
       problems: ["storyboard.json: missing"],
       timing: null,
     });
+    missing = ["ffmpeg: not found on PATH; install ffmpeg"];
+    expect((await succeeds("check", { slug })).problems).toEqual([
+      "storyboard.json: missing",
+      "ffmpeg: not found on PATH; install ffmpeg",
+    ]);
     writeFileSync(join(projectsDir, slug, "graph.json"), "{");
     const broken = await succeeds("check", { slug });
     expect(broken.ready).toBe(false);

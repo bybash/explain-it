@@ -1,39 +1,23 @@
-import type { ServerEvent } from "../schema/api.ts";
 import type { Validated } from "../schema/errors.ts";
+import type {
+  RenderedTheme,
+  RenderJob,
+  RenderProgress,
+  RenderRequest,
+  RenderState,
+} from "../schema/render.ts";
 import { fail, ok } from "../schema/result.ts";
-import type { RenderedTheme, RenderProgress, RenderSettings } from "./render.ts";
-
-type ServerRenderEvent = Extract<ServerEvent, { type: "render" }>;
-
-/** What to render: a project and its settings. */
-export type RenderRequest = RenderSettings & { readonly slug: string };
-
-export type RenderState = ServerRenderEvent["state"];
-
-/** A render job as the tools and the web app see it. */
-export type RenderJob = {
-  readonly id: string;
-  readonly slug: string;
-  readonly state: RenderState;
-  readonly request: RenderRequest;
-  readonly createdAt: string;
-  readonly startedAt?: string;
-  readonly finishedAt?: string;
-  readonly progress?: RenderProgress & { readonly percent: number };
-  /** The files written, once done. */
-  readonly outputs?: readonly RenderedTheme[];
-  /** Why it failed. */
-  readonly error?: string;
-};
+import type { RenderControl } from "./render.ts";
 
 /** Renders one request, reporting progress, and stops when `signal` aborts. */
 export type RenderRun = (
   request: RenderRequest,
-  options: {
-    readonly onProgress: (progress: RenderProgress) => void;
-    readonly signal: AbortSignal;
-  },
+  control: Required<RenderControl>,
 ) => Promise<readonly RenderedTheme[]>;
+
+/** How much of the whole job is done: each theme counts the same, in whole percent. */
+const percentOf = ({ done, total, themeIndex, themes }: RenderProgress): number =>
+  Math.floor(((themeIndex + (total > 0 ? done / total : 0)) / themes) * 100);
 
 export type RenderQueueOptions = {
   readonly run: RenderRun;
@@ -104,7 +88,11 @@ export class RenderQueue {
 
   #update(job: RenderJob): RenderJob {
     this.#jobs.set(job.id, job);
-    this.#options.onChange?.(job);
+    try {
+      this.#options.onChange?.(job);
+    } catch {
+      // A listener that fails must not stop the queue; the job is recorded either way.
+    }
     return job;
   }
 
@@ -128,12 +116,19 @@ export class RenderQueue {
       const outputs = await this.#options.run(job.request, {
         signal: controller.signal,
         onProgress: (progress) => {
-          const percent =
-            progress.total > 0 ? Math.floor((progress.done / progress.total) * 100) : 0;
-          current = this.#update({ ...current, progress: { ...progress, percent } });
+          current = this.#update({
+            ...current,
+            progress: { ...progress, percent: percentOf(progress) },
+          });
         },
       });
-      this.#finish(current, { state: "done", outputs });
+      // A cancel that came after the render's last look at the signal still wins: the caller was told it would stop.
+      this.#finish(
+        current,
+        controller.signal.aborted
+          ? { state: "cancelled" }
+          : { state: "done", outputs: [...outputs] },
+      );
     } catch (error) {
       this.#finish(
         current,

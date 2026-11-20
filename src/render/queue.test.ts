@@ -1,11 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { type RenderJob, RenderQueue, type RenderRun } from "./queue.ts";
+import type { RenderJob } from "../schema/render.ts";
+import { RenderQueue, type RenderRun } from "./queue.ts";
 
 /** A renderer the test steps by hand: each run waits until the test finishes or fails it. */
 const steppedRenderer = () => {
   const runs: {
     slug: string;
-    report: (theme: "light" | "dark", done: number, total: number) => void;
+    report: (
+      theme: "light" | "dark",
+      done: number,
+      total: number,
+      themeIndex?: number,
+      themes?: number,
+    ) => void;
     finish: () => void;
     fail: (message: string) => void;
     signal: AbortSignal;
@@ -14,7 +21,8 @@ const steppedRenderer = () => {
     new Promise((resolve, reject) => {
       runs.push({
         slug: request.slug,
-        report: (theme, done, total) => onProgress({ theme, done, total }),
+        report: (theme, done, total, themeIndex = 0, themes = 1) =>
+          onProgress({ theme, done, total, themeIndex, themes }),
         finish: () =>
           resolve([
             {
@@ -33,11 +41,7 @@ const steppedRenderer = () => {
 };
 
 const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
-const request = (slug: string) => ({
-  slug,
-  themes: ["light" as const],
-  resolution: "720p" as const,
-});
+const request = (slug: string) => ({ slug });
 
 const setup = () => {
   const renderer = steppedRenderer();
@@ -77,6 +81,8 @@ describe("RenderQueue", () => {
       theme: "light",
       done: 30,
       total: 120,
+      themeIndex: 0,
+      themes: 1,
       percent: 25,
     });
     renderer.runs[0]?.finish();
@@ -142,5 +148,51 @@ describe("RenderQueue", () => {
     renderer.runs[0]?.finish();
     await settle();
     expect(changes.map((j) => j.state)).toEqual(["queued", "running", "running", "done"]);
+  });
+
+  it("counts progress over the whole job, theme after theme", async () => {
+    const { queue, renderer } = setup();
+    const job = queue.add({ slug: "both", theme: "both" });
+    await settle();
+    renderer.runs[0]?.report("light", 120, 120, 0, 2);
+    expect(queue.get(job.id)?.progress?.percent).toBe(50);
+    renderer.runs[0]?.report("dark", 60, 120, 1, 2);
+    expect(queue.get(job.id)?.progress?.percent).toBe(75);
+  });
+
+  it("keeps going when a listener fails", async () => {
+    const renderer = steppedRenderer();
+    const queue = new RenderQueue({
+      run: renderer.run,
+      now: () => new Date("2026-11-20T10:00:00.000Z"),
+      onChange: () => {
+        throw new Error("listener broke");
+      },
+    });
+    const first = queue.add(request("one"));
+    queue.add(request("two"));
+    await settle();
+    renderer.runs[0]?.finish();
+    await settle();
+    expect(queue.get(first.id)?.state).toBe("done");
+    expect(renderer.runs.map((r) => r.slug)).toEqual(["one", "two"]);
+  });
+
+  it("counts a render that finishes just after it was cancelled as cancelled", async () => {
+    let finish = () => {};
+    const queue = new RenderQueue({
+      now: () => new Date("2026-11-20T10:00:00.000Z"),
+      // A renderer past its last check of the signal: it finishes whatever the signal says.
+      run: () =>
+        new Promise((resolve) => {
+          finish = () => resolve([]);
+        }),
+    });
+    const job = queue.add(request("one"));
+    await settle();
+    expect(queue.cancel(job.id).ok).toBe(true);
+    finish();
+    await settle();
+    expect(queue.get(job.id)?.state).toBe("cancelled");
   });
 });

@@ -1,4 +1,3 @@
-import { join } from "node:path";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import type { MiddlewareHandler } from "hono";
 import { type Context, Hono } from "hono";
@@ -6,11 +5,10 @@ import { bodyLimit } from "hono/body-limit";
 import { streamSSE } from "hono/streaming";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { createMcpServer } from "../mcp/server.ts";
-import { loadProject } from "../render/load.ts";
+import { missingRenderTools as findMissingRenderTools } from "../render/environment.ts";
 import { RenderQueue, type RenderRun } from "../render/queue.ts";
-import { renderProjectFolder } from "../render/run.ts";
+import { renderFromFolder } from "../render/run.ts";
 import type { ValidationError } from "../schema/errors.ts";
-import { formatErrors } from "../schema/errors.ts";
 import { createEvents } from "./events.ts";
 import { createProject, listProjects, openProject } from "./projects.ts";
 
@@ -28,24 +26,9 @@ export type AppOptions = {
   readonly publicUrl?: string;
   /** How a render job runs; the real renderer by default, a fake in tests. */
   readonly renderRun?: RenderRun;
+  /** What a render needs and this machine lacks; probed for real by default. */
+  readonly missingRenderTools?: () => Promise<readonly string[]>;
 };
-
-/** The real renderer: the project's files as they are when the job starts, into its out/. */
-const renderFromFolder =
-  (projectsDir: string, now: () => Date): RenderRun =>
-  async (request, { onProgress, signal }) => {
-    const dir = join(projectsDir, request.slug);
-    const project = await loadProject(dir);
-    if (!project.ok) throw new Error(formatErrors(project.errors).join("\n"));
-    return renderProjectFolder({
-      dir,
-      project: project.value,
-      settings: request,
-      now: now(),
-      onProgress,
-      signal,
-    });
-  };
 
 /** How often an idle event stream sends a comment, so proxies and browsers keep it open. */
 const KEEP_ALIVE_MS = 15_000;
@@ -78,6 +61,7 @@ export const createApp = ({
   hosts = [],
   publicUrl,
   renderRun = renderFromFolder(projectsDir, now),
+  missingRenderTools = findMissingRenderTools,
 }: AppOptions) => {
   const app = new Hono();
   const events = createEvents();
@@ -149,6 +133,7 @@ export const createApp = ({
       now,
       events,
       renders,
+      missingRenderTools,
       previewUrl: (slug) => `${origin}/#/projects/${slug}`,
     });
     // No sessionIdGenerator: the transport is stateless.
