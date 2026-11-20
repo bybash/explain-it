@@ -6,7 +6,7 @@ import {
   MAX_CATEGORY_COLOURS,
 } from "../../schema/config.ts";
 import { formatErrors } from "../../schema/errors.ts";
-import { contrast, luminance } from "./colour.ts";
+import { contrast, hslOf, luminance } from "./colour.ts";
 import { MIN_CONTRAST } from "./dark.ts";
 import { PALETTES, type ThemeMode } from "./palettes.ts";
 import { type Theme, themeFor } from "./theme.ts";
@@ -125,5 +125,43 @@ describe("palette presets", () => {
       expect(contrast(colour, colours.background), colour).toBeGreaterThanOrEqual(
         MIN_CONTRAST.accent,
       );
+  });
+});
+
+describe("themeFor: badge tones", () => {
+  const TONE_HUES = { ok: 145, warn: 38, error: 0 } as const;
+  const hueDistance = (a: number, b: number) => Math.min(Math.abs(a - b), 360 - Math.abs(a - b));
+  const themes = [
+    ...Object.keys(PALETTES).flatMap((name) => MODES.map((mode) => [name, mode] as const)),
+    ...MODES.map((mode) => ["custom", mode] as const),
+  ].map(
+    ([name, mode]) =>
+      [`${name} ${mode}`, themeOf(name === "custom" ? custom : name, mode)] as const,
+  );
+
+  it("shows info badges in the accent", () => {
+    const { tokens } = themeOf(custom, "light");
+    expect(tokens["--tone-info"]).toBe(custom.accent);
+  });
+
+  it.each(themes)("%s: every tone reads on the background", (_, theme) => {
+    for (const tone of ["info", "ok", "warn", "error"])
+      expect(
+        contrast(theme.tokens[`--tone-${tone}`] ?? "", theme.colours.background),
+        tone,
+      ).toBeGreaterThanOrEqual(MIN_CONTRAST.accent);
+  });
+
+  it.each(themes)("%s: ok is green, warn amber, error red", (_, theme) => {
+    for (const [tone, hue] of Object.entries(TONE_HUES))
+      expect(hueDistance(hslOf(theme.tokens[`--tone-${tone}`] ?? "").h, hue), tone).toBeLessThan(
+        15,
+      );
+  });
+
+  it("darkens tones on a pale background and lightens them on a dark one", () => {
+    const pale = themeOf(custom, "light").tokens["--tone-warn"] ?? "";
+    const dark = themeOf(custom, "dark").tokens["--tone-warn"] ?? "";
+    expect(luminance(pale)).toBeLessThan(luminance(dark));
   });
 });

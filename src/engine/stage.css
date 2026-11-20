@@ -110,3 +110,148 @@ body {
   font-size: 16px;
   font-weight: 500;
 }
+
+/*
+ * Overlays: HTML over the SVG stage, at the same 1920×1080 pixel size.
+ * `renderOverlays` positions each one and sets the caption sizes.
+ */
+.frame {
+  position: relative;
+  width: 1920px;
+  height: 1080px;
+  overflow: hidden;
+}
+
+.overlays {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  font-family: var(--font), system-ui, sans-serif;
+  color: var(--text);
+  --cat: var(--cat-accent);
+}
+
+.overlay {
+  position: absolute;
+  box-sizing: border-box;
+  visibility: hidden;
+}
+
+.callout-lines {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.callout-line line {
+  stroke: var(--cat);
+  stroke-width: 2;
+  stroke-dasharray: 4 5;
+  stroke-linecap: round;
+}
+
+.callout-line circle {
+  fill: var(--cat);
+  stroke: var(--surface);
+  stroke-width: 2.5;
+}
+
+.scene-title {
+  display: flex;
+  align-items: center;
+}
+
+.scene-title-chip {
+  padding: 0 16px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+  border: 1.5px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  color: var(--accent);
+  font-size: var(--title-size);
+  font-weight: 650;
+  line-height: calc(var(--caption-line) * 1.4);
+  letter-spacing: 0.01em;
+}
+
+.caption {
+  display: flex;
+}
+
+.caption-text {
+  line-height: var(--caption-line);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: var(--narration-lines);
+  overflow: hidden;
+}
+
+.step-caption {
+  align-items: flex-start;
+  font-size: var(--step-size);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.narration-caption {
+  align-items: flex-end;
+  justify-content: center;
+  font-size: var(--narration-size);
+  font-weight: 500;
+  text-align: center;
+}
+
+.narration-caption .caption-text {
+  max-width: 1400px;
+  padding: 4px 18px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+}
+
+.callout {
+  width: max-content;
+  max-width: 340px;
+  padding: 14px 18px 16px;
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1.5px solid color-mix(in srgb, var(--cat) 40%, transparent);
+  border-left: 5px solid var(--cat);
+  box-shadow: 0 10px 28px color-mix(in srgb, var(--text) 14%, transparent);
+}
+
+.callout-title {
+  color: var(--cat);
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.callout-text {
+  font-size: 19px;
+  font-weight: 450;
+  line-height: 1.35;
+}
+
+.badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 13px 5px 10px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 2px solid var(--tone);
+  font-size: 17px;
+  font-weight: 650;
+  white-space: nowrap;
+  transform-origin: center bottom;
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--text) 12%, transparent);
+}
+
+.badge::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--tone);
+}
