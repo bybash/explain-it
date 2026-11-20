@@ -80,4 +80,40 @@ describe("/mcp", () => {
       expect(response.status, method).toBe(405);
     }
   });
+
+  it("builds preview links on the public address when the app sits behind a proxy", async () => {
+    const proxied = createApp({
+      projectsDir,
+      now: () => new Date("2026-11-20T10:00:00.000Z"),
+      publicUrl: "http://127.0.0.1:3000",
+    });
+    const response = await proxied.request("http://127.0.0.1:3001/mcp", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        accept: "application/json, text/event-stream",
+      },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "tools/call",
+        params: {
+          name: "create_project",
+          arguments: {
+            graph: {
+              version: 1,
+              title: "Tiny",
+              nodes: [{ id: "a", label: "A", kind: "service" }],
+              edges: [],
+              zones: [],
+            },
+          },
+        },
+      }),
+    });
+    const body = await response.json();
+    expect(JSON.parse(body.result.content[0].text).preview).toBe(
+      "http://127.0.0.1:3000/#/projects/tiny",
+    );
+  });
 });

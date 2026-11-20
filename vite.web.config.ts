@@ -14,7 +14,8 @@ export default defineConfig({
     host: DEFAULT_HOST,
     port: DEFAULT_PORT,
     strictPort: true,
-    // A pattern, not a prefix: "/api" alone would also send the app's own module /api.ts to the API.
-    proxy: { "^/api(/|$)": `http://${DEFAULT_HOST}:${DEV_API_PORT}` },
+    // Patterns, not prefixes: "/api" alone would also send the app's own module /api.ts to the API.
+    // /mcp goes through too, so an IDE uses the same address as the browser and its preview links open.
+    proxy: { "^/(api|mcp)(/|$)": `http://${DEFAULT_HOST}:${DEV_API_PORT}` },
   },
 });

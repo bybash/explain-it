@@ -2,13 +2,20 @@
 // for the web app on http://127.0.0.1:3000, which passes /api through to it.
 import { spawn } from "node:child_process";
 import { createServer } from "vite";
-import { DEFAULT_HOST } from "../src/server/listen.ts";
+import { DEFAULT_HOST, DEFAULT_PORT } from "../src/server/listen.ts";
 import { DEV_API_PORT } from "../vite.web.config.ts";
 
 const api = spawn(process.execPath, ["--watch-path=src", "src/server/main.ts"], {
   stdio: "inherit",
   // Only Vite's proxy talks to the API in development, so it stays on this machine whatever HOST says.
-  env: { ...process.env, HOST: DEFAULT_HOST, PORT: String(DEV_API_PORT), API_ONLY: "1" },
+  // Preview links point at Vite's address, where the pages are, not at the API's own port.
+  env: {
+    ...process.env,
+    HOST: DEFAULT_HOST,
+    PORT: String(DEV_API_PORT),
+    API_ONLY: "1",
+    PUBLIC_URL: `http://${DEFAULT_HOST}:${DEFAULT_PORT}`,
+  },
 });
 
 const web = await createServer({ configFile: "vite.web.config.ts" });

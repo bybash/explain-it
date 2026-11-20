@@ -16,6 +16,11 @@ export type AppOptions = {
   readonly now: () => Date;
   /** Host names besides this machine's own that requests may be addressed to, such as a set HOST. */
   readonly hosts?: readonly string[];
+  /**
+   * Where users open the app, for preview links, when it is not where requests
+   * arrive: behind `npm run dev`'s proxy, the API's own port serves no pages.
+   */
+  readonly publicUrl?: string;
 };
 
 /** How often an idle event stream sends a comment, so proxies and browsers keep it open. */
@@ -43,7 +48,7 @@ const errorResponse = (
  * or from another site's page, is refused, and bodies must be JSON, which a
  * cross-site form or simple fetch cannot send.
  */
-export const createApp = ({ projectsDir, now, hosts = [] }: AppOptions) => {
+export const createApp = ({ projectsDir, now, hosts = [], publicUrl }: AppOptions) => {
   const app = new Hono();
   const events = createEvents();
   const allowed = new Set([...LOCAL_HOSTS, ...hosts]);
@@ -95,7 +100,7 @@ export const createApp = ({ projectsDir, now, hosts = [] }: AppOptions) => {
     ]),
   );
   app.post("/mcp", async (c) => {
-    const origin = new URL(c.req.url).origin;
+    const origin = publicUrl ? new URL(publicUrl).origin : new URL(c.req.url).origin;
     const server = createMcpServer({
       projectsDir,
       now,

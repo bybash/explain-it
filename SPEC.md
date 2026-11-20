@@ -450,8 +450,10 @@ and VS Code. A stdio shim that starts the app when it is not running comes later
 - `npm run dev` for development. `npm start` runs one Node process that
   serves the built UI and the API.
 - The server listens on `127.0.0.1:3000` by default. No login, no telemetry.
-  `HOST` and `PORT` change where it listens, and `PROJECTS_DIR` where the
-  projects folder is (`./projects` by default). With no login, the API
+  `HOST` and `PORT` change where it listens, `PROJECTS_DIR` where the
+  projects folder is (`./projects` by default), and `PUBLIC_URL` the
+  address preview links use when the app sits behind a proxy, as it does
+  under `npm run dev`. With no login, the API
   answers only its own pages: it refuses requests addressed to another host
   name (DNS rebinding) or sent from another site's page, takes request bodies
   only as JSON (which a cross-site form cannot send), and caps them at 1 MB.
