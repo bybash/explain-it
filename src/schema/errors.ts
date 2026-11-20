@@ -1,11 +1,12 @@
-import type { z } from "zod";
+import { z } from "zod";
 import { fail, ok, type Result } from "./result.ts";
 
 /**
  * A problem in a document, at an exact place. People, MCP agents and the LLM
  * repair loop all read these, so messages are short and concrete.
  */
-export type ValidationError = { readonly path: string; readonly message: string };
+export const ValidationErrorSchema = z.object({ path: z.string(), message: z.string() });
+export type ValidationError = Readonly<z.output<typeof ValidationErrorSchema>>;
 
 export type Validated<T> = Result<T, ValidationError>;
 
