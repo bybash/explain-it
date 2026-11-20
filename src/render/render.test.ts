@@ -117,4 +117,20 @@ describe.skipIf(!hasFfmpeg || !hasChrome)("renderProject (Chrome and ffmpeg)", (
     expect(poster.subarray(1, 4).toString()).toBe("PNG");
     expect([poster.readUInt32BE(16), poster.readUInt32BE(20)]).toEqual([1280, 720]);
   }, 120_000);
+
+  it("writes the same video with four pages capturing in parallel as with one", async () => {
+    const project = await shortProject();
+    const render = (pages: number) =>
+      renderProject({
+        project,
+        settings: { themes: ["dark"], resolution: "720p" },
+        outDir: join(out, `pages-${pages}`),
+        pageUrl: server.url,
+        pages,
+      });
+    const [[one], [four]] = [await render(1), await render(4)];
+    if (!one || !four) throw new Error("no result");
+    expect(readFileSync(four.video).equals(readFileSync(one.video))).toBe(true);
+    expect(readFileSync(four.poster).equals(readFileSync(one.poster))).toBe(true);
+  }, 240_000);
 });

@@ -323,8 +323,11 @@ The **contact sheet** is one still per beat on a single image.
 ## Rendering
 
 - Playwright drives headless Chromium. The page is captured frame by frame at
-  30 fps by seeking the timeline; 4 pages capture in parallel and the chunks
-  are joined.
+  30 fps by seeking the timeline. 4 pages, each in a browser of its own,
+  capture interleaved frames in parallel; they are put back in order and
+  piped to one ffmpeg, so the video is identical to a one-page capture.
+  Chromium rasterizes in full and in software, so a frame's pixels depend
+  only on its time (decision 010).
 - The page is built with Vite into `dist/render/` and served on `127.0.0.1`
   with the bundled fonts. The renderer puts the project's files on
   `window.__project` before the page loads; the page validates them again,
