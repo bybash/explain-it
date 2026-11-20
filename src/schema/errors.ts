@@ -24,6 +24,15 @@ export const formatPath = (path: readonly PropertyKey[]): string => {
     .join("");
 };
 
+/**
+ * The value, or a thrown error listing the problems under `what`. For data
+ * already validated at an edge, where a failure is a bug, not an expected one.
+ */
+export const orThrow = <T>(result: Validated<T>, what: string): T => {
+  if (!result.ok) throw new Error(`${what}:\n${formatErrors(result.errors).join("\n")}`);
+  return result.value;
+};
+
 /** One line per error: `path: message`. */
 export const formatErrors = (errors: readonly ValidationError[]): string[] =>
   errors.map((error) => `${error.path}: ${error.message}`);

@@ -288,7 +288,16 @@ The **contact sheet** is one still per beat on a single image.
 - Playwright drives headless Chromium. The page is captured frame by frame at
   30 fps by seeking the timeline; 4 pages capture in parallel and the chunks
   are joined.
-- ffmpeg encodes H.264 and AAC.
+- The page is built with Vite into `dist/render/` and served on `127.0.0.1`
+  with the bundled fonts. The renderer puts the project's files on
+  `window.__project` before the page loads; the page validates them again,
+  draws them and exposes `__seek`, `__duration` and `__cues`. The dev page
+  and the render page share one player, so what is previewed is what is
+  rendered.
+- ffmpeg encodes H.264 and AAC. Frames are piped to it as PNGs; 720p is
+  captured at 1080p and scaled down.
+- The poster is the frame in the middle of the first scene's last beat, when
+  that scene is fully drawn. Outputs go in `out/<timestamp>/<theme>/`.
 - One render job runs at a time, in an in-process queue, with progress over
   SSE and a cancel button.
 - Outputs per theme (light, dark or both):

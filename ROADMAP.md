@@ -46,7 +46,7 @@ The goal: the CLI renders a hand-written example to an MP4, with no LLM and no v
 | ✅ 1.6 | **Theme**: tokens, light and dark, the palette presets, bundled fonts, Lucide icons on node tops | Screenshots of the example in two palettes, light and dark |
 | ✅ 1.7 | **Overlays**: callout cards, badges, step and narration captions, the scene title, anchored to projected nodes | Screenshots in the PR |
 | ✅ 1.8 | **Beat builder**: storyboard to timeline, default action durations, estimated narration length, scene transitions; exposes `__seek`, `__duration`, `__cues` | The example plays end to end in the dev page |
-| 1.9 | **Capture and CLI render**: Playwright frame capture, ffmpeg encoding, `.srt`, poster, `explain-it render` | `explain-it render examples/oauth-login` writes an MP4, attached to the PR |
+| ✅ 1.9 | **Capture and CLI render**: Playwright frame capture, ffmpeg encoding, `.srt`, poster, `explain-it render` | `explain-it render examples/oauth-login` writes an MP4, attached to the PR |
 | 1.10 | **Parallel capture**: 4 pages each render a chunk; chunks are joined | The output is identical to 1.9 and faster; timings in the PR |
 
 ## Milestone 2: audio and checks
@@ -112,12 +112,31 @@ The goal: make a video end to end from an IDE, with no LLM in explAIn-it.
 Work a finished slice left for a later one. Each list is removed by the slice
 that finishes it.
 
-### For 1.9 (capture and CLI render), from 1.8
+### For 1.10 (parallel capture), from 1.9
 
-- The cue length is a fixed 84 characters (two 42-character lines), not
-  measured against the caption font; write the `.srt` from `__cues`.
-- The dev page builds each scene's layer by hand in `dev/iso.ts`. The render
-  page needs the same; move it into `src/engine/` when the page is built.
+- One page captures every frame in turn: the example takes about 85 s a
+  theme at 1080p (1692 frames). `renderTheme` in `src/render/render.ts` is
+  the place to split the frames into chunks.
+
+### For 2.4 (mix and outputs), from 1.9
+
+- Only `video.mp4` (silent, captions burned in), `captions.srt` and
+  `poster.png` are written. `video-clean.mp4` needs the page drawn with
+  captions off; `audio.wav` and the AAC track come with the mix.
+
+### For 2.7 (contact sheet), from 1.9
+
+- Renders do not write `contact-sheet.png` yet; it belongs in the same
+  `out/<timestamp>/<theme>/` folder as the poster.
+
+### For 6.1 (Docker), from 1.9
+
+- Rendering launches the local Chrome (`channel: "chrome"`), or the Chromium
+  at `CHROME_PATH`; the image should set `CHROME_PATH`. `explain-it render`
+  rebuilds the render page only when Vite is installed, so the image must
+  run `npm run build:engine`.
+- The end-to-end render test skips itself without Chrome or ffmpeg. Check
+  that CI has both, or it never runs there.
 
 ### Found outside a slice
 
