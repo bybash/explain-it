@@ -1,7 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { type Browser, chromium, type Page } from "playwright-core";
-import { buildBeats } from "../engine/beats/build.ts";
+import { beatOptions, buildBeats } from "../engine/beats/build.ts";
 import { STAGE } from "../engine/overlays/regions.ts";
 import type { InjectedProject } from "../engine/page/render.ts";
 import type { ThemeMode } from "../engine/theme/palettes.ts";
@@ -156,8 +156,7 @@ const renderTheme = async (
         },
       }),
     );
-    const titleCard = project.config.cards?.title;
-    const plan = buildBeats(project.storyboard, project.graph, titleCard ? { titleCard } : {});
+    const plan = buildBeats(project.storyboard, project.graph, beatOptions(project.config));
     const poster = await frameAt(first, Math.min(posterTime(plan), duration));
     await pipeFrames(posterArgs({ resolution, out: files.poster }), (write) => write(poster));
     await writeFile(files.captions, toSrt(cues));

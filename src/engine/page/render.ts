@@ -4,12 +4,11 @@
 // `data-ready` on the body. Errors go on `data-error` so the capture can
 // report them.
 
-import { parseConfig } from "../../schema/config.ts";
+import { parseConfig, parseLogoImages } from "../../schema/config.ts";
 import { orThrow } from "../../schema/errors.ts";
 import { parseGraph } from "../../schema/graph.ts";
 import { parseLayout } from "../../schema/layout.ts";
 import { parseStoryboard } from "../../schema/storyboard.ts";
-import type { LogoImages } from "../cards/html.ts";
 import { expose, mountPlayer } from "../player.ts";
 import type { ThemeMode } from "../theme/palettes.ts";
 
@@ -24,25 +23,14 @@ export type InjectedProject = {
   readonly mode: ThemeMode;
 };
 
-const IMAGE_DATA_URL = /^data:image\/(png|jpeg|svg\+xml);base64,[A-Za-z0-9+/]+=*$/;
-
-/** The injected logo, checked again at this edge: images as data URLs, or nothing. */
-const logoImages = (logo: unknown): LogoImages | undefined => {
-  if (logo === undefined) return undefined;
-  const { light, dark } = (logo ?? {}) as Record<string, unknown>;
-  for (const [mode, url] of Object.entries({ light, dark }))
-    if (typeof url !== "string" || !IMAGE_DATA_URL.test(url))
-      throw new Error(`logo.${mode}: must be a PNG, JPG or SVG data URL`);
-  return { light: light as string, dark: dark as string };
-};
-
 const start = async (): Promise<void> => {
   const injected = (window as { __project?: InjectedProject }).__project;
   if (!injected) throw new Error("no project: the renderer sets window.__project");
   const frame = document.querySelector<HTMLElement>(".frame");
   if (!frame) throw new Error("missing .frame");
   const graph = orThrow(parseGraph(injected.graph), "graph.json");
-  const logo = logoImages(injected.logo);
+  const logo =
+    injected.logo === undefined ? undefined : orThrow(parseLogoImages(injected.logo), "logo");
   const player = await mountPlayer(frame, {
     graph,
     storyboard: orThrow(parseStoryboard(injected.storyboard, graph), "storyboard.json"),

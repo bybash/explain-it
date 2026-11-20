@@ -1,4 +1,4 @@
-import type { TitleCard } from "../../schema/config.ts";
+import type { Config, TitleCard } from "../../schema/config.ts";
 import type { Graph } from "../../schema/graph.ts";
 import type { BADGE_TONES, Storyboard } from "../../schema/storyboard.ts";
 import { EDGE_TIMING, edgeTarget, flowTweens } from "../edges/flow.ts";
@@ -93,6 +93,12 @@ export type BuildOptions = {
   readonly narration?: Readonly<Record<string, number>>;
   /** Opens the video, before the first scene. */
   readonly titleCard?: TitleCard;
+};
+
+/** The build options a project's config sets: its cards. Measured narration comes from elsewhere. */
+export const beatOptions = (config: Config): BuildOptions => {
+  const titleCard = config.cards?.title;
+  return titleCard ? { titleCard } : {};
 };
 
 const ENTRANCES: Readonly<Record<PlannedOverlay["kind"], Entrance>> = {

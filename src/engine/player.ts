@@ -1,15 +1,18 @@
-import type { Config } from "../schema/config.ts";
+import type { Config, LogoImages } from "../schema/config.ts";
 import { orThrow } from "../schema/errors.ts";
 import type { Graph } from "../schema/graph.ts";
 import type { Layout } from "../schema/layout.ts";
 import type { Storyboard } from "../schema/storyboard.ts";
-import { type BeatPlan, buildBeats, type ScenePlan, sceneTarget, scoped } from "./beats/build.ts";
 import {
-  type LogoDrawing,
-  type LogoImages,
-  renderLogoLayer,
-  renderTitleCard,
-} from "./cards/html.ts";
+  type BeatPlan,
+  beatOptions,
+  buildBeats,
+  type ScenePlan,
+  sceneTarget,
+  scoped,
+} from "./beats/build.ts";
+import { type LogoDrawing, renderLogoLayer, renderTitleCard } from "./cards/html.ts";
+import { logoShowsOn } from "./cards/show.ts";
 import { edgeRoutes } from "./edges/fallback.ts";
 import { edgeGeometry } from "./edges/geometry.ts";
 import { renderEdges } from "./edges/svg.ts";
@@ -68,16 +71,17 @@ export const mountPlayer = async (frame: HTMLElement, input: PlayerInput): Promi
     config.logo && input.logo
       ? { src: input.logo[mode], corner: config.logo.corner, show: config.logo.show }
       : undefined;
-  const regions = stageRegions(config.captions, logo?.show === "all" ? logo.corner : undefined);
+  const onEveryFrame = logo && logoShowsOn(logo.show, "frames") ? logo : undefined;
+  const regions = stageRegions(config.captions, onEveryFrame?.corner);
   const routes = edgeRoutes(graph, layout);
   const titleCard = config.cards?.title;
-  const plan = buildBeats(storyboard, graph, titleCard ? { titleCard } : {});
+  const plan = buildBeats(storyboard, graph, beatOptions(config));
   frame.replaceChildren();
   const posers = plan.scenes.map((scene) =>
     drawScene(frame, { graph, layout, routes, plan, regions }, scene),
   );
   if (titleCard) posers.push(renderTitleCard(frame, titleCard, logo));
-  if (logo?.show === "all") renderLogoLayer(frame, logo);
+  if (onEveryFrame) renderLogoLayer(frame, onEveryFrame);
   await Promise.all([...frame.querySelectorAll("img")].map((img) => img.decode()));
   const tl = plan.tweens.reduce((builder, tween) => builder.add(tween), timeline()).build();
   return {

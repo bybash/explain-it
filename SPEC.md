@@ -160,7 +160,7 @@ type Config = {
     };
   };
   logo?: {
-    light?: string;                     // a file name in assets/ (no folders), .png, .jpg or .svg, at most 2 MB;
+    light?: string;                     // a file name in assets/ (no folders), .png, .jpg, .jpeg or .svg, at most 2 MB;
     dark?: string;                      // at least one of the two; one serves both modes
     corner?: "top-right" | "bottom-right";              // default "top-right"
     show?: "start" | "end" | "both" | "all";            // the title card, the end card, both (default), or every frame

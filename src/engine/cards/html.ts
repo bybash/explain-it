@@ -2,9 +2,7 @@ import type { Logo, TitleCard } from "../../schema/config.ts";
 import { cardTarget } from "../beats/build.ts";
 import { logoBox } from "../overlays/regions.ts";
 import type { State } from "../timeline.ts";
-
-/** The logo's images, one per mode, as URLs the page can load (data URLs when rendering). */
-export type LogoImages = { readonly light: string; readonly dark: string };
+import { logoShowsOn } from "./show.ts";
 
 /** The logo to draw: the image for the current mode, and where and when it shows. */
 export type LogoDrawing = {
@@ -33,10 +31,6 @@ export const logoImage = (logo: LogoDrawing): HTMLImageElement => {
   return img;
 };
 
-/** The logo is drawn on the title card itself, unless it has a layer of its own on every frame. */
-const onTitleCard = (logo: LogoDrawing | undefined): logo is LogoDrawing =>
-  logo !== undefined && (logo.show === "start" || logo.show === "both");
-
 /**
  * Draws the title card on a layer of its own and returns the function that
  * poses it from the timeline: the title in the middle, the description under
@@ -64,7 +58,7 @@ export const renderTitleCard = (
     body.append(description);
   }
   layer.append(body);
-  if (onTitleCard(logo)) layer.append(logoImage(logo));
+  if (logo && logoShowsOn(logo.show, "title")) layer.append(logoImage(logo));
   frame.append(layer);
 
   const target = cardTarget("title");

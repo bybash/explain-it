@@ -91,9 +91,9 @@ describe("loadProject", () => {
       expect(result.value.logo).toEqual({ light: url, dark: url });
     });
 
-    it("keeps a light and a dark file apart, and types a PNG by its name", async () => {
+    it("keeps a light and a dark file apart, and types each by its name", async () => {
       const png = Buffer.from([0x89, 0x50, 0x4e, 0x47]);
-      const dir = withLogo({ light: "a.svg", dark: "b.PNG" }, { "a.svg": SVG, "b.PNG": png });
+      const dir = withLogo({ light: "a.svg", dark: "b.png" }, { "a.svg": SVG, "b.png": png });
       const result = await loadProject(dir);
       expect(result.ok && result.value.logo?.dark).toBe(
         `data:image/png;base64,${png.toString("base64")}`,
@@ -114,6 +114,15 @@ describe("loadProject", () => {
       expect(await errorsOf(dir)).toEqual([
         "config.json: logo.light: assets/gone.svg missing",
         "config.json: logo.dark: assets/big.png is 2.1 MB, max 2 MB",
+      ]);
+    });
+
+    it("names the field of a file that is not the image its name says, or not a file", async () => {
+      const dir = withLogo({ light: "mark.png", dark: "folder.svg" }, { "mark.png": SVG });
+      mkdirSync(join(dir, "assets", "folder.svg"));
+      expect(await errorsOf(dir)).toEqual([
+        "config.json: logo.light: assets/mark.png is not a PNG image",
+        "config.json: logo.dark: assets/folder.svg is not a file",
       ]);
     });
   });

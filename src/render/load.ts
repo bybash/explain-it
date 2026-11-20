@@ -1,11 +1,15 @@
 import { readFile, stat } from "node:fs/promises";
 import { extname, join } from "node:path";
-import type { LogoImages } from "../engine/cards/html.ts";
 import {
+  BYTES_PER_MB,
   type Config,
   DEFAULT_CONFIG,
   LOGO_MAX_BYTES,
+  LOGO_MAX_MB,
+  LOGO_TYPES,
   type Logo,
+  type LogoImages,
+  type LogoType,
   parseConfig,
 } from "../schema/config.ts";
 import type { Validated, ValidationError } from "../schema/errors.ts";
@@ -102,19 +106,28 @@ export const loadProject = async (dir: string): Promise<Validated<ProjectFiles>>
   });
 };
 
-const IMAGE_TYPES: Readonly<Record<string, string>> = {
-  ".png": "image/png",
-  ".jpg": "image/jpeg",
-  ".jpeg": "image/jpeg",
-  ".svg": "image/svg+xml",
-};
-
-const MB = 1024 * 1024;
+/** How each image type starts, and its name in an error. */
+const SIGNATURES: Readonly<Record<LogoType, { name: string; matches: (data: Buffer) => boolean }>> =
+  {
+    "image/png": {
+      name: "a PNG",
+      matches: (data) => data.subarray(0, 4).toString("latin1") === "\x89PNG",
+    },
+    "image/jpeg": {
+      name: "a JPEG",
+      matches: (data) => data[0] === 0xff && data[1] === 0xd8 && data[2] === 0xff,
+    },
+    // An SVG may open with an XML declaration, a doctype or comments before its root element.
+    "image/svg+xml": {
+      name: "an SVG",
+      matches: (data) => /<svg[\s>]/.test(data.subarray(0, 4096).toString("utf8")),
+    },
+  };
 
 /** Reads the logo's files from `assets/` as data URLs; a single file serves both modes. */
 const readLogo = async (dir: string, logo: Logo): Promise<Validated<LogoImages>> => {
   const errors: ValidationError[] = [];
-  const read = async (mode: "light" | "dark"): Promise<string | undefined> => {
+  const read = async (mode: keyof LogoImages): Promise<string | undefined> => {
     const name = logo[mode];
     if (name === undefined) return undefined;
     const file = join(dir, "assets", name);
@@ -122,20 +135,24 @@ const readLogo = async (dir: string, logo: Logo): Promise<Validated<LogoImages>>
       errors.push({ path: `logo.${mode}`, message: `assets/${name} ${message}` });
       return undefined;
     };
-    let size: number;
+    let info: Awaited<ReturnType<typeof stat>>;
     try {
-      size = (await stat(file)).size;
+      info = await stat(file);
     } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
-      return report("missing");
+      const code = (error as NodeJS.ErrnoException).code;
+      return report(code === "ENOENT" ? "missing" : `could not be read (${code})`);
     }
-    if (size > LOGO_MAX_BYTES)
-      return report(
-        `is ${(Math.ceil((size / MB) * 10) / 10).toFixed(1)} MB, max ${LOGO_MAX_BYTES / MB} MB`,
-      );
-    // The schema allows only these extensions.
-    const type = IMAGE_TYPES[extname(name).toLowerCase()] as string;
-    return `data:${type};base64,${(await readFile(file)).toString("base64")}`;
+    if (!info.isFile()) return report("is not a file");
+    if (info.size > LOGO_MAX_BYTES) {
+      const mb = Math.ceil((info.size / BYTES_PER_MB) * 10) / 10;
+      return report(`is ${mb.toFixed(1)} MB, max ${LOGO_MAX_MB} MB`);
+    }
+    // The schema allows only the extensions LOGO_TYPES lists.
+    const type = LOGO_TYPES[extname(name) as keyof typeof LOGO_TYPES];
+    const data = await readFile(file);
+    const signature = SIGNATURES[type];
+    if (!signature.matches(data)) return report(`is not ${signature.name} image`);
+    return `data:${type};base64,${data.toString("base64")}`;
   };
   const light = await read("light");
   const dark = await read("dark");
