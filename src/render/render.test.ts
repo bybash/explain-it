@@ -72,14 +72,16 @@ type Probe = {
 
 describe.skipIf(!hasFfmpeg || !hasChrome)("renderProject (Chrome and ffmpeg)", () => {
   const out = mkdtempSync(join(tmpdir(), "explain-it-render-"));
+  let page: Awaited<ReturnType<typeof buildRenderPage>>;
   let server: Awaited<ReturnType<typeof serveRenderPage>>;
 
   beforeAll(async () => {
-    await buildRenderPage();
-    server = await serveRenderPage();
+    page = await buildRenderPage();
+    server = await serveRenderPage(page.dir);
   }, 60_000);
   afterAll(async () => {
     await server?.close();
+    await page?.remove();
     rmSync(out, { recursive: true, force: true });
   });
 

@@ -1,6 +1,7 @@
 import { execFile } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
-import { readFile } from "node:fs/promises";
+import { readFile, rm } from "node:fs/promises";
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
 import { extname, join, normalize, sep } from "node:path";
@@ -8,8 +9,10 @@ import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 
 const ROOT = fileURLToPath(new URL("../../", import.meta.url));
-/** Where `vite.render.config.ts` writes the render page. */
+/** Where `npm run build:engine` writes the render page, for installs without Vite. */
 const DIST = join(ROOT, "dist", "render");
+/** Where each render builds a page of its own, so renders at the same time never share one. */
+const BUILDS = join(ROOT, "dist", "render-builds");
 const FONTS = join(ROOT, "assets", "fonts");
 /** The page's path inside the build, which keeps the source layout. */
 const PAGE = "src/engine/page/render.html";
@@ -29,17 +32,25 @@ const TYPES: Readonly<Record<string, string>> = {
  * repository), so a render always shows the current engine. Without Vite, the
  * page must already be built.
  */
-export const buildRenderPage = async (): Promise<void> => {
+export const buildRenderPage = async (): Promise<RenderPageBuild> => {
+  if (!existsSync(VITE)) {
+    if (!existsSync(join(DIST, PAGE)))
+      throw new Error(`the render page is not built: run \`npm run build:engine\` (${DIST})`);
+    return { dir: DIST, remove: async () => {} };
+  }
+  // A folder per build: Vite empties its output first, which would pull the page from under another render.
+  const dir = join(BUILDS, randomUUID());
   // Not execFileSync: the server keeps answering while a render builds its page.
-  if (existsSync(VITE))
-    await promisify(execFile)(
-      VITE,
-      ["build", "--config", "vite.render.config.ts", "--logLevel", "error"],
-      { cwd: ROOT },
-    );
-  if (!existsSync(join(DIST, PAGE)))
-    throw new Error(`the render page is not built: run \`npm run build:engine\` (${DIST})`);
+  await promisify(execFile)(
+    VITE,
+    ["build", "--config", "vite.render.config.ts", "--logLevel", "error", "--outDir", dir],
+    { cwd: ROOT },
+  );
+  return { dir, remove: () => rm(dir, { recursive: true, force: true }) };
 };
+
+/** A built render page: its folder, and how to remove it once the render is over. */
+export type RenderPageBuild = { readonly dir: string; readonly remove: () => Promise<void> };
 
 /** A file under `root` for a URL path, or undefined when the path leaves it. */
 const inside = (root: string, path: string): string | undefined => {
@@ -52,12 +63,14 @@ const inside = (root: string, path: string): string | undefined => {
  * port, and returns the page's URL. Fonts come from `assets/fonts/`, where the
  * page looks for them.
  */
-export const serveRenderPage = async (): Promise<{ url: string; close: () => Promise<void> }> => {
+export const serveRenderPage = async (
+  dir: string,
+): Promise<{ url: string; close: () => Promise<void> }> => {
   const server = createServer(async (request, response) => {
     const path = decodeURIComponent(new URL(request.url ?? "/", "http://localhost").pathname);
     const file = path.startsWith("/assets/fonts/")
       ? inside(FONTS, path.slice("/assets/fonts/".length))
-      : inside(DIST, path);
+      : inside(dir, path);
     try {
       if (!file) throw new Error("outside");
       const body = await readFile(file);

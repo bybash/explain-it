@@ -88,7 +88,8 @@ describe.skipIf(!hasFfmpeg || !hasChrome)(
 
       const { job } = await tool("render", { slug, theme: "light" });
       const done = await follow(job.id);
-      expect(done.state).toBe("done");
+      // The whole job on failure, so its error shows.
+      expect(done).toMatchObject({ state: "done" });
       const [light] = done.outputs;
       expect(light.video.startsWith(join(projectsDir, slug, "out"))).toBe(true);
       const probe = JSON.parse(

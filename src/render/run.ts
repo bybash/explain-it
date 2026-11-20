@@ -34,13 +34,17 @@ export const renderProjectFolder = async ({
 }: RenderFolderOptions): Promise<RenderedTheme[]> => {
   const outDir = join(dir, "out", renderStamp(now));
   try {
-    await buildRenderPage();
-    control.signal?.throwIfAborted();
-    const server = await serveRenderPage();
+    const page = await buildRenderPage();
     try {
-      return await renderProject({ project, settings, outDir, pageUrl: server.url, ...control });
+      control.signal?.throwIfAborted();
+      const server = await serveRenderPage(page.dir);
+      try {
+        return await renderProject({ project, settings, outDir, pageUrl: server.url, ...control });
+      } finally {
+        await server.close();
+      }
     } finally {
-      await server.close();
+      await page.remove();
     }
   } catch (error) {
     await rm(outDir, { recursive: true, force: true });
