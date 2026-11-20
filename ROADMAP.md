@@ -104,7 +104,7 @@ The goal: make a video end to end from an IDE, with no LLM in explAIn-it.
 | ✅ 4.1 | **MCP endpoint and project tools**: `/mcp` over Streamable HTTP with the MCP TypeScript SDK; `list_projects`, `get_project`, `create_project`, `update_graph`, `set_storyboard`, `set_style` (with the cards, and the logo as a file path or data URL copied into `assets/`); `origin` and `sources` on the project; a preview link in every result | Tests call each tool through an in-memory MCP client; invalid input returns readable errors |
 | ✅ 4.2 | **Guidance and the `explain_flow` prompt**: authoring guidance in `src/guidance/` (schemas, limits, node kinds, actions, beats, approval steps), served as an MCP prompt and in the tool descriptions | The prompt lists correctly in an MCP client; the guidance is one source the LLM slices can reuse |
 | ✅ 4.3 | **Check and render tools**: `check` (voice, checks, contact sheet returned as an image), `render`, `render_status` | A test project goes from `create_project` to an MP4 through tools alone |
-| 4.4 | **IDE setup**: README configuration for Claude Code, Cursor and VS Code; a walkthrough explaining a feature of this repository | A video of an explAIn-it feature made from Claude Code, attached to the PR |
+| ✅ 4.4 | **IDE setup**: README configuration for Claude Code, Cursor and VS Code; a walkthrough explaining a feature of this repository | A video of an explAIn-it feature made from Claude Code, attached to the PR |
 
 ## Milestone 5: LLM in the web app
 
@@ -142,6 +142,14 @@ that finishes it.
 
 - Renders do not write `contact-sheet.png` yet; it belongs in the same
   `out/<timestamp>/<theme>/` folder as the poster.
+
+### For 2.5 (layout checks), from 4.4
+
+- In the 4.4 walkthrough video (\`docs/clips/4.4-render-job-walkthrough.mp4\`)
+  a zone's label is hidden behind the node standing in the zone's back
+  corner: "explain-it server" shows as "exp". Edges also cross boxes they
+  do not connect to. The overlap check should cover zone labels and edges
+  against boxes, and layout should keep a zone's label clear.
 
 ### For 2.1, 2.5, 2.6 and 2.7 (voice, checks, contact sheet), from 4.3
 
