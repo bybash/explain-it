@@ -4,7 +4,8 @@
 //   ?fallback   moves "user" by hand, so "click" takes the fallback route
 //   ?palette=ocean&mode=dark&font=barlow   another theme; the example's config by default
 //   ?size=L     caption size S, M or L;  ?captions=off  no step or narration captions
-//   ?logo=all   the logo on every frame;  ?logo=bottom  in the bottom-right corner;  ?card=off  no title card
+//   ?logo=all   the logo on every frame;  ?logo=bottom  in the bottom-right corner;  ?logo=off  none
+//   ?cards=title  only the title card (it closes the video too);  ?cards=end  only the end card;  ?cards=none
 import configJson from "../examples/oauth-login/config.json" with { type: "json" };
 import graphJson from "../examples/oauth-login/graph.json" with { type: "json" };
 import layoutJson from "../examples/oauth-login/layout.json" with { type: "json" };
@@ -25,20 +26,33 @@ const storyboard = orThrow(parseStoryboard(storyboardJson, graph), "storyboard.j
 const example = orThrow(parseConfig(configJson), "config.json");
 const captionsOn = params.get("captions") !== "off";
 const logoParam = params.get("logo");
-const config: Config = {
-  ...example,
-  ...(example.logo
+const logoConfig: Config["logo"] =
+  example.logo && logoParam !== "off"
     ? {
-        logo: {
-          ...example.logo,
-          ...(logoParam === "all" ? { show: "all" as const } : {}),
-          ...(logoParam === "bottom"
-            ? { show: "all" as const, corner: "bottom-right" as const }
-            : {}),
-        },
+        ...example.logo,
+        ...(logoParam === "all" ? { show: "all" as const } : {}),
+        ...(logoParam === "bottom"
+          ? { show: "all" as const, corner: "bottom-right" as const }
+          : {}),
       }
-    : {}),
-  ...(params.get("card") === "off" ? { cards: {} } : {}),
+    : undefined;
+/** Which of the example's cards to keep: all of them by default. */
+const cardsParam = params.get("cards");
+const { title, end } = example.cards ?? {};
+const cards: Config["cards"] =
+  cardsParam === "none"
+    ? {}
+    : cardsParam === "title"
+      ? { ...(title ? { title } : {}) }
+      : cardsParam === "end"
+        ? { ...(end ? { end } : {}) }
+        : example.cards;
+// Start from the example without its logo and cards, then add back what the URL keeps.
+const { logo: _exampleLogo, cards: _exampleCards, ...exampleStyle } = example;
+const config: Config = {
+  ...exampleStyle,
+  ...(logoConfig ? { logo: logoConfig } : {}),
+  ...(cards ? { cards } : {}),
   theme: { ...example.theme, palette: params.get("palette") ?? example.theme.palette },
   font: params.get("font") ?? example.font,
   captions: {

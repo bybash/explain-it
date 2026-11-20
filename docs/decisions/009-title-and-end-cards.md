@@ -22,9 +22,11 @@ on the roadmap PR.
 - **End card:** a headline (up to 100 characters), then optional lines: a
   link (an http(s) URL, up to 200 characters), where to find the feature
   and a credit (up to 80 characters each). The link is also drawn as a QR
-  code, since nobody can click a URL in an MP4. 1.12 chooses the QR
-  encoder, either a small dependency with an MIT-compatible licence or one
-  of our own, and gives its reason in the PR.
+  code, since nobody can click a URL in an MP4. 1.12 chose
+  `qrcode-generator` (MIT, no dependencies) over an encoder of our own:
+  QR encoding has to match the standard exactly, and a test decodes the
+  code back with jsQR to prove it scans. The code is drawn dark on a light
+  tile in both modes, since readers expect that.
 - **The logo:**
   - It is a PNG, JPG or SVG file in the project's `assets/` folder, up to
     2 MB. The config names it by file name; the extension (`.png`, `.jpg`,
@@ -46,10 +48,12 @@ on the roadmap PR.
     of the video is a readable thumbnail.
 - **Ending:**
   - The last scene always fades out.
-  - Then a closing card fades in and holds to the last frame. It is the end
-    card if there is one, else the title card again, else the logo in the
-    middle (fitted inside 480×160 px).
-  - With none of these, the video ends on the empty background.
+  - A closing card fades in over the same transition, as the title card
+    hands over to the first scene, and holds to the last frame. It is the
+    end card if there is one, else the title card again, else the logo in
+    the middle (fitted inside 480×160 px).
+  - With none of these, the video ends on the empty background, held for
+    1.2 s.
   - Every video ends on a clean frame.
 - **Poster:** the title card when there is one.
 - **The web app, MCP and the LLM:**

@@ -242,6 +242,39 @@
           ],
           "additionalProperties": false,
           "description": "Opens the video: the title in the middle, the description under it."
+        },
+        "end": {
+          "type": "object",
+          "properties": {
+            "headline": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "link": {
+              "description": "Also drawn as a QR code, since nobody can click a link in a video.",
+              "type": "string",
+              "maxLength": 200,
+              "pattern": "^https?:\\/\\/[^\\s\\p{Cc}/?#]+[^\\s\\p{Cc}]*$"
+            },
+            "where": {
+              "description": "Where to find the feature.",
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "credit": {
+              "description": "Who made the video.",
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            }
+          },
+          "required": [
+            "headline"
+          ],
+          "additionalProperties": false,
+          "description": "Closes the video: the headline, the link with its QR code, where to find it, the credit."
         }
       },
       "additionalProperties": false

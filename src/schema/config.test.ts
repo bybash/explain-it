@@ -80,6 +80,46 @@ describe("parseConfig", () => {
     ]);
   });
 
+  it("takes an end card with a headline and optional link, where and credit", () => {
+    const end = {
+      headline: "Try it in your own app",
+      link: "https://example.com/docs/oauth",
+      where: "Settings › Sign-in",
+      credit: "Made by the Identity team",
+    };
+    const result = parseConfig({ cards: { end } });
+    expect(result.ok && result.value.cards).toEqual({ end });
+  });
+
+  it("limits the end card's lines and takes only an http(s) link", () => {
+    expect(
+      errorsFor({
+        cards: {
+          end: {
+            headline: "h".repeat(101),
+            link: `https://example.com/${"p".repeat(190)}`,
+            where: "w".repeat(81),
+            credit: "c".repeat(81),
+          },
+        },
+      }),
+    ).toEqual([
+      "cards.end.headline: 101 characters, max 100",
+      "cards.end.link: 210 characters, max 200",
+      "cards.end.where: 81 characters, max 80",
+      "cards.end.credit: 81 characters, max 80",
+    ]);
+    expect(errorsFor({ cards: { end: { headline: "Hi", link: "ftp://example.com" } } })).toEqual([
+      "cards.end.link: must be an http or https URL",
+    ]);
+    expect(
+      errorsFor({ cards: { end: { headline: "Hi", link: "https://exa\u0000mple.com" } } }),
+    ).toEqual(["cards.end.link: must be an http or https URL"]);
+    expect(errorsFor({ cards: { end: { link: "https://example.com" } } })).toEqual([
+      "cards.end.headline: required",
+    ]);
+  });
+
   it("takes a logo in the top-right corner of both cards by default, and none by default", () => {
     expect(DEFAULT_CONFIG.logo).toBeUndefined();
     const result = parseConfig({ logo: { light: "logo.svg" } });

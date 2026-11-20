@@ -34,7 +34,14 @@ export const CustomPaletteSchema = z.strictObject({
 });
 
 /** Card text limits (SPEC, Config); text wraps to at most three lines within them. */
-export const CARD_LIMITS = { title: 100, description: 160 } as const;
+export const CARD_LIMITS = {
+  title: 100,
+  description: 160,
+  headline: 100,
+  link: 200,
+  where: 80,
+  credit: 80,
+} as const;
 
 export const TitleCardSchema = z
   .strictObject({
@@ -99,6 +106,27 @@ export const LogoImagesSchema = z.strictObject({
   dark: LogoDataUrlSchema,
 });
 
+export const EndCardSchema = z
+  .strictObject({
+    headline: z.string().min(1).max(CARD_LIMITS.headline),
+    link: z
+      .string()
+      .max(CARD_LIMITS.link)
+      .regex(/^https?:\/\/[^\s\p{Cc}/?#]+[^\s\p{Cc}]*$/u, { error: "must be an http or https URL" })
+      .optional()
+      .describe("Also drawn as a QR code, since nobody can click a link in a video."),
+    where: z
+      .string()
+      .min(1)
+      .max(CARD_LIMITS.where)
+      .optional()
+      .describe("Where to find the feature."),
+    credit: z.string().min(1).max(CARD_LIMITS.credit).optional().describe("Who made the video."),
+  })
+  .describe(
+    "Closes the video: the headline, the link with its QR code, where to find it, the credit.",
+  );
+
 const PaletteNameSchema = z
   .string()
   .regex(/^[a-z][a-z0-9-]*$/, { error: "must be a palette name like default or ocean" });
@@ -141,7 +169,7 @@ export const ConfigSchema = z
       })
       .prefault({}),
     cards: z
-      .strictObject({ title: TitleCardSchema.optional() })
+      .strictObject({ title: TitleCardSchema.optional(), end: EndCardSchema.optional() })
       .optional()
       .describe("Cards that open and close the video; each can be left out."),
     logo: LogoSchema.optional(),
@@ -151,6 +179,7 @@ export const ConfigSchema = z
 export type Config = z.output<typeof ConfigSchema>;
 export type CustomPalette = z.output<typeof CustomPaletteSchema>;
 export type TitleCard = z.output<typeof TitleCardSchema>;
+export type EndCard = z.output<typeof EndCardSchema>;
 export type Logo = z.output<typeof LogoSchema>;
 export type LogoImages = z.output<typeof LogoImagesSchema>;
 

@@ -325,3 +325,58 @@ body {
   position: absolute;
   object-fit: contain;
 }
+
+/* The end card: the headline, the link beside its QR code, where to find it, the credit. */
+.card-headline {
+  font-size: 60px;
+}
+
+.card-link-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 36px;
+  margin: 40px auto 0;
+}
+
+/* Its size comes from qrPixels, larger for longer links. */
+.card-qr {
+  flex: none;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+/* Dark modules on a light tile in both modes: readers expect it. */
+.card-qr-tile {
+  fill: #ffffff;
+}
+
+.card-qr-modules {
+  fill: #111111;
+}
+
+.card-link {
+  margin: 0;
+  max-width: 760px;
+  font-size: 30px;
+  font-weight: 600;
+  color: var(--accent);
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.card-where {
+  margin: 36px auto 0;
+  font-size: 30px;
+  font-weight: 500;
+}
+
+.card-credit {
+  margin: 20px auto 0;
+  font-size: 24px;
+  color: var(--muted);
+}
+
+.logo-middle {
+  object-fit: contain;
+}

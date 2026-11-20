@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { chromium } from "playwright-core";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { buildBeats } from "../engine/beats/build.ts";
+import { beatOptions, buildBeats } from "../engine/beats/build.ts";
 import { formatErrors } from "../schema/errors.ts";
 import { parseStoryboard } from "../schema/storyboard.ts";
 import { FPS, frameTimes } from "./frames.ts";
@@ -102,9 +102,7 @@ describe.skipIf(!hasFfmpeg || !hasChrome)("renderProject (Chrome and ffmpeg)", (
         ...["-of", "json", light.video],
       ]).toString(),
     ) as Probe;
-    const titleCard = project.config.cards?.title;
-    if (!titleCard) throw new Error("the example has a title card");
-    const plan = buildBeats(project.storyboard, project.graph, { titleCard });
+    const plan = buildBeats(project.storyboard, project.graph, beatOptions(project.config));
     expect(probe.streams[0]).toEqual({
       codec_name: "h264",
       width: 1280,
