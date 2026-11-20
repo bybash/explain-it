@@ -396,9 +396,10 @@ server validates, lays out, checks, previews and renders.
 | `update_graph` | Replaces the graph or applies a JSON Patch | Errors or the Mermaid; stale beats |
 | `set_storyboard` | Replaces the storyboard or applies a JSON Patch | Errors, estimated timing, check warnings |
 | `set_style` | Updates `config.json` | The config, a preview link |
-| `check` | Generates the voice if needed and runs the checks | The report and the contact sheet as an image |
+| `check` | Generates the voice if needed and runs the checks | The report and the contact sheet as an image; until the voice and the checks exist (milestone 2), whether the project can render (its files, Chrome and ffmpeg), its problems, stale beats and timing, and what it could not check |
 | `render` | Queues a render | A job id |
 | `render_status` | Reads a render job | Progress, then the output paths |
+| `cancel_render` | Cancels a queued or running render | The job; no partial files are left |
 
 The endpoint is stateless: each POST gets a fresh MCP server on the shared
 projects and answers with JSON; GET and DELETE answer 405. It sits behind

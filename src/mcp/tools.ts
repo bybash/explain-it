@@ -1,5 +1,6 @@
 import { graphToMermaid } from "../mermaid/generate.ts";
 import { inFile, readAssetLogo, readJson } from "../render/load.ts";
+import type { RenderQueue } from "../render/queue.ts";
 import type { OpenedProject } from "../schema/api.ts";
 import { parseConfig } from "../schema/config.ts";
 import { formatErrors, parseWith, type Validated, type ValidationError } from "../schema/errors.ts";
@@ -35,6 +36,10 @@ export type ToolContext = {
   readonly events: Events;
   /** The web app's page for a project, for the agent to show its user. */
   readonly previewUrl: (slug: string) => string;
+  /** The render jobs, shared with the web app. */
+  readonly renders: RenderQueue;
+  /** What a render needs from this machine and cannot find (see \`missingRenderTools\`). */
+  readonly missingRenderTools: () => Promise<readonly string[]>;
 };
 
 type Args = Readonly<Record<string, unknown>>;

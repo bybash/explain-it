@@ -1,4 +1,4 @@
-import { MAX_SLUG } from "../schema/api.ts";
+import { MAX_SLUG } from "../schema/common.ts";
 
 const FALLBACK = "project";
 

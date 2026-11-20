@@ -3,19 +3,25 @@ import { join } from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { authoringGuide, graphSummary, storyboardSummary } from "../guidance/guide.ts";
+import { RESOLUTIONS, THEME_MODES } from "../schema/config.ts";
 import { formatErrors, type Validated } from "../schema/errors.ts";
 import {
+  CheckArgsSchema,
   CreateProjectArgsSchema,
   GetGuideArgsSchema,
   GetProjectArgsSchema,
   ListProjectsArgsSchema,
+  RenderArgsSchema,
+  RenderJobArgsSchema,
   SetStoryboardArgsSchema,
   SetStyleArgsSchema,
   TOOL_NAMES,
   UpdateGraphArgsSchema,
 } from "../schema/mcp.ts";
+import { RENDER_STATES } from "../schema/render.ts";
 import { isSlug } from "../server/projects.ts";
 import { VERSION } from "../version.ts";
+import { cancelRenderTool, checkTool, renderStatusTool, renderTool } from "./render-tools.ts";
 import {
   createProjectTool,
   getProjectTool,
@@ -67,6 +73,9 @@ const previewOf = (context: ToolContext, args: Readonly<Record<string, unknown>>
     ? context.previewUrl(slug)
     : undefined;
 };
+
+/** A list of allowed values for a description, from the schema's own list. */
+const oneOf = (values: readonly string[]) => values.join(", ");
 
 const TOOLS = [
   {
@@ -121,6 +130,31 @@ const TOOLS = [
     run: setStyleTool,
     description:
       "Updates a project's config.json: `config` merges into it (theme, font, captions, output, cards and so on; objects merge, other values replace). `logo` copies a logo for light and dark from an absolute file path or a data URL into the project. Returns the config and a preview link.",
+  },
+  {
+    name: TOOL_NAMES.check,
+    schema: CheckArgsSchema,
+    run: checkTool,
+    description:
+      "Checks whether a project can render: every file it needs, read the way the renderer reads it, and Chrome and ffmpeg on this machine. Returns whether it is ready, what is missing or broken, the stale beats, the estimated timing, what cannot be checked yet, and a preview link.",
+  },
+  {
+    name: TOOL_NAMES.render,
+    schema: RenderArgsSchema,
+    run: renderTool,
+    description: `Queues a render of a project that is ready (see ${TOOL_NAMES.check}): an MP4, its captions (.srt) and a poster per theme, into the project's out/<time>/ folder. \`theme\` (${oneOf(THEME_MODES)}) and \`resolution\` (${oneOf(RESOLUTIONS)}) default to the project's config when the render starts. Renders run one at a time; returns the job, to follow with ${TOOL_NAMES.renderStatus}.`,
+  },
+  {
+    name: TOOL_NAMES.renderStatus,
+    schema: RenderJobArgsSchema,
+    run: renderStatusTool,
+    description: `Reads a render job by the id ${TOOL_NAMES.render} returned: its state (${oneOf(RENDER_STATES)}), its progress over the whole job, then the paths of the files it wrote, or why it failed.`,
+  },
+  {
+    name: TOOL_NAMES.cancelRender,
+    schema: RenderJobArgsSchema,
+    run: cancelRenderTool,
+    description: "Cancels a queued or running render job by its id, leaving no partial files.",
   },
 ];
 

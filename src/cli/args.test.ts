@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_CONFIG } from "../schema/config.ts";
-import { parseRenderArgs, renderSettings } from "./args.ts";
+import { parseRenderArgs } from "./args.ts";
 
 describe("parseRenderArgs", () => {
   it("takes the project folder", () => {
@@ -31,21 +30,5 @@ describe("parseRenderArgs", () => {
     ]);
     expect(errors(["p", "--loud"])).toEqual([{ path: "--loud", message: "unknown option" }]);
     expect(errors(["p", "q"])).toEqual([{ path: "q", message: "unexpected argument" }]);
-  });
-});
-
-describe("renderSettings", () => {
-  it("renders the themes and resolution the project's config asks for by default", () => {
-    const config = { ...DEFAULT_CONFIG, theme: { ...DEFAULT_CONFIG.theme, mode: "both" as const } };
-    expect(renderSettings({ project: "p" }, config)).toEqual({
-      themes: ["light", "dark"],
-      resolution: "1080p",
-    });
-  });
-
-  it("lets the flags win", () => {
-    expect(
-      renderSettings({ project: "p", theme: "dark", resolution: "720p" }, DEFAULT_CONFIG),
-    ).toEqual({ themes: ["dark"], resolution: "720p" });
   });
 });

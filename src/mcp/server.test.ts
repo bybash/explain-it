@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import graphJson from "../../examples/oauth-login/graph.json" with { type: "json" };
 import storyboardJson from "../../examples/oauth-login/storyboard.json" with { type: "json" };
 import { authoringGuide, graphSummary, storyboardSummary } from "../guidance/guide.ts";
+import { RenderQueue } from "../render/queue.ts";
 import type { ServerEvent } from "../schema/api.ts";
 import { parseConfig } from "../schema/config.ts";
 import { orThrow } from "../schema/errors.ts";
@@ -35,6 +36,14 @@ beforeEach(async () => {
     now: () => new Date(NOW),
     events,
     previewUrl: preview,
+    missingRenderTools: async () => [],
+    // These tests never render; render-tools.test.ts covers the render tools.
+    renders: new RenderQueue({
+      now: () => new Date(NOW),
+      run: async () => {
+        throw new Error("not rendering in these tests");
+      },
+    }),
   });
   const [serverSide, clientSide] = InMemoryTransport.createLinkedPair();
   client = new Client({ name: "test", version: "1.0.0" });
@@ -78,10 +87,14 @@ describe("tools", () => {
   it("lists the project tools", async () => {
     const { tools } = await client.listTools();
     expect(tools.map((t) => t.name).sort()).toEqual([
+      "cancel_render",
+      "check",
       "create_project",
       "get_guide",
       "get_project",
       "list_projects",
+      "render",
+      "render_status",
       "set_storyboard",
       "set_style",
       "update_graph",

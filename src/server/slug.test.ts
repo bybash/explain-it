@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MAX_SLUG } from "../schema/api.ts";
+import { MAX_SLUG } from "../schema/common.ts";
 import { slugify } from "./slug.ts";
 
 describe("slugify", () => {

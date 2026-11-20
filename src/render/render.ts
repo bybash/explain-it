@@ -6,6 +6,7 @@ import { STAGE } from "../engine/overlays/regions.ts";
 import type { InjectedProject } from "../engine/page/render.ts";
 import type { ThemeMode } from "../engine/theme/palettes.ts";
 import type { Resolution } from "../schema/config.ts";
+import type { RenderedTheme, RenderProgress } from "../schema/render.ts";
 import { encodeArgs, posterArgs } from "./encode.ts";
 import { pipeFrames } from "./ffmpeg.ts";
 import { FPS, frameTimes, posterTime } from "./frames.ts";
@@ -19,15 +20,15 @@ export type RenderSettings = {
   readonly resolution: Resolution;
 };
 
-/** The files written for one theme. */
-export type RenderedTheme = {
-  readonly theme: ThemeMode;
-  readonly video: string;
-  readonly captions: string;
-  readonly poster: string;
+/** How a caller follows and stops a render. */
+export type RenderControl = {
+  /** Called at every tenth of each theme's frames. */
+  readonly onProgress?: (progress: RenderProgress) => void;
+  /** Stops the render at its next step: a frame, a theme, the poster. */
+  readonly signal?: AbortSignal;
 };
 
-export type RenderOptions = {
+export type RenderOptions = RenderControl & {
   readonly project: ProjectFiles;
   readonly settings: RenderSettings;
   /** Each theme's files go in a folder of its own name here. */
@@ -36,8 +37,6 @@ export type RenderOptions = {
   readonly pageUrl: string;
   /** How many pages capture frames at once; 4 by default (SPEC, Rendering). */
   readonly pages?: number;
-  /** Called with a line of progress now and then. */
-  readonly onProgress?: (message: string) => void;
 };
 
 const PAGES = 4;
@@ -57,7 +56,7 @@ type Seekable = {
 const DETERMINISTIC_RASTER = ["--disable-partial-raster", "--disable-gpu-rasterization"];
 
 /** Chrome by default; `CHROME_PATH` points at another Chromium, as in Docker. */
-const launch = (): Promise<Browser> =>
+export const launchBrowser = (): Promise<Browser> =>
   chromium.launch({
     args: DETERMINISTIC_RASTER,
     ...(process.env.CHROME_PATH
@@ -75,13 +74,18 @@ const launch = (): Promise<Browser> =>
 export const renderProject = async (options: RenderOptions): Promise<RenderedTheme[]> => {
   // A browser per page: pages in one browser share its screenshot pipeline and barely speed up.
   const browsers = await allOrClose(
-    Array.from({ length: Math.max(1, options.pages ?? PAGES) }, launch),
+    Array.from({ length: Math.max(1, options.pages ?? PAGES) }, launchBrowser),
     (browser) => browser.close(),
   );
   try {
     const rendered: RenderedTheme[] = [];
-    for (const theme of options.settings.themes)
-      rendered.push(await renderTheme(browsers, theme, options));
+    const { themes } = options.settings;
+    for (const [themeIndex, theme] of themes.entries()) {
+      options.signal?.throwIfAborted();
+      rendered.push(
+        await renderTheme(browsers, { theme, themeIndex, themes: themes.length }, options),
+      );
+    }
     return rendered;
   } finally {
     await closeAll(browsers, (browser) => browser.close());
@@ -113,8 +117,8 @@ const closeAll = async <T>(items: readonly T[], close: (item: T) => Promise<void
 
 const renderTheme = async (
   browsers: readonly Browser[],
-  theme: ThemeMode,
-  { project, settings, outDir, pageUrl, onProgress }: RenderOptions,
+  { theme, themeIndex, themes }: { theme: ThemeMode; themeIndex: number; themes: number },
+  { project, settings, outDir, pageUrl, onProgress, signal }: RenderOptions,
 ): Promise<RenderedTheme> => {
   const dir = join(outDir, theme);
   await mkdir(dir, { recursive: true });
@@ -130,6 +134,7 @@ const renderTheme = async (
     (page) => page.close(),
   );
   try {
+    signal?.throwIfAborted();
     const [first] = pages;
     if (!first) throw new Error("no render page opened");
     const { duration, cues } = await first.evaluate(() => {
@@ -145,17 +150,21 @@ const renderTheme = async (
         workers: pages.length,
         // Two frames a page keeps every page busy while one waits on a slower neighbour.
         ahead: 2 * pages.length,
-        capture: (worker, i) => frameAt(pages[worker] as Page, times[i] as number),
+        capture: (worker, i) => {
+          signal?.throwIfAborted();
+          return frameAt(pages[worker] as Page, times[i] as number);
+        },
         write: async (frame, i) => {
           await write(frame);
-          const percent = Math.floor(((i + 1) / times.length) * 10) * 10;
-          if (percent > shown) {
-            shown = percent;
-            onProgress?.(`${theme}: ${percent}% (${i + 1}/${times.length} frames)`);
+          const tenth = Math.floor(((i + 1) / times.length) * 10);
+          if (tenth > shown) {
+            shown = tenth;
+            onProgress?.({ theme, done: i + 1, total: times.length, themeIndex, themes });
           }
         },
       }),
     );
+    signal?.throwIfAborted();
     const plan = buildBeats(project.storyboard, project.graph, beatOptions(project.config));
     const poster = await frameAt(first, Math.min(posterTime(plan), duration));
     await pipeFrames(posterArgs({ resolution, out: files.poster }), (write) => write(poster));

@@ -1,21 +1,14 @@
 import { z } from "zod";
+import { SlugSchema } from "./common.ts";
 import { ConfigSchema } from "./config.ts";
 import { ValidationErrorSchema } from "./errors.ts";
 import { GraphSchema } from "./graph.ts";
 import { LayoutSchema } from "./layout.ts";
 import { ProjectSchema } from "./project.ts";
+import { RenderEventSchema } from "./render.ts";
 import { StoryboardSchema } from "./storyboard.ts";
 
 /** The projects API's requests and responses: the server sends these shapes and the web app checks them. */
-
-/** The longest slug, so folder names stay readable. */
-export const MAX_SLUG = 60;
-
-/** A project's folder name, as the server makes it from the project's name. */
-export const SlugSchema = z
-  .string()
-  .max(MAX_SLUG)
-  .regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, { error: "must be lower-case words joined by hyphens" });
 
 /** Every error response: what is wrong, each naming its place. */
 export const ErrorsResponseSchema = z.object({ errors: z.array(ValidationErrorSchema) });
@@ -53,10 +46,11 @@ export const OpenedProjectSchema = z.object({
   problems: z.array(ValidationErrorSchema),
 });
 
-/** `GET /api/events`: what the server tells listeners about. Render progress joins in 3.9. */
+/** `GET /api/events`: what the server tells listeners about, including each render job's changes. */
 export const ServerEventSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("project-created"), slug: SlugSchema }),
   z.object({ type: z.literal("project-updated"), slug: SlugSchema }),
+  RenderEventSchema,
 ]);
 
 export type ProjectSummary = z.output<typeof ProjectSummarySchema>;
