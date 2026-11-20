@@ -6,6 +6,9 @@
   "private": true,
   "type": "module",
   "repository": "github:bybash/explain-it",
+  "bin": {
+    "explain-it": "src/cli/main.ts"
+  },
   "engines": {
     "node": ">=24"
   },
@@ -18,9 +21,11 @@
     "schemas": "node scripts/generate-schemas.ts",
     "deps": "depcruise src scripts dev --config .dependency-cruiser.cjs",
     "dev:engine": "vite --open /dev/iso.html",
+    "build:engine": "vite build --config vite.render.config.ts",
     "screenshot": "node scripts/dev-screenshot.ts",
     "clip": "node scripts/dev-clip.ts",
-    "layout": "node scripts/layout.ts"
+    "layout": "node scripts/layout.ts",
+    "explain-it": "node src/cli/main.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.8",
@@ -28,7 +33,6 @@
     "@types/node": "24.19.2",
     "dependency-cruiser": "18.8.0",
     "fast-check": "4.10.3",
-    "playwright-core": "1.65.1",
     "typescript": "7.0.2",
     "vite": "8.3.8",
     "vitest": "5.1.1"
@@ -36,6 +40,7 @@
   "dependencies": {
     "elkjs": "0.12.1",
     "lucide": "1.76.0",
+    "playwright-core": "1.65.1",
     "zod": "4.6.7"
   }
 }

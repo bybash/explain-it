@@ -1,0 +1,172 @@
+import { spawn } from "node:child_process";
+import { mkdir, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import { type Browser, chromium, type Page } from "playwright-core";
+import { buildBeats } from "../engine/beats/build.ts";
+import { STAGE } from "../engine/overlays/regions.ts";
+import type { InjectedProject } from "../engine/page/render.ts";
+import type { ThemeMode } from "../engine/theme/palettes.ts";
+import type { Resolution } from "../schema/config.ts";
+import { encodeArgs, posterArgs } from "./encode.ts";
+import { FPS, frameTimes, posterTime } from "./frames.ts";
+import type { ProjectFiles } from "./load.ts";
+import { type SrtCue, toSrt } from "./srt.ts";
+
+/** What to render: one video per theme, at one resolution. */
+export type RenderSettings = {
+  readonly themes: readonly ThemeMode[];
+  readonly resolution: Resolution;
+};
+
+/** The files written for one theme. */
+export type RenderedTheme = {
+  readonly theme: ThemeMode;
+  readonly video: string;
+  readonly captions: string;
+  readonly poster: string;
+};
+
+export type RenderOptions = {
+  readonly project: ProjectFiles;
+  readonly settings: RenderSettings;
+  /** Each theme's files go in a folder of its own name here. */
+  readonly outDir: string;
+  /** The served render page (see `page.ts`). */
+  readonly pageUrl: string;
+  /** Called with a line of progress now and then. */
+  readonly onProgress?: (message: string) => void;
+};
+
+/** What the render page exposes once it is ready. */
+type Seekable = {
+  __seek: (t: number) => void;
+  __duration: number;
+  __cues: SrtCue[];
+};
+
+const FFMPEG = process.env.FFMPEG ?? "ffmpeg";
+
+/** Chrome by default; `CHROME_PATH` points at another Chromium, as in Docker. */
+const launch = (): Promise<Browser> =>
+  process.env.CHROME_PATH
+    ? chromium.launch({ executablePath: process.env.CHROME_PATH })
+    : chromium.launch({ channel: "chrome" });
+
+/**
+ * Renders a project once per theme: seeks the render page frame by frame at
+ * 30 fps, pipes the frames into ffmpeg, and writes `video.mp4`,
+ * `captions.srt` and `poster.png` into `<outDir>/<theme>/`. A missing Chrome
+ * or ffmpeg, or a page that fails, is a broken environment, so it throws.
+ */
+export const renderProject = async (options: RenderOptions): Promise<RenderedTheme[]> => {
+  const browser = await launch();
+  try {
+    const rendered: RenderedTheme[] = [];
+    for (const theme of options.settings.themes)
+      rendered.push(await renderTheme(browser, theme, options));
+    return rendered;
+  } finally {
+    await browser.close();
+  }
+};
+
+const renderTheme = async (
+  browser: Browser,
+  theme: ThemeMode,
+  { project, settings, outDir, pageUrl, onProgress }: RenderOptions,
+): Promise<RenderedTheme> => {
+  const dir = join(outDir, theme);
+  await mkdir(dir, { recursive: true });
+  const files: RenderedTheme = {
+    theme,
+    video: join(dir, "video.mp4"),
+    captions: join(dir, "captions.srt"),
+    poster: join(dir, "poster.png"),
+  };
+  const page = await openPage(browser, pageUrl, { ...project, mode: theme });
+  try {
+    const { duration, cues } = await page.evaluate(() => {
+      const w = window as unknown as Seekable;
+      return { duration: w.__duration, cues: w.__cues };
+    });
+    const times = frameTimes(duration);
+    const resolution = settings.resolution;
+    let shown = 0;
+    await pipeFrames(encodeArgs({ fps: FPS, resolution, out: files.video }), async (write) => {
+      for (const [i, t] of times.entries()) {
+        await write(await frameAt(page, t));
+        const percent = Math.floor(((i + 1) / times.length) * 10) * 10;
+        if (percent > shown) {
+          shown = percent;
+          onProgress?.(`${theme}: ${percent}% (${i + 1}/${times.length} frames)`);
+        }
+      }
+    });
+    const plan = buildBeats(project.storyboard, project.graph);
+    const poster = await frameAt(page, Math.min(posterTime(plan), duration));
+    await pipeFrames(posterArgs({ resolution, out: files.poster }), (write) => write(poster));
+    await writeFile(files.captions, toSrt(cues));
+    return files;
+  } finally {
+    await page.close();
+  }
+};
+
+/** Opens the render page with the project on it, and waits until it is drawn. */
+const openPage = async (browser: Browser, url: string, project: InjectedProject): Promise<Page> => {
+  const page = await browser.newPage({ viewport: STAGE });
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.addInitScript((injected) => {
+    (window as unknown as { __project: unknown }).__project = injected;
+  }, project);
+  await page.goto(url);
+  await page.waitForFunction(
+    () => document.body.dataset.ready === "true" || document.body.dataset.error !== undefined,
+    undefined,
+    { timeout: 30_000 },
+  );
+  const failed = await page.evaluate(() => document.body.dataset.error);
+  if (failed !== undefined || errors.length > 0)
+    throw new Error(`the render page failed:\n${[failed, ...errors].filter(Boolean).join("\n")}`);
+  return page;
+};
+
+const frameAt = async (page: Page, t: number): Promise<Buffer> => {
+  await page.evaluate((time) => (window as unknown as Seekable).__seek(time), t);
+  return page.screenshot({ type: "png" });
+};
+
+/** Runs ffmpeg with `args`, lets `feed` write frames to its stdin, and waits for it to finish. */
+const pipeFrames = async (
+  args: readonly string[],
+  feed: (write: (frame: Buffer) => Promise<void>) => Promise<void>,
+): Promise<void> => {
+  const ffmpeg = spawn(FFMPEG, args, { stdio: ["pipe", "ignore", "pipe"] });
+  let stderr = "";
+  ffmpeg.stderr.on("data", (chunk: Buffer) => {
+    stderr += chunk.toString();
+  });
+  const exited = new Promise<void>((resolve, reject) => {
+    ffmpeg.on("error", (error) =>
+      reject(
+        new Error(`could not run ffmpeg (${FFMPEG}): ${error.message}; install it or set FFMPEG`),
+      ),
+    );
+    ffmpeg.on("close", (code) =>
+      code === 0 ? resolve() : reject(new Error(`ffmpeg exited with ${code}:\n${stderr}`)),
+    );
+  });
+  // A failed start rejects `exited`; keep it from going unhandled while frames are written.
+  exited.catch(() => {});
+  const write = (frame: Buffer) =>
+    new Promise<void>((resolve, reject) => {
+      ffmpeg.stdin.write(frame, (error) => (error ? reject(error) : resolve()));
+    });
+  try {
+    await feed(write);
+  } finally {
+    ffmpeg.stdin.end();
+  }
+  await exited;
+};

@@ -7,6 +7,7 @@ export const THEME_MODES = ["light", "dark", "both"] as const;
 export const CAPTION_SIZES = ["S", "M", "L"] as const;
 export const MUSIC_MOODS = ["calm", "upbeat", "technical"] as const;
 export const RESOLUTIONS = ["1080p", "720p"] as const;
+export type Resolution = (typeof RESOLUTIONS)[number];
 
 const HexColour = z
   .string()

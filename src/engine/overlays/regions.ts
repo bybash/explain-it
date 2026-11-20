@@ -40,7 +40,7 @@ const CAPTION_FONT: Readonly<
 
 const TITLE_FONT = 22;
 export const LINE_HEIGHT = 1.3;
-/** Narration shows at most this many lines at once; longer lines are split into cues later. */
+/** Narration shows at most this many lines at once; longer lines are split into cues (beats/cues.ts). */
 export const NARRATION_LINES = 2;
 /** Space between bands, and between a band and the content. */
 const GAP = 24;

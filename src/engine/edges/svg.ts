@@ -1,4 +1,5 @@
 import type { ScreenPoint } from "../iso/project.ts";
+import { NODE_TIMING } from "../iso/tweens.ts";
 import { categoryStyle } from "../theme/kinds.ts";
 import type { State } from "../timeline.ts";
 import { edgeTarget } from "./flow.ts";
@@ -41,7 +42,8 @@ export type EdgeLayers = { readonly lines: SVGGElement; readonly labels: SVGGEle
  * Draws edges and returns the function that poses them for a moment of the
  * timeline. Each edge is a solid line, flowing dashes over it, an arrowhead
  * at the tip of the drawn part, a travelling dot, and a label pill, all in
- * the edge's category colour from the theme.
+ * the edge's category colour from the theme. A `dim` state fades it back
+ * with the nodes.
  */
 export const renderEdges = (layers: EdgeLayers, edges: readonly EdgeDrawing[]): ApplyEdges => {
   layers.lines.replaceChildren();
@@ -62,6 +64,8 @@ export const renderEdges = (layers: EdgeLayers, edges: readonly EdgeDrawing[]): 
       g.setAttribute("visibility", visibility);
       pill?.setAttribute("visibility", visibility);
       if (draw <= 0) return;
+      const faded = 1 - (s.dim ?? 0) * (1 - NODE_TIMING.dimmed);
+      g.setAttribute("opacity", faded.toFixed(3));
       const points = pointList(geometry.drawn(draw));
       line.setAttribute("points", points);
       dashes.setAttribute("points", points);
@@ -71,7 +75,7 @@ export const renderEdges = (layers: EdgeLayers, edges: readonly EdgeDrawing[]): 
       dot.setAttribute("cx", travel.at.x.toFixed(2));
       dot.setAttribute("cy", travel.at.y.toFixed(2));
       dot.setAttribute("opacity", (s.dotOpacity ?? 0).toFixed(3));
-      pill?.setAttribute("opacity", (s.label ?? 0).toFixed(3));
+      pill?.setAttribute("opacity", ((s.label ?? 0) * faded).toFixed(3));
     };
   });
   return (state) => {
