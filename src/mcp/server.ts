@@ -11,6 +11,7 @@ import {
   ListProjectsArgsSchema,
   SetStoryboardArgsSchema,
   SetStyleArgsSchema,
+  TOOL_NAMES,
   UpdateGraphArgsSchema,
 } from "../schema/mcp.ts";
 import { isSlug } from "../server/projects.ts";
@@ -69,7 +70,7 @@ const previewOf = (context: ToolContext, args: Readonly<Record<string, unknown>>
 
 const TOOLS = [
   {
-    name: "get_guide",
+    name: TOOL_NAMES.getGuide,
     schema: GetGuideArgsSchema,
     run: async () => ({ ok: true as const, value: authoringGuide() }),
     text: true,
@@ -77,21 +78,21 @@ const TOOLS = [
       "Returns the guide to making an explAIn-it video: the steps and when to wait for the user's approval, the exact formats of graph.json and storyboard.json with their limits, how to tell the story in beats, the style options, and a worked example. Read it before writing a graph or a storyboard.",
   },
   {
-    name: "list_projects",
+    name: TOOL_NAMES.listProjects,
     schema: ListProjectsArgsSchema,
     run: listProjectsTool,
     description:
       "Lists the explAIn-it projects: each one's slug, name, gate and last update, with a link to preview it in the web app.",
   },
   {
-    name: "get_project",
+    name: TOOL_NAMES.getProject,
     schema: GetProjectArgsSchema,
     run: getProjectTool,
     description:
       "Reads one project by its slug: project.json, graph.json, storyboard.json, layout.json and config.json (null when missing), what is wrong with any broken file, the graph as Mermaid, and a preview link.",
   },
   {
-    name: "create_project",
+    name: TOOL_NAMES.createProject,
     schema: CreateProjectArgsSchema,
     run: createProjectTool,
     description:
@@ -99,7 +100,7 @@ const TOOLS = [
       graphSummary(),
   },
   {
-    name: "update_graph",
+    name: TOOL_NAMES.updateGraph,
     schema: UpdateGraphArgsSchema,
     run: updateGraphTool,
     description:
@@ -107,7 +108,7 @@ const TOOLS = [
       graphSummary(),
   },
   {
-    name: "set_storyboard",
+    name: TOOL_NAMES.setStoryboard,
     schema: SetStoryboardArgsSchema,
     run: setStoryboardTool,
     description:
@@ -115,7 +116,7 @@ const TOOLS = [
       storyboardSummary(),
   },
   {
-    name: "set_style",
+    name: TOOL_NAMES.setStyle,
     schema: SetStyleArgsSchema,
     run: setStyleTool,
     description:

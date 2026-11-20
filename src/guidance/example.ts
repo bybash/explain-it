@@ -1,6 +1,7 @@
 /**
- * The worked example in the authoring guide: a small flow that uses every
- * kind of action once. A test parses it with the schemas, so it stays valid.
+ * The worked example in the authoring guide: a small flow told the way the
+ * guide advises, using every kind of action. A test parses it with the
+ * schemas, so it stays valid.
  */
 
 export const EXAMPLE_GRAPH = {
@@ -17,6 +18,7 @@ export const EXAMPLE_GRAPH = {
     { id: "lookup", from: "app", to: "users", label: "find the account" },
     { id: "send_link", from: "app", to: "mailer", label: "reset link" },
     { id: "deliver", from: "mailer", to: "user", label: "email" },
+    { id: "set_password", from: "user", to: "app", label: "new password" },
   ],
   zones: [{ id: "backend", label: "Your app" }],
 } as const;
@@ -35,14 +37,16 @@ export const EXAMPLE_STORYBOARD = {
           say: "Someone can't remember their password, so they ask the app for help.",
           actions: [
             { type: "appear", node: "user" },
+            { type: "appear", node: "app" },
             { type: "flow", edge: "ask" },
           ],
         },
         {
           id: "find",
           caption: "The app finds their account.",
-          say: "The app looks up the account by email address.",
+          say: "The app looks the account up by email address.",
           actions: [
+            { type: "appear", node: "users" },
             { type: "flow", edge: "lookup" },
             { type: "highlight", node: "users" },
           ],
@@ -52,6 +56,7 @@ export const EXAMPLE_STORYBOARD = {
           caption: "A one-time link goes out by email.",
           say: "It sends a link that works once, and only for an hour.",
           actions: [
+            { type: "appear", node: "mailer" },
             { type: "flow", edge: "send_link" },
             {
               type: "callout",
@@ -62,13 +67,19 @@ export const EXAMPLE_STORYBOARD = {
           ],
         },
         {
+          id: "email",
+          caption: "The link arrives in their inbox.",
+          say: "The email reaches the user a moment later.",
+          actions: [{ type: "flow", edge: "deliver" }],
+        },
+        {
           id: "done",
-          caption: "The link opens a page to choose a new password.",
-          say: "The user follows the link and picks a new password.",
+          caption: "They choose a new password and are back in.",
+          say: "The link opens a page in the app, where they choose a new password and are signed in.",
           actions: [
-            { type: "flow", edge: "deliver" },
-            { type: "dim", except: ["user", "mailer"] },
-            { type: "badge", node: "user", text: "reset", tone: "ok" },
+            { type: "dim", except: ["user", "app"] },
+            { type: "flow", edge: "set_password" },
+            { type: "badge", node: "user", text: "signed in", tone: "ok" },
           ],
         },
       ],

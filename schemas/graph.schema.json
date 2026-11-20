@@ -62,7 +62,7 @@
           "category": {
             "type": "string",
             "pattern": "^[a-z][a-z0-9_-]*$",
-            "description": "A palette category name; defaults by node kind."
+            "description": "A palette category name; a node's defaults by its kind, an edge's and a zone's to the accent."
           }
         },
         "required": [
@@ -103,7 +103,7 @@
           "category": {
             "type": "string",
             "pattern": "^[a-z][a-z0-9_-]*$",
-            "description": "A palette category name; defaults by node kind."
+            "description": "A palette category name; a node's defaults by its kind, an edge's and a zone's to the accent."
           }
         },
         "required": [
@@ -132,7 +132,7 @@
           "category": {
             "type": "string",
             "pattern": "^[a-z][a-z0-9_-]*$",
-            "description": "A palette category name; defaults by node kind."
+            "description": "A palette category name; a node's defaults by its kind, an edge's and a zone's to the accent."
           }
         },
         "required": [
