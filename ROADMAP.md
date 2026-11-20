@@ -128,16 +128,16 @@ that finishes it.
 ### For 3.9 (render gate), from 1.10
 
 - Keep one render job at a time, with themes rendered one after the other.
-  One 4-page render nearly fills the machine (4 browsers capture about
-  61 fps, 8 only about 68), so two at once each run at about half speed: the
-  example's light and dark together took 78 s, against about 82 s one after
-  the other, with twice the Chrome processes in memory.
+  One 4-page render nearly fills the machine: 4 browsers capture about
+  61 fps, and 8 only about 68. Two renders at once each run at about half
+  speed. The example's light and dark together took 78 s, against about
+  82 s one after the other, with twice the Chrome processes in memory.
 - Overlapping renders are still correct: light and dark rendered together
   came out byte-identical to each rendered alone. The queue is for speed and
   memory, not for determinism.
-- The page count is fixed at 4 (`PAGES` in `src/render/render.ts`). On a
-  machine with many more cores, choosing it from the CPU count would help
-  more than running jobs side by side.
+- The page count defaults to 4 (`PAGES` in `src/render/render.ts`; only
+  tests pass `pages`). On a machine with many more cores, choosing it from
+  the CPU count would help more than running jobs side by side.
 
 ### For 6.1 (Docker), from 1.9
 

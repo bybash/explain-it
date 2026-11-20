@@ -1,4 +1,3 @@
-import { spawn } from "node:child_process";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { type Browser, chromium, type Page } from "playwright-core";
@@ -8,6 +7,7 @@ import type { InjectedProject } from "../engine/page/render.ts";
 import type { ThemeMode } from "../engine/theme/palettes.ts";
 import type { Resolution } from "../schema/config.ts";
 import { encodeArgs, posterArgs } from "./encode.ts";
+import { pipeFrames } from "./ffmpeg.ts";
 import { FPS, frameTimes, posterTime } from "./frames.ts";
 import type { ProjectFiles } from "./load.ts";
 import { captureInOrder } from "./parallel.ts";
@@ -48,8 +48,6 @@ type Seekable = {
   __duration: number;
   __cues: SrtCue[];
 };
-
-const FFMPEG = process.env.FFMPEG ?? "ffmpeg";
 
 /**
  * Rasterize every frame in full, in software. With partial or GPU raster,
@@ -105,7 +103,10 @@ const allOrClose = async <T>(
   return started;
 };
 
-/** Closes everything, and never lets a failed close hide the error that got us here. */
+/**
+ * Closes everything and ignores failed closes: on the error path they would
+ * hide the real error, and after a render the files are already written.
+ */
 const closeAll = async <T>(items: readonly T[], close: (item: T) => Promise<void>) => {
   await Promise.allSettled(items.map(close));
 };
@@ -188,42 +189,4 @@ const openPage = async (browser: Browser, url: string, project: InjectedProject)
 const frameAt = async (page: Page, t: number): Promise<Buffer> => {
   await page.evaluate((time) => (window as unknown as Seekable).__seek(time), t);
   return page.screenshot({ type: "png" });
-};
-
-/** Runs ffmpeg with `args`, lets `feed` write frames to its stdin, and waits for it to finish. */
-const pipeFrames = async (
-  args: readonly string[],
-  feed: (write: (frame: Buffer) => Promise<void>) => Promise<void>,
-): Promise<void> => {
-  const ffmpeg = spawn(FFMPEG, args, { stdio: ["pipe", "ignore", "pipe"] });
-  let stderr = "";
-  ffmpeg.stderr.on("data", (chunk: Buffer) => {
-    stderr += chunk.toString();
-  });
-  const exited = new Promise<void>((resolve, reject) => {
-    ffmpeg.on("error", (error) =>
-      reject(
-        new Error(`could not run ffmpeg (${FFMPEG}): ${error.message}; install it or set FFMPEG`),
-      ),
-    );
-    ffmpeg.on("close", (code) =>
-      code === 0 ? resolve() : reject(new Error(`ffmpeg exited with ${code}:\n${stderr}`)),
-    );
-  });
-  // A failed start rejects `exited`; keep it from going unhandled while frames are written.
-  exited.catch(() => {});
-  const write = (frame: Buffer) =>
-    new Promise<void>((resolve, reject) => {
-      ffmpeg.stdin.write(frame, (error) => (error ? reject(error) : resolve()));
-    });
-  try {
-    await feed(write);
-  } catch (error) {
-    // Ending stdin would let ffmpeg finish a short video that still plays; stop it instead.
-    ffmpeg.kill("SIGKILL");
-    await exited.catch(() => {});
-    throw error;
-  }
-  ffmpeg.stdin.end();
-  await exited;
 };
