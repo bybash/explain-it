@@ -17,7 +17,7 @@ import { fail } from "../schema/result.ts";
  * failures, such as a name that is too long, come back as errors that name
  * the field; a server that sends something else is reported the same way.
  */
-const call = async <S extends z.ZodType>(
+const fetchChecked = async <S extends z.ZodType>(
   schema: S,
   url: string,
   init?: RequestInit,
@@ -50,29 +50,40 @@ const call = async <S extends z.ZodType>(
 };
 
 export const listProjects = (): Promise<Validated<ProjectList>> =>
-  call(ProjectListSchema, "/api/projects");
+  fetchChecked(ProjectListSchema, "/api/projects");
 
 export const openProject = (slug: string): Promise<Validated<OpenedProject>> =>
-  call(OpenedProjectSchema, `/api/projects/${encodeURIComponent(slug)}`);
+  fetchChecked(OpenedProjectSchema, `/api/projects/${encodeURIComponent(slug)}`);
 
 export const createProject = (name: string) =>
-  call(CreatedProjectSchema, "/api/projects", {
+  fetchChecked(CreatedProjectSchema, "/api/projects", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ name }),
   });
 
-/** Listens to the server's events; the returned function stops listening. Unknown events are ignored. */
-export const onServerEvent = (listener: (event: ServerEvent) => void): (() => void) => {
+/**
+ * Listens to the server's events; the returned function stops listening.
+ * `connected` runs each time the stream opens or reopens after the server
+ * restarts, since events sent while it was down are lost. Unknown events are
+ * ignored.
+ */
+export const onServerEvents = ({
+  connected,
+  event: listener,
+}: {
+  readonly connected: () => void;
+  readonly event: (event: ServerEvent) => void;
+}): (() => void) => {
   const source = new EventSource("/api/events");
-  const handle = (message: MessageEvent<string>) => {
+  source.addEventListener("ready", connected);
+  source.addEventListener("project-created", (message: MessageEvent<string>) => {
     try {
       const event = ServerEventSchema.safeParse(JSON.parse(message.data));
       if (event.success) listener(event.data);
     } catch {
       // A message that is not JSON is not one of ours.
     }
-  };
-  source.addEventListener("project-created", handle);
+  });
   return () => source.close();
 };

@@ -430,7 +430,10 @@ and VS Code. A stdio shim that starts the app when it is not running comes later
   serves the built UI and the API.
 - The server listens on `127.0.0.1:3000` by default. No login, no telemetry.
   `HOST` and `PORT` change where it listens, and `PROJECTS_DIR` where the
-  projects folder is (`./projects` by default).
+  projects folder is (`./projects` by default). With no login, the API
+  answers only its own pages: it refuses requests addressed to another host
+  name (DNS rebinding) or sent from another site's page, takes request bodies
+  only as JSON (which a cross-site form cannot send), and caps them at 1 MB.
   Uploaded files are checked by type and size.
 - Keys: read from `.env`; the settings page writes to it. Docker users pass
   `-e OPENROUTER_API_KEY=…`.

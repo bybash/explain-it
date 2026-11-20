@@ -1,5 +1,6 @@
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
+import { DEFAULT_HOST, DEFAULT_PORT } from "./src/server/listen.ts";
 
 /** Where `npm run dev` runs the API, behind this dev server's /api proxy. */
 export const DEV_API_PORT = 3001;
@@ -10,9 +11,9 @@ export default defineConfig({
   plugins: [react()],
   build: { outDir: "../../dist/web", emptyOutDir: true },
   server: {
-    host: "127.0.0.1",
-    port: 3000,
+    host: DEFAULT_HOST,
+    port: DEFAULT_PORT,
     strictPort: true,
-    proxy: { "/api": `http://127.0.0.1:${DEV_API_PORT}` },
+    proxy: { "/api": `http://${DEFAULT_HOST}:${DEV_API_PORT}` },
   },
 });

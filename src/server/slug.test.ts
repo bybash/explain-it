@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { MAX_SLUG } from "../schema/api.ts";
 import { slugify } from "./slug.ts";
 
 describe("slugify", () => {
@@ -17,11 +18,11 @@ describe("slugify", () => {
     expect(slugify("OAuth login", ["oauth-login", "oauth-login-2"])).toBe("oauth-login-3");
   });
 
-  it("is never empty, and never longer than 60 characters", () => {
+  it("is never empty, and never longer than the schema allows", () => {
     expect(slugify("🛒🛒", [])).toBe("project");
     expect(slugify("🛒", ["project"])).toBe("project-2");
     const long = slugify("word ".repeat(40), []);
-    expect(long.length).toBeLessThanOrEqual(60);
+    expect(long.length).toBeLessThanOrEqual(MAX_SLUG);
     expect(long).toMatch(/^[a-z0-9]+(-[a-z0-9]+)*$/);
   });
 });

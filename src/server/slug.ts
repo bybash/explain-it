@@ -1,5 +1,5 @@
-/** The longest slug, so folder names stay readable. */
-const MAX_SLUG = 60;
+import { MAX_SLUG } from "../schema/api.ts";
+
 const FALLBACK = "project";
 
 /** Letters that Unicode normalisation does not take apart into a base letter and an accent. */

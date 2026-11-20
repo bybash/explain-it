@@ -1,7 +1,8 @@
 import { type FormEvent, useCallback, useEffect, useState } from "react";
 import type { ProjectList as List } from "../schema/api.ts";
-import { formatErrors, type ValidationError } from "../schema/errors.ts";
-import { createProject, listProjects, onServerEvent } from "./api.ts";
+import type { ValidationError } from "../schema/errors.ts";
+import { createProject, listProjects, onServerEvents } from "./api.ts";
+import { Errors } from "./Errors.tsx";
 import { GATE_LABELS, updatedLabel } from "./labels.ts";
 
 /** The projects, newest first, with a form to start a new one. */
@@ -20,10 +21,11 @@ export const ProjectList = () => {
     } else setLoadErrors(result.errors);
   }, []);
 
-  // A project created elsewhere, in another tab or later over MCP, shows up here too.
+  // A project created elsewhere, in another tab or later over MCP, shows up here too. Each
+  // (re)connection reloads the list, so nothing made while the stream was down is missed.
   useEffect(() => {
     void load();
-    return onServerEvent(() => void load());
+    return onServerEvents({ connected: () => void load(), event: () => void load() });
   }, [load]);
 
   const create = async (event: FormEvent) => {
@@ -98,13 +100,3 @@ export const ProjectList = () => {
     </section>
   );
 };
-
-/** Problems, one per line, each naming its place. */
-export const Errors = ({ errors, id }: { errors: readonly ValidationError[]; id?: string }) =>
-  errors.length === 0 ? null : (
-    <ul className="errors" id={id} role="alert">
-      {formatErrors(errors).map((line) => (
-        <li key={line}>{line}</li>
-      ))}
-    </ul>
-  );

@@ -34,11 +34,11 @@ const HINTS: Readonly<Record<string, string>> = {
 };
 
 /** A JSON file read from a project folder: its data, or why it could not be read. */
-export type Read =
+export type JsonFile =
   | { readonly ok: true; readonly data: unknown }
   | { readonly ok: false; readonly missing: boolean; readonly error: ValidationError };
 
-export const readJson = async (dir: string, file: string): Promise<Read> => {
+export const readJson = async (dir: string, file: string): Promise<JsonFile> => {
   let text: string;
   try {
     text = await readFile(join(dir, file), "utf8");

@@ -1,4 +1,4 @@
-import { mkdir, readdir, writeFile } from "node:fs/promises";
+import { mkdir, readdir, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { inFile, readJson } from "../render/load.ts";
 import {
@@ -6,6 +6,7 @@ import {
   type OpenedProject,
   type ProjectList,
   type ProjectSummary,
+  ProjectSummarySchema,
   SlugSchema,
 } from "../schema/api.ts";
 import { parseConfig } from "../schema/config.ts";
@@ -28,29 +29,41 @@ const readProjectFile = async (dir: string): Promise<Validated<Project>> => {
   return project.ok ? project : fail(inFile("project.json", project.errors));
 };
 
-const slugsIn = async (projectsDir: string): Promise<string[]> => {
+/** What is in the projects folder: every name, and the project folders among them. */
+const entriesIn = async (projectsDir: string) => {
   try {
     const entries = await readdir(projectsDir, { withFileTypes: true });
-    return entries.filter((e) => e.isDirectory() && isSlug(e.name)).map((e) => e.name);
+    return {
+      // A file can block a slug as well as a folder can.
+      taken: entries.map((e) => e.name),
+      folders: entries.filter((e) => e.isDirectory() && isSlug(e.name)).map((e) => e.name),
+    };
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return { taken: [], folders: [] };
     throw error;
   }
 };
 
-/** Every project folder, the most recently updated first, and the folders that can't be read. */
+const isEmpty = async (dir: string) => (await readdir(dir)).length === 0;
+
+/**
+ * Every project folder, the most recently updated first, and the folders
+ * that can't be read. An empty folder is no project yet: one being made, or
+ * one a crash left behind.
+ */
 export const listProjects = async (projectsDir: string): Promise<ProjectList> => {
-  const slugs = (await slugsIn(projectsDir)).sort();
+  const slugs = (await entriesIn(projectsDir)).folders.sort();
   const read = await Promise.all(
-    slugs.map(async (slug) => ({ slug, project: await readProjectFile(join(projectsDir, slug)) })),
+    slugs.map(async (slug) => {
+      const dir = join(projectsDir, slug);
+      return { slug, empty: await isEmpty(dir), project: await readProjectFile(dir) };
+    }),
   );
   const projects: ProjectSummary[] = [];
   const broken: ProjectList["broken"] = [];
-  for (const { slug, project } of read)
-    if (project.ok) {
-      const { name, gate, origin, updatedAt } = project.value;
-      projects.push({ slug, name, gate, origin, updatedAt });
-    } else broken.push({ slug, errors: [...project.errors] });
+  for (const { slug, empty, project } of read)
+    if (project.ok) projects.push(ProjectSummarySchema.parse({ ...project.value, slug }));
+    else if (!empty) broken.push({ slug, errors: [...project.errors] });
   projects.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt) || a.slug.localeCompare(b.slug));
   return { projects, broken };
 };
@@ -76,36 +89,42 @@ export const createProject = async (
   };
   // Another request may take the same slug between listing and creating; then try the next one.
   for (;;) {
-    const slug = slugify(project.name, await slugsIn(projectsDir));
+    const slug = slugify(project.name, (await entriesIn(projectsDir)).taken);
     try {
       await mkdir(join(projectsDir, slug));
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === "EEXIST") continue;
       throw error;
     }
-    await writeFile(
-      join(projectsDir, slug, "project.json"),
-      `${JSON.stringify(project, null, 2)}\n`,
-    );
+    await writeJsonAtomically(join(projectsDir, slug, "project.json"), project);
     return ok({ slug, project });
   }
 };
 
+/** Writes JSON to a file by renaming a finished temporary file over it, so no reader sees half of it. */
+const writeJsonAtomically = async (file: string, data: unknown) => {
+  const temporary = `${file}.${process.pid}.tmp`;
+  await writeFile(temporary, `${JSON.stringify(data, null, 2)}\n`);
+  await rename(temporary, file);
+};
+
 /**
- * A project's files, each through its schema. Missing files are null; the
- * storyboard and layout are checked against the graph. Undefined when there
- * is no such project.
+ * A project's files, each through its schema. A missing or broken file is
+ * null, and `problems` names what is wrong with the broken ones; the
+ * storyboard and layout are checked against the graph. Fails only when
+ * project.json itself is broken, and is undefined when there is no such
+ * project, which the API answers with 404.
  */
 export const openProject = async (
   projectsDir: string,
   slug: string,
 ): Promise<Validated<OpenedProject> | undefined> => {
-  if (!isSlug(slug) || !(await slugsIn(projectsDir)).includes(slug)) return undefined;
+  if (!isSlug(slug) || !(await entriesIn(projectsDir)).folders.includes(slug)) return undefined;
   const dir = join(projectsDir, slug);
   const project = await readProjectFile(dir);
   if (!project.ok) return project;
 
-  const errors: ValidationError[] = [];
+  const problems: ValidationError[] = [];
   /** A file through `parse`, null when missing; its errors are kept, named by file. */
   const optional = async <T>(
     file: string,
@@ -113,12 +132,12 @@ export const openProject = async (
   ): Promise<T | null> => {
     const read = await readJson(dir, file);
     if (!read.ok) {
-      if (!read.missing) errors.push(read.error);
+      if (!read.missing) problems.push(read.error);
       return null;
     }
     const parsed = parse(read.data);
     if (parsed.ok) return parsed.value;
-    errors.push(...inFile(file, parsed.errors));
+    problems.push(...inFile(file, parsed.errors));
     return null;
   };
 
@@ -129,6 +148,5 @@ export const openProject = async (
     ? await optional("storyboard.json", (data) => parseStoryboard(data, graph))
     : null;
   const layout = graph ? await optional("layout.json", (data) => parseLayout(data, graph)) : null;
-  if (errors.length > 0) return fail(errors);
-  return ok({ slug, project: project.value, graph, storyboard, layout, config });
+  return ok({ slug, project: project.value, graph, storyboard, layout, config, problems });
 };

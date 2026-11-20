@@ -3,8 +3,8 @@ import type { OpenedProject } from "../schema/api.ts";
 import type { ValidationError } from "../schema/errors.ts";
 import { GATES } from "../schema/project.ts";
 import { openProject } from "./api.ts";
+import { Errors } from "./Errors.tsx";
 import { GATE_LABELS, updatedLabel } from "./labels.ts";
-import { Errors } from "./ProjectList.tsx";
 
 /**
  * An opened project: its name, the gate it is at, and which of its files
@@ -47,7 +47,7 @@ export const ProjectView = ({ slug }: { slug: string }) => {
 };
 
 const Opened = ({ opened }: { opened: OpenedProject }) => {
-  const { project, graph, storyboard, layout, config } = opened;
+  const { project, graph, storyboard, layout, config, problems } = opened;
   const files = [
     {
       file: "graph.json",
@@ -83,11 +83,20 @@ const Opened = ({ opened }: { opened: OpenedProject }) => {
         ))}
       </ol>
       <h2 className="section-title">Files</h2>
+      {problems.length > 0 && (
+        <>
+          <p>Some files are broken:</p>
+          <Errors errors={problems} />
+        </>
+      )}
       <ul className="files">
         {files.map(({ file, summary }) => (
           <li key={file} className="file" data-present={summary !== null}>
             <code>{file}</code>
-            <span className="muted">{summary ?? "not made yet"}</span>
+            <span className="muted">
+              {summary ??
+                (problems.some((p) => p.path.startsWith(file)) ? "broken" : "not made yet")}
+            </span>
           </li>
         ))}
       </ul>

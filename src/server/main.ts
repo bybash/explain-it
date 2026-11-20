@@ -4,7 +4,8 @@
 //   HOST, PORT     where to listen; 127.0.0.1:3000 by default
 //   PROJECTS_DIR   the projects folder; ./projects by default
 import { existsSync, readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { formatErrors } from "../schema/errors.ts";
@@ -18,14 +19,17 @@ if (!listen.ok) {
 }
 const { hostname, port } = listen.value;
 const projectsDir = resolve(process.env.PROJECTS_DIR ?? "projects");
-const app = createApp({ projectsDir, now: () => new Date() });
+// A specific HOST is a name the app is reached by; a wildcard is not one.
+const wildcard = hostname === "0.0.0.0" || hostname === "::";
+const app = createApp({ projectsDir, now: () => new Date(), hosts: wildcard ? [] : [hostname] });
 
 if (process.env.API_ONLY !== "1") {
-  const webDir = new URL("../../dist/web/", import.meta.url).pathname;
-  const index = new URL("index.html", `file://${webDir}`).pathname;
+  const webDir = fileURLToPath(new URL("../../dist/web/", import.meta.url));
+  const index = join(webDir, "index.html");
   if (existsSync(index)) {
     const page = readFileSync(index, "utf8");
     app.use("/assets/*", serveStatic({ root: webDir }));
+    app.get("/assets/*", (c) => c.text("not found", 404));
     // The web app routes in the browser, so every other page that is not the API is its index.
     app.get("*", (c) =>
       c.req.path.startsWith("/api/")

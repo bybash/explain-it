@@ -6,8 +6,8 @@ import { fail, ok } from "../schema/result.ts";
  * sets HOST to 0.0.0.0 inside the container and publishes the port on
  * 127.0.0.1 outside it.
  */
-const DEFAULT_HOST = "127.0.0.1";
-const DEFAULT_PORT = 3000;
+export const DEFAULT_HOST = "127.0.0.1";
+export const DEFAULT_PORT = 3000;
 
 export type ListenOptions = { readonly hostname: string; readonly port: number };
 
