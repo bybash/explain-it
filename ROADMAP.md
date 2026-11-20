@@ -45,7 +45,7 @@ The goal: the CLI renders a hand-written example to an MP4, with no LLM and no v
 | ✅ 1.5 | **Edges**: routed paths on the floor, draw-in, the moving dot, flowing dashes driven by the timeline, labels on the longest segment; a simple orthogonal fallback route where the layout dropped one (an overridden end); no near-zero jogs left by grid snapping | A short clip of the dev page in the PR; tests for the fallback route and for jog removal |
 | ✅ 1.6 | **Theme**: tokens, light and dark, the palette presets, bundled fonts, Lucide icons on node tops | Screenshots of the example in two palettes, light and dark |
 | ✅ 1.7 | **Overlays**: callout cards, badges, step and narration captions, the scene title, anchored to projected nodes | Screenshots in the PR |
-| 1.8 | **Beat builder**: storyboard to timeline, default action durations, estimated narration length, scene transitions; exposes `__seek`, `__duration`, `__cues` | The example plays end to end in the dev page |
+| ✅ 1.8 | **Beat builder**: storyboard to timeline, default action durations, estimated narration length, scene transitions; exposes `__seek`, `__duration`, `__cues` | The example plays end to end in the dev page |
 | 1.9 | **Capture and CLI render**: Playwright frame capture, ffmpeg encoding, `.srt`, poster, `explain-it render` | `explain-it render examples/oauth-login` writes an MP4, attached to the PR |
 | 1.10 | **Parallel capture**: 4 pages each render a chunk; chunks are joined | The output is identical to 1.9 and faster; timings in the PR |
 
@@ -112,26 +112,19 @@ The goal: make a video end to end from an IDE, with no LLM in explAIn-it.
 Work a finished slice left for a later one. Each list is removed by the slice
 that finishes it.
 
-### For 1.8 (beat builder), from 1.7
+### For 1.9 (capture and CLI render), from 1.8
 
-- Callouts stay until the narration ends (SPEC, Timing). The dev page shows
-  each one for a fixed 4.5 s beat.
-- Callouts and badges on screen at the same time can overlap each other.
-  `placeCallout` only avoids node faces and edge labels; pass the overlays
-  already showing as obstacles too.
-- Narration longer than two lines is cut off by the caption band. Split it
-  into cues, which the `.srt` in 1.9 also needs.
-- `appear`, `highlight` and `dim` are not drawn yet; every node shows
-  throughout.
-- Frame each scene into `stageRegions(...).content`. The dev page frames the
-  whole graph there.
-- The beat loop in `dev/iso.ts` is a stand-in for the builder. Replace it;
-  do not copy it into `src/`.
+- The cue length is a fixed 84 characters (two 42-character lines), not
+  measured against the caption font; write the `.srt` from `__cues`.
+- The dev page builds each scene's layer by hand in `dev/iso.ts`. The render
+  page needs the same; move it into `src/engine/` when the page is built.
 
 ### Found outside a slice
 
 - Edge labels can overlap each other: in the example, the `authorization
   code` and `authorize` pills (label placement from 1.5).
+- An edge label pill can cover a node's label: `GET /photos + token` over
+  `Photos API` in the example's second scene (label placement from 1.5).
 
 ## Later
 
