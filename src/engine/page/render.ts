@@ -9,6 +9,7 @@ import { orThrow } from "../../schema/errors.ts";
 import { parseGraph } from "../../schema/graph.ts";
 import { parseLayout } from "../../schema/layout.ts";
 import { parseStoryboard } from "../../schema/storyboard.ts";
+import type { LogoImages } from "../cards/html.ts";
 import { expose, mountPlayer } from "../player.ts";
 import type { ThemeMode } from "../theme/palettes.ts";
 
@@ -18,7 +19,21 @@ export type InjectedProject = {
   readonly storyboard: unknown;
   readonly layout: unknown;
   readonly config: unknown;
+  /** The logo's files as data URLs, when the config has a logo. */
+  readonly logo?: unknown;
   readonly mode: ThemeMode;
+};
+
+const IMAGE_DATA_URL = /^data:image\/(png|jpeg|svg\+xml);base64,[A-Za-z0-9+/]+=*$/;
+
+/** The injected logo, checked again at this edge: images as data URLs, or nothing. */
+const logoImages = (logo: unknown): LogoImages | undefined => {
+  if (logo === undefined) return undefined;
+  const { light, dark } = (logo ?? {}) as Record<string, unknown>;
+  for (const [mode, url] of Object.entries({ light, dark }))
+    if (typeof url !== "string" || !IMAGE_DATA_URL.test(url))
+      throw new Error(`logo.${mode}: must be a PNG, JPG or SVG data URL`);
+  return { light: light as string, dark: dark as string };
 };
 
 const start = async (): Promise<void> => {
@@ -27,6 +42,7 @@ const start = async (): Promise<void> => {
   const frame = document.querySelector<HTMLElement>(".frame");
   if (!frame) throw new Error("missing .frame");
   const graph = orThrow(parseGraph(injected.graph), "graph.json");
+  const logo = logoImages(injected.logo);
   const player = await mountPlayer(frame, {
     graph,
     storyboard: orThrow(parseStoryboard(injected.storyboard, graph), "storyboard.json"),
@@ -34,6 +50,7 @@ const start = async (): Promise<void> => {
     config: orThrow(parseConfig(injected.config), "config.json"),
     mode: injected.mode,
     fonts: new URL("/assets/fonts/", location.href),
+    ...(logo ? { logo } : {}),
   });
   expose(player);
   player.seek(0);

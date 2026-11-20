@@ -156,7 +156,8 @@ const renderTheme = async (
         },
       }),
     );
-    const plan = buildBeats(project.storyboard, project.graph);
+    const titleCard = project.config.cards?.title;
+    const plan = buildBeats(project.storyboard, project.graph, titleCard ? { titleCard } : {});
     const poster = await frameAt(first, Math.min(posterTime(plan), duration));
     await pipeFrames(posterArgs({ resolution, out: files.poster }), (write) => write(poster));
     await writeFile(files.captions, toSrt(cues));

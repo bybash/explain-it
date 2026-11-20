@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_CONFIG } from "../../schema/config.ts";
-import { type Rect, stageRegions } from "./regions.ts";
+import { logoBox, type Rect, stageRegions } from "./regions.ts";
 
 const captions = DEFAULT_CONFIG.captions;
 const bottom = (r: Rect) => r.y + r.height;
@@ -46,5 +46,42 @@ describe("stageRegions", () => {
     expect(m?.[0]).toBeLessThan(l?.[0] ?? 0);
     expect(s?.[1]).toBeLessThan(m?.[1] ?? 0);
     expect(m?.[1]).toBeLessThan(l?.[1] ?? 0);
+  });
+
+  it("puts the logo inside 200×64 px in a corner of the safe area", () => {
+    expect(logoBox("top-right")).toEqual({ x: 1624, y: 54, width: 200, height: 64 });
+    expect(logoBox("bottom-right")).toEqual({ x: 1624, y: 962, width: 200, height: 64 });
+  });
+
+  it("changes nothing when the logo is not on every frame", () => {
+    expect(stageRegions(captions, undefined)).toEqual(stageRegions(captions));
+  });
+
+  it("keeps the bands and the content clear of a logo shown on every frame", () => {
+    const overlaps = (a: Rect, b: Rect) =>
+      a.x < b.x + b.width && b.x < a.x + a.width && a.y < bottom(b) && b.y < bottom(a);
+    for (const corner of ["top-right", "bottom-right"] as const)
+      for (const step of [true, false])
+        for (const narration of [true, false]) {
+          const regions = stageRegions({ ...captions, step, narration }, corner);
+          const logo = logoBox(corner);
+          for (const rect of [regions.title, regions.step, regions.narration, regions.content])
+            if (rect) expect(overlaps(rect, logo)).toBe(false);
+        }
+  });
+
+  it("narrows only the bands beside the logo, and keeps the narration centred", () => {
+    const plain = stageRegions(captions);
+    const top = stageRegions(captions, "top-right");
+    expect(top.title.width).toBeLessThan(plain.title.width);
+    expect(top.title.x).toBe(plain.title.x);
+    expect(top.narration).toEqual(plain.narration);
+    expect(top.content).toEqual(plain.content);
+
+    const low = stageRegions(captions, "bottom-right");
+    expect(low.title).toEqual(plain.title);
+    const centre = (r?: Rect) => (r ? r.x + r.width / 2 : 0);
+    expect(low.narration?.width).toBeLessThan(plain.narration?.width ?? 0);
+    expect(centre(low.narration)).toBe(centre(plain.narration));
   });
 });

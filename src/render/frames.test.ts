@@ -29,6 +29,7 @@ describe("frameTimes", () => {
 describe("posterTime", () => {
   it("is the middle of the first scene's last beat, when that scene is all drawn", () => {
     const plan = {
+      cards: [],
       scenes: [
         { id: "a", start: 0, end: 10 },
         { id: "b", start: 11, end: 20 },
@@ -40,5 +41,14 @@ describe("posterTime", () => {
       ],
     };
     expect(posterTime(plan)).toBe(7);
+  });
+
+  it("is the title card, fully shown on the first frame, when there is one", () => {
+    const plan = {
+      cards: [{ id: "title" as const, start: 0, end: 3, until: 3.8 }],
+      scenes: [{ id: "a" }],
+      beats: [{ scene: "a", start: 3.8, end: 8 }],
+    };
+    expect(posterTime(plan)).toBe(0);
   });
 });

@@ -48,7 +48,7 @@ The goal: the CLI renders a hand-written example to an MP4, with no LLM and no v
 | ✅ 1.8 | **Beat builder**: storyboard to timeline, default action durations, estimated narration length, scene transitions; exposes `__seek`, `__duration`, `__cues` | The example plays end to end in the dev page |
 | ✅ 1.9 | **Capture and CLI render**: Playwright frame capture, ffmpeg encoding, `.srt`, poster, `explain-it render` | `explain-it render examples/oauth-login` writes an MP4, attached to the PR |
 | ✅ 1.10 | **Parallel capture**: 4 pages, each in its own browser, capture interleaved frames; they are put back in order for one ffmpeg (decision 010) | The output is identical to 1.9 and faster; timings in the PR |
-| 1.11 | **Title card and logo**: `cards.title` and `logo` in the config schema; logo files in `assets/` (PNG, JPG or SVG, light and dark); the title card on screen from the first frame, held max(3 s, reading time), fading into the first scene; the logo in its corner on the title card or every frame; the poster is the title card (SPEC, Cards, Logo, Opening and ending; decision 009) | The example renders with a title card and its logo; stills of both, light and dark, in the PR |
+| ✅ 1.11 | **Title card and logo**: `cards.title` and `logo` in the config schema; logo files in `assets/` (PNG, JPG or SVG, light and dark); the title card on screen from the first frame, held max(3 s, reading time), fading into the first scene; the logo in its corner on the title card or every frame; the poster is the title card (SPEC, Cards, Logo, Opening and ending; decision 009) | The example renders with a title card and its logo; stills of both, light and dark, in the PR |
 | 1.12 | **End card and ending**: `cards.end` in the config schema; the headline, link with its QR code, where to find the feature and credit; the last scene fades out and the closing card (end card, else title card, else the logo in the middle) fades in and holds to the last frame (SPEC, Cards, Opening and ending; decision 009) | The example ends on its end card with a scannable QR code; stills of the three closing cards, light and dark, in the PR |
 
 ## Milestone 2: audio and checks
@@ -150,6 +150,17 @@ that finishes it.
   videos with 1 and 4 pages (the render test does).
 - The end-to-end render test skips itself without Chrome or ffmpeg. Check
   that CI has both, or it never runs there.
+
+### For 1.12 (end card), from 1.11
+
+- `logo.show` accepts `"end"` and `"both"`, but there is no end card yet:
+  `"end"` shows the logo nowhere, and `"both"` only on the title card.
+  `renderTitleCard` in `src/engine/cards/html.ts` draws the logo with
+  `logoImage`; the end card can do the same.
+- The closing card falls back to the title card again, else the logo in
+  the middle (480×160 px). `BeatPlan.cards` holds the title card's span;
+  the closing card can join it there. `posterTime` already prefers the
+  title card.
 
 ### For 1.12 (end card), from 1.9
 

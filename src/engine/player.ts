@@ -4,6 +4,12 @@ import type { Graph } from "../schema/graph.ts";
 import type { Layout } from "../schema/layout.ts";
 import type { Storyboard } from "../schema/storyboard.ts";
 import { type BeatPlan, buildBeats, type ScenePlan, sceneTarget, scoped } from "./beats/build.ts";
+import {
+  type LogoDrawing,
+  type LogoImages,
+  renderLogoLayer,
+  renderTitleCard,
+} from "./cards/html.ts";
 import { edgeRoutes } from "./edges/fallback.ts";
 import { edgeGeometry } from "./edges/geometry.ts";
 import { renderEdges } from "./edges/svg.ts";
@@ -30,6 +36,8 @@ export type PlayerInput = {
   readonly mode: ThemeMode;
   /** Where the bundled fonts are served: the URL of `assets/fonts/`. */
   readonly fonts: URL;
+  /** The logo's images, when the config has a logo. */
+  readonly logo?: LogoImages;
 };
 
 /** What a page exposes as `__seek`, `__duration` and `__cues` (SPEC, Engine). */
@@ -56,13 +64,21 @@ export const mountPlayer = async (frame: HTMLElement, input: PlayerInput): Promi
   applyTheme(document.documentElement, theme, font);
   await loadFont(font, input.fonts);
 
-  const regions = stageRegions(config.captions);
+  const logo: LogoDrawing | undefined =
+    config.logo && input.logo
+      ? { src: input.logo[mode], corner: config.logo.corner, show: config.logo.show }
+      : undefined;
+  const regions = stageRegions(config.captions, logo?.show === "all" ? logo.corner : undefined);
   const routes = edgeRoutes(graph, layout);
-  const plan = buildBeats(storyboard, graph);
+  const titleCard = config.cards?.title;
+  const plan = buildBeats(storyboard, graph, titleCard ? { titleCard } : {});
   frame.replaceChildren();
   const posers = plan.scenes.map((scene) =>
     drawScene(frame, { graph, layout, routes, plan, regions }, scene),
   );
+  if (titleCard) posers.push(renderTitleCard(frame, titleCard, logo));
+  if (logo?.show === "all") renderLogoLayer(frame, logo);
+  await Promise.all([...frame.querySelectorAll("img")].map((img) => img.decode()));
   const tl = plan.tweens.reduce((builder, tween) => builder.add(tween), timeline()).build();
   return {
     seek: (t) => {

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 176 64" width="176" height="64">
+  <title>Example logo</title>
+  <polygon points="32,6 58,20 32,34 6,20" fill="#ddd6fe"/>
+  <polygon points="6,20 32,34 32,60 6,46" fill="#a78bfa"/>
+  <polygon points="58,20 32,34 32,60 58,46" fill="#7c3aed"/>
+  <rect x="72" y="18" width="96" height="11" rx="5.5" fill="#fafafa"/>
+  <rect x="72" y="37" width="64" height="9" rx="4.5" fill="#fafafa" opacity="0.55"/>
+</svg>

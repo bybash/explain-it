@@ -102,7 +102,9 @@ describe.skipIf(!hasFfmpeg || !hasChrome)("renderProject (Chrome and ffmpeg)", (
         ...["-of", "json", light.video],
       ]).toString(),
     ) as Probe;
-    const plan = buildBeats(project.storyboard, project.graph);
+    const titleCard = project.config.cards?.title;
+    if (!titleCard) throw new Error("the example has a title card");
+    const plan = buildBeats(project.storyboard, project.graph, { titleCard });
     expect(probe.streams[0]).toEqual({
       codec_name: "h264",
       width: 1280,
@@ -111,7 +113,8 @@ describe.skipIf(!hasFfmpeg || !hasChrome)("renderProject (Chrome and ffmpeg)", (
       nb_frames: String(frameTimes(plan.duration).length),
     });
 
-    expect(readFileSync(light.captions, "utf8")).toBe("1\n00:00:00,300 --> 00:00:00,700\nGo.\n");
+    // The example's title card holds 8 s (120 characters) and fades over 0.8 s before the first scene.
+    expect(readFileSync(light.captions, "utf8")).toBe("1\n00:00:09,100 --> 00:00:09,500\nGo.\n");
 
     const poster = readFileSync(light.poster);
     expect(poster.subarray(1, 4).toString()).toBe("PNG");

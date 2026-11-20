@@ -60,6 +60,49 @@ describe("parseConfig", () => {
     expect(errorsFor({ theme: { palette } })).toEqual(["theme.palette.categories: 7 items, max 6"]);
   });
 
+  it("takes a title card with an optional description, and no cards by default", () => {
+    expect(DEFAULT_CONFIG.cards).toBeUndefined();
+    const result = parseConfig({ cards: { title: { title: "Signing in with OAuth" } } });
+    expect(result.ok && result.value.cards).toEqual({ title: { title: "Signing in with OAuth" } });
+  });
+
+  it("limits a title card to 100 characters of title and 160 of description", () => {
+    expect(
+      errorsFor({
+        cards: { title: { title: "t".repeat(101), description: "d".repeat(161) } },
+      }),
+    ).toEqual([
+      "cards.title.title: 101 characters, max 100",
+      "cards.title.description: 161 characters, max 160",
+    ]);
+    expect(errorsFor({ cards: { title: { title: "" } } })).toEqual([
+      "cards.title.title: must not be empty",
+    ]);
+  });
+
+  it("takes a logo in the top-right corner of both cards by default, and none by default", () => {
+    expect(DEFAULT_CONFIG.logo).toBeUndefined();
+    const result = parseConfig({ logo: { light: "logo.svg" } });
+    expect(result.ok && result.value.logo).toEqual({
+      light: "logo.svg",
+      corner: "top-right",
+      show: "both",
+    });
+  });
+
+  it("needs at least one logo file, named in assets/ as a PNG, JPG or SVG", () => {
+    expect(errorsFor({ logo: { corner: "bottom-right" } })).toEqual([
+      "logo: needs a light or a dark file",
+    ]);
+    expect(
+      errorsFor({ logo: { light: "../secret.svg", dark: "logo.gif", show: "never" } }),
+    ).toEqual([
+      "logo.light: must be a file name in assets/ ending in .png, .jpg, .jpeg or .svg",
+      "logo.dark: must be a file name in assets/ ending in .png, .jpg, .jpeg or .svg",
+      'logo.show: must be one of "start", "end", "both", "all"',
+    ]);
+  });
+
   it("bounds voice speed and music volume", () => {
     expect(errorsFor({ voice: { speed: 3 }, music: { volumeDb: 6 } })).toEqual([
       "voice.speed: must be at most 2",

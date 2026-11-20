@@ -10,8 +10,12 @@ export const frameTimes = (duration: number): number[] => {
   return Array.from({ length: count }, (_, i) => i / FPS);
 };
 
-/** The poster: the middle of the first scene's last beat, when that scene is all drawn. */
+/**
+ * The poster: the title card when there is one, else the middle of the first
+ * scene's last beat, when that scene is all drawn.
+ */
 export const posterTime = (plan: {
+  readonly cards: readonly { readonly id: string; readonly start: number }[];
   readonly scenes: readonly { readonly id: string }[];
   readonly beats: readonly {
     readonly scene: string;
@@ -19,6 +23,8 @@ export const posterTime = (plan: {
     readonly end: number;
   }[];
 }): number => {
+  const title = plan.cards.find((card) => card.id === "title");
+  if (title) return title.start;
   const first = plan.scenes[0];
   const last = plan.beats.filter((b) => b.scene === first?.id).at(-1);
   return last ? (last.start + last.end) / 2 : 0;

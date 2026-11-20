@@ -4,6 +4,7 @@
 //   ?fallback   moves "user" by hand, so "click" takes the fallback route
 //   ?palette=ocean&mode=dark&font=barlow   another theme; the example's config by default
 //   ?size=L     caption size S, M or L;  ?captions=off  no step or narration captions
+//   ?logo=all   the logo on every frame;  ?logo=bottom  in the bottom-right corner;  ?card=off  no title card
 import configJson from "../examples/oauth-login/config.json" with { type: "json" };
 import graphJson from "../examples/oauth-login/graph.json" with { type: "json" };
 import layoutJson from "../examples/oauth-login/layout.json" with { type: "json" };
@@ -23,8 +24,21 @@ const storyboard = orThrow(parseStoryboard(storyboardJson, graph), "storyboard.j
 
 const example = orThrow(parseConfig(configJson), "config.json");
 const captionsOn = params.get("captions") !== "off";
+const logoParam = params.get("logo");
 const config: Config = {
   ...example,
+  ...(example.logo
+    ? {
+        logo: {
+          ...example.logo,
+          ...(logoParam === "all" ? { show: "all" as const } : {}),
+          ...(logoParam === "bottom"
+            ? { show: "all" as const, corner: "bottom-right" as const }
+            : {}),
+        },
+      }
+    : {}),
+  ...(params.get("card") === "off" ? { cards: {} } : {}),
   theme: { ...example.theme, palette: params.get("palette") ?? example.theme.palette },
   font: params.get("font") ?? example.font,
   captions: {
@@ -50,6 +64,16 @@ const layout = orThrow(
   "layout",
 );
 
+/** The example's logo files, served by Vite; one file serves both modes. */
+const asset = (name: string) =>
+  new URL(`../examples/oauth-login/assets/${name}`, import.meta.url).href;
+const logoFiles = config.logo;
+const logoFile = logoFiles?.light ?? logoFiles?.dark;
+const logo =
+  logoFiles && logoFile
+    ? { light: asset(logoFiles.light ?? logoFile), dark: asset(logoFiles.dark ?? logoFile) }
+    : undefined;
+
 const player = await mountPlayer(frame, {
   graph,
   storyboard,
@@ -58,6 +82,7 @@ const player = await mountPlayer(frame, {
   mode: params.get("mode") === "dark" ? "dark" : "light",
   // Vite rewrites a folder URL made from import.meta.url, so resolve it from the page.
   fonts: new URL("/assets/fonts/", location.href),
+  ...(logo ? { logo } : {}),
 });
 expose(player);
 

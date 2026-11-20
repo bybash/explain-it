@@ -9,7 +9,14 @@ import { edgeTarget } from "../edges/flow.ts";
 import { nodeTarget, zoneTarget } from "../iso/tweens.ts";
 import { overlayTarget } from "../overlays/tweens.ts";
 import { timeline } from "../timeline.ts";
-import { type BeatPlan, buildBeats, SCENE_TIMING, sceneTarget, scoped } from "./build.ts";
+import {
+  type BeatPlan,
+  buildBeats,
+  cardTarget,
+  SCENE_TIMING,
+  sceneTarget,
+  scoped,
+} from "./build.ts";
 import { BEAT_PADDING, estimateNarration } from "./timing.ts";
 
 const unwrap = <T>(result: Validated<T>): T => {
@@ -298,5 +305,61 @@ describe("buildBeats: narration", () => {
           expect(within(Number(t.at)) && within(Number(t.at) + t.duration)).toBe(true);
       }),
     );
+  });
+});
+
+describe("buildBeats: title card", () => {
+  const short = { title: "Signing in with OAuth" };
+  // 60 + 60 characters at 15 a second: 8 s, longer than the 3 s minimum.
+  const long = { title: "t".repeat(60), description: "d".repeat(60) };
+  const card = cardTarget("title");
+
+  it("is fully shown from the first frame and held at least 3 s", () => {
+    const plan = buildBeats(storyboard, graph, { titleCard: short });
+    expect(plan.cards).toEqual([{ id: "title", start: 0, end: 3, until: 3 + transition }]);
+    const at = seeker(plan);
+    expect(at(0, card).opacity).toBe(1);
+    expect(at(2.99, card).opacity).toBe(1);
+  });
+
+  it("holds longer when its text needs it, at 15 characters a second", () => {
+    const plan = buildBeats(storyboard, graph, { titleCard: long });
+    expect(spanOf(plan.cards, "title").end).toBeCloseTo(8);
+  });
+
+  it("fades out over the transition as the first scene fades in", () => {
+    const plan = buildBeats(storyboard, graph, { titleCard: short });
+    const at = seeker(plan);
+    const first = sceneTarget("sign_in");
+    expect(spanOf(plan.scenes, "sign_in").start).toBeCloseTo(3 + transition);
+    expect(at(2.99, first).opacity).toBe(0);
+    expect(at(3 + transition / 2, card).opacity).toBeCloseTo(0.5);
+    expect(at(3 + transition / 2, first).opacity).toBeCloseTo(0.5);
+    expect(at(3 + transition, card).opacity).toBe(0);
+    expect(at(3 + transition, first).opacity).toBe(1);
+  });
+
+  it("moves every scene, beat, overlay and cue later by the card and its transition", () => {
+    const without = buildBeats(storyboard, graph);
+    const plan = buildBeats(storyboard, graph, { titleCard: short });
+    const shift = 3 + transition;
+    // Times add up in a different order, so compare them to 9 decimals.
+    const rounded = (value: unknown) =>
+      JSON.parse(JSON.stringify(value, (_, v) => (typeof v === "number" ? +v.toFixed(9) : v)));
+    const moved = <T extends { start: number; end: number }>(spans: readonly T[]) =>
+      spans.map((s) => ({ ...s, start: s.start + shift, end: s.end + shift }));
+    expect(rounded(plan.scenes)).toEqual(rounded(moved(without.scenes)));
+    expect(rounded(plan.beats)).toEqual(rounded(moved(without.beats)));
+    expect(rounded(plan.cues)).toEqual(rounded(moved(without.cues)));
+    expect(rounded(plan.overlays)).toEqual(
+      rounded(without.overlays.map((o) => ({ ...o, at: o.at + shift, until: o.until + shift }))),
+    );
+    expect(plan.duration).toBeCloseTo(without.duration + shift);
+  });
+
+  it("is left out when there is none, and the first scene is shown from the start", () => {
+    const plan = buildBeats(storyboard, graph);
+    expect(plan.cards).toEqual([]);
+    expect(seeker(plan)(0, sceneTarget("sign_in")).opacity ?? 1).toBe(1);
   });
 });

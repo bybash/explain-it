@@ -1,6 +1,13 @@
-import { readFile } from "node:fs/promises";
-import { join } from "node:path";
-import { type Config, DEFAULT_CONFIG, parseConfig } from "../schema/config.ts";
+import { readFile, stat } from "node:fs/promises";
+import { extname, join } from "node:path";
+import type { LogoImages } from "../engine/cards/html.ts";
+import {
+  type Config,
+  DEFAULT_CONFIG,
+  LOGO_MAX_BYTES,
+  type Logo,
+  parseConfig,
+} from "../schema/config.ts";
 import type { Validated, ValidationError } from "../schema/errors.ts";
 import { type Graph, parseGraph } from "../schema/graph.ts";
 import { type Layout, parseLayout } from "../schema/layout.ts";
@@ -13,6 +20,8 @@ export type ProjectFiles = {
   readonly storyboard: Storyboard;
   readonly layout: Layout;
   readonly config: Config;
+  /** The logo's files as data URLs, one per mode; missing when the config has no logo. */
+  readonly logo?: LogoImages;
 };
 
 /** Where a missing file's fix is not obvious. */
@@ -80,6 +89,57 @@ export const loadProject = async (dir: string): Promise<Validated<ProjectFiles>>
   if (!layoutFile.ok) errors.push(layoutFile.error);
   else if (layout && !layout.ok) errors.push(...inFile("layout.json", layout.errors));
 
+  const logo = config.logo ? await readLogo(dir, config.logo) : undefined;
+  if (logo && !logo.ok) errors.push(...inFile("config.json", logo.errors));
+
   if (errors.length > 0 || !storyboard?.ok || !layout?.ok) return fail(errors);
-  return ok({ graph: graph.value, storyboard: storyboard.value, layout: layout.value, config });
+  return ok({
+    graph: graph.value,
+    storyboard: storyboard.value,
+    layout: layout.value,
+    config,
+    ...(logo?.ok ? { logo: logo.value } : {}),
+  });
+};
+
+const IMAGE_TYPES: Readonly<Record<string, string>> = {
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".svg": "image/svg+xml",
+};
+
+const MB = 1024 * 1024;
+
+/** Reads the logo's files from `assets/` as data URLs; a single file serves both modes. */
+const readLogo = async (dir: string, logo: Logo): Promise<Validated<LogoImages>> => {
+  const errors: ValidationError[] = [];
+  const read = async (mode: "light" | "dark"): Promise<string | undefined> => {
+    const name = logo[mode];
+    if (name === undefined) return undefined;
+    const file = join(dir, "assets", name);
+    const report = (message: string) => {
+      errors.push({ path: `logo.${mode}`, message: `assets/${name} ${message}` });
+      return undefined;
+    };
+    let size: number;
+    try {
+      size = (await stat(file)).size;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+      return report("missing");
+    }
+    if (size > LOGO_MAX_BYTES)
+      return report(
+        `is ${(Math.ceil((size / MB) * 10) / 10).toFixed(1)} MB, max ${LOGO_MAX_BYTES / MB} MB`,
+      );
+    // The schema allows only these extensions.
+    const type = IMAGE_TYPES[extname(name).toLowerCase()] as string;
+    return `data:${type};base64,${(await readFile(file)).toString("base64")}`;
+  };
+  const light = await read("light");
+  const dark = await read("dark");
+  const either = light ?? dark;
+  if (errors.length > 0 || either === undefined) return fail(errors);
+  return ok({ light: light ?? either, dark: dark ?? either });
 };
