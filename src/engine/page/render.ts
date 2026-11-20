@@ -4,7 +4,7 @@
 // `data-ready` on the body. Errors go on `data-error` so the capture can
 // report them.
 
-import { parseConfig } from "../../schema/config.ts";
+import { parseConfig, parseLogoImages } from "../../schema/config.ts";
 import { orThrow } from "../../schema/errors.ts";
 import { parseGraph } from "../../schema/graph.ts";
 import { parseLayout } from "../../schema/layout.ts";
@@ -18,6 +18,8 @@ export type InjectedProject = {
   readonly storyboard: unknown;
   readonly layout: unknown;
   readonly config: unknown;
+  /** The logo's files as data URLs, when the config has a logo. */
+  readonly logo?: unknown;
   readonly mode: ThemeMode;
 };
 
@@ -27,6 +29,8 @@ const start = async (): Promise<void> => {
   const frame = document.querySelector<HTMLElement>(".frame");
   if (!frame) throw new Error("missing .frame");
   const graph = orThrow(parseGraph(injected.graph), "graph.json");
+  const logo =
+    injected.logo === undefined ? undefined : orThrow(parseLogoImages(injected.logo), "logo");
   const player = await mountPlayer(frame, {
     graph,
     storyboard: orThrow(parseStoryboard(injected.storyboard, graph), "storyboard.json"),
@@ -34,6 +38,7 @@ const start = async (): Promise<void> => {
     config: orThrow(parseConfig(injected.config), "config.json"),
     mode: injected.mode,
     fonts: new URL("/assets/fonts/", location.href),
+    ...(logo ? { logo } : {}),
   });
   expose(player);
   player.seek(0);

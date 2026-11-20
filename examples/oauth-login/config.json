@@ -7,5 +7,15 @@
   "music": {
     "mood": "technical",
     "seed": 7
+  },
+  "cards": {
+    "title": {
+      "title": "Signing in with OAuth",
+      "description": "How a web app lets a user sign in through an identity provider, without ever seeing their password."
+    }
+  },
+  "logo": {
+    "light": "logo-light.svg",
+    "dark": "logo-dark.svg"
   }
 }

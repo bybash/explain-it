@@ -1,3 +1,4 @@
+import type { Config, TitleCard } from "../../schema/config.ts";
 import type { Graph } from "../../schema/graph.ts";
 import type { BADGE_TONES, Storyboard } from "../../schema/storyboard.ts";
 import { EDGE_TIMING, edgeTarget, flowTweens } from "../edges/flow.ts";
@@ -6,10 +7,16 @@ import { sceneTitleText } from "../overlays/html.ts";
 import { type Entrance, overlayTweens } from "../overlays/tweens.ts";
 import type { TweenSpec } from "../timeline.ts";
 import { splitCues } from "./cues.ts";
-import { type BeatTiming, beatTiming } from "./timing.ts";
+import { type BeatTiming, beatTiming, CAPTION_CHARS_PER_SECOND } from "./timing.ts";
 
 /** How scenes change, in seconds: a crossfade between them, and a hold after the last. */
 export const SCENE_TIMING = { transition: 0.8, tail: 1.2 } as const;
+
+/** A card holds at least this long, in seconds, and longer when its text needs it (SPEC, Opening and ending). */
+export const CARD_MIN_HOLD = 3;
+
+/** The timeline target that holds one card's state: its `opacity`. */
+export const cardTarget = (id: string): string => `card:${id}`;
 
 /** The timeline target that holds one scene layer's state: its `opacity`. */
 export const sceneTarget = (id: string): string => `scene:${id}`;
@@ -60,6 +67,9 @@ export type PlannedOverlay = Shown &
     | { readonly kind: "title" | "step" | "narration"; readonly text: string }
   );
 
+/** A card on screen: fully shown from `start` to `end`, gone by `until`. */
+export type CardPlan = Span & { readonly id: "title"; readonly until: number };
+
 /** One narration caption, timed for the screen and the `.srt` file. */
 export type Cue = {
   readonly beat: string;
@@ -70,6 +80,7 @@ export type Cue = {
 
 export type BeatPlan = {
   readonly duration: number;
+  readonly cards: readonly CardPlan[];
   readonly scenes: readonly ScenePlan[];
   readonly beats: readonly (Span & { readonly scene: string })[];
   readonly overlays: readonly PlannedOverlay[];
@@ -80,6 +91,14 @@ export type BeatPlan = {
 export type BuildOptions = {
   /** Measured narration lengths in seconds, by beat id; the rest are estimated. */
   readonly narration?: Readonly<Record<string, number>>;
+  /** Opens the video, before the first scene. */
+  readonly titleCard?: TitleCard;
+};
+
+/** The build options a project's config sets: its cards. Measured narration comes from elsewhere. */
+export const beatOptions = (config: Config): BuildOptions => {
+  const titleCard = config.cards?.title;
+  return titleCard ? { titleCard } : {};
 };
 
 const ENTRANCES: Readonly<Record<PlannedOverlay["kind"], Entrance>> = {
@@ -105,8 +124,17 @@ export const buildBeats = (
   const edgeEnds = new Map(graph.edges.map((e) => [e.id, [e.from, e.to] as const]));
   const zoneOf = new Map(graph.nodes.map((n) => [n.id, n.zone]));
 
+  const cards: CardPlan[] = [];
+  const tweens: TweenSpec[] = [];
+  if (options.titleCard) {
+    const end = cardHold(options.titleCard);
+    cards.push({ id: "title", start: 0, end, until: end + transition });
+    tweens.push(fadeOut(cardTarget("title"), end));
+  }
+  const opening = cards[0]?.until ?? 0;
+
   // Times come first: a flow keeps its dashes moving, and a badge stays, until its scene has gone.
-  let clock = 0;
+  let clock = opening;
   const timed = storyboard.scenes.map((scene, index) => {
     const start = clock;
     const beats = scene.beats.map((beat) => {
@@ -126,7 +154,6 @@ export const buildBeats = (
   const beats: (Span & { scene: string })[] = [];
   const overlays: PlannedOverlay[] = [];
   const cues: Cue[] = [];
-  const tweens: TweenSpec[] = [];
   const show = (overlay: PlannedOverlay) => {
     overlays.push(overlay);
     tweens.push(
@@ -160,7 +187,7 @@ export const buildBeats = (
       edges,
       edgeLabels,
     });
-    tweens.push(...sceneFades(scene.id, { start, end, first: index === 0, last }));
+    tweens.push(...sceneFades(scene.id, { start, end, fadeIn: start > 0, last }));
     show({
       kind: "title",
       id: `title:${scene.id}`,
@@ -262,7 +289,7 @@ export const buildBeats = (
     }
     tweens.push(...zoneAppears(scene.nodes, zoneOf, appears, inScene));
   }
-  return { duration, scenes, beats, overlays, cues, tweens };
+  return { duration, cards, scenes, beats, overlays, cues, tweens };
 };
 
 /**
@@ -310,20 +337,32 @@ const slotOf = (timing: BeatTiming, index: number) => {
 const calloutUntil = (entered: number, narrationEnd: number | undefined, beatEnd: number) =>
   narrationEnd !== undefined && narrationEnd >= entered ? narrationEnd : beatEnd;
 
+/** How long a card is fully shown: its text at reading speed, but at least the minimum. */
+const cardHold = (card: TitleCard): number =>
+  Math.max(
+    CARD_MIN_HOLD,
+    (card.title.length + (card.description?.length ?? 0)) / CAPTION_CHARS_PER_SECOND,
+  );
+
+const fade = (target: string, from: number, to: number, at: number): TweenSpec => ({
+  target,
+  from: { opacity: from },
+  to: { opacity: to },
+  duration: SCENE_TIMING.transition,
+  ease: "inOutSine",
+  at,
+});
+
+const fadeOut = (target: string, at: number): TweenSpec => fade(target, 1, 0, at);
+
 /** Fades a scene's layer in over the transition before it, and out over the one after it. */
 const sceneFades = (
   id: string,
-  { start, end, first, last }: { start: number; end: number; first: boolean; last: boolean },
+  { start, end, fadeIn, last }: { start: number; end: number; fadeIn: boolean; last: boolean },
 ): TweenSpec[] => {
-  const { transition } = SCENE_TIMING;
   const target = sceneTarget(id);
-  const fade = (from: number, to: number, at: number): TweenSpec => ({
-    target,
-    from: { opacity: from },
-    to: { opacity: to },
-    duration: transition,
-    ease: "inOutSine",
-    at,
-  });
-  return [...(first ? [] : [fade(0, 1, start - transition)]), ...(last ? [] : [fade(1, 0, end)])];
+  return [
+    ...(fadeIn ? [fade(target, 0, 1, start - SCENE_TIMING.transition)] : []),
+    ...(last ? [] : [fadeOut(target, end)]),
+  ];
 };

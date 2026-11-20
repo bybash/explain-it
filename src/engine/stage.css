@@ -260,3 +260,68 @@ body {
   position: absolute;
   inset: 0;
 }
+
+/*
+ * Cards and the logo. A card covers the whole frame with the background and
+ * fades over the scenes; the logo is fitted inside its corner box.
+ */
+.card-layer,
+.logo-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  font-family: var(--font), system-ui, sans-serif;
+  color: var(--text);
+}
+
+.card-layer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+}
+
+.card-body {
+  max-width: 1400px;
+  text-align: center;
+}
+
+.card-title {
+  margin: 0;
+  font-size: 64px;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+}
+
+.card-rule {
+  width: 96px;
+  height: 6px;
+  margin: 36px auto 0;
+  border-radius: 3px;
+  background: var(--accent);
+}
+
+.card-description {
+  margin: 32px auto 0;
+  max-width: 1100px;
+  font-size: 32px;
+  font-weight: 450;
+  line-height: 1.35;
+  color: var(--muted);
+  text-wrap: balance;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+}
+
+.logo {
+  position: absolute;
+  object-fit: contain;
+}

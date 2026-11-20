@@ -30,4 +30,9 @@ describe("generated JSON Schemas", () => {
     const config = JSON.parse(generated["config.schema.json"] ?? "{}");
     expect(config.required ?? []).toEqual([]);
   });
+
+  it("keeps the logo's need for a light or a dark file", () => {
+    const config = JSON.parse(jsonSchemaFiles()["config.schema.json"] ?? "{}");
+    expect(config.properties.logo.anyOf).toEqual([{ required: ["light"] }, { required: ["dark"] }]);
+  });
 });

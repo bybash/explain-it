@@ -33,6 +33,73 @@ export const CustomPaletteSchema = z.strictObject({
     .describe("The dark variant; generated from the light palette when missing."),
 });
 
+/** Card text limits (SPEC, Config); text wraps to at most three lines within them. */
+export const CARD_LIMITS = { title: 100, description: 160 } as const;
+
+export const TitleCardSchema = z
+  .strictObject({
+    title: z.string().min(1).max(CARD_LIMITS.title),
+    description: z.string().min(1).max(CARD_LIMITS.description).optional(),
+  })
+  .describe("Opens the video: the title in the middle, the description under it.");
+
+export const LOGO_CORNERS = ["top-right", "bottom-right"] as const;
+/** Where the logo shows: the title card, the end card, both, or every frame. */
+export const LOGO_SHOWS = ["start", "end", "both", "all"] as const;
+export const BYTES_PER_MB = 1024 * 1024;
+/** The largest logo file. */
+export const LOGO_MAX_MB = 2;
+export const LOGO_MAX_BYTES = LOGO_MAX_MB * BYTES_PER_MB;
+
+/** The logo's image types by file extension: the one list the config, the loader and the page share. */
+export const LOGO_TYPES = {
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".svg": "image/svg+xml",
+} as const;
+export type LogoType = (typeof LOGO_TYPES)[keyof typeof LOGO_TYPES];
+
+const extensions = Object.keys(LOGO_TYPES);
+const escaped = (text: string) => text.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
+
+const LogoFileSchema = z
+  .string()
+  .regex(new RegExp(`^[\\w-][\\w.-]*(${extensions.map(escaped).join("|")})$`), {
+    error: `must be a file name in assets/ ending in ${extensions.slice(0, -1).join(", ")} or ${extensions.at(-1)}`,
+  });
+
+export const LogoSchema = z
+  .strictObject({
+    light: LogoFileSchema.optional(),
+    dark: LogoFileSchema.optional().describe("If only one file is given, it serves both modes."),
+    corner: z.enum(LOGO_CORNERS).default("top-right"),
+    show: z.enum(LOGO_SHOWS).default("both"),
+  })
+  .refine((logo) => logo.light !== undefined || logo.dark !== undefined, {
+    error: "needs a light or a dark file",
+  })
+  // The refinement is lost in JSON Schema; this says the same there.
+  .meta({
+    description: `The team's logo: files in assets/, at most ${LOGO_MAX_MB} MB each.`,
+    anyOf: [{ required: ["light"] }, { required: ["dark"] }],
+  });
+
+const LogoDataUrlSchema = z
+  .string()
+  .regex(
+    new RegExp(
+      `^data:(${[...new Set(Object.values(LOGO_TYPES))].map(escaped).join("|")});base64,[A-Za-z0-9+/]+=*$`,
+    ),
+    { error: "must be a PNG, JPEG or SVG image as a base64 data URL" },
+  );
+
+/** The logo's images as the renderer hands them to the page: one data URL per mode. */
+export const LogoImagesSchema = z.strictObject({
+  light: LogoDataUrlSchema,
+  dark: LogoDataUrlSchema,
+});
+
 const PaletteNameSchema = z
   .string()
   .regex(/^[a-z][a-z0-9-]*$/, { error: "must be a palette name like default or ocean" });
@@ -74,13 +141,24 @@ export const ConfigSchema = z
         resolution: z.enum(RESOLUTIONS).default("1080p"),
       })
       .prefault({}),
+    cards: z
+      .strictObject({ title: TitleCardSchema.optional() })
+      .optional()
+      .describe("Cards that open and close the video; each can be left out."),
+    logo: LogoSchema.optional(),
   })
   .describe("Style and output settings. Every field has a default.");
 
 export type Config = z.output<typeof ConfigSchema>;
 export type CustomPalette = z.output<typeof CustomPaletteSchema>;
+export type TitleCard = z.output<typeof TitleCardSchema>;
+export type Logo = z.output<typeof LogoSchema>;
+export type LogoImages = z.output<typeof LogoImagesSchema>;
 
 export const DEFAULT_CONFIG: Config = ConfigSchema.parse({});
+
+export const parseLogoImages = (data: unknown): Validated<LogoImages> =>
+  parseWith(LogoImagesSchema, data);
 
 /** Fills every missing field with its default. */
 export const parseConfig = (data: unknown): Validated<Config> => parseWith(ConfigSchema, data);

@@ -1,4 +1,12 @@
-import { cpSync, mkdtempSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
+import {
+  cpSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  unlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -60,5 +68,62 @@ describe("loadProject", () => {
     const errors = await errorsOf(dir);
     expect(errors.length).toBeGreaterThan(0);
     expect(errors.every((e) => e.startsWith("graph.json: "))).toBe(true);
+  });
+
+  describe("the logo", () => {
+    const SVG =
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="10" height="10"/></svg>';
+    const withLogo = (logo: object, files: Record<string, string | Buffer>) => {
+      const dir = copyOfExample();
+      const config = JSON.parse(readFileSync(join(dir, "config.json"), "utf8"));
+      writeFileSync(join(dir, "config.json"), JSON.stringify({ ...config, logo }));
+      mkdirSync(join(dir, "assets"), { recursive: true });
+      for (const [name, data] of Object.entries(files))
+        writeFileSync(join(dir, "assets", name), data);
+      return dir;
+    };
+
+    it("reads the logo from assets/, and one file serves both modes", async () => {
+      const dir = withLogo({ light: "mark.svg" }, { "mark.svg": SVG });
+      const result = await loadProject(dir);
+      if (!result.ok) throw new Error(formatErrors(result.errors).join("\n"));
+      const url = `data:image/svg+xml;base64,${Buffer.from(SVG).toString("base64")}`;
+      expect(result.value.logo).toEqual({ light: url, dark: url });
+    });
+
+    it("keeps a light and a dark file apart, and types each by its name", async () => {
+      const png = Buffer.from([0x89, 0x50, 0x4e, 0x47]);
+      const dir = withLogo({ light: "a.svg", dark: "b.png" }, { "a.svg": SVG, "b.png": png });
+      const result = await loadProject(dir);
+      expect(result.ok && result.value.logo?.dark).toBe(
+        `data:image/png;base64,${png.toString("base64")}`,
+      );
+    });
+
+    it("has no logo when the config has none", async () => {
+      const dir = copyOfExample();
+      const { logo: _, ...config } = JSON.parse(readFileSync(join(dir, "config.json"), "utf8"));
+      writeFileSync(join(dir, "config.json"), JSON.stringify(config));
+      const result = await loadProject(dir);
+      expect(result.ok && result.value.logo).toBeUndefined();
+    });
+
+    it("names the field of a missing or oversized file", async () => {
+      const big = Buffer.alloc(2 * 1024 * 1024 + 1);
+      const dir = withLogo({ light: "gone.svg", dark: "big.png" }, { "big.png": big });
+      expect(await errorsOf(dir)).toEqual([
+        "config.json: logo.light: assets/gone.svg missing",
+        "config.json: logo.dark: assets/big.png is 2.1 MB, max 2 MB",
+      ]);
+    });
+
+    it("names the field of a file that is not the image its name says, or not a file", async () => {
+      const dir = withLogo({ light: "mark.png", dark: "folder.svg" }, { "mark.png": SVG });
+      mkdirSync(join(dir, "assets", "folder.svg"));
+      expect(await errorsOf(dir)).toEqual([
+        "config.json: logo.light: assets/mark.png is not a PNG image",
+        "config.json: logo.dark: assets/folder.svg is not a file",
+      ]);
+    });
   });
 });

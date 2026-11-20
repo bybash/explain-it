@@ -218,6 +218,79 @@
         }
       },
       "additionalProperties": false
+    },
+    "cards": {
+      "description": "Cards that open and close the video; each can be left out.",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "description": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 160
+            }
+          },
+          "required": [
+            "title"
+          ],
+          "additionalProperties": false,
+          "description": "Opens the video: the title in the middle, the description under it."
+        }
+      },
+      "additionalProperties": false
+    },
+    "logo": {
+      "type": "object",
+      "properties": {
+        "light": {
+          "type": "string",
+          "pattern": "^[\\w-][\\w.-]*(\\.png|\\.jpg|\\.jpeg|\\.svg)$"
+        },
+        "dark": {
+          "description": "If only one file is given, it serves both modes.",
+          "type": "string",
+          "pattern": "^[\\w-][\\w.-]*(\\.png|\\.jpg|\\.jpeg|\\.svg)$"
+        },
+        "corner": {
+          "default": "top-right",
+          "type": "string",
+          "enum": [
+            "top-right",
+            "bottom-right"
+          ]
+        },
+        "show": {
+          "default": "both",
+          "type": "string",
+          "enum": [
+            "start",
+            "end",
+            "both",
+            "all"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "description": "The team's logo: files in assets/, at most 2 MB each.",
+      "anyOf": [
+        {
+          "required": [
+            "light"
+          ]
+        },
+        {
+          "required": [
+            "dark"
+          ]
+        }
+      ]
     }
   },
   "additionalProperties": false,
