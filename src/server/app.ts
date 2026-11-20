@@ -1,3 +1,4 @@
+import { join } from "node:path";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import type { MiddlewareHandler } from "hono";
 import { type Context, Hono } from "hono";
@@ -5,7 +6,11 @@ import { bodyLimit } from "hono/body-limit";
 import { streamSSE } from "hono/streaming";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { createMcpServer } from "../mcp/server.ts";
+import { loadProject } from "../render/load.ts";
+import { RenderQueue, type RenderRun } from "../render/queue.ts";
+import { renderProjectFolder } from "../render/run.ts";
 import type { ValidationError } from "../schema/errors.ts";
+import { formatErrors } from "../schema/errors.ts";
 import { createEvents } from "./events.ts";
 import { createProject, listProjects, openProject } from "./projects.ts";
 
@@ -21,7 +26,26 @@ export type AppOptions = {
    * arrive: behind `npm run dev`'s proxy, the API's own port serves no pages.
    */
   readonly publicUrl?: string;
+  /** How a render job runs; the real renderer by default, a fake in tests. */
+  readonly renderRun?: RenderRun;
 };
+
+/** The real renderer: the project's files as they are when the job starts, into its out/. */
+const renderFromFolder =
+  (projectsDir: string, now: () => Date): RenderRun =>
+  async (request, { onProgress, signal }) => {
+    const dir = join(projectsDir, request.slug);
+    const project = await loadProject(dir);
+    if (!project.ok) throw new Error(formatErrors(project.errors).join("\n"));
+    return renderProjectFolder({
+      dir,
+      project: project.value,
+      settings: request,
+      now: now(),
+      onProgress,
+      signal,
+    });
+  };
 
 /** How often an idle event stream sends a comment, so proxies and browsers keep it open. */
 const KEEP_ALIVE_MS = 15_000;
@@ -48,9 +72,28 @@ const errorResponse = (
  * or from another site's page, is refused, and bodies must be JSON, which a
  * cross-site form or simple fetch cannot send.
  */
-export const createApp = ({ projectsDir, now, hosts = [], publicUrl }: AppOptions) => {
+export const createApp = ({
+  projectsDir,
+  now,
+  hosts = [],
+  publicUrl,
+  renderRun = renderFromFolder(projectsDir, now),
+}: AppOptions) => {
   const app = new Hono();
   const events = createEvents();
+  // One queue for the app: MCP and, from 3.9, the web app's render gate share it.
+  const renders = new RenderQueue({
+    run: renderRun,
+    now,
+    onChange: (job) =>
+      events.publish({
+        type: "render",
+        job: job.id,
+        slug: job.slug,
+        state: job.state,
+        ...(job.progress ? { percent: job.progress.percent } : {}),
+      }),
+  });
   const allowed = new Set([...LOCAL_HOSTS, ...hosts]);
 
   const guard: MiddlewareHandler = async (c, next) => {
@@ -105,6 +148,7 @@ export const createApp = ({ projectsDir, now, hosts = [], publicUrl }: AppOption
       projectsDir,
       now,
       events,
+      renders,
       previewUrl: (slug) => `${origin}/#/projects/${slug}`,
     });
     // No sessionIdGenerator: the transport is stateless.

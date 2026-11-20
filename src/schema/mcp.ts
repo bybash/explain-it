@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { SlugSchema } from "./api.ts";
-import { LOGO_CORNERS, LOGO_SHOWS } from "./config.ts";
+import { LOGO_CORNERS, LOGO_SHOWS, RESOLUTIONS, THEME_MODES } from "./config.ts";
 import { ProjectSchema } from "./project.ts";
 
 /**
@@ -18,6 +18,10 @@ export const TOOL_NAMES = {
   updateGraph: "update_graph",
   setStoryboard: "set_storyboard",
   setStyle: "set_style",
+  check: "check",
+  render: "render",
+  renderStatus: "render_status",
+  cancelRender: "cancel_render",
 } as const;
 
 /** A document argument: anything here, checked by its schema in the tool; but it must be there. */
@@ -89,4 +93,23 @@ export const SetStyleArgsSchema = z.strictObject({
     })
     .optional()
     .describe("A logo to copy into the project's assets/, for light and dark."),
+});
+
+export const CheckArgsSchema = z.strictObject({ slug: SlugSchema });
+
+export const RenderArgsSchema = z.strictObject({
+  slug: SlugSchema,
+  theme: z
+    .enum(THEME_MODES)
+    .optional()
+    .describe("Which theme to render, or both; the project's config by default."),
+  resolution: z
+    .enum(RESOLUTIONS)
+    .optional()
+    .describe("The video's resolution; the project's config by default."),
+});
+
+/** `render_status` and `cancel_render`: the job id `render` returned. */
+export const RenderJobArgsSchema = z.strictObject({
+  job: z.string().min(1).describe("The id of a job that render returned."),
 });

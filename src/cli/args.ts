@@ -1,4 +1,3 @@
-import type { RenderSettings } from "../render/render.ts";
 import { type Config, RESOLUTIONS, type Resolution, THEME_MODES } from "../schema/config.ts";
 import type { Validated, ValidationError } from "../schema/errors.ts";
 import { fail, ok } from "../schema/result.ts";
@@ -55,13 +54,4 @@ export const parseRenderArgs = (argv: readonly string[]): Validated<RenderArgs> 
     ...(values["--theme"] ? { theme: values["--theme"] as ThemeChoice } : {}),
     ...(values["--resolution"] ? { resolution: values["--resolution"] as Resolution } : {}),
   });
-};
-
-/** The flags where given, else the project's config. */
-export const renderSettings = (args: RenderArgs, config: Config): RenderSettings => {
-  const mode = args.theme ?? config.theme.mode;
-  return {
-    themes: mode === "both" ? ["light", "dark"] : [mode],
-    resolution: args.resolution ?? config.output.resolution,
-  };
 };

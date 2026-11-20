@@ -5,10 +5,13 @@ import { z } from "zod";
 import { authoringGuide, graphSummary, storyboardSummary } from "../guidance/guide.ts";
 import { formatErrors, type Validated } from "../schema/errors.ts";
 import {
+  CheckArgsSchema,
   CreateProjectArgsSchema,
   GetGuideArgsSchema,
   GetProjectArgsSchema,
   ListProjectsArgsSchema,
+  RenderArgsSchema,
+  RenderJobArgsSchema,
   SetStoryboardArgsSchema,
   SetStyleArgsSchema,
   TOOL_NAMES,
@@ -16,6 +19,7 @@ import {
 } from "../schema/mcp.ts";
 import { isSlug } from "../server/projects.ts";
 import { VERSION } from "../version.ts";
+import { cancelRenderTool, checkTool, renderStatusTool, renderTool } from "./render-tools.ts";
 import {
   createProjectTool,
   getProjectTool,
@@ -121,6 +125,33 @@ const TOOLS = [
     run: setStyleTool,
     description:
       "Updates a project's config.json: `config` merges into it (theme, font, captions, output, cards and so on; objects merge, other values replace). `logo` copies a logo for light and dark from an absolute file path or a data URL into the project. Returns the config and a preview link.",
+  },
+  {
+    name: TOOL_NAMES.check,
+    schema: CheckArgsSchema,
+    run: checkTool,
+    description:
+      "Checks whether a project can render: every file it needs, read the way the renderer reads it. Returns whether it is ready, what is missing or broken, the stale beats, the estimated timing, what cannot be checked yet, and a preview link.",
+  },
+  {
+    name: TOOL_NAMES.render,
+    schema: RenderArgsSchema,
+    run: renderTool,
+    description:
+      "Queues a render of a project that is ready (see check): an MP4, its captions (.srt) and a poster per theme, into the project's out/ folder. `theme` (light, dark or both) and `resolution` (1080p or 720p) default to the project's config. Renders run one at a time and take about half a minute per minute of video; returns the job, to follow with render_status.",
+  },
+  {
+    name: TOOL_NAMES.renderStatus,
+    schema: RenderJobArgsSchema,
+    run: renderStatusTool,
+    description:
+      "Reads a render job by the id render returned: its state (queued, running, done, failed or cancelled), its progress, then the paths of the files it wrote, or why it failed.",
+  },
+  {
+    name: TOOL_NAMES.cancelRender,
+    schema: RenderJobArgsSchema,
+    run: cancelRenderTool,
+    description: "Cancels a queued or running render job by its id, leaving no partial files.",
   },
 ];
 

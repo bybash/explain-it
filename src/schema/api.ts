@@ -53,10 +53,17 @@ export const OpenedProjectSchema = z.object({
   problems: z.array(ValidationErrorSchema),
 });
 
-/** `GET /api/events`: what the server tells listeners about. Render progress joins in 3.9. */
+/** `GET /api/events`: what the server tells listeners about, including each render job's changes. */
 export const ServerEventSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("project-created"), slug: SlugSchema }),
   z.object({ type: z.literal("project-updated"), slug: SlugSchema }),
+  z.object({
+    type: z.literal("render"),
+    job: z.string(),
+    slug: SlugSchema,
+    state: z.enum(["queued", "running", "done", "failed", "cancelled"]),
+    percent: z.number().optional(),
+  }),
 ]);
 
 export type ProjectSummary = z.output<typeof ProjectSummarySchema>;

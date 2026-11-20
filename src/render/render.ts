@@ -36,8 +36,17 @@ export type RenderOptions = {
   readonly pageUrl: string;
   /** How many pages capture frames at once; 4 by default (SPEC, Rendering). */
   readonly pages?: number;
-  /** Called with a line of progress now and then. */
-  readonly onProgress?: (message: string) => void;
+  /** Called at every tenth of each theme's frames. */
+  readonly onProgress?: (progress: RenderProgress) => void;
+  /** Stops the render: capture ends at the next frame and ffmpeg's partial video is removed. */
+  readonly signal?: AbortSignal;
+};
+
+/** How far a render has got: frames captured of the current theme. */
+export type RenderProgress = {
+  readonly theme: ThemeMode;
+  readonly done: number;
+  readonly total: number;
 };
 
 const PAGES = 4;
@@ -114,7 +123,7 @@ const closeAll = async <T>(items: readonly T[], close: (item: T) => Promise<void
 const renderTheme = async (
   browsers: readonly Browser[],
   theme: ThemeMode,
-  { project, settings, outDir, pageUrl, onProgress }: RenderOptions,
+  { project, settings, outDir, pageUrl, onProgress, signal }: RenderOptions,
 ): Promise<RenderedTheme> => {
   const dir = join(outDir, theme);
   await mkdir(dir, { recursive: true });
@@ -145,13 +154,16 @@ const renderTheme = async (
         workers: pages.length,
         // Two frames a page keeps every page busy while one waits on a slower neighbour.
         ahead: 2 * pages.length,
-        capture: (worker, i) => frameAt(pages[worker] as Page, times[i] as number),
+        capture: (worker, i) => {
+          signal?.throwIfAborted();
+          return frameAt(pages[worker] as Page, times[i] as number);
+        },
         write: async (frame, i) => {
           await write(frame);
-          const percent = Math.floor(((i + 1) / times.length) * 10) * 10;
-          if (percent > shown) {
-            shown = percent;
-            onProgress?.(`${theme}: ${percent}% (${i + 1}/${times.length} frames)`);
+          const tenth = Math.floor(((i + 1) / times.length) * 10);
+          if (tenth > shown) {
+            shown = tenth;
+            onProgress?.({ theme, done: i + 1, total: times.length });
           }
         },
       }),
