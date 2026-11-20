@@ -86,7 +86,7 @@ export const renderProject = async (options: RenderOptions): Promise<RenderedThe
       rendered.push(await renderTheme(browsers, theme, options));
     return rendered;
   } finally {
-    await Promise.all(browsers.map((browser) => browser.close()));
+    await closeAll(browsers, (browser) => browser.close());
   }
 };
 
@@ -99,10 +99,15 @@ const allOrClose = async <T>(
   const started = settled.flatMap((s) => (s.status === "fulfilled" ? [s.value] : []));
   const failed = settled.find((s) => s.status === "rejected");
   if (failed) {
-    await Promise.all(started.map(close));
+    await closeAll(started, close);
     throw failed.reason;
   }
   return started;
+};
+
+/** Closes everything, and never lets a failed close hide the error that got us here. */
+const closeAll = async <T>(items: readonly T[], close: (item: T) => Promise<void>) => {
+  await Promise.allSettled(items.map(close));
 };
 
 const renderTheme = async (
@@ -119,12 +124,12 @@ const renderTheme = async (
     poster: join(dir, "poster.png"),
   };
   const injected = { ...project, mode: theme };
-  const open = await allOrClose(
+  const pages = await allOrClose(
     browsers.map((browser) => openPage(browser, pageUrl, injected)),
     (page) => page.close(),
   );
   try {
-    const [first] = open;
+    const [first] = pages;
     if (!first) throw new Error("no render page opened");
     const { duration, cues } = await first.evaluate(() => {
       const w = window as unknown as Seekable;
@@ -136,10 +141,10 @@ const renderTheme = async (
     await pipeFrames(encodeArgs({ fps: FPS, resolution, out: files.video }), (write) =>
       captureInOrder({
         count: times.length,
-        workers: open.length,
+        workers: pages.length,
         // Two frames a page keeps every page busy while one waits on a slower neighbour.
-        ahead: 2 * open.length,
-        capture: (worker, i) => frameAt(open[worker] as Page, times[i] as number),
+        ahead: 2 * pages.length,
+        capture: (worker, i) => frameAt(pages[worker] as Page, times[i] as number),
         write: async (frame, i) => {
           await write(frame);
           const percent = Math.floor(((i + 1) / times.length) * 10) * 10;
@@ -156,7 +161,7 @@ const renderTheme = async (
     await writeFile(files.captions, toSrt(cues));
     return files;
   } finally {
-    await Promise.all(open.map((page) => page.close()));
+    await closeAll(pages, (page) => page.close());
   }
 };
 
@@ -213,8 +218,12 @@ const pipeFrames = async (
     });
   try {
     await feed(write);
-  } finally {
-    ffmpeg.stdin.end();
+  } catch (error) {
+    // Ending stdin would let ffmpeg finish a short video that still plays; stop it instead.
+    ffmpeg.kill("SIGKILL");
+    await exited.catch(() => {});
+    throw error;
   }
+  ffmpeg.stdin.end();
   await exited;
 };

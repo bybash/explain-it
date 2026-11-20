@@ -28,12 +28,11 @@ export const captureInOrder = async <T>({
   let waiting: (() => void)[] = [];
   let failed: { readonly error: unknown } | undefined;
 
-  /** Resolves once `frame` is within `ahead` of the next frame to write, or the run failed. */
-  const room = async (frame: number) => {
+  const waitForRoom = async (frame: number) => {
     while (!failed && frame >= next + ahead)
       await new Promise<void>((resolve) => waiting.push(resolve));
   };
-  const wake = () => {
+  const wakeWaiters = () => {
     const woken = waiting;
     waiting = [];
     for (const resolve of woken) resolve();
@@ -48,28 +47,28 @@ export const captureInOrder = async <T>({
         ready.delete(next);
         await write(result, next);
         next += 1;
-        wake();
+        wakeWaiters();
       }
     } finally {
       draining = false;
     }
   };
 
-  const work = async (worker: number) => {
+  const runWorker = async (worker: number) => {
     try {
       for (let frame = worker; frame < count; frame += workers) {
-        await room(frame);
+        await waitForRoom(frame);
         if (failed) return;
         ready.set(frame, await capture(worker, frame));
         await drain();
       }
     } catch (error) {
       failed ??= { error };
-      wake();
+      wakeWaiters();
     }
   };
 
   // Every worker settles before this returns, so the caller can safely close what they use.
-  await Promise.all(Array.from({ length: Math.min(workers, count) }, (_, w) => work(w)));
+  await Promise.all(Array.from({ length: Math.min(workers, count) }, (_, w) => runWorker(w)));
   if (failed) throw failed.error;
 };
