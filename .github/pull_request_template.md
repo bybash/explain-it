@@ -17,7 +17,7 @@
 - [ ] Only this slice; other findings are noted below
 - [ ] `npm run lint`, `npm run typecheck`, `npm run deps` and `npm test` pass
 - [ ] `SPEC.md` updated if the design changed
-- [ ] Slice marked ✅ in `ROADMAP.md`
+- [ ] Slice marked ✅ in `ROADMAP.md`; left-out work listed under **Carried over** there
 - [ ] New dependencies (if any) listed with their licence
 
 ## Notes
