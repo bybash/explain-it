@@ -14,6 +14,7 @@ export default defineConfig({
     host: DEFAULT_HOST,
     port: DEFAULT_PORT,
     strictPort: true,
-    proxy: { "/api": `http://${DEFAULT_HOST}:${DEV_API_PORT}` },
+    // A pattern, not a prefix: "/api" alone would also send the app's own module /api.ts to the API.
+    proxy: { "^/api(/|$)": `http://${DEFAULT_HOST}:${DEV_API_PORT}` },
   },
 });

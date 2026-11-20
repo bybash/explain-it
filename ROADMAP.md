@@ -163,7 +163,10 @@ that finishes it.
   driving Chrome with Playwright from a one-off script: create a project,
   open it, see a project made elsewhere appear on the list over SSE, and
   get a named error for a long name. The first gate slice should turn
-  that flow into the first end-to-end test (AGENTS.md, Tests, layer 5).
+  that flow into the first end-to-end test (AGENTS.md, Tests, layer 5),
+  run against both `npm start` and `npm run dev`: the dev server's `/api`
+  proxy once sent the app's own `/api.ts` module to the API, which only a
+  browser on `npm run dev` showed.
 - The opened project shows its name, gate and files. The gate stepper
   there is only a display; 3.3 makes it the real one.
 
