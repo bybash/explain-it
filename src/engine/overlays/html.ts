@@ -6,8 +6,16 @@ import { type CalloutPlacement, placeBadge, placeCallout } from "./place.ts";
 import { LINE_HEIGHT, NARRATION_LINES, type Rect, STAGE, type StageRegions } from "./regions.ts";
 import { overlayTarget } from "./tweens.ts";
 
-/** One overlay to draw. `id` is unique among overlays and names its timeline target. */
-export type OverlayDrawing =
+/** When an overlay is on screen, in seconds. */
+export type Interval = { readonly at: number; readonly until: number };
+
+/**
+ * One overlay to draw. `id` is unique among overlays and names its timeline
+ * target. `shown` says when it is on screen, so a callout keeps clear of the
+ * badges and callouts showing at the same time; without it, it counts as
+ * always showing.
+ */
+export type OverlayDrawing = { readonly shown?: Interval } & (
   | {
       readonly kind: "callout";
       readonly id: string;
@@ -24,7 +32,8 @@ export type OverlayDrawing =
       readonly text: string;
       readonly tone: (typeof BADGE_TONES)[number];
     }
-  | { readonly kind: "title" | "step" | "narration"; readonly id: string; readonly text: string };
+  | { readonly kind: "title" | "step" | "narration"; readonly id: string; readonly text: string }
+);
 
 /** Sets every overlay from the timeline's state; overlays missing from it stay hidden. */
 export type ApplyOverlays = (state: State) => void;
@@ -57,8 +66,9 @@ const positionAt = (el: HTMLElement, rect: Rect): void => {
  * 1920×1080 pixel size, and returns the function that poses them for a
  * moment of the timeline. Captions and the title sit in their `regions`;
  * callouts are measured, then placed beside their node inside the content
- * region, away from `obstacles` (every node's faces). This is the browser
- * edge; placement and timing are in `place.ts` and `tweens.ts`.
+ * region, away from `obstacles` (every node's faces) and from the badges and
+ * callouts on screen with them. This is the browser edge; placement and
+ * timing are in `place.ts` and `tweens.ts`.
  */
 export const renderOverlays = (
   root: HTMLElement,
@@ -78,8 +88,18 @@ export const renderOverlays = (
   lines.setAttribute("viewBox", `0 0 ${STAGE.width} ${STAGE.height}`);
   root.appendChild(lines);
 
-  const posers = overlays.map((overlay) => {
-    const el = draw(root, lines, overlay, regions, obstacles);
+  // Badges have fixed places, so they go first and callouts move around them.
+  const ordered = [
+    ...overlays.filter((o) => o.kind !== "callout"),
+    ...overlays.filter((o) => o.kind === "callout"),
+  ];
+  const cards: { readonly box: Polygon; readonly shown?: Interval }[] = [];
+  const posers = ordered.map((overlay) => {
+    const showing = cards.filter((c) => together(c.shown, overlay.shown)).map((c) => c.box);
+    const el = draw(root, lines, overlay, regions, [...obstacles, ...showing]);
+    const [main] = el;
+    if ((overlay.kind === "badge" || overlay.kind === "callout") && main instanceof HTMLElement)
+      cards.push({ box: boxOf(main), ...(overlay.shown ? { shown: overlay.shown } : {}) });
     return (state: State): void => {
       const s = state[overlayTarget(overlay.id)] ?? {};
       const opacity = s.opacity ?? 0;
@@ -95,6 +115,23 @@ export const renderOverlays = (
   return (state) => {
     for (const pose of posers) pose(state);
   };
+};
+
+/** Whether two overlays are on screen at the same moment; one without times always is. */
+const together = (a: Interval | undefined, b: Interval | undefined): boolean =>
+  a === undefined || b === undefined || (a.at < b.until && b.at < a.until);
+
+/** An absolutely placed element's box, as a polygon, from where it was put. */
+const boxOf = (el: HTMLElement): Polygon => {
+  const x = Number.parseFloat(el.style.left);
+  const y = Number.parseFloat(el.style.top);
+  const [w, h] = [el.offsetWidth, el.offsetHeight];
+  return [
+    { x, y },
+    { x: x + w, y },
+    { x: x + w, y: y + h },
+    { x, y: y + h },
+  ];
 };
 
 /** Draws one overlay; the first element returned moves, the rest only fade with it. */

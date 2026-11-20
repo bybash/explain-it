@@ -3,7 +3,7 @@ import type { TweenSpec } from "../timeline.ts";
 /**
  * How a `flow` plays, in seconds: the edge draws in, its label fades in near
  * the end of the draw-in, then a dot travels from source to target while the
- * dashes keep flowing. The beat builder (slice 1.8) starts flows and decides
+ * dashes keep flowing. The beat builder (beats/build.ts) starts flows and decides
  * how long the dashes keep moving.
  */
 export const EDGE_TIMING = {

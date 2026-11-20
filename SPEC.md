@@ -237,10 +237,21 @@ for frame capture, so what the user approves is what gets rendered.
   in any order. The page exposes `__seek(t)`, `__duration` and `__cues`.
 - **Timing.**
   1. Each action type has a default duration.
-  2. A beat lasts max(narration length + 0.6 s, its actions at default speed).
-     Without narration, a beat also lasts at least its caption length ÷ 15
-     characters per second.
-  3. Actions are spread across the beat; callouts stay until the narration ends.
+  2. A beat lasts max(narration length + 0.6 s, its actions at default speed
+     + 0.6 s). Narration and actions start 0.3 s into the beat and end at
+     least 0.3 s before its end. Without narration, a beat also lasts at
+     least its caption length ÷ 15 characters per second.
+  3. Actions run in order at their default length, with the spare time
+     shared out after each; callouts stay until the narration ends, and
+     badges until the scene ends.
+  4. Narration longer than the caption band's two lines is split into cues,
+     between sentences, else clauses, else words; each cue is on screen for
+     its share of the line's characters. The cues are `__cues` and the `.srt`.
+  5. Each scene is drawn on its own layer, framed to its own nodes, and
+     scenes crossfade; a scene of a few nodes is not zoomed past a fixed
+     largest scale. A scene draws only the edges it flows; its nodes
+     without an `appear` are there from its start, and a zone's platform
+     rises with the first of its nodes to appear.
   Before the Preview gate, narration length is estimated at 2.5 words per
   second; from the Preview gate on, it is measured from the audio.
 

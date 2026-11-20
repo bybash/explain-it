@@ -255,3 +255,8 @@ body {
   border-radius: 50%;
   background: var(--tone);
 }
+
+.scene-layer {
+  position: absolute;
+  inset: 0;
+}
