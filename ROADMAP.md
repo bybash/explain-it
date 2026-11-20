@@ -145,7 +145,7 @@ that finishes it.
 
 ### For 2.5 (layout checks), from 4.4
 
-- In the 4.4 walkthrough video (\`docs/clips/4.4-render-job-walkthrough.mp4\`)
+- In the 4.4 walkthrough video (`docs/clips/4.4-render-job-walkthrough.mp4`)
   a zone's label is hidden behind the node standing in the zone's back
   corner: "explain-it server" shows as "exp". Edges also cross boxes they
   do not connect to. The overlap check should cover zone labels and edges
@@ -153,24 +153,24 @@ that finishes it.
 
 ### For 2.1, 2.5, 2.6 and 2.7 (voice, checks, contact sheet), from 4.3
 
-- The MCP \`check\` tool returns a readiness report for now: whether the
+- The MCP `check` tool returns a readiness report for now: whether the
   project can render, what is missing or broken, the stale beats and the
-  timing, with a \`notChecked\` list naming the voice, the overlap and
+  timing, with a `notChecked` list naming the voice, the overlap and
   off-frame checks, reading speed and narration fit, and the contact sheet
-  (\`src/mcp/render-tools.ts\`). Each of these slices adds its part to
-  \`check\`, removes its line from \`notChecked\`, and the contact sheet
-  comes back as an image (SPEC, MCP). \`set_storyboard\` can then return
+  (`src/mcp/render-tools.ts`). Each of these slices adds its part to
+  `check`, removes its line from `notChecked`, and the contact sheet
+  comes back as an image (SPEC, MCP). `set_storyboard` can then return
   the check warnings too.
 
 ### For 3.9 (render gate), from 4.3
 
-- The render queue exists: \`RenderQueue\` in \`src/render/queue.ts\`, one
+- The render queue exists: `RenderQueue` in `src/render/queue.ts`, one
   per app, shared with MCP. It runs one job at a time, can cancel a queued
-  or running job, and announces every change as a \`render\` event on
-  \`/api/events\`. 3.9 adds the UI, an API for it, and downloads.
+  or running job, and announces every change as a `render` event on
+  `/api/events`. 3.9 adds the UI, an API for it, and downloads.
 - Jobs are kept in memory, so a restart forgets them; their files stay in
-  the project's \`out/\`. Progress counts the whole job (each theme the
-  same), and a cancelled or failed render removes its \`out/<time>/\` folder.
+  the project's `out/`. Progress counts the whole job (each theme the
+  same), and a cancelled or failed render removes its `out/<time>/` folder.
 
 ### For 3.9 (render gate), from 1.10
 
@@ -213,9 +213,9 @@ that finishes it.
 
 ### For 5.3 (graph drafting), from 4.2
 
-- The authoring guide is \`authoringGuide()\` in \`src/guidance/guide.ts\`,
+- The authoring guide is `authoringGuide()` in `src/guidance/guide.ts`,
   with every limit and list taken from the schemas, and a worked example
-  in \`src/guidance/example.ts\` that a test validates. The in-app LLM's
+  in `src/guidance/example.ts` that a test validates. The in-app LLM's
   prompts for graph and script drafting (5.3, 5.4) should be built from
   it, not written again.
 
