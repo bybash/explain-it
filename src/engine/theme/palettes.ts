@@ -36,7 +36,7 @@ export const PALETTES: Readonly<Record<string, Preset>> = {
       text: "#122991",
       muted: "#56668a",
       accent: "#2f74d0",
-      categories: ["#7b3fe4", "#0e7f76", "#c2410c", "#4a78b0", "#510ea9", "#0369a1"],
+      categories: ["#7b3fe4", "#0e7f76", "#c2410c", "#4a78b0", "#a16207", "#0369a1"],
     },
     dark: {
       background: "#101828",
@@ -44,7 +44,7 @@ export const PALETTES: Readonly<Record<string, Preset>> = {
       text: "#e4f0ff",
       muted: "#aab6cc",
       accent: "#5b9bf0",
-      categories: ["#a77bf5", "#2cc4b8", "#f2a050", "#7fa9db", "#b084f0", "#38bdf8"],
+      categories: ["#a77bf5", "#2cc4b8", "#f2a050", "#7fa9db", "#facc15", "#38bdf8"],
     },
   },
   forest: {
