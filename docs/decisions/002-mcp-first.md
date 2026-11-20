@@ -22,6 +22,12 @@ their repository and has an LLM.
   optional `sources` (file paths and commits) for a later staleness check.
 - MCP is milestone 4, before the in-app LLM (milestone 5): it is the first way
   to make a video end to end, and needs no prompts, repair loops or fixtures.
+- **Update, after milestone 1:** MCP also comes before audio (milestone 2) and
+  most of the web app. Only 3.1 (the server it runs on) comes first. The
+  engine already renders a complete silent video with captions, title and
+  end cards, so MCP reaches a finished video from the IDE in five slices,
+  while the web app needs all of milestone 3 and the LLM. Audio follows MCP,
+  and the MCP slices list what they leave for it under Carried over.
 
 ## Alternatives considered
 

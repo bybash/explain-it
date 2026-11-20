@@ -25,6 +25,24 @@ be reviewed in one sitting, and leaves `main` working. The design is in
 
 **Done when** lists what the reviewer checks before merging.
 
+## Order
+
+Slices keep their IDs, but after Milestone 1 they are built in this order:
+
+1. **3.1** Server and shell: the MCP endpoint lives on the app server.
+2. **4.1 to 4.4**, MCP: the first way to make a video end to end
+   (decision 002), silent with captions until audio comes.
+3. **Milestone 2**, audio and checks.
+4. **3.2 to 3.9**, the rest of the web app.
+5. **Milestones 5 and 6**, as listed.
+
+Audio waits because the engine already renders a complete silent video.
+MCP needs only the server to reach a finished video from the IDE, whereas
+the web app needs all of Milestone 3 and the LLM. Where an MCP slice needs
+audio, it leaves that part under **Carried over** for the Milestone 2 slice
+that adds it. For example, 4.3's `check` reports voice and the contact sheet
+only once 2.1 and 2.7 exist.
+
 ## Milestone 0: repository
 
 | ID | Slice | Done when |

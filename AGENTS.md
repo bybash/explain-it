@@ -22,8 +22,8 @@ a design change is made by editing `SPEC.md` in the same pull request.
 
 ## Working on a slice
 
-1. Pick the slice the user names, or the first one in `ROADMAP.md` that is not
-   marked ✅ and whose earlier slices are done.
+1. Pick the slice the user names, or the next one in the order `ROADMAP.md`
+   gives (its **Order** section) that is not marked ✅.
 2. Branch from an up-to-date `main`: `<id>-<short-name>`, for example
    `1.3-isometric-primitives`.
 3. Do only that slice. Note anything else you find in the PR description
