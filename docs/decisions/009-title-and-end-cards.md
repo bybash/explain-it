@@ -27,7 +27,9 @@ on the roadmap PR.
   of our own, and gives its reason in the PR.
 - **The logo:**
   - It is a PNG, JPG or SVG file in the project's `assets/` folder, up to
-    2 MB.
+    2 MB. The config names it by file name; the extension (`.png`, `.jpg`,
+    `.jpeg` or `.svg`) is lower case, so the published JSON Schema can
+    check it the same way the app does.
   - It has light and dark versions. If only one is given, it serves both
     modes.
   - It sits in the top-right or bottom-right corner, top-right by default,

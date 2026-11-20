@@ -85,14 +85,13 @@ export const LogoSchema = z
     anyOf: [{ required: ["light"] }, { required: ["dark"] }],
   });
 
+const mediaTypes = [...new Set(Object.values(LOGO_TYPES))];
+
 const LogoDataUrlSchema = z
   .string()
-  .regex(
-    new RegExp(
-      `^data:(${[...new Set(Object.values(LOGO_TYPES))].map(escaped).join("|")});base64,[A-Za-z0-9+/]+=*$`,
-    ),
-    { error: "must be a PNG, JPEG or SVG image as a base64 data URL" },
-  );
+  .regex(new RegExp(`^data:(${mediaTypes.map(escaped).join("|")});base64,[A-Za-z0-9+/]+=*$`), {
+    error: `must be a base64 data URL of ${mediaTypes.slice(0, -1).join(", ")} or ${mediaTypes.at(-1)}`,
+  });
 
 /** The logo's images as the renderer hands them to the page: one data URL per mode. */
 export const LogoImagesSchema = z.strictObject({

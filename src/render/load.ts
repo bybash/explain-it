@@ -120,7 +120,7 @@ const SIGNATURES: Readonly<Record<LogoType, { name: string; matches: (data: Buff
     // An SVG may open with an XML declaration, a doctype or comments before its root element.
     "image/svg+xml": {
       name: "an SVG",
-      matches: (data) => /<svg[\s>]/.test(data.subarray(0, 4096).toString("utf8")),
+      matches: (data) => /<svg[\s/>]/.test(data.subarray(0, 4096).toString("utf8")),
     },
   };
 
@@ -135,12 +135,16 @@ const readLogo = async (dir: string, logo: Logo): Promise<Validated<LogoImages>>
       errors.push({ path: `logo.${mode}`, message: `assets/${name} ${message}` });
       return undefined;
     };
+    // Files the user names are theirs to fix, so any reason they can't be read is a field error.
+    const unreadable = (error: unknown) => {
+      const { code, message } = error as NodeJS.ErrnoException;
+      return report(code === "ENOENT" ? "missing" : `could not be read (${code ?? message})`);
+    };
     let info: Awaited<ReturnType<typeof stat>>;
     try {
       info = await stat(file);
     } catch (error) {
-      const code = (error as NodeJS.ErrnoException).code;
-      return report(code === "ENOENT" ? "missing" : `could not be read (${code})`);
+      return unreadable(error);
     }
     if (!info.isFile()) return report("is not a file");
     if (info.size > LOGO_MAX_BYTES) {
@@ -149,7 +153,12 @@ const readLogo = async (dir: string, logo: Logo): Promise<Validated<LogoImages>>
     }
     // The schema allows only the extensions LOGO_TYPES lists.
     const type = LOGO_TYPES[extname(name) as keyof typeof LOGO_TYPES];
-    const data = await readFile(file);
+    let data: Buffer;
+    try {
+      data = await readFile(file);
+    } catch (error) {
+      return unreadable(error);
+    }
     const signature = SIGNATURES[type];
     if (!signature.matches(data)) return report(`is not ${signature.name} image`);
     return `data:${type};base64,${data.toString("base64")}`;
