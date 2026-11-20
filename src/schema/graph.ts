@@ -1,5 +1,30 @@
 import { z } from "zod";
 import { IdSchema, referenceErrors, SchemaKeySchema } from "./common.ts";
+
+/** Words Mermaid reads as syntax at the start of a line or as a node; a node or zone named one breaks the diagram. */
+export const MERMAID_KEYWORDS = [
+  "end",
+  "graph",
+  "flowchart",
+  "subgraph",
+  "direction",
+  "style",
+  "class",
+  "classdef",
+  "click",
+  "linkstyle",
+  "default",
+  "call",
+  "href",
+  "callback",
+] as const;
+
+/** A node or zone id: also shown in the graph's Mermaid, so not one of its keywords. */
+const DiagramIdSchema = IdSchema.refine(
+  (id) => !(MERMAID_KEYWORDS as readonly string[]).includes(id),
+  { error: (issue) => `"${String(issue.input)}" is a Mermaid keyword; use another id` },
+);
+
 import { parseWith, type Validated } from "./errors.ts";
 import { lucideIcon } from "./icons.ts";
 import { fail } from "./result.ts";
@@ -24,7 +49,7 @@ const CategorySchema = z
   .describe("A palette category name; defaults by node kind.");
 
 export const GraphNodeSchema = z.strictObject({
-  id: IdSchema.describe("Stable id, used by edges, zones and the storyboard."),
+  id: DiagramIdSchema.describe("Stable id, used by edges, zones and the storyboard."),
   label: z.string().min(1).max(MAX_NODE_LABEL).describe("Shown on the node top."),
   kind: z.enum(NODE_KINDS).describe("Sets the default size, height and colour."),
   icon: z.string().min(1).optional().describe("A Lucide icon name."),
@@ -41,7 +66,7 @@ export const GraphEdgeSchema = z.strictObject({
 });
 
 export const ZoneSchema = z.strictObject({
-  id: IdSchema,
+  id: DiagramIdSchema,
   label: z.string().min(1).max(MAX_NODE_LABEL),
   category: CategorySchema.optional(),
 });

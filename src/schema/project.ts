@@ -5,6 +5,8 @@ import { parseWith, type Validated } from "./errors.ts";
 export const GATES = ["graph", "script", "style", "preview", "render"] as const;
 export const ORIGINS = ["web", "mcp"] as const;
 export const MAX_PROJECT_NAME = 80;
+/** The most source files one video records. */
+export const MAX_SOURCES = 100;
 
 export const SourceSchema = z.strictObject({
   path: z.string().min(1).max(300).describe("A file path in the explained repository."),
@@ -24,6 +26,7 @@ export const ProjectSchema = z
     origin: z.enum(ORIGINS).describe("Where the project was created."),
     sources: z
       .array(SourceSchema)
+      .max(MAX_SOURCES)
       .optional()
       .describe("Files the video explains; recorded over MCP, not checked in v1."),
     createdAt: z.iso.datetime(),

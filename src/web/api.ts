@@ -77,13 +77,15 @@ export const onServerEvents = ({
 }): (() => void) => {
   const source = new EventSource("/api/events");
   source.addEventListener("ready", connected);
-  source.addEventListener("project-created", (message: MessageEvent<string>) => {
+  const handle = (message: MessageEvent<string>) => {
     try {
       const event = ServerEventSchema.safeParse(JSON.parse(message.data));
       if (event.success) listener(event.data);
     } catch {
       // A message that is not JSON is not one of ours.
     }
-  });
+  };
+  for (const type of ServerEventSchema.options.map((o) => o.shape.type.value))
+    source.addEventListener(type, handle);
   return () => source.close();
 };

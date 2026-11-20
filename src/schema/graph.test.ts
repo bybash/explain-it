@@ -35,6 +35,33 @@ describe("parseGraph", () => {
     expect(errorsFor(graph)).toEqual(["nodes[0].label: 25 characters, max 24"]);
   });
 
+  it("keeps node and zone ids clear of Mermaid's keywords, which would break the diagram", () => {
+    const graph = validGraph();
+    graph.nodes[0] = { id: "end", label: "End", kind: "actor" };
+    graph.zones[0] = { id: "subgraph", label: "Backend" };
+    graph.nodes[1] = {
+      ...graph.nodes[1],
+      id: "app",
+      label: "App",
+      kind: "service",
+      zone: "subgraph",
+    };
+    graph.nodes[2] = {
+      ...graph.nodes[2],
+      id: "db",
+      label: "Users",
+      kind: "database",
+      zone: "subgraph",
+    };
+    graph.edges[0] = { id: "e1", from: "end", to: "app", label: "POST /login" };
+    expect(errorsFor(graph)).toEqual(
+      expect.arrayContaining([
+        'nodes[0].id: "end" is a Mermaid keyword; use another id',
+        'zones[0].id: "subgraph" is a Mermaid keyword; use another id',
+      ]),
+    );
+  });
+
   it("requires ids a slug can use", () => {
     const graph = validGraph();
     graph.nodes[0] = { id: "Browser", label: "Browser", kind: "actor" };

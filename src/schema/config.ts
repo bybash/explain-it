@@ -94,7 +94,7 @@ export const LogoSchema = z
 
 const mediaTypes = [...new Set(Object.values(LOGO_TYPES))];
 
-const LogoDataUrlSchema = z
+export const LogoDataUrlSchema = z
   .string()
   .regex(new RegExp(`^data:(${mediaTypes.map(escaped).join("|")});base64,[A-Za-z0-9+/]+=*$`), {
     error: `must be a base64 data URL of ${mediaTypes.slice(0, -1).join(", ")} or ${mediaTypes.at(-1)}`,

@@ -58,6 +58,9 @@ Rules:
   questions, and only when it cannot draft anything sensible.
 - The user can go back to any gate. Editing the graph marks only the beats
   that reference changed nodes or edges as stale; the script gate lists them.
+  A beat references what its actions name (a dim action names the nodes it
+  keeps); a scene's node list does not make its beats stale. A stale beat
+  stops being stale once it is rewritten.
 - Style can be changed at any later gate without going back.
 - Checks warn and never block. The user can always render.
 
@@ -82,7 +85,7 @@ type Graph = {
 };
 
 type GraphNode = {
-  id: string;           // [a-z][a-z0-9_]*, stable across edits
+  id: string;           // [a-z][a-z0-9_]*, stable across edits; not a Mermaid keyword (end, graph, subgraph…)
   label: string;        // shown on the node top, ≤ 24 characters
   kind: NodeKind;
   icon?: string;        // a Lucide icon name, validated against the icon set
@@ -396,6 +399,24 @@ server validates, lays out, checks, previews and renders.
 | `render` | Queues a render | A job id |
 | `render_status` | Reads a render job | Progress, then the output paths |
 
+The endpoint is stateless: each POST gets a fresh MCP server on the shared
+projects and answers with JSON; GET and DELETE answer 405. It sits behind
+the same host and origin checks as the API. Tool arguments are checked by
+the project's own schemas, so an error names its place
+(`graph.nodes[2].kind: …`) the way the rest of the app does, and an error
+about a project ends with its preview link. A JSON Patch is RFC 6902.
+`set_style`'s settings merge like a JSON Merge Patch (RFC 7386): objects
+merge, `null` removes, anything else replaces. A logo comes as an absolute
+file path or a data URL and is checked like any logo before it is copied
+into `assets/`; a logo named in the settings must already be there. Graph
+changes are laid out again at once, keeping manual positions, and
+`update_graph` also lists the storyboard lines the new graph breaks. A
+broken `layout.json` or `config.json` that a tool replaces is reported as a
+warning. Changes to one project are made one at a time. Gates only move
+forward as files arrive (graph, then script, then style); approval happens
+in the IDE's chat. Every change is announced over SSE, so an open preview
+page follows along. Decision 011 says why.
+
 **Guidance.** An MCP prompt, `explain_flow`, and the tool descriptions carry
 what the agent needs to write good files: the schemas, the limits, the node
 kinds and actions, how to tell the story in beats, and when to stop for the
@@ -429,8 +450,10 @@ and VS Code. A stdio shim that starts the app when it is not running comes later
 - `npm run dev` for development. `npm start` runs one Node process that
   serves the built UI and the API.
 - The server listens on `127.0.0.1:3000` by default. No login, no telemetry.
-  `HOST` and `PORT` change where it listens, and `PROJECTS_DIR` where the
-  projects folder is (`./projects` by default). With no login, the API
+  `HOST` and `PORT` change where it listens, `PROJECTS_DIR` where the
+  projects folder is (`./projects` by default), and `PUBLIC_URL` the
+  address preview links use when the app sits behind a proxy, as it does
+  under `npm run dev`. With no login, the API
   answers only its own pages: it refuses requests addressed to another host
   name (DNS rebinding) or sent from another site's page, takes request bodies
   only as JSON (which a cross-site form cannot send), and caps them at 1 MB.
@@ -519,6 +542,7 @@ The pull requests that make up each milestone are listed in [`ROADMAP.md`](ROADM
 - explAIn-it is MIT. The videos people make are theirs.
 - Dependencies: Mermaid (MIT), Playwright (Apache-2.0), Kokoro-82M and
   kokoro-js (Apache-2.0), AI SDK (Apache-2.0), MCP TypeScript SDK (MIT),
+  fast-json-patch (MIT),
   Lucide (ISC), elkjs (EPL-2.0), qrcode-generator (MIT, the end card's QR
   code; jsQR, Apache-2.0, checks it in tests),
   fonts (OFL), ffmpeg (LGPL/GPL, called as a separate program).

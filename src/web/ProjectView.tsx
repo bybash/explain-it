@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { OpenedProject } from "../schema/api.ts";
 import type { ValidationError } from "../schema/errors.ts";
 import { GATES } from "../schema/project.ts";
-import { openProject } from "./api.ts";
+import { onServerEvents, openProject } from "./api.ts";
 import { Errors } from "./Errors.tsx";
 import { GATE_LABELS, updatedLabel } from "./labels.ts";
 
@@ -18,13 +18,25 @@ export const ProjectView = ({ slug }: { slug: string }) => {
     let current = true;
     setOpened(undefined);
     setErrors([]);
-    void openProject(slug).then((result) => {
-      if (!current) return;
-      if (result.ok) setOpened(result.value);
-      else setErrors(result.errors);
+    const load = () =>
+      void openProject(slug).then((result) => {
+        if (!current) return;
+        if (result.ok) {
+          setOpened(result.value);
+          setErrors([]);
+        } else setErrors(result.errors);
+      });
+    load();
+    // An agent working over MCP changes the project while its user watches this page.
+    const stop = onServerEvents({
+      connected: load,
+      event: (event) => {
+        if (event.slug === slug) load();
+      },
     });
     return () => {
       current = false;
+      stop();
     };
   }, [slug]);
 

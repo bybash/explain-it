@@ -125,48 +125,70 @@ const SIGNATURES: Readonly<Record<LogoType, { name: string; matches: (data: Buff
     },
   };
 
+/** What is wrong with a logo file of `bytes`, if it is too big. */
+export const sizeProblem = (bytes: number): string | undefined => {
+  if (bytes <= LOGO_MAX_BYTES) return undefined;
+  const mb = Math.ceil((bytes / BYTES_PER_MB) * 10) / 10;
+  return `is ${mb.toFixed(1)} MB, max ${LOGO_MAX_MB} MB`;
+};
+
+/** What is wrong with `data` as an image of `type`, if it does not start the way that type does. */
+export const imageProblem = (type: LogoType, data: Buffer): string | undefined => {
+  const signature = SIGNATURES[type];
+  return signature.matches(data) ? undefined : `is not ${signature.name} image`;
+};
+
+/**
+ * Reads one logo file named in config.json from the project's `assets/`, as a
+ * data URL, after checking its size and content. Errors name `logo.<mode>`.
+ */
+export const readAssetLogo = async (
+  dir: string,
+  mode: keyof LogoImages,
+  name: string,
+): Promise<Validated<string>> => {
+  const file = join(dir, "assets", name);
+  const report = (message: string) =>
+    fail([{ path: `logo.${mode}`, message: `assets/${name} ${message}` }]);
+  // Files the user names are theirs to fix, so any reason they can't be read is a field error.
+  const unreadable = (error: unknown) => {
+    const { code, message } = error as NodeJS.ErrnoException;
+    return report(code === "ENOENT" ? "missing" : `could not be read (${code ?? message})`);
+  };
+  let info: Awaited<ReturnType<typeof stat>>;
+  try {
+    info = await stat(file);
+  } catch (error) {
+    return unreadable(error);
+  }
+  if (!info.isFile()) return report("is not a file");
+  const tooBig = sizeProblem(info.size);
+  if (tooBig) return report(tooBig);
+  // The schema allows only the extensions LOGO_TYPES lists.
+  const type = LOGO_TYPES[extname(name) as keyof typeof LOGO_TYPES];
+  let data: Buffer;
+  try {
+    data = await readFile(file);
+  } catch (error) {
+    return unreadable(error);
+  }
+  const notImage = imageProblem(type, data);
+  if (notImage) return report(notImage);
+  return ok(`data:${type};base64,${data.toString("base64")}`);
+};
+
 /** Reads the logo's files from `assets/` as data URLs; a single file serves both modes. */
 const readLogo = async (dir: string, logo: Logo): Promise<Validated<LogoImages>> => {
-  const errors: ValidationError[] = [];
-  const read = async (mode: keyof LogoImages): Promise<string | undefined> => {
+  const read = async (mode: keyof LogoImages) => {
     const name = logo[mode];
-    if (name === undefined) return undefined;
-    const file = join(dir, "assets", name);
-    const report = (message: string) => {
-      errors.push({ path: `logo.${mode}`, message: `assets/${name} ${message}` });
-      return undefined;
-    };
-    // Files the user names are theirs to fix, so any reason they can't be read is a field error.
-    const unreadable = (error: unknown) => {
-      const { code, message } = error as NodeJS.ErrnoException;
-      return report(code === "ENOENT" ? "missing" : `could not be read (${code ?? message})`);
-    };
-    let info: Awaited<ReturnType<typeof stat>>;
-    try {
-      info = await stat(file);
-    } catch (error) {
-      return unreadable(error);
-    }
-    if (!info.isFile()) return report("is not a file");
-    if (info.size > LOGO_MAX_BYTES) {
-      const mb = Math.ceil((info.size / BYTES_PER_MB) * 10) / 10;
-      return report(`is ${mb.toFixed(1)} MB, max ${LOGO_MAX_MB} MB`);
-    }
-    // The schema allows only the extensions LOGO_TYPES lists.
-    const type = LOGO_TYPES[extname(name) as keyof typeof LOGO_TYPES];
-    let data: Buffer;
-    try {
-      data = await readFile(file);
-    } catch (error) {
-      return unreadable(error);
-    }
-    const signature = SIGNATURES[type];
-    if (!signature.matches(data)) return report(`is not ${signature.name} image`);
-    return `data:${type};base64,${data.toString("base64")}`;
+    return name === undefined ? undefined : readAssetLogo(dir, mode, name);
   };
   const light = await read("light");
   const dark = await read("dark");
-  const either = light ?? dark;
+  const errors = [light, dark].flatMap((r) => (r && !r.ok ? r.errors : []));
+  const lightUrl = light?.ok ? light.value : undefined;
+  const darkUrl = dark?.ok ? dark.value : undefined;
+  const either = lightUrl ?? darkUrl;
   if (errors.length > 0 || either === undefined) return fail(errors);
-  return ok({ light: light ?? either, dark: dark ?? either });
+  return ok({ light: lightUrl ?? either, dark: darkUrl ?? either });
 };
