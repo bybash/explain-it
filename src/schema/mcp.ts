@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { SlugSchema } from "./api.ts";
 import { LOGO_CORNERS, LOGO_SHOWS } from "./config.ts";
-import { ProjectSchema, SourceSchema } from "./project.ts";
+import { ProjectSchema } from "./project.ts";
 
 /**
  * The MCP tools' arguments. The documents they carry (graph, storyboard,
@@ -37,11 +37,9 @@ export const CreateProjectArgsSchema = z.strictObject({
     .optional()
     .describe("The project's name; the graph's title by default."),
   graph: document("The whole graph.json."),
-  sources: z
-    .array(SourceSchema)
-    .max(100)
-    .optional()
-    .describe("Files in your repository that the video explains, with their commit."),
+  sources: ProjectSchema.shape.sources.describe(
+    "Files in your repository that the video explains, with their commit.",
+  ),
 });
 
 /** Exactly one of the whole file or a patch; the tool says which is missing or doubled. */

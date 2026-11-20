@@ -58,6 +58,9 @@ Rules:
   questions, and only when it cannot draft anything sensible.
 - The user can go back to any gate. Editing the graph marks only the beats
   that reference changed nodes or edges as stale; the script gate lists them.
+  A beat references what its actions name (a dim action names the nodes it
+  keeps); a scene's node list does not make its beats stale. A stale beat
+  stops being stale once it is rewritten.
 - Style can be changed at any later gate without going back.
 - Checks warn and never block. The user can always render.
 
@@ -82,7 +85,7 @@ type Graph = {
 };
 
 type GraphNode = {
-  id: string;           // [a-z][a-z0-9_]*, stable across edits
+  id: string;           // [a-z][a-z0-9_]*, stable across edits; not a Mermaid keyword (end, graph, subgraph…)
   label: string;        // shown on the node top, ≤ 24 characters
   kind: NodeKind;
   icon?: string;        // a Lucide icon name, validated against the icon set
@@ -396,15 +399,23 @@ server validates, lays out, checks, previews and renders.
 | `render` | Queues a render | A job id |
 | `render_status` | Reads a render job | Progress, then the output paths |
 
-The endpoint is stateless: each request gets a fresh MCP server on the
-shared projects, and answers with JSON. Tool arguments are checked by the
-project's own schemas, so an error names its place (`graph.nodes[2].kind: …`)
-the way the rest of the app does. A JSON Patch is RFC 6902. A logo comes as
-an absolute file path or a data URL, and is checked like any logo before it
-is copied into `assets/`. Graph changes are laid out again at once, keeping
-manual positions. Gates only move forward as files arrive (graph, then
-script, then style); approval happens in the IDE's chat. Every change is
-announced over SSE, so an open preview page follows along.
+The endpoint is stateless: each POST gets a fresh MCP server on the shared
+projects and answers with JSON; GET and DELETE answer 405. It sits behind
+the same host and origin checks as the API. Tool arguments are checked by
+the project's own schemas, so an error names its place
+(`graph.nodes[2].kind: …`) the way the rest of the app does, and an error
+about a project ends with its preview link. A JSON Patch is RFC 6902.
+`set_style`'s settings merge like a JSON Merge Patch (RFC 7386): objects
+merge, `null` removes, anything else replaces. A logo comes as an absolute
+file path or a data URL and is checked like any logo before it is copied
+into `assets/`; a logo named in the settings must already be there. Graph
+changes are laid out again at once, keeping manual positions, and
+`update_graph` also lists the storyboard lines the new graph breaks. A
+broken `layout.json` or `config.json` that a tool replaces is reported as a
+warning. Changes to one project are made one at a time. Gates only move
+forward as files arrive (graph, then script, then style); approval happens
+in the IDE's chat. Every change is announced over SSE, so an open preview
+page follows along. Decision 011 says why.
 
 **Guidance.** An MCP prompt, `explain_flow`, and the tool descriptions carry
 what the agent needs to write good files: the schemas, the limits, the node

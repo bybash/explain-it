@@ -22,10 +22,12 @@ const ENTITIES: Readonly<Record<string, string>> = {
   "|": "#124;",
   "<": "#lt;",
   ">": "#gt;",
+  "`": "#96;",
 };
 
 /** A label as a quoted Mermaid string. */
-const text = (label: string): string => `"${label.replace(/[#"|<>]/g, (c) => ENTITIES[c] ?? c)}"`;
+const text = (label: string): string =>
+  `"${label.replace(/[#"|<>`]/g, (c) => ENTITIES[c] ?? c).replace(/\r?\n/g, "<br>")}"`;
 
 const nodeLine = (node: GraphNode, indent: string): string => {
   const [open, close] = SHAPES[node.kind];

@@ -1,3 +1,5 @@
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { formatErrors, type Validated } from "../schema/errors.ts";
@@ -9,6 +11,7 @@ import {
   SetStyleArgsSchema,
   UpdateGraphArgsSchema,
 } from "../schema/mcp.ts";
+import { isSlug } from "../server/projects.ts";
 import { VERSION } from "../version.ts";
 import {
   createProjectTool,
@@ -40,14 +43,27 @@ const advertised = (schema: z.ZodObject) =>
     ),
   );
 
-/** A tool's result as MCP content: its JSON, or its errors one per line. */
-const asContent = (result: Validated<unknown>) =>
-  result.ok
-    ? { content: [{ type: "text" as const, text: JSON.stringify(result.value, null, 2) }] }
-    : {
-        isError: true,
-        content: [{ type: "text" as const, text: formatErrors(result.errors).join("\n") }],
-      };
+/**
+ * A tool's result as MCP content: its JSON, or its errors one per line. An
+ * error about a project ends with its preview link too, so the agent can
+ * always point its user at the project (SPEC, MCP: every tool result).
+ */
+const asContent = (result: Validated<unknown>, preview: string | undefined) => {
+  if (result.ok)
+    return { content: [{ type: "text" as const, text: JSON.stringify(result.value, null, 2) }] };
+  const lines = [...formatErrors(result.errors), ...(preview ? [`preview: ${preview}`] : [])];
+  return { isError: true, content: [{ type: "text" as const, text: lines.join("\n") }] };
+};
+
+/** The preview link for the project an argument names, when it names one that exists. */
+const previewOf = (context: ToolContext, args: Readonly<Record<string, unknown>>) => {
+  const { slug } = args;
+  return typeof slug === "string" &&
+    isSlug(slug) &&
+    existsSync(join(context.projectsDir, slug, "project.json"))
+    ? context.previewUrl(slug)
+    : undefined;
+};
 
 const TOOLS = [
   {
@@ -101,7 +117,8 @@ export const createMcpServer = (context: ToolContext): McpServer => {
     server.registerTool(
       tool.name,
       { description: tool.description, inputSchema: advertised(tool.schema) },
-      async (args: Readonly<Record<string, unknown>>) => asContent(await tool.run(context, args)),
+      async (args: Readonly<Record<string, unknown>>) =>
+        asContent(await tool.run(context, args), previewOf(context, args)),
     );
   return server;
 };

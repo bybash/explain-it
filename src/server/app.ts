@@ -86,7 +86,15 @@ export const createApp = ({ projectsDir, now, hosts = [] }: AppOptions) => {
   // MCP over Streamable HTTP, without sessions: each request gets a fresh server on the
   // shared projects and events, and answers with JSON. Preview links use the address the
   // client reached the app on, which is the one its user's browser can open.
-  app.all("/mcp", async (c) => {
+  app.on(["GET", "DELETE"], "/mcp", (c) =>
+    errorResponse(c, 405, [
+      {
+        path: "method",
+        message: "this MCP endpoint keeps no sessions: send each request as a POST",
+      },
+    ]),
+  );
+  app.post("/mcp", async (c) => {
     const origin = new URL(c.req.url).origin;
     const server = createMcpServer({
       projectsDir,

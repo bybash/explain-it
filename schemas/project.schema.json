@@ -46,6 +46,7 @@
     },
     "sources": {
       "description": "Files the video explains; recorded over MCP, not checked in v1.",
+      "maxItems": 100,
       "type": "array",
       "items": {
         "type": "object",

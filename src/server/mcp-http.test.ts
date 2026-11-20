@@ -70,4 +70,14 @@ describe("/mcp", () => {
     const crossSite = await rpc("tools/list", {}, { origin: "https://evil.example" });
     expect(crossSite.status).toBe(403);
   });
+
+  it("answers GET and DELETE with 405, as a server without sessions has no stream to open", async () => {
+    for (const method of ["GET", "DELETE"]) {
+      const response = await app.request("http://127.0.0.1:3000/mcp", {
+        method,
+        headers: { accept: "application/json, text/event-stream" },
+      });
+      expect(response.status, method).toBe(405);
+    }
+  });
 });

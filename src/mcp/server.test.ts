@@ -197,9 +197,15 @@ describe("update_graph", () => {
 
   it("takes a graph or a patch, not both or neither, and names a failed patch step", async () => {
     const slug = await exampleProject();
-    expect(await fails("update_graph", { slug })).toEqual(["(arguments): give graph or patch"]);
+    // An error about a project ends with its preview link.
+    const link = `preview: ${preview(slug)}`;
+    expect(await fails("update_graph", { slug })).toEqual([
+      "(arguments): give graph or patch",
+      link,
+    ]);
     expect(await fails("update_graph", { slug, graph: graphFile, patch: [] })).toEqual([
       "(arguments): give graph or patch, not both",
+      link,
     ]);
     const lines = await fails("update_graph", {
       slug,
@@ -274,6 +280,7 @@ describe("set_storyboard", () => {
     );
     expect(await fails("set_storyboard", { slug: "bare", storyboard: storyboardFile })).toEqual([
       "graph.json: missing; call create_project or update_graph first",
+      `preview: ${preview("bare")}`,
     ]);
   });
 });
@@ -321,5 +328,76 @@ describe("set_style", () => {
       ]),
     );
     expect(() => readProjectFile(slug, "config.json")).toThrow();
+  });
+});
+
+describe("review fixes", () => {
+  const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+  const SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"/>';
+  const dataUrl = (type: string, data: Buffer | string) =>
+    `data:${type};base64,${Buffer.from(data).toString("base64")}`;
+
+  it("ends an error about a project with that project's preview link", async () => {
+    const slug = await exampleProject();
+    const lines = await fails("update_graph", {
+      slug,
+      patch: [{ op: "test", path: "/title", value: "Something else" }],
+    });
+    expect(lines.at(-1)).toBe(`preview: ${preview(slug)}`);
+  });
+
+  it("checks a logo named in config like one sent as a file", async () => {
+    const slug = await exampleProject();
+    expect(await fails("set_style", { slug, config: { logo: { light: "nope.png" } } })).toEqual(
+      expect.arrayContaining(["config.logo.light: assets/nope.png missing"]),
+    );
+  });
+
+  it("removes a setting given as null", async () => {
+    const slug = await exampleProject();
+    await succeeds("set_style", { slug, config: { cards: { title: { title: "Sign in" } } } });
+    await succeeds("set_style", { slug, config: { cards: { title: null } } });
+    expect(readProjectFile(slug, "config.json").cards).toEqual({});
+  });
+
+  it("replaces a logo whose type changed, leaving no old file behind", async () => {
+    const { existsSync } = await import("node:fs");
+    const slug = await exampleProject();
+    await succeeds("set_style", { slug, logo: { light: { dataUrl: dataUrl("image/png", PNG) } } });
+    await succeeds("set_style", {
+      slug,
+      logo: { light: { dataUrl: dataUrl("image/svg+xml", SVG) } },
+    });
+    expect(existsSync(join(projectsDir, slug, "assets", "logo-light.png"))).toBe(false);
+    expect(readProjectFile(slug, "config.json").logo.light).toBe("logo-light.svg");
+  });
+
+  it("warns when a broken layout.json or config.json is replaced", async () => {
+    const { writeFileSync } = await import("node:fs");
+    const slug = await exampleProject();
+    writeFileSync(join(projectsDir, slug, "layout.json"), "{");
+    const graphBody = await succeeds("update_graph", { slug, graph: graphFile });
+    expect(graphBody.warnings).toEqual([
+      "layout.json was broken, so the graph was laid out from scratch and any manual positions in it were dropped",
+    ]);
+    writeFileSync(join(projectsDir, slug, "config.json"), "{");
+    const styleBody = await succeeds("set_style", { slug, config: { font: "inter" } });
+    expect(styleBody.warnings).toEqual([
+      "config.json was broken, so it was started again from these settings",
+    ]);
+  });
+
+  it("keeps both of two edits made at the same time", async () => {
+    const slug = await exampleProject();
+    const label = (i: number, value: string) => ({
+      slug,
+      patch: [{ op: "replace", path: `/nodes/${i}/label`, value }],
+    });
+    await Promise.all([
+      succeeds("update_graph", label(0, "First")),
+      succeeds("update_graph", label(1, "Second")),
+    ]);
+    const nodes = readProjectFile(slug, "graph.json").nodes;
+    expect([nodes[0].label, nodes[1].label]).toEqual(["First", "Second"]);
   });
 });

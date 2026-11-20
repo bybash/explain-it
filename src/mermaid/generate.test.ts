@@ -77,6 +77,17 @@ describe("graphToMermaid", () => {
     expect(mermaid).toContain('a e@-->|"a#124;b"| b');
   });
 
+  it("keeps a line break or a backtick in a label inside the label", () => {
+    const mermaid = graphToMermaid(
+      graph({
+        title: "Breaks",
+        nodes: [{ id: "a", label: "Two\nlines `x`", kind: "service" }],
+        edges: [],
+      }),
+    );
+    expect(mermaid.split("\n")).toEqual(["flowchart LR", '  a["Two<br>lines #96;x#96;"]']);
+  });
+
   it("names every node and edge of the example once", () => {
     const example = orThrow(parseGraph(graphJson), "graph.json");
     const mermaid = graphToMermaid(example);

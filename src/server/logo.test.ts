@@ -3,7 +3,15 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { formatErrors } from "../schema/errors.ts";
-import { importLogo } from "./logo.ts";
+import { checkLogo, type LogoSource, saveLogo } from "./logo.ts";
+
+/** What set_style does with a logo: check it, then save it into the project. */
+const importLogo = async (projectDir: string, mode: "light" | "dark", source: LogoSource) => {
+  const checked = await checkLogo(mode, source);
+  if (!checked.ok) return checked;
+  await saveLogo(projectDir, checked.value);
+  return { ok: true as const, value: checked.value.name };
+};
 
 const SVG =
   '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="10" height="10"/></svg>';

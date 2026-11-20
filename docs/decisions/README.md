@@ -20,3 +20,4 @@ later record supersedes an earlier one and says so.
 | [008](008-render-page-and-capture.md) | Render page, capture and outputs |
 | [009](009-title-and-end-cards.md) | Title and end cards, and the logo |
 | [010](010-parallel-capture.md) | Parallel capture |
+| [011](011-mcp-endpoint-and-tools.md) | MCP endpoint and project tools |

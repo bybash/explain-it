@@ -184,3 +184,29 @@ export const openProject = async (
   const layout = graph ? await optional("layout.json", (data) => parseLayout(data, graph)) : null;
   return ok({ slug, project: project.value, graph, storyboard, layout, config, problems });
 };
+
+/** The last change queued for each project folder. */
+const queues = new Map<string, Promise<unknown>>();
+
+/**
+ * Runs `change` once every earlier change to the same project has finished,
+ * so two edits at the same time each read what the other wrote. The server
+ * is one process (SPEC), so a lock in memory covers the web app and MCP.
+ */
+export const withProjectLock = <T>(
+  projectsDir: string,
+  slug: string,
+  change: () => Promise<T>,
+): Promise<T> => {
+  const key = join(projectsDir, slug);
+  const result = (queues.get(key) ?? Promise.resolve()).then(change, change);
+  const done = result.then(
+    () => undefined,
+    () => undefined,
+  );
+  queues.set(key, done);
+  void done.then(() => {
+    if (queues.get(key) === done) queues.delete(key);
+  });
+  return result;
+};

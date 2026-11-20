@@ -177,6 +177,10 @@ that finishes it.
   (`from id@--> to`), labels quoted with entity codes. 3.4 adds the parser
   and must check that this output parses with the pinned `mermaid` and comes
   back to the same graph. Nothing has run it through Mermaid yet.
+- Node and zone ids may not be Mermaid keywords (4.1). Edge ids may: the
+  example's edge is named `click`. Check with the real parser whether
+  `from click@--> to` parses, and rename the example's edge or widen the
+  rule if it does not.
 
 ### For 4.2 (guidance), from 4.1
 

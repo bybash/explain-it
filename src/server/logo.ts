@@ -1,4 +1,4 @@
-import { mkdir, readFile, rename, stat, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import { extname, isAbsolute, join } from "node:path";
 import { imageProblem, sizeProblem } from "../render/load.ts";
 import { LOGO_TYPES, LogoDataUrlSchema, type LogoType } from "../schema/config.ts";
@@ -65,23 +65,15 @@ export const checkLogo = async (
   return ok({ name: `logo-${mode}${extensionOf(read.value.type)}`, data: read.value.data });
 };
 
-/** Writes a checked logo into the project's assets/. */
+/** Writes a checked logo into the project's assets/, and removes the one it replaces if that had another type. */
 export const saveLogo = async (projectDir: string, logo: CheckedLogo): Promise<void> => {
   const assets = join(projectDir, "assets");
   await mkdir(assets, { recursive: true });
   const temporary = join(assets, `${logo.name}.${process.pid}.tmp`);
   await writeFile(temporary, logo.data);
   await rename(temporary, join(assets, logo.name));
-};
-
-/** Checks a logo and copies it into the project's assets/; returns its file name for config.json. */
-export const importLogo = async (
-  projectDir: string,
-  mode: "light" | "dark",
-  source: LogoSource,
-): Promise<Validated<string>> => {
-  const checked = await checkLogo(mode, source);
-  if (!checked.ok) return checked;
-  await saveLogo(projectDir, checked.value);
-  return ok(checked.value.name);
+  const base = logo.name.slice(0, logo.name.lastIndexOf("."));
+  for (const old of await readdir(assets))
+    if (old !== logo.name && extensions.some((e) => old === `${base}${e}`))
+      await rm(join(assets, old), { force: true });
 };
