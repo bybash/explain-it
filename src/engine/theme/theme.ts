@@ -1,5 +1,6 @@
-import { type CustomPalette, MAX_CATEGORY_COLOURS } from "../../schema/config.ts";
+import type { CustomPalette } from "../../schema/config.ts";
 import { BADGE_TONES } from "../../schema/storyboard.ts";
+import { NUMBERED_CATEGORIES } from "./kinds.ts";
 
 type BadgeTone = (typeof BADGE_TONES)[number];
 
@@ -74,8 +75,8 @@ const toneColourOn = (tone: keyof typeof TONES, background: string, mode: ThemeM
 const tokensOf = (colours: PaletteColours, mode: ThemeMode): Tokens => {
   const { background, surface, text, muted, accent, categories } = colours;
   const categoryTokens = Object.fromEntries(
-    Array.from({ length: MAX_CATEGORY_COLOURS }, (_, i) => [
-      `--cat-c${i + 1}`,
+    NUMBERED_CATEGORIES.map((name, i) => [
+      `--cat-${name}`,
       categories[i % Math.max(1, categories.length)] ?? accent,
     ]),
   );

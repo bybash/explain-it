@@ -389,6 +389,7 @@ server validates, lays out, checks, previews and renders.
 
 | Tool | Does | Returns |
 |---|---|---|
+| `get_guide` | Reads the authoring guide | The guide as text, the same as `explain_flow` |
 | `list_projects` | Lists projects | Names, gates, last update |
 | `get_project` | Reads one project | Its files and the current gate |
 | `create_project` | Creates a project from a graph, with optional `sources` | Validation errors or the Mermaid, and a preview link |
@@ -421,6 +422,14 @@ page follows along. Decision 011 says why.
 what the agent needs to write good files: the schemas, the limits, the node
 kinds and actions, how to tell the story in beats, and when to stop for the
 user's approval. The in-app LLM prompts are built from the same guidance.
+The guide is one text in `src/guidance/` (`authoringGuide()`): the file
+formats are generated from the zod schemas as TypeScript-like types, with
+every field, limit, default and description, and the other lists come
+from the code, so it cannot drift from what the tools accept. The prompt takes an optional
+`topic`. An agent cannot open a prompt by itself (an IDE offers it to the
+user, as a slash command in Claude Code), so `get_guide` returns the same
+text, and the graph and storyboard tools carry a short summary of their
+format that points at it.
 
 **Approval.** The prompt tells the agent to show the user the Mermaid, then
 the script, in the IDE chat and to wait for approval before moving on. Every

@@ -18,17 +18,12 @@ export const pipeFrames = async (
   ffmpeg.stderr.on("data", (chunk: Buffer) => {
     stderr += chunk.toString();
   });
-  let quit = false;
   const exited = new Promise<void>((resolve, reject) => {
-    ffmpeg.on("error", (error) => {
-      quit = true;
+    ffmpeg.on("error", (error) =>
       reject(
         new Error(`could not run ffmpeg (${FFMPEG}): ${error.message}; install it or set FFMPEG`),
-      );
-    });
-    ffmpeg.on("exit", () => {
-      quit = true;
-    });
+      ),
+    );
     ffmpeg.on("close", (code) =>
       code === 0 ? resolve() : reject(new Error(`ffmpeg exited with ${code}:\n${stderr}`)),
     );
@@ -45,15 +40,16 @@ export const pipeFrames = async (
     try {
       await feed(write);
     } catch (error) {
-      const ffmpegFailed = quit || (error as NodeJS.ErrnoException).code === "EPIPE";
       // Ending stdin would let ffmpeg finish a short video; stop it instead.
       ffmpeg.kill("SIGKILL");
       const ffmpegError = await exited.then(
         () => undefined,
         (reason: unknown) => reason,
       );
-      // When ffmpeg quit by itself, its own message says why; a broken pipe does not.
-      throw ffmpegFailed && ffmpegError ? ffmpegError : error;
+      // How ffmpeg ended says whose fault it was, whatever order the events came in: killed by
+      // us, the feed failed; ended by itself, its own message says why (a broken pipe does not).
+      const quitByItself = ffmpeg.signalCode !== "SIGKILL";
+      throw quitByItself && ffmpegError ? ffmpegError : error;
     }
     ffmpeg.stdin.end();
     await exited;

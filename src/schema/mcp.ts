@@ -9,6 +9,17 @@ import { ProjectSchema } from "./project.ts";
  * names the place in the document: `graph.nodes[2].kind: …`.
  */
 
+/** The MCP tools, by name: the server registers them and the guide refers to them. */
+export const TOOL_NAMES = {
+  getGuide: "get_guide",
+  listProjects: "list_projects",
+  getProject: "get_project",
+  createProject: "create_project",
+  updateGraph: "update_graph",
+  setStoryboard: "set_storyboard",
+  setStyle: "set_style",
+} as const;
+
 /** A document argument: anything here, checked by its schema in the tool; but it must be there. */
 const document = (what: string) =>
   z
@@ -29,6 +40,7 @@ export const JsonPatchSchema = z
   .describe("An RFC 6902 JSON Patch applied to the current file.");
 
 export const ListProjectsArgsSchema = z.strictObject({});
+export const GetGuideArgsSchema = z.strictObject({});
 
 export const GetProjectArgsSchema = z.strictObject({ slug: SlugSchema });
 

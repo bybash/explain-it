@@ -46,7 +46,9 @@ export const NODE_KINDS = [
 const CategorySchema = z
   .string()
   .regex(/^[a-z][a-z0-9_-]*$/, { error: "must be a palette category name like accent or c1" })
-  .describe("A palette category name; defaults by node kind.");
+  .describe(
+    "A palette category name; a node's defaults by its kind, an edge's and a zone's to the accent.",
+  );
 
 export const GraphNodeSchema = z.strictObject({
   id: DiagramIdSchema.describe("Stable id, used by edges, zones and the storyboard."),
