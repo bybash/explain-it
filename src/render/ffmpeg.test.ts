@@ -2,7 +2,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { encodeArgs } from "./encode.ts";
 import { pipeFrames } from "./ffmpeg.ts";
 import { FPS } from "./frames.ts";
@@ -13,11 +13,14 @@ describe.skipIf(!hasFfmpeg)("pipeFrames (ffmpeg)", () => {
   const out = mkdtempSync(join(tmpdir(), "explain-it-ffmpeg-"));
   afterAll(() => rmSync(out, { recursive: true, force: true }));
 
-  /** A small solid PNG; the size is even, as H.264 needs. */
-  const frame = execFileSync("ffmpeg", [
-    ...["-loglevel", "error", "-f", "lavfi", "-i", "color=c=teal:s=64x64"],
-    ...["-frames:v", "1", "-f", "image2pipe", "-c:v", "png", "-"],
-  ]);
+  /** A small solid PNG; the size is even, as H.264 needs. Made in a hook, so a skipped suite never runs ffmpeg. */
+  let frame: Buffer;
+  beforeAll(() => {
+    frame = execFileSync("ffmpeg", [
+      ...["-loglevel", "error", "-f", "lavfi", "-i", "color=c=teal:s=64x64"],
+      ...["-frames:v", "1", "-f", "image2pipe", "-c:v", "png", "-"],
+    ]);
+  });
   const args = (file: string) => encodeArgs({ fps: FPS, resolution: "1080p", out: file });
 
   it("encodes the frames it is fed", async () => {
