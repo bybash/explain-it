@@ -30,7 +30,9 @@ a design change is made by editing `SPEC.md` in the same pull request.
    instead of fixing it.
 4. Meet the slice's **Done when** line, and show the evidence in the PR:
    test output, a screenshot, a still or a clip.
-5. Mark the slice ✅ in `ROADMAP.md` in the same PR.
+5. Mark the slice ✅ in `ROADMAP.md` in the same PR. List anything it leaves
+   out under **Carried over** in `ROADMAP.md`, for the slice that should pick
+   it up, and remove the carried-over items it finishes.
 6. Open the PR with `.github/pull_request_template.md`. Title:
    `<type>(<scope>): <slice name> [<id>]`, for example
    `feat(engine): isometric primitives [1.3]`; it becomes the squash commit

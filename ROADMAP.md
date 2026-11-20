@@ -19,6 +19,9 @@ be reviewed in one sitting, and leaves `main` working. The design is in
    the commit title on `main`.
 6. If review changes the design, the same PR updates `SPEC.md`.
 7. The slice's PR also marks it done here by adding ✅ before its ID.
+8. Anything the slice deliberately leaves out goes under **Carried over**
+   below, named for the slice that should pick it up. That slice removes the
+   items it finishes. Problems found outside the slice go there too.
 
 **Done when** lists what the reviewer checks before merging.
 
@@ -103,6 +106,32 @@ The goal: make a video end to end from an IDE, with no LLM in explAIn-it.
 | 6.3 | **Golden stills in CI**: stills of each example compared against stored images | CI fails on a visual regression |
 | 6.4 | **Docs**: README with a demo video, `docs/ARCHITECTURE.md`, final `CONTRIBUTING.md`, tested models list | A new contributor can run the app from the README alone |
 | 6.5 | **Release v0.1.0**: changelog, tag, image | The release is published |
+
+## Carried over
+
+Work a finished slice left for a later one. Each list is removed by the slice
+that finishes it.
+
+### For 1.8 (beat builder), from 1.7
+
+- Callouts stay until the narration ends (SPEC, Timing). The dev page shows
+  each one for a fixed 4.5 s beat.
+- Callouts and badges on screen at the same time can overlap each other.
+  `placeCallout` only avoids node faces and edge labels; pass the overlays
+  already showing as obstacles too.
+- Narration longer than two lines is cut off by the caption band. Split it
+  into cues, which the `.srt` in 1.9 also needs.
+- `appear`, `highlight` and `dim` are not drawn yet; every node shows
+  throughout.
+- Frame each scene into `stageRegions(...).content`. The dev page frames the
+  whole graph there.
+- The beat loop in `dev/iso.ts` is a stand-in for the builder. Replace it;
+  do not copy it into `src/`.
+
+### Found outside a slice
+
+- Edge labels can overlap each other: in the example, the `authorization
+  code` and `authorize` pills (label placement from 1.5).
 
 ## Later
 
