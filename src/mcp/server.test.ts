@@ -6,6 +6,7 @@ import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import graphJson from "../../examples/oauth-login/graph.json" with { type: "json" };
 import storyboardJson from "../../examples/oauth-login/storyboard.json" with { type: "json" };
+import { authoringGuide, graphSummary, storyboardSummary } from "../guidance/guide.ts";
 import type { ServerEvent } from "../schema/api.ts";
 import { parseConfig } from "../schema/config.ts";
 import { orThrow } from "../schema/errors.ts";
@@ -78,6 +79,7 @@ describe("tools", () => {
     const { tools } = await client.listTools();
     expect(tools.map((t) => t.name).sort()).toEqual([
       "create_project",
+      "get_guide",
       "get_project",
       "list_projects",
       "set_storyboard",
@@ -399,5 +401,42 @@ describe("review fixes", () => {
     ]);
     const nodes = readProjectFile(slug, "graph.json").nodes;
     expect([nodes[0].label, nodes[1].label]).toEqual(["First", "Second"]);
+  });
+});
+
+describe("guidance", () => {
+  it("offers the explain_flow prompt with an optional topic", async () => {
+    const { prompts } = await client.listPrompts();
+    expect(prompts).toEqual([
+      expect.objectContaining({
+        name: "explain_flow",
+        arguments: [expect.objectContaining({ name: "topic", required: false })],
+      }),
+    ]);
+  });
+
+  it("opens the prompt with the topic, then the whole guide", async () => {
+    const { messages } = await client.getPrompt({
+      name: "explain_flow",
+      arguments: { topic: "how login works" },
+    });
+    const text = messages.map((m) => (m.content.type === "text" ? m.content.text : "")).join("\n");
+    expect(text.split("\n")[0]).toContain("how login works");
+    expect(text).toContain(authoringGuide());
+    const plain = await client.getPrompt({ name: "explain_flow", arguments: {} });
+    expect(plain.messages[0]?.content).toEqual({ type: "text", text: authoringGuide() });
+  });
+
+  it("gives the same guide to an agent through get_guide, as plain text", async () => {
+    const result = await client.callTool({ name: "get_guide", arguments: {} });
+    expect(result.content).toEqual([{ type: "text", text: authoringGuide() }]);
+  });
+
+  it("describes the formats in the graph and storyboard tools, and points at the guide", async () => {
+    const { tools } = await client.listTools();
+    const description = (name: string) => tools.find((t) => t.name === name)?.description ?? "";
+    expect(description("create_project")).toContain(graphSummary());
+    expect(description("update_graph")).toContain(graphSummary());
+    expect(description("set_storyboard")).toContain(storyboardSummary());
   });
 });

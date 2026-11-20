@@ -29,6 +29,7 @@ export const JsonPatchSchema = z
   .describe("An RFC 6902 JSON Patch applied to the current file.");
 
 export const ListProjectsArgsSchema = z.strictObject({});
+export const GetGuideArgsSchema = z.strictObject({});
 
 export const GetProjectArgsSchema = z.strictObject({ slug: SlugSchema });
 

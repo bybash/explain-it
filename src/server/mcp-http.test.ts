@@ -39,6 +39,15 @@ describe("/mcp", () => {
 
     const listed = await (await rpc("tools/list", {})).json();
     expect(listed.result.tools.map((t: { name: string }) => t.name)).toContain("create_project");
+
+    const prompts = await (await rpc("prompts/list", {})).json();
+    expect(prompts.result.prompts.map((p: { name: string }) => p.name)).toEqual(["explain_flow"]);
+    const prompt = await (
+      await rpc("prompts/get", { name: "explain_flow", arguments: { topic: "how login works" } })
+    ).json();
+    expect(prompt.result.messages[0].content.text).toMatch(
+      /^Make an explAIn-it video explaining how login works/,
+    );
   });
 
   it("gives tool results with preview links on the address the client used", async () => {

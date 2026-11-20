@@ -2,9 +2,11 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
+import { authoringGuide, graphSummary, storyboardSummary } from "../guidance/guide.ts";
 import { formatErrors, type Validated } from "../schema/errors.ts";
 import {
   CreateProjectArgsSchema,
+  GetGuideArgsSchema,
   GetProjectArgsSchema,
   ListProjectsArgsSchema,
   SetStoryboardArgsSchema,
@@ -67,6 +69,14 @@ const previewOf = (context: ToolContext, args: Readonly<Record<string, unknown>>
 
 const TOOLS = [
   {
+    name: "get_guide",
+    schema: GetGuideArgsSchema,
+    run: async () => ({ ok: true as const, value: authoringGuide() }),
+    text: true,
+    description:
+      "Returns the guide to making an explAIn-it video: the steps and when to wait for the user's approval, the exact formats of graph.json and storyboard.json with their limits, how to tell the story in beats, the style options, and a worked example. Read it before writing a graph or a storyboard.",
+  },
+  {
     name: "list_projects",
     schema: ListProjectsArgsSchema,
     run: listProjectsTool,
@@ -85,21 +95,24 @@ const TOOLS = [
     schema: CreateProjectArgsSchema,
     run: createProjectTool,
     description:
-      "Creates a project from a graph.json (nodes, edges, zones), lays it out, and returns its slug, the graph as Mermaid and a preview link. Show the user the Mermaid and wait for their approval before writing the storyboard. Pass `sources` to record which files of the repository the video explains.",
+      "Creates a project from a graph.json (nodes, edges, zones), lays it out, and returns its slug, the graph as Mermaid and a preview link. Show the user the Mermaid and wait for their approval before writing the storyboard. Pass `sources` to record which files of the repository the video explains. " +
+      graphSummary(),
   },
   {
     name: "update_graph",
     schema: UpdateGraphArgsSchema,
     run: updateGraphTool,
     description:
-      "Replaces a project's graph.json with `graph`, or applies an RFC 6902 JSON Patch to it with `patch`; lays it out again keeping manual positions. Returns the Mermaid, the beats the change made stale, and any storyboard lines that no longer fit the graph.",
+      "Replaces a project's graph.json with `graph`, or applies an RFC 6902 JSON Patch to it with `patch`; lays it out again keeping manual positions. Returns the Mermaid, the beats the change made stale, and any storyboard lines that no longer fit the graph. " +
+      graphSummary(),
   },
   {
     name: "set_storyboard",
     schema: SetStoryboardArgsSchema,
     run: setStoryboardTool,
     description:
-      "Replaces a project's storyboard.json with `storyboard`, or applies an RFC 6902 JSON Patch with `patch`. The storyboard is checked against the graph. Returns the estimated length of each scene and of the video, the beats still stale, and a preview link.",
+      "Replaces a project's storyboard.json with `storyboard`, or applies an RFC 6902 JSON Patch with `patch`. The storyboard is checked against the graph. Returns the estimated length of each scene and of the video, the beats still stale, and a preview link. Show the user the script and wait for their approval. " +
+      storyboardSummary(),
   },
   {
     name: "set_style",
@@ -108,17 +121,51 @@ const TOOLS = [
     description:
       "Updates a project's config.json: `config` merges into it (theme, font, captions, output, cards and so on; objects merge, other values replace). `logo` copies a logo for light and dark from an absolute file path or a data URL into the project. Returns the config and a preview link.",
   },
-] as const;
+];
 
-/** An MCP server with explAIn-it's project tools, working on `context`'s projects folder. */
+/**
+ * An MCP server with explAIn-it's project tools, working on `context`'s
+ * projects folder, and the `explain_flow` prompt.
+ */
 export const createMcpServer = (context: ToolContext): McpServer => {
   const server = new McpServer({ name: "explain-it", version: VERSION });
   for (const tool of TOOLS)
     server.registerTool(
       tool.name,
       { description: tool.description, inputSchema: advertised(tool.schema) },
-      async (args: Readonly<Record<string, unknown>>) =>
-        asContent(await tool.run(context, args), previewOf(context, args)),
+      async (args: Readonly<Record<string, unknown>>) => {
+        const result = await tool.run(context, args);
+        // The guide is prose for the agent to read, not data, so it goes out as plain text.
+        if ("text" in tool && result.ok && typeof result.value === "string")
+          return { content: [{ type: "text" as const, text: result.value }] };
+        return asContent(result, previewOf(context, args));
+      },
     );
+  server.registerPrompt(
+    "explain_flow",
+    {
+      description:
+        "Make an explainer video of a flow with explAIn-it: the steps, the file formats, how to tell the story, and when to wait for your approval.",
+      argsSchema: {
+        topic: z
+          .string()
+          .optional()
+          .describe('What to explain, such as "how login works in this repository".'),
+      },
+    },
+    ({ topic }) => ({
+      messages: [
+        {
+          role: "user" as const,
+          content: {
+            type: "text" as const,
+            text: topic
+              ? `Make an explAIn-it video explaining ${topic}. Follow this guide.\n\n${authoringGuide()}`
+              : authoringGuide(),
+          },
+        },
+      ],
+    }),
+  );
   return server;
 };
