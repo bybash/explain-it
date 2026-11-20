@@ -58,7 +58,7 @@ describe("buildBeats: spans", () => {
     expect(spanOf(plan.beats, "start").end).toBeCloseTo(6.6);
   });
 
-  it("starts the next scene after a transition, and ends after a short hold", () => {
+  it("starts the next scene after a transition, and ends on a short hold of the empty background", () => {
     const plan = buildBeats(storyboard, graph);
     const [first, second] = plan.scenes;
     if (!first || !second) throw new Error("the example has two scenes");
@@ -66,7 +66,7 @@ describe("buildBeats: spans", () => {
     expect(first.end).toBeCloseTo(spanOf(plan.beats, "callback").end);
     expect(second.start).toBeCloseTo(first.end + transition);
     expect(spanOf(plan.beats, "swap").start).toBeCloseTo(second.start);
-    expect(plan.duration).toBeCloseTo(second.end + tail);
+    expect(plan.duration).toBeCloseTo(second.end + transition + tail);
   });
 
   it("lists each scene's nodes, and the edges it flows in the order they first flow", () => {
@@ -116,7 +116,8 @@ describe("buildBeats: spans", () => {
     expect(at(middle, two).opacity).toBeGreaterThan(0);
     expect(at(second.start, one).opacity).toBe(0);
     expect(at(second.start, two).opacity).toBe(1);
-    expect(at(plan.duration, two).opacity).toBe(1);
+    expect(at(second.end, two).opacity).toBe(1);
+    expect(at(second.end + transition, two).opacity).toBe(0);
   });
 });
 
@@ -193,7 +194,7 @@ describe("buildBeats: actions", () => {
       ["exchange", "2 · Token exchange"],
     ]);
     expect(titles[0]).toMatchObject({ at: 0, until: expect.closeTo(first.end + transition) });
-    expect(titles[1]).toMatchObject({ until: plan.duration });
+    expect(titles[1]).toMatchObject({ until: expect.closeTo(second.end + transition) });
     const steps = plan.overlays.filter((o) => o.kind === "step");
     expect(steps).toHaveLength(plan.beats.length);
     expect(steps[0]).toMatchObject({
@@ -225,7 +226,7 @@ describe("buildBeats: actions", () => {
       ["app", "token", "ok"],
     ]);
     expect(badges[0]?.until).toBeCloseTo(first.end + transition);
-    expect(badges[1]?.until).toBe(plan.duration);
+    expect(badges[1]?.until).toBeCloseTo(second.end + transition);
   });
 
   it("gives every overlay its own id", () => {
@@ -316,7 +317,7 @@ describe("buildBeats: title card", () => {
 
   it("is fully shown from the first frame and held at least 3 s", () => {
     const plan = buildBeats(storyboard, graph, { titleCard: short });
-    expect(plan.cards).toEqual([{ id: "title", start: 0, end: 3, until: 3 + transition }]);
+    expect(plan.cards[0]).toEqual({ id: "title", start: 0, end: 3, until: 3 + transition });
     const at = seeker(plan);
     expect(at(0, card).opacity).toBe(1);
     expect(at(2.99, card).opacity).toBe(1);
@@ -354,12 +355,82 @@ describe("buildBeats: title card", () => {
     expect(rounded(plan.overlays)).toEqual(
       rounded(without.overlays.map((o) => ({ ...o, at: o.at + shift, until: o.until + shift }))),
     );
-    expect(plan.duration).toBeCloseTo(without.duration + shift);
+    // Without an end card, the title card closes the video too, and holds as long.
+    expect(plan.duration).toBeCloseTo(without.duration - tail + shift + 3);
   });
 
   it("is left out when there is none, and the first scene is shown from the start", () => {
     const plan = buildBeats(storyboard, graph);
     expect(plan.cards).toEqual([]);
     expect(seeker(plan)(0, sceneTarget("sign_in")).opacity ?? 1).toBe(1);
+  });
+});
+
+describe("buildBeats: ending", () => {
+  const title = { title: "Signing in with OAuth" };
+  // 22 + 30 + 18 + 25 = 95 characters at 15 a second: about 6.33 s.
+  const end = {
+    headline: "Try it in your own app",
+    link: "https://example.com/docs/oauth",
+    where: "Settings › Sign-in",
+    credit: "Made by the Identity team",
+  };
+  const lastScene = (plan: BeatPlan) => {
+    const last = plan.scenes.at(-1);
+    if (!last) throw new Error("no scenes");
+    return last;
+  };
+  const closing = (plan: BeatPlan) => plan.cards.at(-1);
+
+  it("closes on the end card, else the title card again, else the logo, else nothing", () => {
+    expect(
+      closing(buildBeats(storyboard, graph, { titleCard: title, endCard: end, logo: true }))?.id,
+    ).toBe("end");
+    expect(closing(buildBeats(storyboard, graph, { titleCard: title, logo: true }))?.id).toBe(
+      "title-again",
+    );
+    expect(closing(buildBeats(storyboard, graph, { logo: true }))?.id).toBe("logo");
+    expect(buildBeats(storyboard, graph).cards).toEqual([]);
+  });
+
+  it("fades the last scene out as the closing card fades in, then holds the card to the last frame", () => {
+    const plan = buildBeats(storyboard, graph, { endCard: end });
+    const at = seeker(plan);
+    const last = lastScene(plan);
+    const scene = sceneTarget(last.id);
+    const card = cardTarget("end");
+    expect(at(last.end, scene).opacity).toBe(1);
+    expect(at(last.end, card).opacity).toBe(0);
+    expect(at(last.end + transition / 2, card).opacity).toBeCloseTo(0.5);
+    expect(at(last.end + transition, scene).opacity).toBe(0);
+    expect(at(last.end + transition, card).opacity).toBe(1);
+    expect(at(plan.duration, card).opacity).toBe(1);
+    expect(closing(plan)).toEqual({
+      id: "end",
+      start: expect.closeTo(last.end + transition),
+      end: plan.duration,
+      until: plan.duration,
+    });
+  });
+
+  it("holds the closing card at least 3 s, longer when its text needs it", () => {
+    const hold = (options: Parameters<typeof buildBeats>[2]) => {
+      const plan = buildBeats(storyboard, graph, options);
+      const card = closing(plan);
+      return card ? card.end - card.start : 0;
+    };
+    expect(hold({ endCard: end })).toBeCloseTo(95 / 15);
+    expect(hold({ endCard: { headline: "Thanks" } })).toBeCloseTo(3);
+    expect(hold({ logo: true })).toBeCloseTo(3);
+    const long = { title: "t".repeat(60), description: "d".repeat(60) };
+    expect(hold({ titleCard: long })).toBeCloseTo(8);
+  });
+
+  it("leaves nothing of the last scene on screen once its layer has faded", () => {
+    const plan = buildBeats(storyboard, graph, { endCard: end });
+    const last = lastScene(plan);
+    const gone = last.end + transition;
+    for (const overlay of plan.overlays.filter((o) => o.scene === last.id))
+      expect(overlay.until).toBeLessThanOrEqual(gone + 1e-9);
   });
 });

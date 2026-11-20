@@ -286,11 +286,11 @@ for frame capture, so what the user approves is what gets rendered.
 - **Opening and ending.** A card holds for max(3 s, its text length ÷ 15
   characters per second). The title card is on screen from the first frame,
   and fades out over the scene transition (0.8 s) as the first scene fades
-  in. The video ends by fading the last scene out over the scene
-  transition; the closing card then fades in and holds to the last frame.
-  The closing card is the end card, or else the title card again, or else
-  the logo in the middle. With none of them, the video ends on the empty
-  background.
+  in. The video ends the same way: the last scene fades out over the scene
+  transition as the closing card fades in, and the card holds to the last
+  frame. The closing card is the end card, or else the title card again,
+  or else the logo in the middle. With none of them, the last scene fades
+  to the empty background, which holds for 1.2 s.
 
 ## Audio
 
@@ -511,6 +511,7 @@ The pull requests that make up each milestone are listed in [`ROADMAP.md`](ROADM
 - explAIn-it is MIT. The videos people make are theirs.
 - Dependencies: Mermaid (MIT), Playwright (Apache-2.0), Kokoro-82M and
   kokoro-js (Apache-2.0), AI SDK (Apache-2.0), MCP TypeScript SDK (MIT),
-  Lucide (ISC), elkjs (EPL-2.0),
+  Lucide (ISC), elkjs (EPL-2.0), qrcode-generator (MIT, the end card's QR
+  code; jsQR, Apache-2.0, checks it in tests),
   fonts (OFL), ffmpeg (LGPL/GPL, called as a separate program).
 - No GSAP and no MusicGen.

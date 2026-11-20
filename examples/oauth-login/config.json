@@ -12,6 +12,12 @@
     "title": {
       "title": "Signing in with OAuth",
       "description": "How a web app lets a user sign in through an identity provider, without ever seeing their password."
+    },
+    "end": {
+      "headline": "Add sign-in with OAuth to your app",
+      "link": "https://example.com/docs/oauth",
+      "where": "Settings › Authentication › Identity providers",
+      "credit": "Made with explAIn-it"
     }
   },
   "logo": {

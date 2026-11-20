@@ -7,11 +7,19 @@ import {
   type BeatPlan,
   beatOptions,
   buildBeats,
+  type CardPlan,
   type ScenePlan,
   sceneTarget,
   scoped,
 } from "./beats/build.ts";
-import { type LogoDrawing, renderLogoLayer, renderTitleCard } from "./cards/html.ts";
+import {
+  type LogoDrawing,
+  type Poser,
+  renderEndCard,
+  renderLogoCard,
+  renderLogoLayer,
+  renderTitleCard,
+} from "./cards/html.ts";
 import { logoShowsOn } from "./cards/show.ts";
 import { edgeRoutes } from "./edges/fallback.ts";
 import { edgeGeometry } from "./edges/geometry.ts";
@@ -74,14 +82,13 @@ export const mountPlayer = async (frame: HTMLElement, input: PlayerInput): Promi
   const onEveryFrame = logo && logoShowsOn(logo.show, "frames") ? logo : undefined;
   const regions = stageRegions(config.captions, onEveryFrame?.corner);
   const routes = edgeRoutes(graph, layout);
-  const titleCard = config.cards?.title;
   const plan = buildBeats(storyboard, graph, beatOptions(config));
   frame.replaceChildren();
   const posers = plan.scenes.map((scene) =>
     drawScene(frame, { graph, layout, routes, plan, regions }, scene),
   );
-  if (titleCard) posers.push(renderTitleCard(frame, titleCard, logo));
-  if (onEveryFrame) renderLogoLayer(frame, onEveryFrame);
+  for (const card of plan.cards) posers.push(drawCard(frame, card.id, config, logo));
+  if (onEveryFrame) posers.push(renderLogoLayer(frame, onEveryFrame));
   await Promise.all([...frame.querySelectorAll("img")].map((img) => img.decode()));
   const tl = plan.tweens.reduce((builder, tween) => builder.add(tween), timeline()).build();
   return {
@@ -93,6 +100,29 @@ export const mountPlayer = async (frame: HTMLElement, input: PlayerInput): Promi
     cues: plan.cues.map(({ start, end, text }) => ({ start, end, text })),
     plan,
   };
+};
+
+/** Draws one of the plan's cards; the plan only has a card the config can fill. */
+const drawCard = (
+  frame: HTMLElement,
+  id: CardPlan["id"],
+  config: Config,
+  logo: LogoDrawing | undefined,
+): Poser => {
+  const missing = () => new Error(`the plan has a ${id} card the config cannot fill`);
+  const { title, end } = config.cards ?? {};
+  switch (id) {
+    case "title":
+    case "title-again":
+      if (!title) throw missing();
+      return renderTitleCard(frame, id, title, logo);
+    case "end":
+      if (!end) throw missing();
+      return renderEndCard(frame, end, logo);
+    case "logo":
+      if (!logo) throw missing();
+      return renderLogoCard(frame, logo.src);
+  }
 };
 
 type Drawing = {

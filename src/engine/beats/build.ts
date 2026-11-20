@@ -1,4 +1,4 @@
-import type { Config, TitleCard } from "../../schema/config.ts";
+import type { Config, EndCard, TitleCard } from "../../schema/config.ts";
 import type { Graph } from "../../schema/graph.ts";
 import type { BADGE_TONES, Storyboard } from "../../schema/storyboard.ts";
 import { EDGE_TIMING, edgeTarget, flowTweens } from "../edges/flow.ts";
@@ -9,7 +9,7 @@ import type { TweenSpec } from "../timeline.ts";
 import { splitCues } from "./cues.ts";
 import { type BeatTiming, beatTiming, CAPTION_CHARS_PER_SECOND } from "./timing.ts";
 
-/** How scenes change, in seconds: a crossfade between them, and a hold after the last. */
+/** How scenes change, in seconds: a crossfade between them, and the empty background held at the end when no card closes the video. */
 export const SCENE_TIMING = { transition: 0.8, tail: 1.2 } as const;
 
 /** A card holds at least this long, in seconds, and longer when its text needs it (SPEC, Opening and ending). */
@@ -67,8 +67,15 @@ export type PlannedOverlay = Shown &
     | { readonly kind: "title" | "step" | "narration"; readonly text: string }
   );
 
-/** A card on screen: fully shown from `start` to `end`, gone by `until`. */
-export type CardPlan = Span & { readonly id: "title"; readonly until: number };
+/**
+ * A card on screen: fully shown from `start` to `end`, gone by `until`. The
+ * title card opens the video; the closing card is the end card, or else the
+ * title card again, or else the logo in the middle.
+ */
+export type CardPlan = Span & {
+  readonly id: "title" | "end" | "title-again" | "logo";
+  readonly until: number;
+};
 
 /** One narration caption, timed for the screen and the `.srt` file. */
 export type Cue = {
@@ -91,14 +98,22 @@ export type BeatPlan = {
 export type BuildOptions = {
   /** Measured narration lengths in seconds, by beat id; the rest are estimated. */
   readonly narration?: Readonly<Record<string, number>>;
-  /** Opens the video, before the first scene. */
+  /** Opens the video, before the first scene, and closes it when there is no end card. */
   readonly titleCard?: TitleCard;
+  /** Closes the video, after the last scene. */
+  readonly endCard?: EndCard;
+  /** Whether there is a logo, which closes the video when there is no card. */
+  readonly logo?: boolean;
 };
 
-/** The build options a project's config sets: its cards. Measured narration comes from elsewhere. */
+/** The build options a project's config sets: its cards and logo. Measured narration comes from elsewhere. */
 export const beatOptions = (config: Config): BuildOptions => {
-  const titleCard = config.cards?.title;
-  return titleCard ? { titleCard } : {};
+  const { title, end } = config.cards ?? {};
+  return {
+    ...(title ? { titleCard: title } : {}),
+    ...(end ? { endCard: end } : {}),
+    ...(config.logo ? { logo: true } : {}),
+  };
 };
 
 const ENTRANCES: Readonly<Record<PlannedOverlay["kind"], Entrance>> = {
@@ -127,7 +142,7 @@ export const buildBeats = (
   const cards: CardPlan[] = [];
   const tweens: TweenSpec[] = [];
   if (options.titleCard) {
-    const end = cardHold(options.titleCard);
+    const end = textHold(titleText(options.titleCard));
     cards.push({ id: "title", start: 0, end, until: end + transition });
     tweens.push(fadeOut(cardTarget("title"), end));
   }
@@ -148,7 +163,14 @@ export const buildBeats = (
     if (!last) clock += transition;
     return { scene, index, start, end, last, beats };
   });
-  const duration = clock + tail;
+  // The last scene fades out as the closing card fades in; the card then holds to the last frame.
+  const closing = closingCard(options);
+  const fadedOut = clock + transition;
+  const duration = fadedOut + (closing?.hold ?? tail);
+  if (closing) {
+    cards.push({ id: closing.id, start: fadedOut, end: duration, until: duration });
+    tweens.push(fade(cardTarget(closing.id), 0, 1, clock));
+  }
 
   const scenes: ScenePlan[] = [];
   const beats: (Span & { scene: string })[] = [];
@@ -165,8 +187,8 @@ export const buildBeats = (
     );
   };
 
-  for (const { scene, index, start, end, last, beats: sceneBeats } of timed) {
-    const layerGoneAt = last ? duration : end + transition;
+  for (const { scene, index, start, end, beats: sceneBeats } of timed) {
+    const layerGoneAt = end + transition;
     const edges = [
       ...new Set(
         scene.beats.flatMap((b) => b.actions.flatMap((a) => (a.type === "flow" ? [a.edge] : []))),
@@ -187,7 +209,7 @@ export const buildBeats = (
       edges,
       edgeLabels,
     });
-    tweens.push(...sceneFades(scene.id, { start, end, fadeIn: start > 0, last }));
+    tweens.push(...sceneFades(scene.id, { start, end, fadeIn: start > 0 }));
     show({
       kind: "title",
       id: `title:${scene.id}`,
@@ -338,11 +360,29 @@ const calloutUntil = (entered: number, narrationEnd: number | undefined, beatEnd
   narrationEnd !== undefined && narrationEnd >= entered ? narrationEnd : beatEnd;
 
 /** How long a card is fully shown: its text at reading speed, but at least the minimum. */
-const cardHold = (card: TitleCard): number =>
+const textHold = (lines: readonly (string | undefined)[]): number =>
   Math.max(
     CARD_MIN_HOLD,
-    (card.title.length + (card.description?.length ?? 0)) / CAPTION_CHARS_PER_SECOND,
+    lines.reduce((sum, line) => sum + (line?.length ?? 0), 0) / CAPTION_CHARS_PER_SECOND,
   );
+
+const titleText = (card: TitleCard) => [card.title, card.description];
+
+/** The card that closes the video and how long it holds (SPEC, Opening and ending). */
+const closingCard = ({
+  titleCard,
+  endCard,
+  logo,
+}: BuildOptions): { id: CardPlan["id"]; hold: number } | undefined => {
+  if (endCard)
+    return {
+      id: "end",
+      hold: textHold([endCard.headline, endCard.link, endCard.where, endCard.credit]),
+    };
+  if (titleCard) return { id: "title-again", hold: textHold(titleText(titleCard)) };
+  if (logo) return { id: "logo", hold: CARD_MIN_HOLD };
+  return undefined;
+};
 
 const fade = (target: string, from: number, to: number, at: number): TweenSpec => ({
   target,
@@ -358,11 +398,11 @@ const fadeOut = (target: string, at: number): TweenSpec => fade(target, 1, 0, at
 /** Fades a scene's layer in over the transition before it, and out over the one after it. */
 const sceneFades = (
   id: string,
-  { start, end, fadeIn, last }: { start: number; end: number; fadeIn: boolean; last: boolean },
+  { start, end, fadeIn }: { start: number; end: number; fadeIn: boolean },
 ): TweenSpec[] => {
   const target = sceneTarget(id);
   return [
     ...(fadeIn ? [fade(target, 0, 1, start - SCENE_TIMING.transition)] : []),
-    ...(last ? [] : [fadeOut(target, end)]),
+    fadeOut(target, end),
   ];
 };
