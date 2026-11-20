@@ -101,7 +101,7 @@ The goal: make a video end to end from an IDE, with no LLM in explAIn-it.
 
 | ID | Slice | Done when |
 |---|---|---|
-| 4.1 | **MCP endpoint and project tools**: `/mcp` over Streamable HTTP with the MCP TypeScript SDK; `list_projects`, `get_project`, `create_project`, `update_graph`, `set_storyboard`, `set_style` (with the cards, and the logo as a file path or data URL copied into `assets/`); `origin` and `sources` on the project; a preview link in every result | Tests call each tool through an in-memory MCP client; invalid input returns readable errors |
+| ✅ 4.1 | **MCP endpoint and project tools**: `/mcp` over Streamable HTTP with the MCP TypeScript SDK; `list_projects`, `get_project`, `create_project`, `update_graph`, `set_storyboard`, `set_style` (with the cards, and the logo as a file path or data URL copied into `assets/`); `origin` and `sources` on the project; a preview link in every result | Tests call each tool through an in-memory MCP client; invalid input returns readable errors |
 | 4.2 | **Guidance and the `explain_flow` prompt**: authoring guidance in `src/guidance/` (schemas, limits, node kinds, actions, beats, approval steps), served as an MCP prompt and in the tool descriptions | The prompt lists correctly in an MCP client; the guidance is one source the LLM slices can reuse |
 | 4.3 | **Check and render tools**: `check` (voice, checks, contact sheet returned as an image), `render`, `render_status` | A test project goes from `create_project` to an MP4 through tools alone |
 | 4.4 | **IDE setup**: README configuration for Claude Code, Cursor and VS Code; a walkthrough explaining a feature of this repository | A video of an explAIn-it feature made from Claude Code, attached to the PR |
@@ -169,6 +169,27 @@ that finishes it.
   browser on `npm run dev` showed.
 - The opened project shows its name, gate and files. The gate stepper
   there is only a display; 3.3 makes it the real one.
+
+### For 3.4 (Mermaid round-trip), from 4.1
+
+- Graph to Mermaid already exists in `src/mermaid/generate.ts`, for the MCP
+  tools: shapes by kind, zones as subgraphs, edges named by id
+  (`from id@--> to`), labels quoted with entity codes. 3.4 adds the parser
+  and must check that this output parses with the pinned `mermaid` and comes
+  back to the same graph. Nothing has run it through Mermaid yet.
+
+### For 4.2 (guidance), from 4.1
+
+- The tools advertise their arguments with descriptions only, each open to
+  any value, so the SDK never answers with its own error messages. Agents
+  therefore learn the shapes of graph.json, storyboard.json and config.json
+  only from the errors. 4.2's guidance should give them the schemas and
+  limits up front.
+
+### For 4.3 (check and render tools), from 4.1
+
+- `set_storyboard` returns the estimated timing but no check warnings
+  (SPEC's tool table); those need 2.5's checks. `check` can return them.
 
 ### For 6.1 (Docker), from 3.1
 

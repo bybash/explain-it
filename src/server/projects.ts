@@ -68,22 +68,30 @@ export const listProjects = async (projectsDir: string): Promise<ProjectList> =>
   return { projects, broken };
 };
 
-/** Makes a project folder with its `project.json`, at the graph gate, named by a slug of its name. */
-export const createProject = async (
+/** What a new project starts with, besides its gate and timestamps. */
+export type NewProject = Pick<Project, "name" | "origin"> & {
+  readonly sources?: Project["sources"];
+};
+
+/**
+ * Makes a project folder named by a slug of its name, with its
+ * `project.json` at the graph gate and any `files` given (already checked).
+ */
+export const makeProject = async (
   projectsDir: string,
-  input: unknown,
+  { name, origin, sources }: NewProject,
   now: Date,
-): Promise<Validated<{ slug: string; project: Project }>> => {
-  const parsed = parseWith(NewProjectSchema, input);
-  if (!parsed.ok) return parsed;
+  files: Readonly<Record<string, unknown>> = {},
+): Promise<{ slug: string; project: Project }> => {
   await mkdir(projectsDir, { recursive: true });
   const at = now.toISOString();
   const project: Project = {
     version: 1,
-    name: parsed.value.name,
+    name,
     gate: "graph",
     staleBeats: [],
-    origin: "web",
+    origin,
+    ...(sources ? { sources: [...sources] } : {}),
     createdAt: at,
     updatedAt: at,
   };
@@ -96,17 +104,43 @@ export const createProject = async (
       if ((error as NodeJS.ErrnoException).code === "EEXIST") continue;
       throw error;
     }
-    await writeJsonAtomically(join(projectsDir, slug, "project.json"), project);
-    return ok({ slug, project });
+    // project.json first, so the folder is a project from the start; its other files follow.
+    await writeProjectFile(projectsDir, slug, "project.json", project);
+    for (const [file, data] of Object.entries(files))
+      await writeProjectFile(projectsDir, slug, file, data);
+    return { slug, project };
   }
 };
 
-/** Writes JSON to a file by renaming a finished temporary file over it, so no reader sees half of it. */
-const writeJsonAtomically = async (file: string, data: unknown) => {
-  const temporary = `${file}.${process.pid}.tmp`;
-  await writeFile(temporary, `${JSON.stringify(data, null, 2)}\n`);
-  await rename(temporary, file);
+/** `POST /api/projects`: a project made in the app, from a name. */
+export const createProject = async (
+  projectsDir: string,
+  input: unknown,
+  now: Date,
+): Promise<Validated<{ slug: string; project: Project }>> => {
+  const parsed = parseWith(NewProjectSchema, input);
+  if (!parsed.ok) return parsed;
+  return ok(await makeProject(projectsDir, { name: parsed.value.name, origin: "web" }, now));
 };
+
+/**
+ * Writes one of a project's JSON files by renaming a finished temporary file
+ * over it, so no reader sees half of it. The data must already be checked.
+ */
+export const writeProjectFile = async (
+  projectsDir: string,
+  slug: string,
+  file: string,
+  data: unknown,
+): Promise<void> => {
+  const target = join(projectsDir, slug, file);
+  const temporary = `${target}.${process.pid}.tmp`;
+  await writeFile(temporary, `${JSON.stringify(data, null, 2)}\n`);
+  await rename(temporary, target);
+};
+
+/** The folder of the project named `slug`, when there is one. */
+export const projectDir = (projectsDir: string, slug: string): string => join(projectsDir, slug);
 
 /**
  * A project's files, each through its schema. A missing or broken file is

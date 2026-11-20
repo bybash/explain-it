@@ -1,7 +1,10 @@
+import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
+import type { MiddlewareHandler } from "hono";
 import { type Context, Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { streamSSE } from "hono/streaming";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
+import { createMcpServer } from "../mcp/server.ts";
 import type { ValidationError } from "../schema/errors.ts";
 import { createEvents } from "./events.ts";
 import { createProject, listProjects, openProject } from "./projects.ts";
@@ -17,8 +20,9 @@ export type AppOptions = {
 
 /** How often an idle event stream sends a comment, so proxies and browsers keep it open. */
 const KEEP_ALIVE_MS = 15_000;
-/** The largest request body; projects' own files are far smaller. */
-const MAX_BODY_BYTES = 1024 * 1024;
+/** The largest request bodies: projects' own files are far smaller; MCP can carry a 2 MB logo as base64. */
+const MAX_API_BYTES = 1024 * 1024;
+const MAX_MCP_BYTES = 4 * 1024 * 1024;
 /** Names this machine answers to; a request addressed to any other name did not come from its user. */
 const LOCAL_HOSTS = ["localhost", "127.0.0.1", "[::1]"];
 
@@ -44,7 +48,7 @@ export const createApp = ({ projectsDir, now, hosts = [] }: AppOptions) => {
   const events = createEvents();
   const allowed = new Set([...LOCAL_HOSTS, ...hosts]);
 
-  app.use("/api/*", async (c, next) => {
+  const guard: MiddlewareHandler = async (c, next) => {
     const host = new URL(c.req.url).hostname;
     if (!allowed.has(host) && !allowed.has(`[${host}]`))
       return errorResponse(c, 403, [{ path: "host", message: `"${host}" is not this app` }]);
@@ -67,17 +71,34 @@ export const createApp = ({ projectsDir, now, hosts = [] }: AppOptions) => {
         ]);
     }
     return next();
-  });
-  app.use(
-    "/api/*",
+  };
+  const limit = (bytes: number) =>
     bodyLimit({
-      maxSize: MAX_BODY_BYTES,
+      maxSize: bytes,
       onError: (c) =>
         errorResponse(c, 413, [
-          { path: "(body)", message: `larger than ${MAX_BODY_BYTES / 1024 / 1024} MB` },
+          { path: "(body)", message: `larger than ${bytes / 1024 / 1024} MB` },
         ]),
-    }),
-  );
+    });
+  app.use("/api/*", guard, limit(MAX_API_BYTES));
+  app.use("/mcp", guard, limit(MAX_MCP_BYTES));
+
+  // MCP over Streamable HTTP, without sessions: each request gets a fresh server on the
+  // shared projects and events, and answers with JSON. Preview links use the address the
+  // client reached the app on, which is the one its user's browser can open.
+  app.all("/mcp", async (c) => {
+    const origin = new URL(c.req.url).origin;
+    const server = createMcpServer({
+      projectsDir,
+      now,
+      events,
+      previewUrl: (slug) => `${origin}/#/projects/${slug}`,
+    });
+    // No sessionIdGenerator: the transport is stateless.
+    const transport = new WebStandardStreamableHTTPServerTransport({ enableJsonResponse: true });
+    await server.connect(transport);
+    return transport.handleRequest(c.req.raw);
+  });
 
   app.get("/api/projects", async (c) => c.json(await listProjects(projectsDir)));
 

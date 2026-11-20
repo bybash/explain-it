@@ -125,6 +125,19 @@ const SIGNATURES: Readonly<Record<LogoType, { name: string; matches: (data: Buff
     },
   };
 
+/** What is wrong with a logo file of `bytes`, if it is too big. */
+export const sizeProblem = (bytes: number): string | undefined => {
+  if (bytes <= LOGO_MAX_BYTES) return undefined;
+  const mb = Math.ceil((bytes / BYTES_PER_MB) * 10) / 10;
+  return `is ${mb.toFixed(1)} MB, max ${LOGO_MAX_MB} MB`;
+};
+
+/** What is wrong with `data` as an image of `type`, if it does not start the way that type does. */
+export const imageProblem = (type: LogoType, data: Buffer): string | undefined => {
+  const signature = SIGNATURES[type];
+  return signature.matches(data) ? undefined : `is not ${signature.name} image`;
+};
+
 /** Reads the logo's files from `assets/` as data URLs; a single file serves both modes. */
 const readLogo = async (dir: string, logo: Logo): Promise<Validated<LogoImages>> => {
   const errors: ValidationError[] = [];
@@ -148,10 +161,8 @@ const readLogo = async (dir: string, logo: Logo): Promise<Validated<LogoImages>>
       return unreadable(error);
     }
     if (!info.isFile()) return report("is not a file");
-    if (info.size > LOGO_MAX_BYTES) {
-      const mb = Math.ceil((info.size / BYTES_PER_MB) * 10) / 10;
-      return report(`is ${mb.toFixed(1)} MB, max ${LOGO_MAX_MB} MB`);
-    }
+    const tooBig = sizeProblem(info.size);
+    if (tooBig) return report(tooBig);
     // The schema allows only the extensions LOGO_TYPES lists.
     const type = LOGO_TYPES[extname(name) as keyof typeof LOGO_TYPES];
     let data: Buffer;
@@ -160,8 +171,8 @@ const readLogo = async (dir: string, logo: Logo): Promise<Validated<LogoImages>>
     } catch (error) {
       return unreadable(error);
     }
-    const signature = SIGNATURES[type];
-    if (!signature.matches(data)) return report(`is not ${signature.name} image`);
+    const notImage = imageProblem(type, data);
+    if (notImage) return report(notImage);
     return `data:${type};base64,${data.toString("base64")}`;
   };
   const light = await read("light");

@@ -396,6 +396,16 @@ server validates, lays out, checks, previews and renders.
 | `render` | Queues a render | A job id |
 | `render_status` | Reads a render job | Progress, then the output paths |
 
+The endpoint is stateless: each request gets a fresh MCP server on the
+shared projects, and answers with JSON. Tool arguments are checked by the
+project's own schemas, so an error names its place (`graph.nodes[2].kind: …`)
+the way the rest of the app does. A JSON Patch is RFC 6902. A logo comes as
+an absolute file path or a data URL, and is checked like any logo before it
+is copied into `assets/`. Graph changes are laid out again at once, keeping
+manual positions. Gates only move forward as files arrive (graph, then
+script, then style); approval happens in the IDE's chat. Every change is
+announced over SSE, so an open preview page follows along.
+
 **Guidance.** An MCP prompt, `explain_flow`, and the tool descriptions carry
 what the agent needs to write good files: the schemas, the limits, the node
 kinds and actions, how to tell the story in beats, and when to stop for the
@@ -519,6 +529,7 @@ The pull requests that make up each milestone are listed in [`ROADMAP.md`](ROADM
 - explAIn-it is MIT. The videos people make are theirs.
 - Dependencies: Mermaid (MIT), Playwright (Apache-2.0), Kokoro-82M and
   kokoro-js (Apache-2.0), AI SDK (Apache-2.0), MCP TypeScript SDK (MIT),
+  fast-json-patch (MIT),
   Lucide (ISC), elkjs (EPL-2.0), qrcode-generator (MIT, the end card's QR
   code; jsQR, Apache-2.0, checks it in tests),
   fonts (OFL), ffmpeg (LGPL/GPL, called as a separate program).
