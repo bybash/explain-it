@@ -222,7 +222,16 @@ for frame capture, so what the user approves is what gets rendered.
   a simple orthogonal one: straight between boxes that share enough of a
   side, otherwise with one bend.
 - **Overlays.** HTML on top of the SVG: callout cards, badges, step caption,
-  narration caption, scene title. Anchored to projected node positions.
+  narration caption, scene title. Anchored to projected node positions. The
+  stage is split into bands inside the safe area: the scene title at the top
+  left, the step caption under it, the narration caption along the bottom (at
+  most two lines), and the content between them, where the scene is framed.
+  A caption that is turned off gives its band to the content. A callout card
+  sits beside its node, to the right if that side is free, else the left,
+  above or below, sliding along a side before covering a box or an edge
+  label. A badge stands on its node's back corner. Badge tones keep fixed
+  hues in every palette (info is the accent, ok green, warn amber, error
+  red), lightened or darkened to the accent's contrast.
 - **Timeline.** Our own, not GSAP. Tweens with eases, staggers and labels;
   `seek(t)` sets the whole scene from `t` alone, so any frame can be rendered
   in any order. The page exposes `__seek(t)`, `__duration` and `__cues`.
