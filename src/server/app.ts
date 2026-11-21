@@ -4,6 +4,7 @@ import { type Context, Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { streamSSE } from "hono/streaming";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
+import type { TtsProvider } from "../audio/tts.ts";
 import { createMcpServer } from "../mcp/server.ts";
 import { missingRenderTools as findMissingRenderTools } from "../render/environment.ts";
 import { RenderQueue, type RenderRun } from "../render/queue.ts";
@@ -27,6 +28,8 @@ export type AppOptions = {
   readonly publicUrl?: string;
   /** How a render job runs; the real renderer by default, a fake in tests. */
   readonly renderRun?: RenderRun;
+  /** Speaks the narration: Kokoro in the app (see `main.ts`), a fake in tests. */
+  readonly tts: TtsProvider;
   /** What a render needs and this machine lacks; probed for real by default. */
   readonly missingRenderTools?: () => Promise<readonly string[]>;
 };
@@ -63,6 +66,7 @@ export const createApp = ({
   publicUrl,
   renderRun = renderFromFolder(projectsDir, now),
   missingRenderTools = findMissingRenderTools,
+  tts,
 }: AppOptions) => {
   const app = new Hono();
   const events = createEvents();
@@ -135,6 +139,7 @@ export const createApp = ({
       events,
       renders,
       missingRenderTools,
+      tts,
       previewUrl: (slug) => `${origin}/#/projects/${slug}`,
     });
     // No sessionIdGenerator: the transport is stateless.

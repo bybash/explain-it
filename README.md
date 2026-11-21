@@ -28,6 +28,8 @@ is in [`ROADMAP.md`](ROADMAP.md).
 - Node 24 (`nvm use` reads `.nvmrc`).
 - Google Chrome, for rendering. Another Chromium works through `CHROME_PATH`.
 - ffmpeg on your `PATH`, for rendering.
+- About 100 MB of disk for the voice model (Kokoro-82M), which downloads
+  into `cache/` the first time a project's voice is generated.
 
 ## Start the app
 
@@ -41,7 +43,7 @@ npm start
 
 The app runs on <http://127.0.0.1:3000>, and only there: it listens on
 your own machine. Projects are kept in `projects/`. Keep it running while
-your IDE uses it. `HOST`, `PORT` and `PROJECTS_DIR` change these; with
+your IDE uses it. `HOST`, `PORT`, `PROJECTS_DIR` and `CACHE_DIR` change these; with
 another address, change the URL in your IDE's config to match.
 
 ## Use it from your IDE

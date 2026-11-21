@@ -190,7 +190,7 @@ projects/<slug>/
   storyboard.json
   config.json
   assets/             the logo, referred to from config.json
-  cache/tts/          <hash of text + voice + speed>.wav
+  cache/tts/          <hash of model + voice + speed + text>.wav
   out/<timestamp>/    rendered outputs
 ```
 
@@ -302,7 +302,9 @@ for frame capture, so what the user approves is what gets rendered.
 
 - **Voice.** A `TtsProvider` interface; v1 ships `kokoro-js` (Kokoro-82M ONNX,
   q8, about 92 MB, English voices). The model downloads on first use into
-  the cache directory. Lines are generated when the project enters the Preview
+  the app's cache directory, `cache/models/` (`CACHE_DIR`, `./cache` by
+  default); the 28 voices ship with kokoro-js, and `config.voice.id` must
+  be one of them. Lines are 16-bit mono WAV at 24 kHz. Lines are generated when the project enters the Preview
   gate and cached by hash, so editing one line regenerates only that line.
 - **Music.** Procedural, ported from the prototype's numpy code: three moods,
   each seeded, so a project always gets the same music.

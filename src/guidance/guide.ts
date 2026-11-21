@@ -66,7 +66,7 @@ const STEPS = `## Steps
 3. Write storyboard.json and call \`${T.setStoryboard}\`. Show the user the script: each scene's title, then each beat's caption and narration, with the estimated timing from the result. Wait for their approval; change it with \`${T.setStoryboard}\` again.
 4. Optionally call \`${T.setStyle}\`: a palette, a title card that names the video, an end card with a link, a logo.
 5. Point the user at the preview link to watch it.
-6. When the user wants the video, call \`${T.check}\` to see that the project is ready, then \`${T.render}\`. Follow the job with \`${T.renderStatus}\` until it is done, and give the user the paths of the files it wrote; \`${T.cancelRender}\` stops it. Rendering takes about half a minute per minute of video, per theme.
+6. When the user wants the video, call \`${T.check}\` to see that the project is ready (it also generates the narration voice, which can take a minute the first time), then \`${T.render}\`. Follow the job with \`${T.renderStatus}\` until it is done, and give the user the paths of the files it wrote; \`${T.cancelRender}\` stops it. Rendering takes about half a minute per minute of video, per theme.
 
 Every tool result carries a preview link to the project in the web app. When a tool returns errors, each one names its place (\`graph.nodes[2].kind: …\`): fix those and call it again. Use \`${T.listProjects}\` and \`${T.getProject}\` to pick up a project you made before.
 

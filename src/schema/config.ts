@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { SchemaKeySchema } from "./common.ts";
 import { parseWith, type Validated } from "./errors.ts";
+import { VOICE_IDS } from "./voices.ts";
 
 export const MAX_CATEGORY_COLOURS = 6;
 export const THEME_MODES = ["light", "dark", "both"] as const;
@@ -146,7 +147,10 @@ export const ConfigSchema = z
     voice: z
       .strictObject({
         enabled: z.boolean().default(true),
-        id: z.string().min(1).default("af_heart").describe("A Kokoro voice id."),
+        id: z
+          .enum(VOICE_IDS)
+          .default("af_heart")
+          .describe("A Kokoro voice: a = American, b = British English; f = female, m = male."),
         speed: z.number().min(0.5).max(2).default(1),
       })
       .prefault({}),
