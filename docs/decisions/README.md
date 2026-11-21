@@ -21,3 +21,4 @@ later record supersedes an earlier one and says so.
 | [009](009-title-and-end-cards.md) | Title and end cards, and the logo |
 | [010](010-parallel-capture.md) | Parallel capture |
 | [011](011-mcp-endpoint-and-tools.md) | MCP endpoint and project tools |
+| [012](012-voice.md) | Voice with Kokoro |

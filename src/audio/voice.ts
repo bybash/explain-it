@@ -1,7 +1,7 @@
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { Config } from "../schema/config.ts";
+import type { VoiceConfig } from "../schema/config.ts";
 import type { Storyboard } from "../schema/storyboard.ts";
 import type { TtsProvider } from "./tts.ts";
 import { decodeWav, encodeWav } from "./wav.ts";
@@ -20,12 +20,12 @@ export type VoiceOptions = {
   /** The project's folder; lines go in its `cache/tts/`. */
   readonly projectDir: string;
   readonly storyboard: Storyboard;
-  readonly voice: Config["voice"];
+  readonly voice: VoiceConfig;
   readonly tts: TtsProvider;
 };
 
 /** A line's file name: a hash of everything that changes how it sounds (SPEC, Project folder). */
-const lineKey = (tts: TtsProvider, text: string, voice: Config["voice"]): string =>
+const lineKey = (tts: TtsProvider, text: string, voice: VoiceConfig): string =>
   createHash("sha256")
     .update(JSON.stringify([tts.id, voice.id, voice.speed, text]))
     .digest("hex")
@@ -35,7 +35,7 @@ const lineKey = (tts: TtsProvider, text: string, voice: Config["voice"]): string
 const cachedSeconds = async (file: string): Promise<number | undefined> => {
   const bytes = await readFile(file).catch(() => undefined);
   if (!bytes) return undefined;
-  const wav = decodeWav(bytes);
+  const wav = decodeWav(bytes, file);
   return wav.ok ? wav.value.seconds : undefined;
 };
 
@@ -65,8 +65,9 @@ export const generateVoice = async ({
         continue;
       }
       const audio = await tts.generate(beat.say, { voice: voice.id, speed: voice.speed });
-      // Written whole, then renamed: a line half written by a crash never reads as cached.
-      const partial = `${file}.${process.pid}.partial`;
+      // Written whole, then renamed: a line half written by a crash never reads as cached,
+      // and two runs at once each write their own file.
+      const partial = `${file}.${randomUUID()}.partial`;
       await writeFile(partial, encodeWav(audio));
       await rename(partial, file);
       lines.push({ ...where, seconds: audio.samples.length / audio.sampleRate, cached: false });

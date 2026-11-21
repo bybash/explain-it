@@ -183,6 +183,8 @@ export const ConfigSchema = z
   .describe("Style and output settings. Every field has a default.");
 
 export type Config = z.output<typeof ConfigSchema>;
+/** How the narration is spoken: whether, with which voice, how fast. */
+export type VoiceConfig = Config["voice"];
 export type CustomPalette = z.output<typeof CustomPaletteSchema>;
 export type TitleCard = z.output<typeof TitleCardSchema>;
 export type EndCard = z.output<typeof EndCardSchema>;

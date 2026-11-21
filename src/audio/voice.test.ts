@@ -133,4 +133,14 @@ describe("generateVoice", () => {
     expect(asked).toHaveLength(1);
     expect(again).toMatchObject({ cached: false, seconds: 0.2 });
   });
+
+  it("survives two runs at once on the same project", async () => {
+    const board = storyboard(["Hello there.", "One two three four."]);
+    const [a, b] = await Promise.all([
+      generateVoice({ projectDir, storyboard: board, voice, tts: fakeTts().tts }),
+      generateVoice({ projectDir, storyboard: board, voice, tts: fakeTts().tts }),
+    ]);
+    expect(a?.map((l) => l.file)).toEqual(b?.map((l) => l.file));
+    expect(readdirSync(ttsDir()).sort()).toEqual(a?.map((l) => l.file.split("/").at(-1)).sort());
+  });
 });

@@ -208,7 +208,7 @@ describe("check", () => {
     expect(lines).toBeGreaterThan(0);
     const first = await succeeds("check", { slug });
     expect(first.voice).toMatchObject({
-      enabled: true,
+      state: "ready",
       id: "af_heart",
       lines,
       generated: lines,
@@ -223,11 +223,15 @@ describe("check", () => {
   it("reports a voice that is off, and one that fails, by name", async () => {
     const slug = await project();
     await succeeds("set_style", { slug, config: { voice: { enabled: false } } });
-    expect((await succeeds("check", { slug })).voice).toEqual({ enabled: false });
+    expect((await succeeds("check", { slug })).voice).toEqual({ state: "off" });
     await succeeds("set_style", { slug, config: { voice: { enabled: true } } });
     tts = fakeTts({ failWith: "the Kokoro voice model did not load" }).tts;
     const report = await succeeds("check", { slug });
-    expect(report.ready).toBe(false);
-    expect(report.problems).toEqual(["voice: the Kokoro voice model did not load"]);
+    // The video renders without the voice until 2.4 mixes it in, so it can still render.
+    expect(report).toMatchObject({
+      ready: true,
+      problems: [],
+      voice: { state: "failed", error: "the Kokoro voice model did not load" },
+    });
   });
 });

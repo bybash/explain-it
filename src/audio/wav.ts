@@ -36,20 +36,23 @@ export const encodeWav = ({ samples, sampleRate }: Audio): Uint8Array => {
 
 export type DecodedWav = Audio & { readonly seconds: number };
 
-const wrong = (message: string) => fail<ValidationError>([{ path: "wav", message }]);
+const wrong = (where: string, message: string) => fail<ValidationError>([{ path: where, message }]);
 
-/** Reads back a WAV that `encodeWav` wrote, with its length in seconds. */
-export const decodeWav = (bytes: Uint8Array): Result<DecodedWav, ValidationError> => {
+/** Reads back a WAV that `encodeWav` wrote, with its length in seconds; errors name `where`, its file. */
+export const decodeWav = (
+  bytes: Uint8Array,
+  where = "wav",
+): Result<DecodedWav, ValidationError> => {
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   const text = (at: number) => new TextDecoder().decode(bytes.subarray(at, at + 4));
   if (bytes.length < HEADER || text(0) !== "RIFF" || text(8) !== "WAVE")
-    return wrong("not a RIFF/WAVE file");
+    return wrong(where, "not a RIFF/WAVE file");
   if (
     view.getUint16(20, true) !== 1 ||
     view.getUint16(22, true) !== 1 ||
     view.getUint16(34, true) !== 16
   )
-    return wrong("expected 16-bit mono PCM");
+    return wrong(where, "expected 16-bit mono PCM");
   const sampleRate = view.getUint32(24, true);
   const count = Math.min(view.getUint32(40, true), bytes.length - HEADER) / 2;
   const samples = Float32Array.from(

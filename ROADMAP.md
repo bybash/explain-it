@@ -159,9 +159,11 @@ that finishes it.
   `check` and `set_storyboard` then report the measured timing instead of
   the estimate. 2.4 mixes the lines into the video and removes the
   "voice in the video" line from `check`'s `notChecked`.
-- Lines are generated when `check` runs. SPEC also generates them when a
-  project enters the Preview gate; that comes with the Preview gate
-  (3.8).
+- Lines are generated when `check` runs, in one MCP call: the first time
+  that includes the model download and can take a minute or two, with no
+  progress shown. SPEC also generates them when a project enters the
+  Preview gate; 3.8 does that with progress, and could report progress to
+  MCP clients too.
 - Old lines stay in `cache/tts/` when a line is edited; nothing prunes
   them yet.
 

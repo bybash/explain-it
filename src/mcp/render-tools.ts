@@ -1,6 +1,6 @@
 import { generateVoice } from "../audio/voice.ts";
 import { loadProject } from "../render/load.ts";
-import type { Config } from "../schema/config.ts";
+import type { VoiceConfig } from "../schema/config.ts";
 import { formatErrors, parseWith } from "../schema/errors.ts";
 import { CheckArgsSchema, RenderArgsSchema, RenderJobArgsSchema } from "../schema/mcp.ts";
 import { fail, ok } from "../schema/result.ts";
@@ -24,16 +24,16 @@ const NOT_CHECKED_YET = [
 ] as const;
 
 /**
- * Speaks every narration line not in the cache yet and sums them up. The
- * first time, Kokoro's model downloads (about 92 MB), which takes a while.
+ * The narration, spoken: every line not in the cache yet is generated now,
+ * which takes a while the first time (the voice model downloads).
  */
 const voiceReport = async (
   context: ToolContext,
   slug: string,
   storyboard: Storyboard,
-  voice: Config["voice"],
+  voice: VoiceConfig,
 ) => {
-  if (!voice.enabled) return { enabled: false } as const;
+  if (!voice.enabled) return { state: "off" } as const;
   try {
     const lines = await generateVoice({
       projectDir: projectDir(context.projectsDir, slug),
@@ -43,7 +43,7 @@ const voiceReport = async (
     });
     const cached = lines.filter((line) => line.cached).length;
     return {
-      enabled: true,
+      state: "ready",
       id: voice.id,
       speed: voice.speed,
       lines: lines.length,
@@ -53,7 +53,10 @@ const voiceReport = async (
     } as const;
   } catch (error) {
     // A model that cannot download or load is a broken environment: reported, not thrown at the agent.
-    return { error: error instanceof Error ? error.message : String(error) } as const;
+    return {
+      state: "failed",
+      error: error instanceof Error ? error.message : String(error),
+    } as const;
   }
 };
 
@@ -79,15 +82,12 @@ export const checkTool = async (context: ToolContext, input: Args) => {
   const voice = loaded.ok
     ? await voiceReport(context, slug, loaded.value.storyboard, loaded.value.config.voice)
     : null;
-  const problems = [
-    ...(loaded.ok ? [] : formatErrors(loaded.errors)),
-    ...missing,
-    ...(voice && "error" in voice ? [`voice: ${voice.error}`] : []),
-  ];
+  // `ready` is about rendering, which does not need the voice until 2.4 mixes it in.
+  const problems = [...(loaded.ok ? [] : formatErrors(loaded.errors)), ...missing];
   return ok({
     ready: problems.length === 0,
     problems,
-    voice: voice && "error" in voice ? null : voice,
+    voice,
     staleBeats: opened.value.project.staleBeats,
     timing: loaded.ok
       ? timingOf(loaded.value.storyboard, loaded.value.graph, loaded.value.config)

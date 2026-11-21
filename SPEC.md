@@ -190,7 +190,7 @@ projects/<slug>/
   storyboard.json
   config.json
   assets/             the logo, referred to from config.json
-  cache/tts/          <hash of model + voice + speed + text>.wav
+  cache/tts/          <hash of model + voice + speed + text>.wav (decision 012)
   out/<timestamp>/    rendered outputs
 ```
 
@@ -304,7 +304,9 @@ for frame capture, so what the user approves is what gets rendered.
   q8, about 92 MB, English voices). The model downloads on first use into
   the app's cache directory, `cache/models/` (`CACHE_DIR`, `./cache` by
   default); the 28 voices ship with kokoro-js, and `config.voice.id` must
-  be one of them. Lines are 16-bit mono WAV at 24 kHz. Lines are generated when the project enters the Preview
+  be one of them. Lines are 16-bit mono WAV at 24 kHz, keyed by model,
+  kokoro-js version, voice, speed and text. Until the Preview gate exists,
+  the MCP `check` tool generates them. Decision 012 says why. Lines are generated when the project enters the Preview
   gate and cached by hash, so editing one line regenerates only that line.
 - **Music.** Procedural, ported from the prototype's numpy code: three moods,
   each seeded, so a project always gets the same music.
@@ -556,9 +558,15 @@ The pull requests that make up each milestone are listed in [`ROADMAP.md`](ROADM
 
 - explAIn-it is MIT. The videos people make are theirs.
 - Dependencies: Mermaid (MIT), Playwright (Apache-2.0), Kokoro-82M and
-  kokoro-js (Apache-2.0), AI SDK (Apache-2.0), MCP TypeScript SDK (MIT),
+  kokoro-js (Apache-2.0), transformers.js (Apache-2.0), onnxruntime-node
+  (MIT), AI SDK (Apache-2.0), MCP TypeScript SDK (MIT),
   fast-json-patch (MIT),
   Lucide (ISC), elkjs (EPL-2.0), qrcode-generator (MIT, the end card's QR
   code; jsQR, Apache-2.0, checks it in tests),
   fonts (OFL), ffmpeg (LGPL/GPL, called as a separate program).
+- Two parts the voice brings in are not permissive and run in the app's
+  process: eSpeak NG (GPL-3.0-or-later), bundled in kokoro-js's
+  `phonemizer`, and libvips (LGPL-3.0-or-later), in `sharp`. A build that
+  includes them, such as the Docker image, must meet those licences.
+  Decision 012 says why.
 - No GSAP and no MusicGen.
