@@ -10,6 +10,12 @@ import { JobIdSchema, RenderRequestSchema } from "./render.ts";
  * names the place in the document: `graph.nodes[2].kind: …`.
  */
 
+/** Where the app serves MCP; IDE configs point at it. */
+export const MCP_PATH = "/mcp";
+
+/** The MCP prompts, by name. */
+export const PROMPT_NAMES = { explainFlow: "explain_flow" } as const;
+
 /** The MCP tools, by name: the server registers them and the guide refers to them. */
 export const TOOL_NAMES = {
   getGuide: "get_guide",

@@ -9,6 +9,7 @@ import { missingRenderTools as findMissingRenderTools } from "../render/environm
 import { RenderQueue, type RenderRun } from "../render/queue.ts";
 import { renderFromFolder } from "../render/run.ts";
 import type { ValidationError } from "../schema/errors.ts";
+import { MCP_PATH } from "../schema/mcp.ts";
 import { createEvents } from "./events.ts";
 import { createProject, listProjects, openProject } from "./projects.ts";
 
@@ -113,12 +114,12 @@ export const createApp = ({
         ]),
     });
   app.use("/api/*", guard, limit(MAX_API_BYTES));
-  app.use("/mcp", guard, limit(MAX_MCP_BYTES));
+  app.use(MCP_PATH, guard, limit(MAX_MCP_BYTES));
 
   // MCP over Streamable HTTP, without sessions: each request gets a fresh server on the
   // shared projects and events, and answers with JSON. Preview links use the address the
   // client reached the app on, which is the one its user's browser can open.
-  app.on(["GET", "DELETE"], "/mcp", (c) =>
+  app.on(["GET", "DELETE"], MCP_PATH, (c) =>
     errorResponse(c, 405, [
       {
         path: "method",
@@ -126,7 +127,7 @@ export const createApp = ({
       },
     ]),
   );
-  app.post("/mcp", async (c) => {
+  app.post(MCP_PATH, async (c) => {
     const origin = publicUrl ? new URL(publicUrl).origin : new URL(c.req.url).origin;
     const server = createMcpServer({
       projectsDir,

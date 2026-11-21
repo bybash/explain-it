@@ -442,7 +442,10 @@ replace this once clients support it widely.
 other. Exporting a project into the user's repository comes later.
 
 **Setup.** The README gives a one-line configuration for Claude Code, Cursor
-and VS Code. A stdio shim that starts the app when it is not running comes later.
+and VS Code, and a walkthrough. The repository carries `.mcp.json` (read by
+Claude Code and VS Code) and `.cursor/mcp.json`, both pointing at the
+default address. A stdio shim that starts the app when it is not running
+comes later.
 
 ## Mermaid
 

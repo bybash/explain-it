@@ -11,6 +11,7 @@ import {
   GetGuideArgsSchema,
   GetProjectArgsSchema,
   ListProjectsArgsSchema,
+  PROMPT_NAMES,
   RenderArgsSchema,
   RenderJobArgsSchema,
   SetStoryboardArgsSchema,
@@ -177,7 +178,7 @@ export const createMcpServer = (context: ToolContext): McpServer => {
       },
     );
   server.registerPrompt(
-    "explain_flow",
+    PROMPT_NAMES.explainFlow,
     {
       description:
         "Make an explainer video of a flow with explAIn-it: the steps, the file formats, how to tell the story, and when to wait for your approval.",
