@@ -74,7 +74,7 @@ The goal: the CLI renders a hand-written example to an MP4, with no LLM and no v
 | ID | Slice | Done when |
 |---|---|---|
 | ✅ 2.1 | **Voice**: the `TtsProvider` interface, the kokoro-js provider, model download into the cache, per-line hash cache | A test generates a line; the second run hits the cache |
-| 2.2 | **Narration-first timing**: measured voice lengths drive beat lengths | The example's beats follow its narration; the cues line up |
+| ✅ 2.2 | **Narration-first timing**: measured voice lengths drive beat lengths | The example's beats follow its narration; the cues line up |
 | 2.3 | **Music**: three procedural moods, seeded, ported from the prototype | Three short samples attached to the PR |
 | 2.4 | **Mix and outputs**: ducking, −16 LUFS normalisation, muxing; the captioned and clean MP4s, `audio.wav`, light, dark and both | The example renders with voice and music |
 | 2.5 | **Layout checks**: overlap (polygons) and off-frame at each beat's midpoint, including boxes moved onto each other or onto another zone by manual overrides; a JSON report; `explain-it check` | A broken fixture is caught; an overlapping override is reported; the example passes |
@@ -151,21 +151,34 @@ that finishes it.
   do not connect to. The overlap check should cover zone labels and edges
   against boxes, and layout should keep a zone's label clear.
 
-### For 2.2 and 2.4 (timing, mix), from 2.1
+### For 2.4 (mix), from 2.1 and 2.2
 
-- The voice exists: `generateVoice` in `src/audio/voice.ts` speaks every
-  `say` line into `projects/<slug>/cache/tts/` and returns each line's
-  file and measured length. 2.2 times the beats from those lengths, and
-  `check` and `set_storyboard` then report the measured timing instead of
-  the estimate. 2.4 mixes the lines into the video and removes the
-  "voice in the video" line from `check`'s `notChecked`.
-- Lines are generated when `check` runs, in one MCP call: the first time
-  that includes the model download and can take a minute or two, with no
-  progress shown. SPEC also generates them when a project enters the
-  Preview gate; 3.8 does that with progress, and could report progress to
-  MCP clients too.
+- Every render generates the voice and times the video by it
+  (`withNarration` in `src/render/run.ts`), and `check` and
+  `set_storyboard` report measured timing. 2.4 mixes the lines into the
+  video, each at its beat's narration start (the beat's start plus
+  `LEAD_IN`), and removes the "voice in the video" line from `check`'s
+  `notChecked`. A throwaway mix of the example at those times is in
+  `docs/clips/2.2-oauth-login-voiced.mp4`.
+- Lines are generated when `check` runs or a render starts, without
+  progress: the first time that includes the model download and can take
+  a minute or two. A render job shows no progress while it speaks. SPEC
+  also generates them when a project enters the Preview gate; 3.8 does
+  that with progress, and could report progress to MCP clients and render
+  jobs too.
 - Old lines stay in `cache/tts/` when a line is edited; nothing prunes
   them yet.
+
+### For 2.6 (timing checks), from 2.2
+
+- With the voice off, lines are timed at 15 characters per second, the
+  reading-speed limit, so a silent video should not fail its own check;
+  test that.
+
+### For 3.7 (style gate), from 2.2
+
+- `config.pacing` (relaxed, normal, brisk) needs a picker in the style
+  panel; MCP already sets it through `set_style`.
 
 ### For 2.5, 2.6 and 2.7 (checks, contact sheet), from 4.3
 

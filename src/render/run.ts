@@ -1,5 +1,7 @@
 import { rm } from "node:fs/promises";
 import { join } from "node:path";
+import type { TtsProvider } from "../audio/tts.ts";
+import { generateVoice, narrationLengths, type VoiceLine } from "../audio/voice.ts";
 import { formatErrors } from "../schema/errors.ts";
 import type { RenderedTheme } from "../schema/render.ts";
 import { loadProject, type ProjectFiles } from "./load.ts";
@@ -53,22 +55,47 @@ export const renderProjectFolder = async ({
 };
 
 /**
+ * The project with its measured narration: every spoken line generated, or
+ * read from the cache, so the video is timed by its voice. With the voice
+ * off there is nothing to measure, and lines are timed by reading them.
+ */
+export const withNarration = async (
+  dir: string,
+  project: ProjectFiles,
+  tts: TtsProvider,
+): Promise<{ readonly project: ProjectFiles; readonly lines: readonly VoiceLine[] }> => {
+  const lines = await generateVoice({
+    projectDir: dir,
+    storyboard: project.storyboard,
+    voice: project.config.voice,
+    tts,
+  });
+  return {
+    project: lines.length > 0 ? { ...project, narration: narrationLengths(lines) } : project,
+    lines,
+  };
+};
+
+/**
  * The queue's renderer: reads the project's files and config as they are
- * when the job starts, so an edit made while it waited is rendered.
+ * when the job starts, so an edit made while it waited is rendered, and
+ * times it by its voice.
  */
 export const renderFromFolder =
-  (projectsDir: string, now: () => Date): RenderRun =>
+  (projectsDir: string, now: () => Date, tts: TtsProvider): RenderRun =>
   async ({ slug, theme, resolution }, control) => {
     const dir = join(projectsDir, slug);
-    const project = await loadProject(dir);
+    const loaded = await loadProject(dir);
     // Checked when queued; reaching this means the files changed while the job waited.
-    if (!project.ok)
+    if (!loaded.ok)
       throw new Error(
-        `the project changed and can no longer render:\n${formatErrors(project.errors).join("\n")}`,
+        `the project changed and can no longer render:\n${formatErrors(loaded.errors).join("\n")}`,
       );
     const settings = renderSettings(
       { ...(theme ? { theme } : {}), ...(resolution ? { resolution } : {}) },
-      project.value.config,
+      loaded.value.config,
     );
-    return renderProjectFolder({ dir, project: project.value, settings, now: now(), ...control });
+    const { project } = await withNarration(dir, loaded.value, tts);
+    control.signal.throwIfAborted();
+    return renderProjectFolder({ dir, project, settings, now: now(), ...control });
   };

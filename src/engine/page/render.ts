@@ -8,6 +8,7 @@ import { parseConfig, parseLogoImages } from "../../schema/config.ts";
 import { orThrow } from "../../schema/errors.ts";
 import { parseGraph } from "../../schema/graph.ts";
 import { parseLayout } from "../../schema/layout.ts";
+import { parseNarration } from "../../schema/narration.ts";
 import { parseStoryboard } from "../../schema/storyboard.ts";
 import { expose, mountPlayer } from "../player.ts";
 import type { ThemeMode } from "../theme/palettes.ts";
@@ -20,6 +21,8 @@ export type InjectedProject = {
   readonly config: unknown;
   /** The logo's files as data URLs, when the config has a logo. */
   readonly logo?: unknown;
+  /** Measured narration by beat, when the voice has been generated. */
+  readonly narration?: unknown;
   readonly mode: ThemeMode;
 };
 
@@ -31,6 +34,10 @@ const start = async (): Promise<void> => {
   const graph = orThrow(parseGraph(injected.graph), "graph.json");
   const logo =
     injected.logo === undefined ? undefined : orThrow(parseLogoImages(injected.logo), "logo");
+  const narration =
+    injected.narration === undefined
+      ? undefined
+      : orThrow(parseNarration(injected.narration), "narration");
   const player = await mountPlayer(frame, {
     graph,
     storyboard: orThrow(parseStoryboard(injected.storyboard, graph), "storyboard.json"),
@@ -39,6 +46,7 @@ const start = async (): Promise<void> => {
     mode: injected.mode,
     fonts: new URL("/assets/fonts/", location.href),
     ...(logo ? { logo } : {}),
+    ...(narration ? { narration } : {}),
   });
   expose(player);
   player.seek(0);

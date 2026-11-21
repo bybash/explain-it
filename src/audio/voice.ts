@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { VoiceConfig } from "../schema/config.ts";
+import type { Narration } from "../schema/narration.ts";
 import type { Storyboard } from "../schema/storyboard.ts";
 import type { TtsProvider } from "./tts.ts";
 import { decodeWav, encodeWav } from "./wav.ts";
@@ -22,6 +23,8 @@ export type VoiceOptions = {
   readonly storyboard: Storyboard;
   readonly voice: VoiceConfig;
   readonly tts: TtsProvider;
+  /** Read the lines already cached and skip the rest, generating nothing. */
+  readonly onlyCached?: boolean;
 };
 
 /** A line's file name: a hash of everything that changes how it sounds (SPEC, Project folder). */
@@ -49,6 +52,7 @@ export const generateVoice = async ({
   storyboard,
   voice,
   tts,
+  onlyCached = false,
 }: VoiceOptions): Promise<VoiceLine[]> => {
   if (!voice.enabled) return [];
   const dir = join(projectDir, "cache", "tts");
@@ -64,6 +68,7 @@ export const generateVoice = async ({
         lines.push({ ...where, seconds, cached: true });
         continue;
       }
+      if (onlyCached) continue;
       const audio = await tts.generate(beat.say, { voice: voice.id, speed: voice.speed });
       // Written whole, then renamed: a line half written by a crash never reads as cached,
       // and two runs at once each write their own file.
@@ -74,3 +79,7 @@ export const generateVoice = async ({
     }
   return lines;
 };
+
+/** Each spoken beat's measured length, for the beat builder. */
+export const narrationLengths = (lines: readonly VoiceLine[]): Narration =>
+  Object.fromEntries(lines.map((line) => [line.beat, line.seconds]));

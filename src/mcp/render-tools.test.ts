@@ -234,4 +234,35 @@ describe("check", () => {
       voice: { state: "failed", error: "the Kokoro voice model did not load" },
     });
   });
+
+  it("times the video by its measured voice, and says so", async () => {
+    const slug = await project();
+    const said = storyboardFile.scenes.reduce(
+      (n, scene) => n + scene.beats.filter((beat) => "say" in beat).length,
+      0,
+    );
+    // Before any voice exists, set_storyboard can only estimate.
+    const estimated = await succeeds("set_storyboard", { slug, storyboard: storyboardFile });
+    expect(estimated.timing.narration).toEqual({
+      lines: said,
+      measured: 0,
+      estimated: said,
+      read: 0,
+    });
+    // The fake voice speaks a tenth of a second a word, far quicker than the estimate.
+    const report = await succeeds("check", { slug });
+    expect(report.timing.narration).toEqual({ lines: said, measured: said, estimated: 0, read: 0 });
+    expect(report.timing.duration).toBeLessThan(estimated.timing.duration);
+    // Now the lines are cached, set_storyboard measures them too, without generating any.
+    const again = await succeeds("set_storyboard", { slug, storyboard: storyboardFile });
+    expect(again.timing).toEqual(report.timing);
+  });
+
+  it("times lines by reading them when the voice is off", async () => {
+    const slug = await project();
+    await succeeds("set_style", { slug, config: { voice: { enabled: false } } });
+    const report = await succeeds("check", { slug });
+    expect(report.timing.narration).toMatchObject({ measured: 0, estimated: 0 });
+    expect(report.timing.narration.read).toBeGreaterThan(0);
+  });
 });

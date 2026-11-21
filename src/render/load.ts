@@ -15,6 +15,7 @@ import {
 import type { Validated, ValidationError } from "../schema/errors.ts";
 import { type Graph, parseGraph } from "../schema/graph.ts";
 import { type Layout, parseLayout } from "../schema/layout.ts";
+import type { Narration } from "../schema/narration.ts";
 import { fail, ok } from "../schema/result.ts";
 import { parseStoryboard, type Storyboard } from "../schema/storyboard.ts";
 
@@ -26,6 +27,8 @@ export type ProjectFiles = {
   readonly config: Config;
   /** The logo's files as data URLs, one per mode; missing when the config has no logo. */
   readonly logo?: LogoImages;
+  /** Measured narration by beat, once the voice is generated (see `run.ts`). */
+  readonly narration?: Narration;
 };
 
 /** Where a missing file's fix is not obvious. */

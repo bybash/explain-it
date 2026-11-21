@@ -1,5 +1,6 @@
-import type { Config, EndCard, TitleCard } from "../../schema/config.ts";
+import type { Config, EndCard, Pace, TitleCard } from "../../schema/config.ts";
 import type { Graph } from "../../schema/graph.ts";
+import type { Narration } from "../../schema/narration.ts";
 import type { BADGE_TONES, Storyboard } from "../../schema/storyboard.ts";
 import { EDGE_TIMING, edgeTarget, flowTweens } from "../edges/flow.ts";
 import { appearTweens, dimTweens, highlightTweens, nodeTarget, zoneTarget } from "../iso/tweens.ts";
@@ -98,6 +99,10 @@ export type BeatPlan = {
 export type BuildOptions = {
   /** Measured narration lengths in seconds, by beat id; the rest are estimated. */
   readonly narration?: Readonly<Record<string, number>>;
+  /** How unhurried the video is; relaxed by default. */
+  readonly pace?: Pace;
+  /** Whether the narration is spoken; when not, lines are timed by reading them. On by default. */
+  readonly voice?: boolean;
   /** Opens the video, before the first scene, and closes it when there is no end card. */
   readonly titleCard?: TitleCard;
   /** Closes the video, after the last scene. */
@@ -106,10 +111,13 @@ export type BuildOptions = {
   readonly logo?: boolean;
 };
 
-/** The build options a project's config sets: its cards and logo. Measured narration comes from elsewhere. */
-export const beatOptions = (config: Config): BuildOptions => {
+/** The build options a project sets: its config's pace, voice, cards and logo, and its measured narration. */
+export const beatOptions = (config: Config, narration?: Narration): BuildOptions => {
   const { title, end } = config.cards ?? {};
   return {
+    ...(narration ? { narration } : {}),
+    pace: config.pacing,
+    voice: config.voice.enabled,
     ...(title ? { titleCard: title } : {}),
     ...(end ? { endCard: end } : {}),
     ...(config.logo ? { logo: true } : {}),
@@ -153,7 +161,12 @@ export const buildBeats = (
   const timed = storyboard.scenes.map((scene, index) => {
     const start = clock;
     const beats = scene.beats.map((beat) => {
-      const timing = beatTiming(beat, options.narration?.[beat.id]);
+      const measured = options.narration?.[beat.id];
+      const timing = beatTiming(beat, {
+        ...(options.pace ? { pace: options.pace } : {}),
+        ...(options.voice === undefined ? {} : { voice: options.voice }),
+        ...(measured === undefined ? {} : { narration: measured }),
+      });
       const span = { beat, timing, start: clock, end: clock + timing.duration };
       clock = span.end;
       return span;

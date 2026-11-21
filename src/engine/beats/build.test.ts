@@ -2,6 +2,7 @@ import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import graphJson from "../../../examples/oauth-login/graph.json" with { type: "json" };
 import storyboardJson from "../../../examples/oauth-login/storyboard.json" with { type: "json" };
+import { DEFAULT_CONFIG } from "../../schema/config.ts";
 import { formatErrors, type Validated } from "../../schema/errors.ts";
 import { parseGraph } from "../../schema/graph.ts";
 import { parseStoryboard } from "../../schema/storyboard.ts";
@@ -11,13 +12,14 @@ import { overlayTarget } from "../overlays/tweens.ts";
 import { timeline } from "../timeline.ts";
 import {
   type BeatPlan,
+  beatOptions,
   buildBeats,
   cardTarget,
   SCENE_TIMING,
   sceneTarget,
   scoped,
 } from "./build.ts";
-import { BEAT_PADDING, estimateNarration } from "./timing.ts";
+import { estimateNarration, LEAD_IN, PACES } from "./timing.ts";
 
 const unwrap = <T>(result: Validated<T>): T => {
   if (!result.ok) throw new Error(formatErrors(result.errors).join("\n"));
@@ -42,10 +44,11 @@ const spanOf = <T extends { readonly id: string }>(spans: readonly T[], id: stri
 describe("buildBeats: spans", () => {
   it("times each beat from its narration and actions, one after another", () => {
     const plan = buildBeats(storyboard, graph);
-    // "A user opens the app and clicks Sign in." is 9 words: 3.6 s, plus 0.6 s.
+    // "A user opens the app and clicks Sign in." is 9 words: 3.6 s, after the
+    // 0.3 s lead-in and before the relaxed pace's 1 s pause.
     expect(spanOf(plan.beats, "start")).toMatchObject({
       start: 0,
-      end: expect.closeTo(4.2),
+      end: expect.closeTo(4.9),
       scene: "sign_in",
     });
     const sceneOne = plan.beats.filter((b) => b.scene === "sign_in");
@@ -53,9 +56,34 @@ describe("buildBeats: spans", () => {
       expect(beat.start).toBeCloseTo(sceneOne[i - 1]?.end ?? 0);
   });
 
-  it("uses measured narration lengths where it has them", () => {
-    const plan = buildBeats(storyboard, graph, { narration: { start: 6 } });
-    expect(spanOf(plan.beats, "start").end).toBeCloseTo(6.6);
+  it("follows measured narration, longer or shorter than the estimate", () => {
+    const longer = buildBeats(storyboard, graph, { narration: { start: 6 } });
+    expect(spanOf(longer.beats, "start").end).toBeCloseTo(LEAD_IN + 6 + 1);
+    // Shorter than its two appears and a flow (3.2 s): the beat waits for them at normal speed.
+    const shorter = buildBeats(storyboard, graph, { narration: { start: 2.5 } });
+    expect(spanOf(shorter.beats, "start").end).toBeCloseTo(LEAD_IN + 3.2 + 1);
+  });
+
+  it("takes its pace and whether the voice speaks from the project's config", () => {
+    const brisk = buildBeats(
+      storyboard,
+      graph,
+      beatOptions({ ...DEFAULT_CONFIG, pacing: "brisk" }),
+    );
+    expect(spanOf(brisk.beats, "start").end).toBeCloseTo(LEAD_IN + 3.6 + PACES.brisk.pauseAfter);
+    const silent = buildBeats(
+      storyboard,
+      graph,
+      beatOptions({ ...DEFAULT_CONFIG, voice: { ...DEFAULT_CONFIG.voice, enabled: false } }),
+    );
+    // Read, not spoken: 40 characters at 15 a second, so its 3.2 s of actions set the beat.
+    expect(spanOf(silent.beats, "start").end).toBeCloseTo(LEAD_IN + 3.2 + 1);
+    const long = buildBeats(storyboard, graph, {
+      ...beatOptions({ ...DEFAULT_CONFIG, voice: { ...DEFAULT_CONFIG.voice, enabled: false } }),
+      narration: { start: 9 },
+    });
+    // A measured length means nothing without a voice.
+    expect(spanOf(long.beats, "start").end).toBeCloseTo(LEAD_IN + 3.2 + 1);
   });
 
   it("starts the next scene after a transition, and ends on a short hold of the empty background", () => {
@@ -207,7 +235,7 @@ describe("buildBeats: actions", () => {
   it("keeps a callout up until the narration ends", () => {
     const consent = beat("consent");
     const say = "The user signs in there, and agrees to share their photos with the app.";
-    const narrationEnd = consent.start + BEAT_PADDING + estimateNarration(say);
+    const narrationEnd = consent.start + LEAD_IN + estimateNarration(say);
     const callout = plan.overlays.find((o) => o.kind === "callout" && o.scene === "sign_in");
     expect(callout).toMatchObject({
       node: "idp",
@@ -246,10 +274,34 @@ describe("buildBeats: narration", () => {
       {
         beat: "start",
         text: "A user opens the app and clicks Sign in.",
-        start: BEAT_PADDING,
-        end: expect.closeTo(start.start + BEAT_PADDING + 3.6),
+        start: LEAD_IN,
+        end: expect.closeTo(start.start + LEAD_IN + 3.6),
       },
     ]);
+  });
+
+  it("keeps every cue inside its spoken line, whatever the line measured", () => {
+    const said = storyboard.scenes.flatMap((scene) => scene.beats).filter((b) => b.say);
+    // Lines spoken slower and faster than the estimate, in turn.
+    const narration = Object.fromEntries(
+      said.map((b, i) => [b.id, estimateNarration(b.say ?? "") * (i % 2 === 0 ? 1.4 : 0.7)]),
+    );
+    const measured = buildBeats(storyboard, graph, { narration });
+    for (const b of said) {
+      const span = spanOf(measured.beats, b.id);
+      const spoken = {
+        start: span.start + LEAD_IN,
+        end: span.start + LEAD_IN + (narration[b.id] ?? 0),
+      };
+      const cues = measured.cues.filter((c) => c.beat === b.id);
+      expect(cues.length).toBeGreaterThan(0);
+      expect(cues[0]?.start).toBeCloseTo(spoken.start);
+      expect(cues.at(-1)?.end).toBeCloseTo(spoken.end);
+      for (const cue of cues) {
+        expect(cue.start).toBeGreaterThanOrEqual(spoken.start - 1e-9);
+        expect(cue.end).toBeLessThanOrEqual(spoken.end + 1e-9);
+      }
+    }
   });
 
   it("splits a long line into cues that follow each other through the narration", () => {
@@ -260,9 +312,9 @@ describe("buildBeats: narration", () => {
       "and swaps the code for a token.",
     ]);
     const [one, two] = cues;
-    expect(one?.start).toBeCloseTo(swap.start + BEAT_PADDING);
+    expect(one?.start).toBeCloseTo(swap.start + LEAD_IN);
     expect(two?.start).toBeCloseTo(one?.end ?? 0);
-    expect(two?.end).toBeCloseTo(swap.end - BEAT_PADDING);
+    expect(two?.end).toBeCloseTo(swap.end - PACES.relaxed.pauseAfter);
     // The longer cue is on screen for longer.
     expect((one?.end ?? 0) - (one?.start ?? 0)).toBeGreaterThan(
       (two?.end ?? 0) - (two?.start ?? 0),

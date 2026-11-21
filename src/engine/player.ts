@@ -2,6 +2,7 @@ import type { Config, LogoImages } from "../schema/config.ts";
 import { orThrow } from "../schema/errors.ts";
 import type { Graph } from "../schema/graph.ts";
 import type { Layout } from "../schema/layout.ts";
+import type { Narration } from "../schema/narration.ts";
 import type { Storyboard } from "../schema/storyboard.ts";
 import {
   type BeatPlan,
@@ -49,6 +50,8 @@ export type PlayerInput = {
   readonly fonts: URL;
   /** The logo's images, when the config has a logo. */
   readonly logo?: LogoImages;
+  /** Measured narration by beat; lines without it are estimated. */
+  readonly narration?: Narration;
 };
 
 /** What a page exposes as `__seek`, `__duration` and `__cues` (SPEC, Engine). */
@@ -82,7 +85,7 @@ export const mountPlayer = async (frame: HTMLElement, input: PlayerInput): Promi
   const onEveryFrame = logo && logoShowsOn(logo.show, "frames") ? logo : undefined;
   const regions = stageRegions(config.captions, onEveryFrame?.corner);
   const routes = edgeRoutes(graph, layout);
-  const plan = buildBeats(storyboard, graph, beatOptions(config));
+  const plan = buildBeats(storyboard, graph, beatOptions(config, input.narration));
   frame.replaceChildren();
   const posers = plan.scenes.map((scene) =>
     drawScene(frame, { graph, layout, routes, plan, regions }, scene),

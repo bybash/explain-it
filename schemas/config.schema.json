@@ -125,6 +125,16 @@
       "type": "string",
       "minLength": 1
     },
+    "pacing": {
+      "default": "relaxed",
+      "description": "How unhurried the video is: the pause after each narration line and the shortest a beat can be. Animations keep their speed at every pace.",
+      "type": "string",
+      "enum": [
+        "relaxed",
+        "normal",
+        "brisk"
+      ]
+    },
     "voice": {
       "default": {},
       "type": "object",

@@ -149,6 +149,7 @@ with a short transition.
 type Config = {
   theme: { palette: string | CustomPalette; mode: "light" | "dark" | "both" };
   font: string;                         // a bundled font id or an uploaded font file
+  pacing: "relaxed" | "normal" | "brisk";                   // how unhurried the video is; "relaxed" by default
   voice: { enabled: boolean; id: string; speed: number };   // a kokoro voice, e.g. "af_heart"
   captions: { narration: boolean; step: boolean; size: "S" | "M" | "L" };
   music: { enabled: boolean; mood: "calm" | "upbeat" | "technical"; seed: number; volumeDb: number };
@@ -271,11 +272,20 @@ for frame capture, so what the user approves is what gets rendered.
   `seek(t)` sets the whole scene from `t` alone, so any frame can be rendered
   in any order. The page exposes `__seek(t)`, `__duration` and `__cues`.
 - **Timing.**
-  1. Each action type has a default duration.
-  2. A beat lasts max(narration length + 0.6 s, its actions at default speed
-     + 0.6 s). Narration and actions start 0.3 s into the beat and end at
-     least 0.3 s before its end. Without narration, a beat also lasts at
-     least its caption length ÷ 15 characters per second.
+  1. Each action type has a default duration, and actions always run at it:
+     a pace or a short line never speeds an animation up.
+  2. Narration and actions start 0.3 s into a beat. A beat lasts until the
+     longer of them ends, plus the pace's pause, and at least the pace's
+     shortest beat:
+
+     | Pace | Pause after | Shortest beat |
+     |---|---|---|
+     | relaxed (default) | 1.0 s | 3 s |
+     | normal | 0.6 s | 2 s |
+     | brisk | 0.3 s | 1.5 s |
+
+     Without narration, a beat also lasts at least its caption length ÷ 15
+     characters per second.
   3. Actions run in order at their default length, with the spare time
      shared out after each; callouts stay until the narration ends, and
      badges until the scene ends.
@@ -287,8 +297,11 @@ for frame capture, so what the user approves is what gets rendered.
      largest scale. A scene draws only the edges it flows; its nodes
      without an `appear` are there from its start, and a zone's platform
      rises with the first of its nodes to appear.
-  Before the Preview gate, narration length is estimated at 2.5 words per
-  second; from the Preview gate on, it is measured from the audio.
+  Narration is first: a spoken line's length is measured from its audio
+  once the voice exists (the MCP `check` tool, and every render, generate
+  it); before that it is estimated at 2.5 words per second. With the voice
+  off, a line is timed by reading it, at 15 characters per second.
+  Decision 013 says why.
 - **Opening and ending.** A card holds for max(3 s, its text length ÷ 15
   characters per second). The title card is on screen from the first frame,
   and fades out over the scene transition (0.8 s) as the first scene fades

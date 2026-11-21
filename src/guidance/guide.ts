@@ -63,7 +63,7 @@ const STEPS = `## Steps
 
 1. Read the code or the description the user gave you, and find the flow: who and what takes part, and what passes between them.
 2. Write graph.json and call \`${T.createProject}\` (pass \`sources\`: the files you read, with the commit). Show the user the Mermaid from the result and the preview link, then wait for them to approve or ask for changes. Change it with \`${T.updateGraph}\` (a whole graph or a JSON Patch).
-3. Write storyboard.json and call \`${T.setStoryboard}\`. Show the user the script: each scene's title, then each beat's caption and narration, with the estimated timing from the result. Wait for their approval; change it with \`${T.setStoryboard}\` again.
+3. Write storyboard.json and call \`${T.setStoryboard}\`. Show the user the script: each scene's title, then each beat's caption and narration, with the timing from the result (estimated until the voice is generated). Wait for their approval; change it with \`${T.setStoryboard}\` again.
 4. Optionally call \`${T.setStyle}\`: a palette, a title card that names the video, an end card with a link, a logo.
 5. Point the user at the preview link to watch it.
 6. When the user wants the video, call \`${T.check}\` to see that the project is ready (it also generates the narration voice, which can take a minute the first time), then \`${T.render}\`. Follow the job with \`${T.renderStatus}\` until it is done, and give the user the paths of the files it wrote; \`${T.cancelRender}\` stops it. Rendering takes about half a minute per minute of video, per theme.

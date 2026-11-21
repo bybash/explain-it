@@ -8,6 +8,9 @@ export const THEME_MODES = ["light", "dark", "both"] as const;
 export const CAPTION_SIZES = ["S", "M", "L"] as const;
 export const MUSIC_MOODS = ["calm", "upbeat", "technical"] as const;
 export const RESOLUTIONS = ["1080p", "720p"] as const;
+/** How unhurried the video is, from most to least (decision 013). */
+export const PACES = ["relaxed", "normal", "brisk"] as const;
+export type Pace = (typeof PACES)[number];
 export type Resolution = (typeof RESOLUTIONS)[number];
 
 const HexColour = z
@@ -144,6 +147,12 @@ export const ConfigSchema = z
       })
       .prefault({}),
     font: z.string().min(1).default("inter").describe("A bundled font id or an uploaded font."),
+    pacing: z
+      .enum(PACES)
+      .default("relaxed")
+      .describe(
+        "How unhurried the video is: the pause after each narration line and the shortest a beat can be. Animations keep their speed at every pace.",
+      ),
     voice: z
       .strictObject({
         enabled: z.boolean().default(true),
