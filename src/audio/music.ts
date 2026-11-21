@@ -111,18 +111,17 @@ const struck = (t: number, attack: number, decay: number) =>
 const PAD_DETUNES = [-0.0012, 0, 0.0012];
 const PAD_OCTAVE = 0.008 / 0.06;
 
-/** Each instrument's sound at `t` seconds into a note of `length`, before its gain. */
+/**
+ * Each short instrument's sound at `t` seconds into a note of `length`,
+ * before its gain. The pad, most of the music's notes by length, has its
+ * own faster path (`addPad`).
+ */
 const VOICES: Readonly<
-  Record<Instrument, (t: number, length: number, f: number, phase: number) => number>
+  Record<
+    Exclude<Instrument, "pad">,
+    (t: number, length: number, f: number, phase: number) => number
+  >
 > = {
-  pad: (t, length, f, phase) => {
-    let sum = 0;
-    for (const [k, detune] of PAD_DETUNES.entries()) {
-      const p = phase + (k * TAU) / PAD_DETUNES.length;
-      sum += Math.sin(TAU * f * (1 + detune) * t + p) + PAD_OCTAVE * Math.sin(TAU * 2 * f * t + p);
-    }
-    return swell(t, length) * sum;
-  },
   pluck: (t, _length, f, phase) =>
     struck(t, 0.005, 2.2) *
     (Math.sin(TAU * f * t + phase) + 0.2 * Math.sin(TAU * 2 * f * t + phase)),
@@ -146,6 +145,56 @@ const ECHO = { delay: 0.38, gain: 0.32, passes: 3 };
 const LOWPASS_TAPS = 29;
 
 /**
+ * Adds a pad note: `swell(t) · Σ [sin(2π·f·(1+d)·t + p) + PAD_OCTAVE · sin(2π·2f·t + p)]`
+ * over the three detunes d, each with its own phase p. Each sine is a
+ * phasor turned by a fixed step every sample rather than a `Math.sin`, and
+ * the swell, sin²(πt/L) = (1 − cos(2πt/L)) / 2, is one more: the same
+ * sound, several times faster.
+ */
+const addPad = (out: Float32Array, note: MusicNote, from: number, to: number) => {
+  const f = hz(note.midi);
+  const start = from / MUSIC_RATE - note.at;
+  const partials = PAD_DETUNES.flatMap((detune, k) => {
+    const phase = note.phase + (k * TAU) / PAD_DETUNES.length;
+    return [
+      { hz: f * (1 + detune), amplitude: 1, phase },
+      { hz: 2 * f, amplitude: PAD_OCTAVE, phase },
+    ];
+  });
+  // The swell's cosine is the last phasor.
+  partials.push({ hz: 1 / note.length, amplitude: 0, phase: Math.PI / 2 });
+  const count = partials.length;
+  const re = new Float64Array(count);
+  const im = new Float64Array(count);
+  const stepRe = new Float64Array(count);
+  const stepIm = new Float64Array(count);
+  for (const [k, partial] of partials.entries()) {
+    const angle = TAU * partial.hz * start + partial.phase;
+    re[k] = Math.cos(angle);
+    im[k] = Math.sin(angle);
+    stepRe[k] = Math.cos((TAU * partial.hz) / MUSIC_RATE);
+    stepIm[k] = Math.sin((TAU * partial.hz) / MUSIC_RATE);
+  }
+  const amplitude = partials.map((p) => p.amplitude);
+  const swellAt = count - 1;
+  for (let i = from; i < to; i++) {
+    let sum = 0;
+    for (let k = 0; k < count; k++) {
+      const r = re[k] ?? 0;
+      const m = im[k] ?? 0;
+      sum += (amplitude[k] ?? 0) * m;
+      re[k] = r * (stepRe[k] ?? 1) - m * (stepIm[k] ?? 0);
+      im[k] = r * (stepIm[k] ?? 0) + m * (stepRe[k] ?? 1);
+    }
+    // The swell phasor started at a quarter turn, so its imaginary part is cos(2πt/L).
+    const swelling = (1 - (im[swellAt] ?? 1)) / 2;
+    const t = i / MUSIC_RATE - note.at;
+    const release = Math.min(1, (note.length - t) / RELEASE);
+    out[i] = (out[i] ?? 0) + note.gain * release * swelling * sum;
+  }
+};
+
+/**
  * Plays a plan into samples at 48 kHz: every note on its instrument, then
  * the prototype's mastering (a soft lowpass, an echo for space, a fade in
  * and out) and one loudness for every mood, with peaks under −1 dBFS.
@@ -155,10 +204,14 @@ export const renderMusic = (plan: MusicPlan, { master = true } = {}): Audio => {
   const n = Math.round(plan.seconds * MUSIC_RATE);
   const out = new Float32Array(n);
   for (const note of plan.notes) {
-    const voice = VOICES[note.instrument];
-    const f = hz(note.midi);
     const from = Math.max(0, Math.ceil(note.at * MUSIC_RATE));
     const to = Math.min(n, Math.floor((note.at + note.length) * MUSIC_RATE));
+    if (note.instrument === "pad") {
+      addPad(out, note, from, to);
+      continue;
+    }
+    const voice = VOICES[note.instrument];
+    const f = hz(note.midi);
     for (let i = from; i < to; i++) {
       const t = i / MUSIC_RATE - note.at;
       const release = Math.min(1, (note.length - t) / RELEASE);

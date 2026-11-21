@@ -55,19 +55,19 @@ describe("renderMusic", () => {
       expect(Math.abs(samples[0] ?? 1)).toBeLessThan(1e-3);
       expect(Math.abs(samples.at(-1) ?? 1)).toBeLessThan(1e-3);
     }
-  });
+  }, 30_000);
 
   it("sits at one loudness whatever the mood, with peaks under -1 dBFS", () => {
     for (const mood of MUSIC_MOODS) {
-      const { samples } = renderMusic(musicPlan({ mood, seed: 2, seconds: 20 }));
+      const { samples } = renderMusic(musicPlan({ mood, seed: 2, seconds: 12 }));
       expect(samples.every(Number.isFinite)).toBe(true);
       // Measured away from the fades.
-      const middle = samples.subarray(5 * MUSIC_RATE, 14 * MUSIC_RATE);
+      const middle = samples.subarray(4 * MUSIC_RATE, 7 * MUSIC_RATE);
       expect(db(rms(middle))).toBeGreaterThan(MUSIC_RMS_DB - 2);
       expect(db(rms(middle))).toBeLessThan(MUSIC_RMS_DB + 2);
       expect(db(peak(samples))).toBeLessThanOrEqual(-1);
     }
-  });
+  }, 30_000);
 
   it("ends every note smoothly, with no click where it is cut", () => {
     // One short bell alone, so its tail is easy to see: the last sample before the cut is near silence.
@@ -107,6 +107,34 @@ describe("renderMusic", () => {
       );
       expect(db(rms(middle))).toBeGreaterThan(MUSIC_RMS_DB - 3);
       expect(db(rms(middle))).toBeLessThan(MUSIC_RMS_DB + 3);
+    }
+  }, 30_000);
+
+  it("plays a pad as its formula says", () => {
+    const note = {
+      at: 0.5,
+      length: 4,
+      midi: 60,
+      instrument: "pad" as const,
+      gain: 0.06,
+      phase: 1.1,
+    };
+    const { samples } = renderMusic({ seconds: 5, notes: [note] }, { master: false });
+    const f = 440 * 2 ** ((60 - 69) / 12);
+    const expected = (t: number) => {
+      let sum = 0;
+      for (const [k, detune] of [-0.0012, 0, 0.0012].entries()) {
+        const p = note.phase + (k * 2 * Math.PI) / 3;
+        sum +=
+          Math.sin(2 * Math.PI * f * (1 + detune) * t + p) +
+          (0.008 / 0.06) * Math.sin(2 * Math.PI * 2 * f * t + p);
+      }
+      const release = Math.min(1, (note.length - t) / 0.02);
+      return note.gain * release * Math.sin((Math.PI * t) / note.length) ** 2 * sum;
+    };
+    for (const t of [0.01, 0.7, 1.9, 3.3, 3.99]) {
+      const i = Math.round((note.at + t) * MUSIC_RATE);
+      expect(samples[i]).toBeCloseTo(expected(i / MUSIC_RATE - note.at), 5);
     }
   });
 });

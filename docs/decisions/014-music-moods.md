@@ -38,9 +38,10 @@ and the music has to sit under narration without competing with it.
 - **48 kHz.** The rate the mix and the video use; Kokoro's 24 kHz lines are
   resampled in the mix.
 - **Made when needed, for now.** The same inputs always give the same
-  samples. 75 s takes 1.4 s (technical) to 6.8 s (upbeat) on a laptop, and
-  10 minutes up to about a minute; 2.4 decides whether to cache it like the
-  voice or speed up the synthesis.
+  samples. Pads, most of the music by length, are made with phasors turned
+  a fixed step each sample instead of `Math.sin`; 75 s takes 1.4 s to
+  2.8 s (upbeat) on a laptop, and 10 minutes about 20 s. 2.4 decides
+  whether to cache it like the voice.
 
 ## Alternatives
 

@@ -158,9 +158,9 @@ that finishes it.
   whole length (`plan.duration`). 2.4 applies `music.volumeDb`, ducks it
   under the voice, skips it when `music.enabled` is false, and mixes it with
   the lines (24 kHz, resampled).
-- Making music takes 1.4–6.8 s per 75 s, up to a minute for ten minutes.
-  Cache it in the project's `cache/` keyed by mood, seed and length (as the
-  voice is), or speed up the synthesis (oscillators instead of `Math.sin`).
+- Making music takes 1.4–2.8 s per 75 s, about 20 s for ten minutes. Cache
+  it in the project's `cache/` keyed by mood, seed and length (as the voice
+  is), or move the plucks to phasors too, as the pads are.
 
 ### For 2.4 (mix), from 2.1 and 2.2
 
