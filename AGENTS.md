@@ -57,6 +57,7 @@ npm run deps        # dependency-cruiser: module boundaries (.dependency-cruiser
 npm test            # Vitest
 npm run schemas     # regenerate schemas/ after changing a zod schema
 npm run layout -- examples/oauth-login   # recompute a project's layout.json
+npm run music -- calm 30 calm.wav          # 30 s of a music mood (calm, upbeat, technical) as a WAV
 npm run dev:engine  # the engine dev page in a browser
 npm run screenshot -- "dev/iso.html?t=4" out.png   # a still of a dev page
 npm run clip -- dev/iso.html out.mp4               # a clip of a dev page (needs ffmpeg)

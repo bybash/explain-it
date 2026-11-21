@@ -75,7 +75,7 @@ The goal: the CLI renders a hand-written example to an MP4, with no LLM and no v
 |---|---|---|
 | ✅ 2.1 | **Voice**: the `TtsProvider` interface, the kokoro-js provider, model download into the cache, per-line hash cache | A test generates a line; the second run hits the cache |
 | ✅ 2.2 | **Narration-first timing**: measured voice lengths drive beat lengths | The example's beats follow its narration; the cues line up |
-| 2.3 | **Music**: three procedural moods, seeded, ported from the prototype | Three short samples attached to the PR |
+| ✅ 2.3 | **Music**: three procedural moods, seeded, ported from the prototype | Three short samples attached to the PR |
 | 2.4 | **Mix and outputs**: ducking, −16 LUFS normalisation, muxing; the captioned and clean MP4s, `audio.wav`, light, dark and both | The example renders with voice and music |
 | 2.5 | **Layout checks**: overlap (polygons) and off-frame at each beat's midpoint, including boxes moved onto each other or onto another zone by manual overrides; a JSON report; `explain-it check` | A broken fixture is caught; an overlapping override is reported; the example passes |
 | 2.6 | **Timing and audio checks**: reading speed, narration fit, loudness | Same as 2.5 |
@@ -150,6 +150,17 @@ that finishes it.
   corner: "explain-it server" shows as "exp". Edges also cross boxes they
   do not connect to. The overlap check should cover zone labels and edges
   against boxes, and layout should keep a zone's label clear.
+
+### For 2.4 (mix), from 2.3
+
+- The music exists: `renderMusic(musicPlan({ mood, seed, seconds }))` in
+  `src/audio/music.ts` gives 48 kHz samples at −22 dBFS RMS for the video's
+  whole length (`plan.duration`). 2.4 applies `music.volumeDb`, ducks it
+  under the voice, skips it when `music.enabled` is false, and mixes it with
+  the lines (24 kHz, resampled).
+- Making music takes 1.4–2.8 s per 75 s, about 20 s for ten minutes. Cache
+  it in the project's `cache/` keyed by mood, seed and length (as the voice
+  is), or move the plucks to phasors too, as the pads are.
 
 ### For 2.4 (mix), from 2.1 and 2.2
 

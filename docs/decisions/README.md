@@ -23,3 +23,4 @@ later record supersedes an earlier one and says so.
 | [011](011-mcp-endpoint-and-tools.md) | MCP endpoint and project tools |
 | [012](012-voice.md) | Voice with Kokoro |
 | [013](013-narration-first-pacing.md) | Narration-first timing and pacing |
+| [014](014-music-moods.md) | Music moods |
