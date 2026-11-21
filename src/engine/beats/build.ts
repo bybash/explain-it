@@ -8,7 +8,13 @@ import { sceneTitleText } from "../overlays/html.ts";
 import { type Entrance, overlayTweens } from "../overlays/tweens.ts";
 import type { TweenSpec } from "../timeline.ts";
 import { splitCues } from "./cues.ts";
-import { type BeatTiming, beatTiming, CAPTION_CHARS_PER_SECOND } from "./timing.ts";
+import {
+  type BeatTiming,
+  beatTiming,
+  CAPTION_CHARS_PER_SECOND,
+  type NarrationMode,
+  narrationMode,
+} from "./timing.ts";
 
 /** How scenes change, in seconds: a crossfade between them, and the empty background held at the end when no card closes the video. */
 export const SCENE_TIMING = { transition: 0.8, tail: 1.2 } as const;
@@ -99,10 +105,9 @@ export type BeatPlan = {
 export type BuildOptions = {
   /** Measured narration lengths in seconds, by beat id; the rest are estimated. */
   readonly narration?: Readonly<Record<string, number>>;
-  /** How unhurried the video is; relaxed by default. */
+  /** How unhurried the video is, and how narration is timed; the config's defaults when not given. */
   readonly pace?: Pace;
-  /** Whether the narration is spoken; when not, lines are timed by reading them. On by default. */
-  readonly voice?: boolean;
+  readonly mode?: NarrationMode;
   /** Opens the video, before the first scene, and closes it when there is no end card. */
   readonly titleCard?: TitleCard;
   /** Closes the video, after the last scene. */
@@ -117,7 +122,7 @@ export const beatOptions = (config: Config, narration?: Narration): BuildOptions
   return {
     ...(narration ? { narration } : {}),
     pace: config.pacing,
-    voice: config.voice.enabled,
+    mode: narrationMode(config),
     ...(title ? { titleCard: title } : {}),
     ...(end ? { endCard: end } : {}),
     ...(config.logo ? { logo: true } : {}),
@@ -164,7 +169,7 @@ export const buildBeats = (
       const measured = options.narration?.[beat.id];
       const timing = beatTiming(beat, {
         ...(options.pace ? { pace: options.pace } : {}),
-        ...(options.voice === undefined ? {} : { voice: options.voice }),
+        ...(options.mode ? { mode: options.mode } : {}),
         ...(measured === undefined ? {} : { narration: measured }),
       });
       const span = { beat, timing, start: clock, end: clock + timing.duration };

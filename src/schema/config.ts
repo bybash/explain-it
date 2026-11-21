@@ -11,6 +11,18 @@ export const RESOLUTIONS = ["1080p", "720p"] as const;
 /** How unhurried the video is, from most to least (decision 013). */
 export const PACES = ["relaxed", "normal", "brisk"] as const;
 export type Pace = (typeof PACES)[number];
+/**
+ * Each pace: the pause after a beat's narration and actions before the next
+ * beat, and the shortest a beat can be, in seconds. Animations run at their
+ * default speed at every pace; a slower pace only adds time to look.
+ */
+export const PACE_TIMINGS: Readonly<
+  Record<Pace, { readonly pauseAfter: number; readonly minBeat: number }>
+> = {
+  relaxed: { pauseAfter: 1, minBeat: 3 },
+  normal: { pauseAfter: 0.6, minBeat: 2 },
+  brisk: { pauseAfter: 0.3, minBeat: 1.5 },
+};
 export type Resolution = (typeof RESOLUTIONS)[number];
 
 const HexColour = z
@@ -151,7 +163,7 @@ export const ConfigSchema = z
       .enum(PACES)
       .default("relaxed")
       .describe(
-        "How unhurried the video is: the pause after each narration line and the shortest a beat can be. Animations keep their speed at every pace.",
+        `How unhurried the video is: the pause after each beat and the shortest a beat can be (${PACES.map((pace) => `${pace}: ${PACE_TIMINGS[pace].pauseAfter} s, ${PACE_TIMINGS[pace].minBeat} s`).join("; ")}). Animations keep their speed at every pace.`,
       ),
     voice: z
       .strictObject({

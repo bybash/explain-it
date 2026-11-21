@@ -162,7 +162,8 @@ that finishes it.
   `docs/clips/2.2-oauth-login-voiced.mp4`.
 - Lines are generated when `check` runs or a render starts, without
   progress: the first time that includes the model download and can take
-  a minute or two. A render job shows no progress while it speaks. SPEC
+  a minute or two. A render job shows no progress while it speaks, and a
+  cancel waits for a model download already under way. SPEC
   also generates them when a project enters the Preview gate; 3.8 does
   that with progress, and could report progress to MCP clients and render
   jobs too.

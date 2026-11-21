@@ -227,10 +227,12 @@ describe("check", () => {
     await succeeds("set_style", { slug, config: { voice: { enabled: true } } });
     tts = fakeTts({ failWith: "the Kokoro voice model did not load" }).tts;
     const report = await succeeds("check", { slug });
-    // The video renders without the voice until 2.4 mixes it in, so it can still render.
+    // A render generates the voice too, so it would fail the same way.
     expect(report).toMatchObject({
-      ready: true,
-      problems: [],
+      ready: false,
+      problems: [
+        "voice: the Kokoro voice model did not load. Turn the voice off (voice.enabled: false) to render without it",
+      ],
       voice: { state: "failed", error: "the Kokoro voice model did not load" },
     });
   });
@@ -248,10 +250,17 @@ describe("check", () => {
       measured: 0,
       estimated: said,
       read: 0,
+      unseen: 0,
     });
     // The fake voice speaks a tenth of a second a word, far quicker than the estimate.
     const report = await succeeds("check", { slug });
-    expect(report.timing.narration).toEqual({ lines: said, measured: said, estimated: 0, read: 0 });
+    expect(report.timing.narration).toEqual({
+      lines: said,
+      measured: said,
+      estimated: 0,
+      read: 0,
+      unseen: 0,
+    });
     expect(report.timing.duration).toBeLessThan(estimated.timing.duration);
     // Now the lines are cached, set_storyboard measures them too, without generating any.
     const again = await succeeds("set_storyboard", { slug, storyboard: storyboardFile });

@@ -1,4 +1,4 @@
-import { generateVoice, narrationLengths } from "../audio/voice.ts";
+import { generateVoice, narrationLengths, VOICE_OFF_HINT } from "../audio/voice.ts";
 import { loadProject } from "../render/load.ts";
 import type { VoiceConfig } from "../schema/config.ts";
 import { formatErrors, parseWith } from "../schema/errors.ts";
@@ -81,8 +81,14 @@ export const checkTool = async (context: ToolContext, input: Args) => {
   const voice = loaded.ok
     ? await voiceReport(context, slug, loaded.value.storyboard, loaded.value.config.voice)
     : null;
-  // `ready` is about rendering, which does not need the voice until 2.4 mixes it in.
-  const problems = [...(loaded.ok ? [] : formatErrors(loaded.errors)), ...missing];
+  // A render generates the voice while it is on, so a voice that fails stops it too.
+  const problems = [
+    ...(loaded.ok ? [] : formatErrors(loaded.errors)),
+    ...missing,
+    ...(voice?.report.state === "failed"
+      ? [`voice: ${voice.report.error}. ${VOICE_OFF_HINT}`]
+      : []),
+  ];
   return ok({
     ready: problems.length === 0,
     problems,

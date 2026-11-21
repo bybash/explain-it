@@ -2,7 +2,7 @@ import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import graphJson from "../../../examples/oauth-login/graph.json" with { type: "json" };
 import storyboardJson from "../../../examples/oauth-login/storyboard.json" with { type: "json" };
-import { DEFAULT_CONFIG } from "../../schema/config.ts";
+import { DEFAULT_CONFIG, PACE_TIMINGS } from "../../schema/config.ts";
 import { formatErrors, type Validated } from "../../schema/errors.ts";
 import { parseGraph } from "../../schema/graph.ts";
 import { parseStoryboard } from "../../schema/storyboard.ts";
@@ -19,7 +19,7 @@ import {
   sceneTarget,
   scoped,
 } from "./build.ts";
-import { estimateNarration, LEAD_IN, PACES } from "./timing.ts";
+import { estimateNarration, LEAD_IN } from "./timing.ts";
 
 const unwrap = <T>(result: Validated<T>): T => {
   if (!result.ok) throw new Error(formatErrors(result.errors).join("\n"));
@@ -70,7 +70,9 @@ describe("buildBeats: spans", () => {
       graph,
       beatOptions({ ...DEFAULT_CONFIG, pacing: "brisk" }),
     );
-    expect(spanOf(brisk.beats, "start").end).toBeCloseTo(LEAD_IN + 3.6 + PACES.brisk.pauseAfter);
+    expect(spanOf(brisk.beats, "start").end).toBeCloseTo(
+      LEAD_IN + 3.6 + PACE_TIMINGS.brisk.pauseAfter,
+    );
     const silent = buildBeats(
       storyboard,
       graph,
@@ -314,7 +316,7 @@ describe("buildBeats: narration", () => {
     const [one, two] = cues;
     expect(one?.start).toBeCloseTo(swap.start + LEAD_IN);
     expect(two?.start).toBeCloseTo(one?.end ?? 0);
-    expect(two?.end).toBeCloseTo(swap.end - PACES.relaxed.pauseAfter);
+    expect(two?.end).toBeCloseTo(swap.end - PACE_TIMINGS.relaxed.pauseAfter);
     // The longer cue is on screen for longer.
     expect((one?.end ?? 0) - (one?.start ?? 0)).toBeGreaterThan(
       (two?.end ?? 0) - (two?.start ?? 0),

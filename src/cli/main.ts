@@ -28,7 +28,9 @@ const render = async (argv: readonly string[]): Promise<void> => {
     else {
       const settings = renderSettings(args.value, project.value.config);
       const tts = kokoroProvider({ cacheDir: resolve(process.env.CACHE_DIR ?? "cache") });
-      const voiced = await withNarration(dir, project.value, tts);
+      const voiced = await withNarration(dir, project.value, tts).catch((error: unknown) =>
+        fail([error instanceof Error ? error.message : String(error)], 1),
+      );
       const made = voiced.lines.filter((line) => !line.cached).length;
       if (voiced.lines.length > 0)
         console.log(

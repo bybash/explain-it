@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { DEFAULT_CONFIG, PACE_TIMINGS } from "../../schema/config.ts";
 import type { Beat } from "../../schema/storyboard.ts";
-import { beatTiming, estimateNarration, LEAD_IN, PACES, readingTime } from "./timing.ts";
+import { beatTiming, estimateNarration, LEAD_IN, narrationMode, readingTime } from "./timing.ts";
 
 const beat = (fields: Partial<Beat>): Beat => ({
   id: "b",
@@ -24,9 +25,9 @@ describe("estimateNarration and readingTime", () => {
 
 describe("the paces", () => {
   it("go from relaxed to brisk: a shorter pause after each line and shorter beats", () => {
-    expect(PACES.relaxed).toEqual({ pauseAfter: 1, minBeat: 3 });
-    expect(PACES.normal).toEqual({ pauseAfter: 0.6, minBeat: 2 });
-    expect(PACES.brisk).toEqual({ pauseAfter: 0.3, minBeat: 1.5 });
+    expect(PACE_TIMINGS.relaxed).toEqual({ pauseAfter: 1, minBeat: 3 });
+    expect(PACE_TIMINGS.normal).toEqual({ pauseAfter: 0.6, minBeat: 2 });
+    expect(PACE_TIMINGS.brisk).toEqual({ pauseAfter: 0.3, minBeat: 1.5 });
   });
 });
 
@@ -67,10 +68,21 @@ describe("beatTiming", () => {
 
   it("times a line by reading it when the voice is off", () => {
     const say = "x".repeat(90);
-    const timing = beatTiming(beat({ say }), { pace: "brisk", voice: false, narration: 1 });
+    const timing = beatTiming(beat({ say }), { pace: "brisk", mode: "read", narration: 1 });
     // 90 characters at 15 a second; a measured length means nothing without a voice.
     expect(timing.narration).toEqual({ at: LEAD_IN, length: 6 });
     expect(timing.duration).toBeCloseTo(LEAD_IN + 6 + 0.3);
+  });
+
+  it("ignores a line nobody hears or sees", () => {
+    const say = "x".repeat(90);
+    const timing = beatTiming(beat({ say, caption: "x".repeat(30) }), {
+      pace: "brisk",
+      mode: "unseen",
+    });
+    expect(timing.narration).toBeUndefined();
+    // Timed as a beat without narration: its caption's 2 s, then the brisk 1.5 s floor.
+    expect(timing.duration).toBeCloseTo(2);
   });
 
   it("without narration, lasts at least its caption at 15 characters per second", () => {
@@ -95,7 +107,23 @@ describe("beatTiming", () => {
     expect((last?.at ?? 0) + (last?.duration ?? 0)).toBeLessThanOrEqual(timing.duration - 0.6);
   });
 
-  it("is relaxed by default", () => {
-    expect(beatTiming(beat({ say: TEN_WORDS })).duration).toBeCloseTo(LEAD_IN + 4 + 1);
+  it("takes the config's default pace and spoken narration when given none", () => {
+    const { pauseAfter } = PACE_TIMINGS[DEFAULT_CONFIG.pacing];
+    expect(beatTiming(beat({ say: TEN_WORDS })).duration).toBeCloseTo(LEAD_IN + 4 + pauseAfter);
+  });
+});
+
+describe("narrationMode", () => {
+  const voiceOff = { ...DEFAULT_CONFIG.voice, enabled: false };
+  it("speaks lines when the voice is on, reads them when only the captions show them", () => {
+    expect(narrationMode(DEFAULT_CONFIG)).toBe("spoken");
+    expect(narrationMode({ ...DEFAULT_CONFIG, voice: voiceOff })).toBe("read");
+    expect(
+      narrationMode({
+        ...DEFAULT_CONFIG,
+        voice: voiceOff,
+        captions: { ...DEFAULT_CONFIG.captions, narration: false },
+      }),
+    ).toBe("unseen");
   });
 });

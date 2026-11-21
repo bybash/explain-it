@@ -1,5 +1,5 @@
 import type { TtsProvider } from "../audio/tts.ts";
-import { generateVoice, narrationLengths } from "../audio/voice.ts";
+import { narrationLengths, readCachedVoice } from "../audio/voice.ts";
 import { graphToMermaid } from "../mermaid/generate.ts";
 import { inFile, readAssetLogo, readJson } from "../render/load.ts";
 import type { RenderQueue } from "../render/queue.ts";
@@ -208,13 +208,11 @@ const cachedNarration = async (
   storyboard: Storyboard,
   config: Config,
 ): Promise<Narration> => {
-  if (!config.voice.enabled) return {};
-  const lines = await generateVoice({
+  const lines = await readCachedVoice({
     projectDir: projectDir(context.projectsDir, slug),
     storyboard,
     voice: config.voice,
     tts: context.tts,
-    onlyCached: true,
   });
   return narrationLengths(lines);
 };

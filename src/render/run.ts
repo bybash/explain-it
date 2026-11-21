@@ -1,7 +1,7 @@
 import { rm } from "node:fs/promises";
 import { join } from "node:path";
 import type { TtsProvider } from "../audio/tts.ts";
-import { generateVoice, narrationLengths, type VoiceLine } from "../audio/voice.ts";
+import { generateVoice, narrationLengths, VOICE_OFF_HINT, type VoiceLine } from "../audio/voice.ts";
 import { formatErrors } from "../schema/errors.ts";
 import type { RenderedTheme } from "../schema/render.ts";
 import { loadProject, type ProjectFiles } from "./load.ts";
@@ -63,12 +63,18 @@ export const withNarration = async (
   dir: string,
   project: ProjectFiles,
   tts: TtsProvider,
+  signal?: AbortSignal,
 ): Promise<{ readonly project: ProjectFiles; readonly lines: readonly VoiceLine[] }> => {
   const lines = await generateVoice({
     projectDir: dir,
     storyboard: project.storyboard,
     voice: project.config.voice,
     tts,
+    ...(signal ? { signal } : {}),
+  }).catch((error: unknown) => {
+    if (signal?.aborted) throw error;
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`the voice did not generate: ${message}. ${VOICE_OFF_HINT}`);
   });
   return {
     project: lines.length > 0 ? { ...project, narration: narrationLengths(lines) } : project,
@@ -95,7 +101,6 @@ export const renderFromFolder =
       { ...(theme ? { theme } : {}), ...(resolution ? { resolution } : {}) },
       loaded.value.config,
     );
-    const { project } = await withNarration(dir, loaded.value, tts);
-    control.signal.throwIfAborted();
+    const { project } = await withNarration(dir, loaded.value, tts, control.signal);
     return renderProjectFolder({ dir, project, settings, now: now(), ...control });
   };

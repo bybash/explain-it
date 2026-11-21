@@ -1,4 +1,4 @@
-import type { Pace } from "../../schema/config.ts";
+import { type Config, DEFAULT_CONFIG, PACE_TIMINGS, type Pace } from "../../schema/config.ts";
 import type { ACTION_TYPES, Beat } from "../../schema/storyboard.ts";
 import { EDGE_TIMING } from "../edges/flow.ts";
 import { NODE_TIMING } from "../iso/tweens.ts";
@@ -22,17 +22,14 @@ export const CAPTION_CHARS_PER_SECOND = 15;
 export const LEAD_IN = 0.3;
 
 /**
- * Each pace: the pause after a beat's narration and actions before the next
- * beat, and the shortest a beat can be (decision 013). Animations run at
- * their default speed at every pace; a slower pace only adds time to look.
+ * How a beat's narration line is timed: spoken (measured, or estimated
+ * until the voice exists), read on screen when the voice is off, or unseen
+ * when neither the voice nor the narration captions carry it.
  */
-export const PACES: Readonly<
-  Record<Pace, { readonly pauseAfter: number; readonly minBeat: number }>
-> = {
-  relaxed: { pauseAfter: 1, minBeat: 3 },
-  normal: { pauseAfter: 0.6, minBeat: 2 },
-  brisk: { pauseAfter: 0.3, minBeat: 1.5 },
-};
+export type NarrationMode = "spoken" | "read" | "unseen";
+
+export const narrationMode = (config: Pick<Config, "voice" | "captions">): NarrationMode =>
+  config.voice.enabled ? "spoken" : config.captions.narration ? "read" : "unseen";
 
 /** Seconds a narration line takes to say, estimated from its words. */
 export const estimateNarration = (say: string): number =>
@@ -51,12 +48,12 @@ export type BeatTiming = {
 };
 
 export type BeatTimingOptions = {
-  /** Relaxed by default. */
+  /** The config's default when not given. */
   readonly pace?: Pace;
+  /** How the narration is timed; the config's default when not given. */
+  readonly mode?: NarrationMode;
   /** The measured length of the beat's spoken line, when it has been generated. */
   readonly narration?: number;
-  /** Whether the narration is spoken; when not, a line is timed by reading it. On by default. */
-  readonly voice?: boolean;
 };
 
 /**
@@ -69,16 +66,20 @@ export type BeatTimingOptions = {
  */
 export const beatTiming = (
   beat: Beat,
-  { pace = "relaxed", narration, voice = true }: BeatTimingOptions = {},
+  {
+    pace = DEFAULT_CONFIG.pacing,
+    mode = narrationMode(DEFAULT_CONFIG),
+    narration,
+  }: BeatTimingOptions = {},
 ): BeatTiming => {
-  const { pauseAfter, minBeat } = PACES[pace];
+  const { pauseAfter, minBeat } = PACE_TIMINGS[pace];
   const durations = beat.actions.map((action) => ACTION_DURATIONS[action.type]);
   const busy = durations.reduce((sum, d) => sum + d, 0);
   const padded = (seconds: number) => LEAD_IN + seconds + pauseAfter;
   const narrationLength =
-    beat.say === undefined
+    beat.say === undefined || mode === "unseen"
       ? undefined
-      : voice
+      : mode === "spoken"
         ? (narration ?? estimateNarration(beat.say))
         : readingTime(beat.say);
   const duration = Math.max(
