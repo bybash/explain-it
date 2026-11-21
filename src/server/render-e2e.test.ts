@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { chromium } from "playwright-core";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import graphJson from "../../examples/oauth-login/graph.json" with { type: "json" };
+import { fakeTts } from "../audio/fake-tts.testing.ts";
 import { createApp } from "./app.ts";
 
 // A real render needs Chrome and ffmpeg; without them the test is skipped, not failed.
@@ -43,7 +44,7 @@ describe.skipIf(!hasFfmpeg || !hasChrome)(
 
     beforeAll(() => {
       projectsDir = mkdtempSync(join(tmpdir(), "explain-it-e2e-"));
-      app = createApp({ projectsDir, now: () => new Date() });
+      app = createApp({ projectsDir, now: () => new Date(), tts: fakeTts().tts });
     });
     afterAll(() => rmSync(projectsDir, { recursive: true, force: true }));
 

@@ -1,3 +1,4 @@
+import type { TtsProvider } from "../audio/tts.ts";
 import { graphToMermaid } from "../mermaid/generate.ts";
 import { inFile, readAssetLogo, readJson } from "../render/load.ts";
 import type { RenderQueue } from "../render/queue.ts";
@@ -40,6 +41,8 @@ export type ToolContext = {
   readonly renders: RenderQueue;
   /** What a render needs from this machine and cannot find (see \`missingRenderTools\`). */
   readonly missingRenderTools: () => Promise<readonly string[]>;
+  /** Speaks the narration; Kokoro in the app, a fake in tests. */
+  readonly tts: TtsProvider;
 };
 
 type Args = Readonly<Record<string, unknown>>;

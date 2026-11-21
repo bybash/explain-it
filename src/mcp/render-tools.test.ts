@@ -6,6 +6,8 @@ import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import graphJson from "../../examples/oauth-login/graph.json" with { type: "json" };
 import storyboardJson from "../../examples/oauth-login/storyboard.json" with { type: "json" };
+import { fakeTts } from "../audio/fake-tts.testing.ts";
+import type { TtsProvider } from "../audio/tts.ts";
 import { RenderQueue } from "../render/queue.ts";
 import type { RenderJob, RenderRequest } from "../schema/render.ts";
 import { createEvents } from "../server/events.ts";
@@ -21,6 +23,8 @@ let client: Client;
 let requests: RenderRequest[];
 /** What the fake machine lacks for a render; nothing unless a test says so. */
 let missing: string[];
+/** The voice provider; a test that needs it to fail sets one that does. */
+let tts: TtsProvider;
 /** Renders wait on this; a test that needs a job to stay running holds it shut. */
 let gate: Promise<void> = Promise.resolve();
 beforeEach(async () => {
@@ -28,6 +32,7 @@ beforeEach(async () => {
   projectsDir = mkdtempSync(join(tmpdir(), "explain-it-render-tools-"));
   requests = [];
   missing = [];
+  tts = fakeTts().tts;
   // A renderer that finishes at once, writing nothing: the tools are under test, not the render.
   const renders = new RenderQueue({
     now: () => new Date(NOW),
@@ -51,6 +56,7 @@ beforeEach(async () => {
     previewUrl: preview,
     renders,
     missingRenderTools: async () => missing,
+    tts: { id: "fake", generate: (text, options) => tts.generate(text, options) },
   });
   const [serverSide, clientSide] = InMemoryTransport.createLinkedPair();
   client = new Client({ name: "test", version: "1.0.0" });
@@ -191,5 +197,41 @@ describe("check", () => {
     const broken = await succeeds("check", { slug });
     expect(broken.ready).toBe(false);
     expect(broken.problems[0]).toMatch(/^graph\.json: not valid JSON/);
+  });
+
+  it("generates the narration voice, then reads it from the cache", async () => {
+    const slug = await project();
+    const lines = storyboardFile.scenes.reduce(
+      (n, scene) => n + scene.beats.filter((beat) => "say" in beat).length,
+      0,
+    );
+    expect(lines).toBeGreaterThan(0);
+    const first = await succeeds("check", { slug });
+    expect(first.voice).toMatchObject({
+      state: "ready",
+      id: "af_heart",
+      lines,
+      generated: lines,
+      cached: 0,
+    });
+    expect(first.voice.seconds).toBeGreaterThan(0);
+    expect(first.notChecked.join("\n")).not.toMatch(/^narration voice/m);
+    const second = await succeeds("check", { slug });
+    expect(second.voice).toMatchObject({ lines, generated: 0, cached: lines });
+  });
+
+  it("reports a voice that is off, and one that fails, by name", async () => {
+    const slug = await project();
+    await succeeds("set_style", { slug, config: { voice: { enabled: false } } });
+    expect((await succeeds("check", { slug })).voice).toEqual({ state: "off" });
+    await succeeds("set_style", { slug, config: { voice: { enabled: true } } });
+    tts = fakeTts({ failWith: "the Kokoro voice model did not load" }).tts;
+    const report = await succeeds("check", { slug });
+    // The video renders without the voice until 2.4 mixes it in, so it can still render.
+    expect(report).toMatchObject({
+      ready: true,
+      problems: [],
+      voice: { state: "failed", error: "the Kokoro voice model did not load" },
+    });
   });
 });

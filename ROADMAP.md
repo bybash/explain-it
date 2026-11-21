@@ -73,7 +73,7 @@ The goal: the CLI renders a hand-written example to an MP4, with no LLM and no v
 
 | ID | Slice | Done when |
 |---|---|---|
-| 2.1 | **Voice**: the `TtsProvider` interface, the kokoro-js provider, model download into the cache, per-line hash cache | A test generates a line; the second run hits the cache |
+| ✅ 2.1 | **Voice**: the `TtsProvider` interface, the kokoro-js provider, model download into the cache, per-line hash cache | A test generates a line; the second run hits the cache |
 | 2.2 | **Narration-first timing**: measured voice lengths drive beat lengths | The example's beats follow its narration; the cues line up |
 | 2.3 | **Music**: three procedural moods, seeded, ported from the prototype | Three short samples attached to the PR |
 | 2.4 | **Mix and outputs**: ducking, −16 LUFS normalisation, muxing; the captioned and clean MP4s, `audio.wav`, light, dark and both | The example renders with voice and music |
@@ -151,11 +151,26 @@ that finishes it.
   do not connect to. The overlap check should cover zone labels and edges
   against boxes, and layout should keep a zone's label clear.
 
-### For 2.1, 2.5, 2.6 and 2.7 (voice, checks, contact sheet), from 4.3
+### For 2.2 and 2.4 (timing, mix), from 2.1
 
-- The MCP `check` tool returns a readiness report for now: whether the
-  project can render, what is missing or broken, the stale beats and the
-  timing, with a `notChecked` list naming the voice, the overlap and
+- The voice exists: `generateVoice` in `src/audio/voice.ts` speaks every
+  `say` line into `projects/<slug>/cache/tts/` and returns each line's
+  file and measured length. 2.2 times the beats from those lengths, and
+  `check` and `set_storyboard` then report the measured timing instead of
+  the estimate. 2.4 mixes the lines into the video and removes the
+  "voice in the video" line from `check`'s `notChecked`.
+- Lines are generated when `check` runs, in one MCP call: the first time
+  that includes the model download and can take a minute or two, with no
+  progress shown. SPEC also generates them when a project enters the
+  Preview gate; 3.8 does that with progress, and could report progress to
+  MCP clients too.
+- Old lines stay in `cache/tts/` when a line is edited; nothing prunes
+  them yet.
+
+### For 2.5, 2.6 and 2.7 (checks, contact sheet), from 4.3
+
+- The MCP `check` tool returns a readiness report and the voice for now,
+  with a `notChecked` list naming what is not checked yet: the overlap and
   off-frame checks, reading speed and narration fit, and the contact sheet
   (`src/mcp/render-tools.ts`). Each of these slices adds its part to
   `check`, removes its line from `notChecked`, and the contact sheet

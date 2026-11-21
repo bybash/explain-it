@@ -3,12 +3,14 @@
 // runs it; `npm run dev` runs it with API_ONLY=1 behind Vite's dev server.
 //   HOST, PORT     where to listen; 127.0.0.1:3000 by default
 //   PROJECTS_DIR   the projects folder; ./projects by default
+//   CACHE_DIR      the cache folder, for the voice model; ./cache by default
 //   PUBLIC_URL     where users open the app, for preview links; the request's own address by default
 import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
+import { kokoroProvider } from "../audio/kokoro.ts";
 import { formatErrors } from "../schema/errors.ts";
 import { createApp } from "./app.ts";
 import { listenOptions } from "./listen.ts";
@@ -24,6 +26,7 @@ const projectsDir = resolve(process.env.PROJECTS_DIR ?? "projects");
 const wildcard = hostname === "0.0.0.0" || hostname === "::";
 const app = createApp({
   projectsDir,
+  tts: kokoroProvider({ cacheDir: resolve(process.env.CACHE_DIR ?? "cache") }),
   now: () => new Date(),
   hosts: wildcard ? [] : [hostname],
   ...(process.env.PUBLIC_URL ? { publicUrl: process.env.PUBLIC_URL } : {}),

@@ -2,13 +2,18 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { fakeTts } from "../audio/fake-tts.testing.ts";
 import { createApp } from "./app.ts";
 
 let projectsDir: string;
 let app: ReturnType<typeof createApp>;
 beforeEach(() => {
   projectsDir = mkdtempSync(join(tmpdir(), "explain-it-mcp-http-"));
-  app = createApp({ projectsDir, now: () => new Date("2026-11-20T10:00:00.000Z") });
+  app = createApp({
+    projectsDir,
+    now: () => new Date("2026-11-20T10:00:00.000Z"),
+    tts: fakeTts().tts,
+  });
 });
 afterEach(() => rmSync(projectsDir, { recursive: true, force: true }));
 
@@ -95,6 +100,7 @@ describe("/mcp", () => {
       projectsDir,
       now: () => new Date("2026-11-20T10:00:00.000Z"),
       publicUrl: "http://127.0.0.1:3000",
+      tts: fakeTts().tts,
     });
     const response = await proxied.request("http://127.0.0.1:3001/mcp", {
       method: "POST",

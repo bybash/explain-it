@@ -6,6 +6,7 @@ import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import graphJson from "../../examples/oauth-login/graph.json" with { type: "json" };
 import storyboardJson from "../../examples/oauth-login/storyboard.json" with { type: "json" };
+import { fakeTts } from "../audio/fake-tts.testing.ts";
 import { authoringGuide, graphSummary, storyboardSummary } from "../guidance/guide.ts";
 import { RenderQueue } from "../render/queue.ts";
 import type { ServerEvent } from "../schema/api.ts";
@@ -37,6 +38,7 @@ beforeEach(async () => {
     events,
     previewUrl: preview,
     missingRenderTools: async () => [],
+    tts: fakeTts().tts,
     // These tests never render; render-tools.test.ts covers the render tools.
     renders: new RenderQueue({
       now: () => new Date(NOW),

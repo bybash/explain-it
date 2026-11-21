@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_CONFIG, parseConfig } from "./config.ts";
 import { formatErrors } from "./errors.ts";
+import { VOICE_IDS } from "./voices.ts";
 
 const errorsFor = (data: unknown) => {
   const result = parseConfig(data);
@@ -16,6 +17,14 @@ describe("parseConfig", () => {
   it("fills defaults inside a partial section", () => {
     const result = parseConfig({ voice: { id: "bm_george" } });
     expect(result.ok && result.value.voice).toEqual({ ...DEFAULT_CONFIG.voice, id: "bm_george" });
+  });
+
+  it("takes only a Kokoro voice, and names the ones there are", () => {
+    expect(errorsFor({ voice: { id: "af_nobody" } })).toEqual([
+      `voice.id: must be one of ${VOICE_IDS.map((id) => JSON.stringify(id)).join(", ")}`,
+    ]);
+    expect(VOICE_IDS).toContain("af_heart");
+    expect(VOICE_IDS).toHaveLength(28);
   });
 
   it("accepts a custom palette", () => {

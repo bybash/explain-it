@@ -10,6 +10,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { fakeTts } from "../audio/fake-tts.testing.ts";
 import { parseProject } from "../schema/project.ts";
 import { createApp } from "./app.ts";
 
@@ -20,7 +21,7 @@ let projectsDir: string;
 let app: ReturnType<typeof createApp>;
 beforeEach(() => {
   projectsDir = mkdtempSync(join(tmpdir(), "explain-it-projects-"));
-  app = createApp({ projectsDir, now: () => new Date(NOW) });
+  app = createApp({ projectsDir, now: () => new Date(NOW), tts: fakeTts().tts });
 });
 afterEach(() => rmSync(projectsDir, { recursive: true, force: true }));
 
