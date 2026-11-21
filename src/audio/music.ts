@@ -1,8 +1,7 @@
-import type { MUSIC_MOODS } from "../schema/config.ts";
+import type { MusicMood } from "../schema/config.ts";
+import { type Instrument, MOODS } from "./music-moods.ts";
 import { seededRandom } from "./random.ts";
 import type { Audio } from "./wav.ts";
-
-export type MusicMood = (typeof MUSIC_MOODS)[number];
 
 /** Music is made at 48 kHz, the rate the mix and the video use. */
 export const MUSIC_RATE = 48_000;
@@ -10,9 +9,6 @@ export const MUSIC_RATE = 48_000;
 export const MUSIC_RMS_DB = -22;
 /** Peaks never go above this (dBFS), so the mix has headroom. */
 const PEAK_DB = -1;
-
-const INSTRUMENTS = ["pad", "pluck", "bell", "pulse", "drone"] as const;
-type Instrument = (typeof INSTRUMENTS)[number];
 
 /** One note of the music: when, how long, which pitch, on what, how loud. */
 export type MusicNote = {
@@ -28,111 +24,17 @@ export type MusicNote = {
 
 export type MusicPlan = { readonly seconds: number; readonly notes: readonly MusicNote[] };
 
-/**
- * Each mood as data: its chords (MIDI), one chord a bar, and what plays
- * over them. calm is the prototype's warm pad with sparse plucks; upbeat a
- * brighter major with a bouncy arpeggio and a soft pulse on the beat;
- * technical a cool modal sequence of short glassy notes over a drone.
- */
-const MOODS: Readonly<
-  Record<
-    MusicMood,
-    {
-      readonly chords: readonly (readonly number[])[];
-      readonly bar: number;
-      readonly pad?: number;
-      readonly drone?: number;
-      readonly arpeggio: {
-        readonly instrument: Instrument;
-        readonly perBar: number;
-        readonly octave: number;
-        readonly length: number;
-        readonly gain: number;
-        readonly patterns: readonly (readonly number[])[];
-      };
-      readonly pulse?: { readonly perBar: number; readonly gain: number };
-    }
-  >
-> = {
-  calm: {
-    // Cmaj9, Am9, Fmaj9, G6; 8 s a chord, about 60 bpm.
-    chords: [
-      [48, 55, 59, 62, 64],
-      [45, 52, 55, 59, 64],
-      [41, 48, 52, 55, 57],
-      [43, 50, 55, 59, 64],
-    ],
-    bar: 8,
-    pad: 0.06,
-    arpeggio: {
-      instrument: "pluck",
-      perBar: 6,
-      octave: 24,
-      length: 2.5,
-      gain: 0.05,
-      patterns: [
-        [0, 2, 4, 1, 3, 0],
-        [0, 2, 4, 6, 8, 10],
-        [4, 2, 0, 3, 1, 4],
-      ],
-    },
-  },
-  upbeat: {
-    // D, A, Bm, G (I–V–vi–IV) at 100 bpm, a bar a chord.
-    chords: [
-      [50, 57, 62, 66, 69],
-      [45, 52, 57, 61, 64],
-      [47, 54, 59, 62, 66],
-      [43, 50, 55, 59, 62],
-    ],
-    bar: 2.4,
-    pad: 0.035,
-    arpeggio: {
-      instrument: "pluck",
-      perBar: 8,
-      octave: 12,
-      length: 0.8,
-      gain: 0.05,
-      patterns: [
-        [0, 2, 4, 2, 1, 3, 4, 3],
-        [0, 1, 2, 3, 4, 3, 2, 1],
-        [0, 4, 2, 4, 1, 4, 3, 4],
-      ],
-    },
-    pulse: { perBar: 4, gain: 0.12 },
-  },
-  technical: {
-    // Dm9, B♭maj7, Fmaj7, C at 110 bpm, a bar a chord.
-    chords: [
-      [50, 53, 57, 60, 64],
-      [46, 53, 57, 62],
-      [41, 48, 52, 57],
-      [48, 55, 60, 64],
-    ],
-    bar: (4 * 60) / 110,
-    drone: 0.05,
-    arpeggio: {
-      instrument: "bell",
-      perBar: 16,
-      octave: 24,
-      length: 0.4,
-      gain: 0.035,
-      patterns: [
-        [0, 1, 2, 3, 2, 1, 0, 1, 2, 3, 4, 3, 2, 1, 2, 3],
-        [0, 2, 1, 3, 2, 4, 3, 1, 0, 2, 1, 3, 2, 4, 3, 1],
-        [0, 3, 1, 4, 2, 0, 3, 1, 4, 2, 0, 3, 1, 4, 2, 4],
-      ],
-    },
-  },
-};
-
-/** A pad starts this long before its bar and swells over this much extra, so chords overlap. */
+/** A pad starts this long before its bar and lasts this much longer, so chords swell into each other. */
 const PAD_LEAD = 1.5;
 const PAD_OVERLAP = 3;
+const PULSE_LENGTH = 0.35;
+/** Each note's loudness varies by up to this much either way, so repeats do not sound mechanical. */
+const GAIN_SPREAD = 0.1;
+const TAU = 2 * Math.PI;
 
 /**
- * The notes of `seconds` of music in a mood. The seed picks where the chord
- * progression starts, the arpeggio's pattern, each note's phase and a
+ * The notes of `seconds` of music in a mood. The seed picks the chord the
+ * progression starts on, the arpeggio's pattern, each note's phase and a
  * little variation in loudness: the same seed always gives the same notes.
  */
 export const musicPlan = ({
@@ -146,48 +48,42 @@ export const musicPlan = ({
 }): MusicPlan => {
   const spec = MOODS[mood];
   const random = seededRandom(seed);
-  const pick = <T>(items: readonly T[]): T => items[Math.floor(random() * items.length)] as T;
   const offset = Math.floor(random() * spec.chords.length);
-  const pattern = pick(spec.arpeggio.patterns);
+  const pattern = spec.arpeggio.patterns[Math.floor(random() * spec.arpeggio.patterns.length)] ?? [
+    0,
+  ];
   const notes: MusicNote[] = [];
-  const add = (note: Omit<MusicNote, "phase" | "gain"> & { gain: number }) => {
-    if (note.at < seconds && note.at + note.length > 0)
-      notes.push({
-        ...note,
-        gain: note.gain * (0.9 + 0.2 * random()),
-        phase: random() * 2 * Math.PI,
-      });
+  const add = (note: Omit<MusicNote, "phase">) => {
+    if (note.at >= seconds || note.at + note.length <= 0) return;
+    const gain = note.gain * (1 - GAIN_SPREAD + 2 * GAIN_SPREAD * random());
+    notes.push({ ...note, gain, phase: random() * TAU });
   };
   const bars = Math.ceil(seconds / spec.bar) + 1;
   for (let bar = 0; bar < bars; bar++) {
     const chord = spec.chords[(bar + offset) % spec.chords.length] ?? [];
+    const root = chord[0] ?? 0;
     const start = bar * spec.bar;
-    if (spec.pad !== undefined)
-      for (const midi of chord)
-        add({
-          at: start - PAD_LEAD,
-          length: spec.bar + PAD_OVERLAP,
-          midi,
-          instrument: "pad",
-          gain: spec.pad,
-        });
-    if (spec.drone !== undefined)
-      // Overlapping its neighbours, as a pad does, so the drone holds steady instead of pumping each bar.
+    if (spec.padGain !== undefined)
+      for (const midi of chord) {
+        const length = spec.bar + PAD_OVERLAP;
+        add({ at: start - PAD_LEAD, length, midi, instrument: "pad", gain: spec.padGain });
+      }
+    // Overlapping its neighbours, as a pad does, so the drone holds steady instead of pumping each bar.
+    if (spec.droneGain !== undefined)
       add({
         at: start - spec.bar / 2,
         length: 2 * spec.bar,
-        midi: (chord[0] ?? 48) - 12,
+        midi: root - 12,
         instrument: "drone",
-        gain: spec.drone,
+        gain: spec.droneGain,
       });
     const { arpeggio } = spec;
     for (let i = 0; i < arpeggio.perBar; i++) {
       const step = pattern[i % pattern.length] ?? 0;
-      const tone = chord[step % chord.length] ?? 60;
       add({
         at: start + (i * spec.bar) / arpeggio.perBar,
         length: arpeggio.length,
-        midi: tone + arpeggio.octave + 12 * Math.floor(step / chord.length),
+        midi: (chord[step % chord.length] ?? root) + arpeggio.octave,
         instrument: arpeggio.instrument,
         gain: arpeggio.gain,
       });
@@ -196,8 +92,8 @@ export const musicPlan = ({
       for (let i = 0; i < spec.pulse.perBar; i++)
         add({
           at: start + (i * spec.bar) / spec.pulse.perBar,
-          length: 0.35,
-          midi: (chord[0] ?? 48) - 24,
+          length: PULSE_LENGTH,
+          midi: root - 12,
           instrument: "pulse",
           gain: spec.pulse.gain,
         });
@@ -206,51 +102,56 @@ export const musicPlan = ({
 };
 
 const hz = (midi: number) => 440 * 2 ** ((midi - 69) / 12);
-const TAU = 2 * Math.PI;
+/** Rises from silence and falls back over a note's whole length. */
+const swell = (t: number, length: number) => Math.sin((Math.PI * t) / length) ** 2;
+/** A quick attack, then an exponential decay. */
+const struck = (t: number, attack: number, decay: number) =>
+  Math.min(1, t / attack) * Math.exp(-t * decay);
+/** The prototype's pad: three sines detuned by ±0.12 %, each with an octave above, each its own phase. */
+const PAD_DETUNES = [-0.0012, 0, 0.0012];
+const PAD_OCTAVE = 0.008 / 0.06;
 
 /** Each instrument's sound at `t` seconds into a note of `length`, before its gain. */
 const VOICES: Readonly<
   Record<Instrument, (t: number, length: number, f: number, phase: number) => number>
 > = {
-  // Three slightly detuned sines and a soft octave, swelling in and out (the prototype's pad).
   pad: (t, length, f, phase) => {
-    const swell = Math.sin((Math.PI * t) / length) ** 2;
     let sum = 0;
-    for (const detune of [-0.0012, 0, 0.0012]) sum += Math.sin(TAU * f * (1 + detune) * t + phase);
-    return swell * (sum + (0.008 / 0.06) * Math.sin(TAU * 2 * f * t + phase));
+    for (const [k, detune] of PAD_DETUNES.entries()) {
+      const p = phase + (k * TAU) / PAD_DETUNES.length;
+      sum += Math.sin(TAU * f * (1 + detune) * t + p) + PAD_OCTAVE * Math.sin(TAU * 2 * f * t + p);
+    }
+    return swell(t, length) * sum;
   },
-  // A soft pluck: a quick attack, then a long decay.
   pluck: (t, _length, f, phase) =>
-    Math.min(1, t / 0.005) *
-    Math.exp(-t * 2.2) *
+    struck(t, 0.005, 2.2) *
     (Math.sin(TAU * f * t + phase) + 0.2 * Math.sin(TAU * 2 * f * t + phase)),
-  // A short glassy tone: a fundamental and a third harmonic, decaying fast.
+  // A third harmonic and a fast decay make it glassy.
   bell: (t, _length, f, phase) =>
-    Math.min(1, t / 0.003) *
-    Math.exp(-t * 8) *
-    (Math.sin(TAU * f * t + phase) + 0.3 * Math.sin(TAU * 3 * f * t + phase)),
-  // A soft low thump: the pitch falls by an octave as it fades.
+    struck(t, 0.003, 8) * (Math.sin(TAU * f * t + phase) + 0.3 * Math.sin(TAU * 3 * f * t + phase)),
+  // A soft kick: the pitch falls from an octave up to the note as the thump fades.
   pulse: (t, _length, f) =>
-    Math.min(1, t / 0.002) *
-    Math.exp(-t * 9) *
-    Math.sin(TAU * f * 2 * (t - (1 - Math.exp(-t * 20)) / 40)),
-  // A low held tone, swelling in and out over its bar.
+    struck(t, 0.002, 9) * Math.sin(TAU * f * (t + (1 - Math.exp(-t * 20)) / 20)),
   drone: (t, length, f, phase) =>
-    Math.sin((Math.PI * t) / length) ** 2 *
-    (Math.sin(TAU * f * t + phase) + 0.25 * Math.sin(TAU * 2 * f * t)),
+    swell(t, length) * (Math.sin(TAU * f * t + phase) + 0.25 * Math.sin(TAU * 2 * f * t)),
 };
 
+/** Every note ends with this short fade, so a cut never clicks. */
+const RELEASE = 0.02;
 const FADE_IN = 3;
 const FADE_OUT = 5;
-const ECHO = { delay: 0.38, feedback: 0.3 };
-const LOWPASS_HZ = 6_000;
+/** The prototype's space: three feed-forward echoes 0.38 s apart, at 0.32 each. */
+const ECHO = { delay: 0.38, gain: 0.32, passes: 3 };
+/** The prototype's lowpass, a 15-point Hann window at 24 kHz: the same time span at 48 kHz. */
+const LOWPASS_TAPS = 29;
 
 /**
- * Plays a plan into samples at 48 kHz: every note on its instrument, then a
- * soft lowpass, an echo for space, a fade in and out, and one loudness for
- * every mood, with peaks under −1 dBFS.
+ * Plays a plan into samples at 48 kHz: every note on its instrument, then
+ * the prototype's mastering (a soft lowpass, an echo for space, a fade in
+ * and out) and one loudness for every mood, with peaks under −1 dBFS.
+ * `master: false` gives the bare notes, to check an instrument on its own.
  */
-export const renderMusic = (plan: MusicPlan): Audio => {
+export const renderMusic = (plan: MusicPlan, { master = true } = {}): Audio => {
   const n = Math.round(plan.seconds * MUSIC_RATE);
   const out = new Float32Array(n);
   for (const note of plan.notes) {
@@ -260,34 +161,64 @@ export const renderMusic = (plan: MusicPlan): Audio => {
     const to = Math.min(n, Math.floor((note.at + note.length) * MUSIC_RATE));
     for (let i = from; i < to; i++) {
       const t = i / MUSIC_RATE - note.at;
-      out[i] = (out[i] ?? 0) + note.gain * voice(t, note.length, f, note.phase);
+      const release = Math.min(1, (note.length - t) / RELEASE);
+      out[i] = (out[i] ?? 0) + note.gain * release * voice(t, note.length, f, note.phase);
     }
   }
-  // A one-pole lowpass softens the top; a feedback echo adds space.
-  const a = 1 - Math.exp((-TAU * LOWPASS_HZ) / MUSIC_RATE);
-  let held = 0;
-  const delay = Math.round(ECHO.delay * MUSIC_RATE);
-  for (let i = 0; i < n; i++) {
-    held += a * ((out[i] ?? 0) - held);
-    out[i] = held + (i >= delay ? ECHO.feedback * (out[i - delay] ?? 0) : 0);
-  }
-  for (let i = 0; i < n; i++) {
-    const t = i / MUSIC_RATE;
-    const fade = Math.max(0, Math.min(1, t / FADE_IN, (plan.seconds - t) / FADE_OUT));
-    out[i] = (out[i] ?? 0) * fade;
-  }
-  return { samples: atLoudness(out), sampleRate: MUSIC_RATE };
+  if (!master) return { samples: out, sampleRate: MUSIC_RATE };
+  const fades = fadesFor(plan.seconds);
+  const mastered = faded(echoed(lowpassed(out)), plan.seconds, fades);
+  return { samples: atLoudness(mastered, fades), sampleRate: MUSIC_RATE };
 };
 
-/**
- * Scales samples to the music's loudness, measured between the fades (or
- * over all of it when the music is too short to have a middle), then down
- * further if a peak would pass −1 dBFS.
- */
-const atLoudness = (samples: Float32Array): Float32Array => {
-  const from = Math.round(FADE_IN * MUSIC_RATE);
-  const to = samples.length - Math.round(FADE_OUT * MUSIC_RATE);
-  const steady = to > from ? samples.subarray(from, to) : samples;
+const lowpassed = (samples: Float32Array): Float32Array => {
+  const window = Array.from(
+    { length: LOWPASS_TAPS },
+    (_, k) => Math.sin((Math.PI * (k + 1)) / (LOWPASS_TAPS + 1)) ** 2,
+  );
+  const total = window.reduce((sum, w) => sum + w, 0);
+  const half = (LOWPASS_TAPS - 1) / 2;
+  const out = new Float32Array(samples.length);
+  for (let i = 0; i < samples.length; i++) {
+    let sum = 0;
+    for (let k = 0; k < LOWPASS_TAPS; k++) sum += (window[k] ?? 0) * (samples[i + k - half] ?? 0);
+    out[i] = sum / total;
+  }
+  return out;
+};
+
+/** Each pass adds a copy `delay` later, from before the pass: the prototype's `lp[d:] += lp[:-d] * g`. */
+const echoed = (samples: Float32Array): Float32Array => {
+  const delay = Math.round(ECHO.delay * MUSIC_RATE);
+  for (let pass = 0; pass < ECHO.passes; pass++)
+    for (let i = samples.length - 1; i >= delay; i--)
+      samples[i] = (samples[i] ?? 0) + ECHO.gain * (samples[i - delay] ?? 0);
+  return samples;
+};
+
+type Fades = { readonly in: number; readonly out: number };
+
+/** 3 s in and 5 s out, shortened on short music so at least half of it is at full level. */
+const fadesFor = (seconds: number): Fades => ({
+  in: Math.min(FADE_IN, seconds / 4),
+  out: Math.min(FADE_OUT, seconds / 4),
+});
+
+const faded = (samples: Float32Array, seconds: number, fades: Fades): Float32Array => {
+  for (let i = 0; i < samples.length; i++) {
+    const t = i / MUSIC_RATE;
+    const level = Math.max(0, Math.min(1, t / fades.in, (seconds - t) / fades.out));
+    samples[i] = (samples[i] ?? 0) * level;
+  }
+  return samples;
+};
+
+/** Scales to the music's loudness, measured between the fades, then down further if a peak would pass −1 dBFS. */
+const atLoudness = (samples: Float32Array, fades: Fades): Float32Array => {
+  const steady = samples.subarray(
+    Math.round(fades.in * MUSIC_RATE),
+    samples.length - Math.round(fades.out * MUSIC_RATE),
+  );
   let sum = 0;
   for (const s of steady) sum += s * s;
   let peak = 0;

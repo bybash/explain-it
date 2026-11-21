@@ -37,5 +37,10 @@ describe("parseMusicArgs", () => {
     expect(errors(["calm", "5", "a.wav", "--loud"])).toEqual([
       { path: "--loud", message: "unknown option" },
     ]);
+    for (const argv of [["--seed"], ["--seed="], ["--seed", "--loud"]])
+      expect(errors(["calm", "5", "a.wav", ...argv])).toContainEqual({
+        path: "--seed",
+        message: "needs a value",
+      });
   });
 });

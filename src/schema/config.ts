@@ -7,6 +7,9 @@ export const MAX_CATEGORY_COLOURS = 6;
 export const THEME_MODES = ["light", "dark", "both"] as const;
 export const CAPTION_SIZES = ["S", "M", "L"] as const;
 export const MUSIC_MOODS = ["calm", "upbeat", "technical"] as const;
+export type MusicMood = (typeof MUSIC_MOODS)[number];
+/** The music's seed: the same seed always gives the same music (decision 014). */
+export const MusicSeedSchema = z.int().min(0);
 export const RESOLUTIONS = ["1080p", "720p"] as const;
 /** How unhurried the video is, from most to least (decision 013). */
 export const PACES = ["relaxed", "normal", "brisk"] as const;
@@ -186,7 +189,7 @@ export const ConfigSchema = z
       .strictObject({
         enabled: z.boolean().default(true),
         mood: z.enum(MUSIC_MOODS).default("calm"),
-        seed: z.int().min(0).default(1),
+        seed: MusicSeedSchema.default(1),
         volumeDb: z.number().min(-60).max(0).default(-24),
       })
       .prefault({}),

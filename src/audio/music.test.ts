@@ -68,4 +68,45 @@ describe("renderMusic", () => {
       expect(db(peak(samples))).toBeLessThanOrEqual(-1);
     }
   });
+
+  it("ends every note smoothly, with no click where it is cut", () => {
+    // One short bell alone, so its tail is easy to see: the last sample before the cut is near silence.
+    const note = { at: 1, length: 0.4, midi: 72, instrument: "bell" as const, gain: 0.5, phase: 0 };
+    const { samples } = renderMusic({ seconds: 10, notes: [note] }, { master: false });
+    const cut = Math.round((note.at + note.length) * MUSIC_RATE) - 1;
+    const loudest = peak(samples.subarray(Math.round(note.at * MUSIC_RATE), cut));
+    expect(Math.abs(samples[cut] ?? 1)).toBeLessThan(loudest * 0.01);
+  });
+
+  it("drops the pulse's pitch as it fades, as a soft kick does", () => {
+    const note = {
+      at: 0,
+      length: 0.35,
+      midi: 38,
+      instrument: "pulse" as const,
+      gain: 0.5,
+      phase: 0,
+    };
+    const { samples } = renderMusic({ seconds: 1, notes: [note] }, { master: false });
+    // Zero crossings a second, early and late in the note.
+    const crossings = (from: number, to: number) => {
+      let count = 0;
+      for (let i = Math.round(from * MUSIC_RATE) + 1; i < Math.round(to * MUSIC_RATE); i++)
+        if (Math.sign(samples[i] ?? 0) !== Math.sign(samples[i - 1] ?? 0)) count++;
+      return count / (to - from) / 2;
+    };
+    expect(crossings(0.005, 0.06)).toBeGreaterThan(1.4 * crossings(0.2, 0.3));
+  });
+
+  it("keeps its loudness on short music too", () => {
+    for (const seconds of [4, 8.5, 12]) {
+      const { samples } = renderMusic(musicPlan({ mood: "calm", seed: 1, seconds }));
+      const middle = samples.subarray(
+        Math.round(samples.length * 0.4),
+        Math.round(samples.length * 0.6),
+      );
+      expect(db(rms(middle))).toBeGreaterThan(MUSIC_RMS_DB - 3);
+      expect(db(rms(middle))).toBeLessThan(MUSIC_RMS_DB + 3);
+    }
+  });
 });
