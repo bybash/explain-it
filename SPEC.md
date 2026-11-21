@@ -326,7 +326,17 @@ for frame capture, so what the user approves is what gets rendered.
   the voice fails, turning it off renders without it. Decisions 012 and
   013 say why.
 - **Music.** Procedural, ported from the prototype's numpy code: three moods,
-  each seeded, so a project always gets the same music.
+  each seeded, so a project always gets the same music. calm is a warm pad
+  with sparse plucks (about 60 bpm); upbeat a brighter major with a bouncy
+  arpeggio and a soft pulse on the beat (100 bpm); technical a cool modal
+  sequence of short glassy notes over a drone (110 bpm). The seed picks the
+  chord the progression starts on and the arpeggio pattern (12 note
+  sequences a mood), and every note's phase and small changes in loudness.
+  Music is made at 48 kHz for the video's length with the prototype's
+  lowpass and echo, fades in over 3 s and out over 5 s (shorter on short
+  music), and every mood sits at −22 dBFS RMS with peaks under −1 dBFS;
+  `music.volumeDb` is applied in the mix. `npm run music` writes a sample.
+  Decision 014 says why.
 - **Mix.** Music ducks under the voice; the mix is normalised to −16 LUFS
   integrated with a true peak at or below −1 dBTP.
 
