@@ -1,5 +1,6 @@
-import type { Config, EndCard, TitleCard } from "../../schema/config.ts";
+import type { Config, EndCard, Pace, TitleCard } from "../../schema/config.ts";
 import type { Graph } from "../../schema/graph.ts";
+import type { Narration } from "../../schema/narration.ts";
 import type { BADGE_TONES, Storyboard } from "../../schema/storyboard.ts";
 import { EDGE_TIMING, edgeTarget, flowTweens } from "../edges/flow.ts";
 import { appearTweens, dimTweens, highlightTweens, nodeTarget, zoneTarget } from "../iso/tweens.ts";
@@ -7,7 +8,13 @@ import { sceneTitleText } from "../overlays/html.ts";
 import { type Entrance, overlayTweens } from "../overlays/tweens.ts";
 import type { TweenSpec } from "../timeline.ts";
 import { splitCues } from "./cues.ts";
-import { type BeatTiming, beatTiming, CAPTION_CHARS_PER_SECOND } from "./timing.ts";
+import {
+  type BeatTiming,
+  beatTiming,
+  CAPTION_CHARS_PER_SECOND,
+  type NarrationMode,
+  narrationMode,
+} from "./timing.ts";
 
 /** How scenes change, in seconds: a crossfade between them, and the empty background held at the end when no card closes the video. */
 export const SCENE_TIMING = { transition: 0.8, tail: 1.2 } as const;
@@ -98,6 +105,9 @@ export type BeatPlan = {
 export type BuildOptions = {
   /** Measured narration lengths in seconds, by beat id; the rest are estimated. */
   readonly narration?: Readonly<Record<string, number>>;
+  /** How unhurried the video is, and how narration is timed; the config's defaults when not given. */
+  readonly pace?: Pace;
+  readonly mode?: NarrationMode;
   /** Opens the video, before the first scene, and closes it when there is no end card. */
   readonly titleCard?: TitleCard;
   /** Closes the video, after the last scene. */
@@ -106,10 +116,13 @@ export type BuildOptions = {
   readonly logo?: boolean;
 };
 
-/** The build options a project's config sets: its cards and logo. Measured narration comes from elsewhere. */
-export const beatOptions = (config: Config): BuildOptions => {
+/** The build options a project sets: its config's pace, voice, cards and logo, and its measured narration. */
+export const beatOptions = (config: Config, narration?: Narration): BuildOptions => {
   const { title, end } = config.cards ?? {};
   return {
+    ...(narration ? { narration } : {}),
+    pace: config.pacing,
+    mode: narrationMode(config),
     ...(title ? { titleCard: title } : {}),
     ...(end ? { endCard: end } : {}),
     ...(config.logo ? { logo: true } : {}),
@@ -153,7 +166,12 @@ export const buildBeats = (
   const timed = storyboard.scenes.map((scene, index) => {
     const start = clock;
     const beats = scene.beats.map((beat) => {
-      const timing = beatTiming(beat, options.narration?.[beat.id]);
+      const measured = options.narration?.[beat.id];
+      const timing = beatTiming(beat, {
+        ...(options.pace ? { pace: options.pace } : {}),
+        ...(options.mode ? { mode: options.mode } : {}),
+        ...(measured === undefined ? {} : { narration: measured }),
+      });
       const span = { beat, timing, start: clock, end: clock + timing.duration };
       clock = span.end;
       return span;

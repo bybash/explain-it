@@ -121,6 +121,34 @@ describe.skipIf(!hasFfmpeg || !hasChrome)("renderProject (Chrome and ffmpeg)", (
     expect([poster.readUInt32BE(16), poster.readUInt32BE(20)]).toEqual([1280, 720]);
   }, 120_000);
 
+  it("times the video and its captions by the measured narration", async () => {
+    const short = await shortProject();
+    // "Go." measured at 2.5 s, far longer than its estimate: the beat, the video and the cue stretch.
+    const project = { ...short, narration: { one: 2.5 } };
+    const [light] = await renderProject({
+      project,
+      settings: { themes: ["light"], resolution: "720p" },
+      outDir: join(out, "measured"),
+      pageUrl: server.url,
+    });
+    if (!light) throw new Error("no result");
+    expect(readFileSync(light.captions, "utf8")).toBe("1\n00:00:09,100 --> 00:00:11,600\nGo.\n");
+    const frames = execFileSync("ffprobe", [
+      ...["-v", "error", "-select_streams", "v:0", "-count_frames"],
+      ...["-show_entries", "stream=nb_frames", "-of", "csv=p=0", light.video],
+    ])
+      .toString()
+      .trim();
+    const plan = buildBeats(
+      project.storyboard,
+      project.graph,
+      beatOptions(project.config, project.narration),
+    );
+    const estimated = buildBeats(short.storyboard, short.graph, beatOptions(short.config));
+    expect(plan.duration).toBeGreaterThan(estimated.duration);
+    expect(frames).toBe(String(frameTimes(plan.duration).length));
+  }, 120_000);
+
   it("writes the same video with four pages capturing in parallel as with one", async () => {
     const project = await shortProject();
     const render = (pages: number) =>

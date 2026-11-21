@@ -1,4 +1,4 @@
-import { generateVoice } from "../audio/voice.ts";
+import { generateVoice, narrationLengths, VOICE_OFF_HINT } from "../audio/voice.ts";
 import { loadProject } from "../render/load.ts";
 import type { VoiceConfig } from "../schema/config.ts";
 import { formatErrors, parseWith } from "../schema/errors.ts";
@@ -33,7 +33,7 @@ const voiceReport = async (
   storyboard: Storyboard,
   voice: VoiceConfig,
 ) => {
-  if (!voice.enabled) return { state: "off" } as const;
+  if (!voice.enabled) return { report: { state: "off" } as const, lines: [] };
   try {
     const lines = await generateVoice({
       projectDir: projectDir(context.projectsDir, slug),
@@ -42,7 +42,7 @@ const voiceReport = async (
       tts: context.tts,
     });
     const cached = lines.filter((line) => line.cached).length;
-    return {
+    const report = {
       state: "ready",
       id: voice.id,
       speed: voice.speed,
@@ -51,12 +51,11 @@ const voiceReport = async (
       cached,
       seconds: Math.round(lines.reduce((sum, line) => sum + line.seconds, 0) * 10) / 10,
     } as const;
+    return { report, lines };
   } catch (error) {
     // A model that cannot download or load is a broken environment: reported, not thrown at the agent.
-    return {
-      state: "failed",
-      error: error instanceof Error ? error.message : String(error),
-    } as const;
+    const message = error instanceof Error ? error.message : String(error);
+    return { report: { state: "failed", error: message } as const, lines: [] };
   }
 };
 
@@ -65,8 +64,8 @@ const noProject = (slug: string) => fail([{ path: "slug", message: `no project "
 /**
  * Whether a project can render, and why not: every file it needs, read the
  * way the renderer reads it, and Chrome and ffmpeg on this machine. Also
- * generates the narration voice, and reports its stale beats and estimated
- * timing.
+ * generates the narration voice, and reports its stale beats and the
+ * timing it measures.
  */
 export const checkTool = async (context: ToolContext, input: Args) => {
   const args = parseWith(CheckArgsSchema, input);
@@ -82,15 +81,26 @@ export const checkTool = async (context: ToolContext, input: Args) => {
   const voice = loaded.ok
     ? await voiceReport(context, slug, loaded.value.storyboard, loaded.value.config.voice)
     : null;
-  // `ready` is about rendering, which does not need the voice until 2.4 mixes it in.
-  const problems = [...(loaded.ok ? [] : formatErrors(loaded.errors)), ...missing];
+  // A render generates the voice while it is on, so a voice that fails stops it too.
+  const problems = [
+    ...(loaded.ok ? [] : formatErrors(loaded.errors)),
+    ...missing,
+    ...(voice?.report.state === "failed"
+      ? [`voice: ${voice.report.error}. ${VOICE_OFF_HINT}`]
+      : []),
+  ];
   return ok({
     ready: problems.length === 0,
     problems,
-    voice,
+    voice: voice?.report ?? null,
     staleBeats: opened.value.project.staleBeats,
     timing: loaded.ok
-      ? timingOf(loaded.value.storyboard, loaded.value.graph, loaded.value.config)
+      ? timingOf(
+          loaded.value.storyboard,
+          loaded.value.graph,
+          loaded.value.config,
+          narrationLengths(voice?.lines ?? []),
+        )
       : null,
     notChecked: NOT_CHECKED_YET,
     preview: context.previewUrl(slug),

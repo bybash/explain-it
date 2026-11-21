@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { VoiceConfig } from "../schema/config.ts";
+import type { Narration } from "../schema/narration.ts";
 import type { Storyboard } from "../schema/storyboard.ts";
 import type { TtsProvider } from "./tts.ts";
 import { decodeWav, encodeWav } from "./wav.ts";
@@ -39,38 +40,72 @@ const cachedSeconds = async (file: string): Promise<number | undefined> => {
   return wav.ok ? wav.value.seconds : undefined;
 };
 
+/** Every spoken line in storyboard order, with the file its audio has, or would have. */
+const spokenLines = ({ projectDir, storyboard, voice, tts }: VoiceOptions) => {
+  if (!voice.enabled) return [];
+  const dir = join(projectDir, "cache", "tts");
+  return storyboard.scenes.flatMap((scene) =>
+    scene.beats.flatMap((beat) =>
+      beat.say
+        ? [
+            {
+              scene: scene.id,
+              beat: beat.id,
+              say: beat.say,
+              file: join(dir, `${lineKey(tts, beat.say, voice)}.wav`),
+            },
+          ]
+        : [],
+    ),
+  );
+};
+
 /**
  * Speaks every beat's narration that is not cached yet, one line at a time,
  * and returns every line in storyboard order. Editing one line regenerates
  * only that line. Lines no longer in the storyboard are left in the cache.
+ * When `signal` aborts, it stops before the next line.
  */
-export const generateVoice = async ({
-  projectDir,
-  storyboard,
-  voice,
-  tts,
-}: VoiceOptions): Promise<VoiceLine[]> => {
-  if (!voice.enabled) return [];
-  const dir = join(projectDir, "cache", "tts");
-  await mkdir(dir, { recursive: true });
+export const generateVoice = async (
+  options: VoiceOptions & { readonly signal?: AbortSignal },
+): Promise<VoiceLine[]> => {
+  const { voice, tts, signal } = options;
+  const wanted = spokenLines(options);
+  if (wanted.length === 0) return [];
+  await mkdir(join(options.projectDir, "cache", "tts"), { recursive: true });
   const lines: VoiceLine[] = [];
-  for (const scene of storyboard.scenes)
-    for (const beat of scene.beats) {
-      if (!beat.say) continue;
-      const file = join(dir, `${lineKey(tts, beat.say, voice)}.wav`);
-      const where = { scene: scene.id, beat: beat.id, file };
-      const seconds = await cachedSeconds(file);
-      if (seconds !== undefined) {
-        lines.push({ ...where, seconds, cached: true });
-        continue;
-      }
-      const audio = await tts.generate(beat.say, { voice: voice.id, speed: voice.speed });
-      // Written whole, then renamed: a line half written by a crash never reads as cached,
-      // and two runs at once each write their own file.
-      const partial = `${file}.${randomUUID()}.partial`;
-      await writeFile(partial, encodeWav(audio));
-      await rename(partial, file);
-      lines.push({ ...where, seconds: audio.samples.length / audio.sampleRate, cached: false });
+  for (const { say, ...where } of wanted) {
+    signal?.throwIfAborted();
+    const seconds = await cachedSeconds(where.file);
+    if (seconds !== undefined) {
+      lines.push({ ...where, seconds, cached: true });
+      continue;
     }
+    const audio = await tts.generate(say, { voice: voice.id, speed: voice.speed });
+    // Written whole, then renamed: a line half written by a crash never reads as cached,
+    // and two runs at once each write their own file.
+    const partial = `${where.file}.${randomUUID()}.partial`;
+    await writeFile(partial, encodeWav(audio));
+    await rename(partial, where.file);
+    lines.push({ ...where, seconds: audio.samples.length / audio.sampleRate, cached: false });
+  }
+  signal?.throwIfAborted();
   return lines;
 };
+
+/** The spoken lines already in the cache, in storyboard order; generates and creates nothing. */
+export const readCachedVoice = async (options: VoiceOptions): Promise<VoiceLine[]> => {
+  const lines: VoiceLine[] = [];
+  for (const { say: _say, ...where } of spokenLines(options)) {
+    const seconds = await cachedSeconds(where.file);
+    if (seconds !== undefined) lines.push({ ...where, seconds, cached: true });
+  }
+  return lines;
+};
+
+/** Each spoken beat's measured length, for the beat builder. */
+export const narrationLengths = (lines: readonly VoiceLine[]): Narration =>
+  Object.fromEntries(lines.map((line) => [line.beat, line.seconds]));
+
+/** What to do when the voice cannot be made: a render needs it while it is on. */
+export const VOICE_OFF_HINT = "Turn the voice off (voice.enabled: false) to render without it";

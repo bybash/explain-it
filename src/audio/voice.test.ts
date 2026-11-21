@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { DEFAULT_CONFIG } from "../schema/config.ts";
 import type { Storyboard } from "../schema/storyboard.ts";
 import { fakeTts } from "./fake-tts.testing.ts";
-import { generateVoice } from "./voice.ts";
+import { generateVoice, narrationLengths, readCachedVoice } from "./voice.ts";
 
 const storyboard = (lines: readonly (string | undefined)[]): Storyboard => ({
   version: 1,
@@ -142,5 +142,63 @@ describe("generateVoice", () => {
     ]);
     expect(a?.map((l) => l.file)).toEqual(b?.map((l) => l.file));
     expect(readdirSync(ttsDir()).sort()).toEqual(a?.map((l) => l.file.split("/").at(-1)).sort());
+  });
+
+  it("stops between lines when its signal aborts", async () => {
+    const controller = new AbortController();
+    const { tts, asked } = fakeTts();
+    const stopping = {
+      ...tts,
+      generate: async (text: string, options: Parameters<typeof tts.generate>[1]) => {
+        const audio = await tts.generate(text, options);
+        controller.abort(new Error("cancelled"));
+        return audio;
+      },
+    };
+    await expect(
+      generateVoice({
+        projectDir,
+        storyboard: storyboard(["One.", "Two.", "Three."]),
+        voice,
+        tts: stopping,
+        signal: controller.signal,
+      }),
+    ).rejects.toThrow("cancelled");
+    expect(asked).toHaveLength(1);
+  });
+});
+
+describe("readCachedVoice", () => {
+  it("reads only the lines already cached, generating and creating nothing", async () => {
+    const options = {
+      projectDir,
+      voice,
+      storyboard: storyboard(["Hello there.", "One two three four."]),
+    };
+    expect(await readCachedVoice({ ...options, tts: fakeTts().tts })).toEqual([]);
+    expect(existsSync(ttsDir())).toBe(false);
+    await generateVoice({
+      ...options,
+      storyboard: storyboard(["Hello there."]),
+      tts: fakeTts().tts,
+    });
+    const { tts, asked } = fakeTts();
+    const lines = await readCachedVoice({ ...options, tts });
+    expect(asked).toEqual([]);
+    expect(lines.map((l) => ({ beat: l.beat, cached: l.cached }))).toEqual([
+      { beat: "beat_1", cached: true },
+    ]);
+  });
+});
+
+describe("narrationLengths", () => {
+  it("gives each spoken beat its measured length", async () => {
+    const lines = await generateVoice({
+      projectDir,
+      storyboard: storyboard(["Hello there.", undefined, "One two three four."]),
+      voice,
+      tts: fakeTts().tts,
+    });
+    expect(narrationLengths(lines)).toEqual({ beat_1: 0.2, beat_3: 0.4 });
   });
 });

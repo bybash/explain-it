@@ -125,6 +125,16 @@
       "type": "string",
       "minLength": 1
     },
+    "pacing": {
+      "default": "relaxed",
+      "description": "How unhurried the video is: the pause after each beat and the shortest a beat can be (relaxed: 1 s, 3 s; normal: 0.6 s, 2 s; brisk: 0.3 s, 1.5 s). Animations keep their speed at every pace.",
+      "type": "string",
+      "enum": [
+        "relaxed",
+        "normal",
+        "brisk"
+      ]
+    },
     "voice": {
       "default": {},
       "type": "object",

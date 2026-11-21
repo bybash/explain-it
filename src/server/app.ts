@@ -64,9 +64,9 @@ export const createApp = ({
   now,
   hosts = [],
   publicUrl,
-  renderRun = renderFromFolder(projectsDir, now),
-  missingRenderTools = findMissingRenderTools,
   tts,
+  renderRun = renderFromFolder(projectsDir, now, tts),
+  missingRenderTools = findMissingRenderTools,
 }: AppOptions) => {
   const app = new Hono();
   const events = createEvents();

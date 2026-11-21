@@ -1,9 +1,11 @@
 #!/usr/bin/env node
 // The explain-it command line. Usage:
 //   explain-it render <project> [--theme light|dark|both] [--resolution 1080p|720p]
+//   CACHE_DIR   the cache folder, for the voice model; ./cache by default
 import { resolve } from "node:path";
+import { kokoroProvider } from "../audio/kokoro.ts";
 import { loadProject } from "../render/load.ts";
-import { renderProjectFolder } from "../render/run.ts";
+import { renderProjectFolder, withNarration } from "../render/run.ts";
 import { renderSettings } from "../render/settings.ts";
 import { formatErrors } from "../schema/errors.ts";
 import { parseRenderArgs } from "./args.ts";
@@ -25,9 +27,18 @@ const render = async (argv: readonly string[]): Promise<void> => {
     if (!project.ok) fail([`${dir} is not a valid project:`, ...formatErrors(project.errors)], 1);
     else {
       const settings = renderSettings(args.value, project.value.config);
+      const tts = kokoroProvider({ cacheDir: resolve(process.env.CACHE_DIR ?? "cache") });
+      const voiced = await withNarration(dir, project.value, tts).catch((error: unknown) =>
+        fail([error instanceof Error ? error.message : String(error)], 1),
+      );
+      const made = voiced.lines.filter((line) => !line.cached).length;
+      if (voiced.lines.length > 0)
+        console.log(
+          `voice: ${voiced.lines.length} lines (${made} generated, ${voiced.lines.length - made} cached)`,
+        );
       const rendered = await renderProjectFolder({
         dir,
-        project: project.value,
+        project: voiced.project,
         settings,
         now: new Date(),
         onProgress: ({ theme, done, total }) =>

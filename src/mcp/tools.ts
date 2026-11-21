@@ -1,9 +1,10 @@
 import type { TtsProvider } from "../audio/tts.ts";
+import { narrationLengths, readCachedVoice } from "../audio/voice.ts";
 import { graphToMermaid } from "../mermaid/generate.ts";
 import { inFile, readAssetLogo, readJson } from "../render/load.ts";
 import type { RenderQueue } from "../render/queue.ts";
 import type { OpenedProject } from "../schema/api.ts";
-import { parseConfig } from "../schema/config.ts";
+import { type Config, DEFAULT_CONFIG, parseConfig } from "../schema/config.ts";
 import { formatErrors, parseWith, type Validated, type ValidationError } from "../schema/errors.ts";
 import { parseGraph } from "../schema/graph.ts";
 import {
@@ -14,6 +15,7 @@ import {
   SetStyleArgsSchema,
   UpdateGraphArgsSchema,
 } from "../schema/mcp.ts";
+import type { Narration } from "../schema/narration.ts";
 import type { Project } from "../schema/project.ts";
 import { fail, ok } from "../schema/result.ts";
 import { staleBeats } from "../schema/stale.ts";
@@ -184,11 +186,35 @@ export const setStoryboardTool = async (context: ToolContext, input: Args) => {
     });
     context.events.publish({ type: "project-updated", slug });
     return ok({
-      timing: timingOf(storyboard.value, before.graph, before.config),
+      timing: timingOf(
+        storyboard.value,
+        before.graph,
+        before.config,
+        await cachedNarration(context, slug, storyboard.value, before.config ?? DEFAULT_CONFIG),
+      ),
       staleBeats: staleNow,
       preview: context.previewUrl(slug),
     });
   });
+};
+
+/**
+ * The measured length of every line already in the voice cache, generating
+ * none: editing the script stays quick, and timing is measured where it can be.
+ */
+const cachedNarration = async (
+  context: ToolContext,
+  slug: string,
+  storyboard: Storyboard,
+  config: Config,
+): Promise<Narration> => {
+  const lines = await readCachedVoice({
+    projectDir: projectDir(context.projectsDir, slug),
+    storyboard,
+    voice: config.voice,
+    tts: context.tts,
+  });
+  return narrationLengths(lines);
 };
 
 export const setStyleTool = async (context: ToolContext, input: Args) => {
