@@ -1,6 +1,7 @@
 import { type IconNode, lucideIcon } from "../../schema/icons.ts";
 import { categoryStyle } from "../theme/kinds.ts";
 import type { State } from "../timeline.ts";
+import type { ScreenPoint } from "./project.ts";
 import type { Polygon, Scene } from "./scene.ts";
 import { NODE_TIMING } from "./tweens.ts";
 
@@ -64,9 +65,23 @@ export const renderScene = (
       zones,
     );
     element("polygon", { points: points(zone.polygon) }, g);
-    const corner = zone.polygon[3];
-    if (corner) {
-      const label = element("text", { x: corner.x + 12, y: corner.y - 10 }, g);
+    const [, right, front, left] = zone.polygon;
+    if (right && front && left) {
+      // Flat on the floor along the front-left edge, just outside the platform: the
+      // zone's own boxes stand on the platform, so they can never cover it there.
+      const along = unit(left, front);
+      const out = unit(right, front);
+      const label = element(
+        "text",
+        {
+          class: "zone-label",
+          x: ZONE_LABEL.inset,
+          y: ZONE_LABEL.gap,
+          "dominant-baseline": "hanging",
+          transform: `matrix(${[along.x, along.y, out.x, out.y, left.x, left.y].map((n) => n.toFixed(4)).join(" ")})`,
+        },
+        g,
+      );
       label.textContent = zone.label;
     }
     const target = targets.zone(zone.id);
@@ -126,6 +141,15 @@ const poseNode =
     g.style.filter =
       pulse > 0 ? `drop-shadow(0 0 ${(pulse * PULSE.glow).toFixed(1)}px var(--cat))` : "";
   };
+
+/** A zone's label: how far along the front-left edge it starts, and how far outside it. */
+const ZONE_LABEL = { inset: 14, gap: 8 } as const;
+
+/** The unit vector from `a` towards `b`. */
+const unit = (a: ScreenPoint, b: ScreenPoint): ScreenPoint => {
+  const length = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+  return { x: (b.x - a.x) / length, y: (b.y - a.y) / length };
+};
 
 /** Where the label's baseline sits, as a share of the top face's depth; the icon is above it. */
 const LABEL_LINE = 0.76;

@@ -203,7 +203,11 @@ const renderTheme = async (
 };
 
 /** Opens the render page with the project on it, and waits until it is drawn. */
-const openPage = async (browser: Browser, url: string, project: InjectedProject): Promise<Page> => {
+export const openPage = async (
+  browser: Browser,
+  url: string,
+  project: InjectedProject,
+): Promise<Page> => {
   const page = await browser.newPage({ viewport: STAGE });
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));

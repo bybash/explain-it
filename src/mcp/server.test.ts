@@ -38,6 +38,9 @@ beforeEach(async () => {
     events,
     previewUrl: preview,
     missingRenderTools: async () => [],
+    runChecks: async () => {
+      throw new Error("not checking in these tests");
+    },
     tts: fakeTts().tts,
     // These tests never render; render-tools.test.ts covers the render tools.
     renders: new RenderQueue({

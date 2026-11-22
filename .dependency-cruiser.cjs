@@ -1,5 +1,5 @@
 // Module boundaries from AGENTS.md (Architecture). Run with `npm run deps`.
-const CORE = "^src/(schema|layout|engine|mermaid|guidance)/";
+const CORE = "^src/(schema|layout|engine|mermaid|guidance|checks)/";
 // checks/ is split into pure rules and browser measurement in slice 2.5, so it is in neither list yet.
 const SHELL = "^src/(server|mcp|render|audio|llm|cli|web)/";
 const TEST = "\\.test\\.ts$";

@@ -8,7 +8,9 @@ import graphJson from "../../examples/oauth-login/graph.json" with { type: "json
 import storyboardJson from "../../examples/oauth-login/storyboard.json" with { type: "json" };
 import { fakeTts } from "../audio/fake-tts.testing.ts";
 import type { TtsProvider } from "../audio/tts.ts";
+import type { MissingTool } from "../render/environment.ts";
 import { RenderQueue } from "../render/queue.ts";
+import type { CheckReport } from "../schema/checks.ts";
 import type { RenderJob, RenderRequest } from "../schema/render.ts";
 import { createEvents } from "../server/events.ts";
 import { createMcpServer } from "./server.ts";
@@ -22,9 +24,12 @@ let projectsDir: string;
 let client: Client;
 let requests: RenderRequest[];
 /** What the fake machine lacks for a render; nothing unless a test says so. */
-let missing: string[];
+let missing: MissingTool[];
 /** The voice provider; a test that needs it to fail sets one that does. */
 let tts: TtsProvider;
+/** What the layout checks find, and the projects they were asked about. */
+let layoutWarnings: CheckReport["warnings"];
+let checked: { dir: string; narration: unknown }[];
 /** Renders wait on this; a test that needs a job to stay running holds it shut. */
 let gate: Promise<void> = Promise.resolve();
 beforeEach(async () => {
@@ -33,6 +38,8 @@ beforeEach(async () => {
   requests = [];
   missing = [];
   tts = fakeTts().tts;
+  layoutWarnings = [];
+  checked = [];
   // A renderer that finishes at once, writing nothing: the tools are under test, not the render.
   const renders = new RenderQueue({
     now: () => new Date(NOW),
@@ -58,6 +65,10 @@ beforeEach(async () => {
     renders,
     missingRenderTools: async () => missing,
     tts: { id: "fake", generate: (text, options) => tts.generate(text, options) },
+    runChecks: async (dir, project) => {
+      checked.push({ dir, narration: project.narration });
+      return { version: 1, checkedAt: NOW, beats: 10, warnings: layoutWarnings };
+    },
   });
   const [serverSide, clientSide] = InMemoryTransport.createLinkedPair();
   client = new Client({ name: "test", version: "1.0.0" });
@@ -189,7 +200,7 @@ describe("check", () => {
       problems: ["storyboard.json: missing"],
       timing: null,
     });
-    missing = ["ffmpeg: not found on PATH; install ffmpeg"];
+    missing = [{ tool: "ffmpeg", message: "ffmpeg: not found on PATH; install ffmpeg" }];
     expect((await succeeds("check", { slug })).problems).toEqual([
       "storyboard.json: missing",
       "ffmpeg: not found on PATH; install ffmpeg",
@@ -274,5 +285,50 @@ describe("check", () => {
     const report = await succeeds("check", { slug });
     expect(report.timing.narration).toMatchObject({ measured: 0, estimated: 0 });
     expect(report.timing.narration.read).toBeGreaterThan(0);
+  });
+
+  it("runs the layout checks at the voice's timing and reports what they find, by beat", async () => {
+    const slug = await project();
+    layoutWarnings = [
+      {
+        check: "overlap",
+        scene: "sign_in",
+        beat: "start",
+        at: 2.4,
+        px: 12,
+        message: 'node "a" and node "b" overlap by 12 px',
+      },
+    ];
+    const report = await succeeds("check", { slug });
+    expect(report.layout).toEqual({
+      state: "checked",
+      beats: 10,
+      warnings: layoutWarnings,
+      report: join(projectsDir, slug, "checks.json"),
+    });
+    expect(report.ready).toBe(true);
+    expect(report.notChecked.join("\n")).not.toMatch(/overlap|off-frame/);
+    expect(checked).toHaveLength(1);
+    expect(Object.keys(checked[0]?.narration ?? {}).length).toBeGreaterThan(0);
+  });
+
+  it("says why the layout was not checked", async () => {
+    const slug = await project(false);
+    expect((await succeeds("check", { slug })).layout).toEqual({
+      state: "not run",
+      reason: "the project does not load (see problems)",
+    });
+    const ready = await project();
+    missing = [
+      {
+        tool: "chrome",
+        message: "chrome: not found; install Google Chrome, or set CHROME_PATH to a Chromium",
+      },
+    ];
+    expect((await succeeds("check", { slug: ready })).layout).toEqual({
+      state: "not run",
+      reason: "Chrome is not available",
+    });
+    expect(checked).toEqual([]);
   });
 });

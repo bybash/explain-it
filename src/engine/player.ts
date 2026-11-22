@@ -1,3 +1,4 @@
+import type { Shape } from "../schema/checks.ts";
 import type { Config, LogoImages } from "../schema/config.ts";
 import { orThrow } from "../schema/errors.ts";
 import type { Graph } from "../schema/graph.ts";
@@ -32,6 +33,7 @@ import { renderScene } from "./iso/svg.ts";
 import { nodeTarget, zoneTarget } from "./iso/tweens.ts";
 import { type OverlayDrawing, renderOverlays } from "./overlays/html.ts";
 import { STAGE, type StageRegions, stageRegions } from "./overlays/regions.ts";
+import { drawnShapes } from "./shapes.ts";
 import { applyTheme, loadFont } from "./theme/apply.ts";
 import { fontFor } from "./theme/fonts.ts";
 import { DEFAULT_CATEGORY } from "./theme/kinds.ts";
@@ -60,6 +62,8 @@ export type Player = {
   readonly duration: number;
   readonly cues: readonly { readonly start: number; readonly end: number; readonly text: string }[];
   readonly plan: BeatPlan;
+  /** What is drawn now, for the checks (see `shapes.ts`). */
+  readonly shapes: () => Shape[];
 };
 
 const SVG_NS = "http://www.w3.org/2000/svg";
@@ -102,6 +106,7 @@ export const mountPlayer = async (frame: HTMLElement, input: PlayerInput): Promi
     duration: plan.duration,
     cues: plan.cues.map(({ start, end, text }) => ({ start, end, text })),
     plan,
+    shapes: () => drawnShapes(frame, graph),
   };
 };
 
@@ -233,6 +238,7 @@ const drawScene = (
             kind: "callout",
             id: o.id,
             shown,
+            nodeId: o.node,
             node: node.faces,
             text: o.text,
             category: node.category,
@@ -244,6 +250,7 @@ const drawScene = (
             kind: "badge",
             id: o.id,
             shown,
+            nodeId: o.node,
             node: shapeOf(o.node).faces,
             text: o.text,
             tone: o.tone,
@@ -281,13 +288,16 @@ const drawScene = (
 /**
  * Puts the player on the page as `__seek`, `__duration` and `__cues`, for
  * capture, and `__captions(show)`, which hides the narration captions for
- * the clean video (SPEC, Rendering).
+ * the clean video (SPEC, Rendering). For the checks: `__beats`, each beat's
+ * scene and span, and `__shapes()`, what is drawn at the moment.
  */
 export const expose = (player: Player): void => {
   Object.assign(window, {
     __seek: player.seek,
     __duration: player.duration,
     __cues: player.cues,
+    __beats: player.plan.beats.map(({ id, scene, start, end }) => ({ id, scene, start, end })),
+    __shapes: player.shapes,
     __captions: (show: boolean) => document.body.classList.toggle("without-narration", !show),
   });
 };

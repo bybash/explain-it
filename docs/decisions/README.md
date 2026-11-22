@@ -25,3 +25,4 @@ later record supersedes an earlier one and says so.
 | [013](013-narration-first-pacing.md) | Narration-first timing and pacing |
 | [014](014-music-moods.md) | Music moods |
 | [015](015-mix-and-outputs.md) | Mix and outputs |
+| [016](016-layout-checks.md) | Layout checks |

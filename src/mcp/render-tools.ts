@@ -1,5 +1,7 @@
+import { join } from "node:path";
 import { generateVoice, narrationLengths, VOICE_OFF_HINT } from "../audio/voice.ts";
-import { loadProject } from "../render/load.ts";
+import type { MissingTool } from "../render/environment.ts";
+import { loadProject, type ProjectFiles } from "../render/load.ts";
 import type { VoiceConfig } from "../schema/config.ts";
 import { formatErrors, parseWith } from "../schema/errors.ts";
 import { CheckArgsSchema, RenderArgsSchema, RenderJobArgsSchema } from "../schema/mcp.ts";
@@ -17,7 +19,6 @@ type Args = Readonly<Record<string, unknown>>;
  * reading a clean report as a passed check.
  */
 const NOT_CHECKED_YET = [
-  "overlap and off-frame checks: not run yet",
   "reading speed, narration fit and loudness: not run yet",
   "contact sheet: not made yet",
 ] as const;
@@ -58,6 +59,26 @@ const voiceReport = async (
   }
 };
 
+/**
+ * The layout checks (overlap, off-frame) on the project's page, timed by its
+ * voice, with the report written to `checks.json`; or why they did not run.
+ * Their warnings do not stop a render.
+ */
+const layoutReport = async (
+  context: ToolContext,
+  slug: string,
+  project: ProjectFiles | undefined,
+  missing: readonly MissingTool[],
+) => {
+  if (!project)
+    return { state: "not run", reason: "the project does not load (see problems)" } as const;
+  if (missing.some((m) => m.tool === "chrome"))
+    return { state: "not run", reason: "Chrome is not available" } as const;
+  const dir = projectDir(context.projectsDir, slug);
+  const { beats, warnings } = await context.runChecks(dir, project);
+  return { state: "checked", beats, warnings, report: join(dir, "checks.json") } as const;
+};
+
 const noProject = (slug: string) => fail([{ path: "slug", message: `no project "${slug}"` }]);
 
 /**
@@ -83,7 +104,7 @@ export const checkTool = async (context: ToolContext, input: Args) => {
   // A render generates the voice while it is on, so a voice that fails stops it too.
   const problems = [
     ...(loaded.ok ? [] : formatErrors(loaded.errors)),
-    ...missing,
+    ...missing.map((m) => m.message),
     ...(voice?.report.state === "failed"
       ? [`voice: ${voice.report.error}. ${VOICE_OFF_HINT}`]
       : []),
@@ -92,6 +113,12 @@ export const checkTool = async (context: ToolContext, input: Args) => {
     ready: problems.length === 0,
     problems,
     voice: voice?.report ?? null,
+    layout: await layoutReport(
+      context,
+      slug,
+      loaded.ok ? { ...loaded.value, narration: narrationLengths(voice?.lines ?? []) } : undefined,
+      missing,
+    ),
     staleBeats: opened.value.project.staleBeats,
     timing: loaded.ok
       ? timingOf(

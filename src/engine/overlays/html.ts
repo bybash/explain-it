@@ -19,6 +19,8 @@ export type OverlayDrawing = { readonly shown?: Interval } & (
   | {
       readonly kind: "callout";
       readonly id: string;
+      /** The node it points at, for the checks to know a callout is meant to sit by it. */
+      readonly nodeId: string;
       readonly node: NodeShape["faces"];
       readonly title?: string;
       readonly text: string;
@@ -28,6 +30,7 @@ export type OverlayDrawing = { readonly shown?: Interval } & (
   | {
       readonly kind: "badge";
       readonly id: string;
+      readonly nodeId: string;
       readonly node: NodeShape["faces"];
       readonly text: string;
       readonly tone: (typeof BADGE_TONES)[number];
@@ -160,6 +163,7 @@ const draw = (
     }
     case "badge": {
       const badge = div(`overlay badge tone-${overlay.tone}`, root);
+      badge.dataset.node = overlay.nodeId;
       badge.style.setProperty("--tone", `var(--tone-${overlay.tone})`);
       div("badge-text", badge, overlay.text);
       const size = { width: badge.offsetWidth, height: badge.offsetHeight };
@@ -170,6 +174,7 @@ const draw = (
     }
     case "callout": {
       const card = div("overlay callout", root);
+      card.dataset.node = overlay.nodeId;
       card.setAttribute("style", categoryStyle(overlay.category));
       if (overlay.title) div("callout-title", card, overlay.title);
       div("callout-text", card, overlay.text);
