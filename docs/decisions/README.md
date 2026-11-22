@@ -26,3 +26,4 @@ later record supersedes an earlier one and says so.
 | [014](014-music-moods.md) | Music moods |
 | [015](015-mix-and-outputs.md) | Mix and outputs |
 | [016](016-layout-checks.md) | Layout checks |
+| [017](017-timing-and-audio-checks.md) | Timing and audio checks |

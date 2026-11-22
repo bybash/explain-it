@@ -40,7 +40,7 @@ describe("checkLines", () => {
 
   it("says so when there is nothing to fix", () => {
     expect(checkLines(report([]), "/p/checks.json")).toEqual([
-      "no layout problems in 10 beats; the report is in /p/checks.json",
+      "no problems in 10 beats; the report is in /p/checks.json",
     ]);
   });
 });

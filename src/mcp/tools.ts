@@ -1,5 +1,5 @@
 import type { TtsProvider } from "../audio/tts.ts";
-import { narrationLengths, readCachedVoice } from "../audio/voice.ts";
+import { narrationLengths, readCachedVoice, type VoiceLine } from "../audio/voice.ts";
 import { graphToMermaid } from "../mermaid/generate.ts";
 import type { MissingTool } from "../render/environment.ts";
 import type { ProjectFiles } from "../render/load.ts";
@@ -47,7 +47,11 @@ export type ToolContext = {
   /** What a render needs from this machine and cannot find (see \`missingRenderTools\`). */
   readonly missingRenderTools: () => Promise<readonly MissingTool[]>;
   /** Runs the layout checks on a project's page and writes its `checks.json` (see `render/check.ts`). */
-  readonly runChecks: (dir: string, project: ProjectFiles) => Promise<CheckReport>;
+  readonly runChecks: (
+    dir: string,
+    project: ProjectFiles,
+    lines: readonly VoiceLine[],
+  ) => Promise<CheckReport>;
   /** Speaks the narration; Kokoro in the app, a fake in tests. */
   readonly tts: TtsProvider;
 };

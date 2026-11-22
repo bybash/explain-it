@@ -1,3 +1,4 @@
+import { READING_SPEED } from "../../schema/checks.ts";
 import { type Config, DEFAULT_CONFIG, PACE_TIMINGS, type Pace } from "../../schema/config.ts";
 import type { ACTION_TYPES, Beat } from "../../schema/storyboard.ts";
 import { EDGE_TIMING } from "../edges/flow.ts";
@@ -16,8 +17,8 @@ export const ACTION_DURATIONS: Readonly<Record<(typeof ACTION_TYPES)[number], nu
 
 /** Narration estimated before the voice exists (SPEC, Timing). */
 export const WORDS_PER_SECOND = 2.5;
-/** How fast a caption or an unspoken line can be read; also the reading-speed check's limit. */
-export const CAPTION_CHARS_PER_SECOND = 15;
+/** How fast a caption or an unspoken line can be read: the reading-speed check's limit for captions read alone. */
+export const CAPTION_CHARS_PER_SECOND = READING_SPEED.step;
 /** Seconds into a beat before its narration and actions start. */
 export const LEAD_IN = 0.3;
 

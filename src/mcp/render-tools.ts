@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { generateVoice, narrationLengths, VOICE_OFF_HINT } from "../audio/voice.ts";
+import { generateVoice, narrationLengths, VOICE_OFF_HINT, type VoiceLine } from "../audio/voice.ts";
 import type { MissingTool } from "../render/environment.ts";
 import { loadProject, type ProjectFiles } from "../render/load.ts";
 import type { VoiceConfig } from "../schema/config.ts";
@@ -14,14 +14,10 @@ import type { ToolContext } from "./tools.ts";
 type Args = Readonly<Record<string, unknown>>;
 
 /**
- * What `check` cannot look at yet: the checks come with slices 2.5 to 2.7,
- * loudness among them. Saying so keeps an agent from
- * reading a clean report as a passed check.
+ * What `check` cannot look at yet: the contact sheet comes with slice 2.7.
+ * Saying so keeps an agent from reading a clean report as a passed check.
  */
-const NOT_CHECKED_YET = [
-  "reading speed, narration fit and loudness: not run yet",
-  "contact sheet: not made yet",
-] as const;
+const NOT_CHECKED_YET = ["contact sheet: not made yet"] as const;
 
 /**
  * The narration, spoken: every line not in the cache yet is generated now,
@@ -60,23 +56,28 @@ const voiceReport = async (
 };
 
 /**
- * The layout checks (overlap, off-frame) on the project's page, timed by its
- * voice, with the report written to `checks.json`; or why they did not run.
- * Their warnings do not stop a render.
+ * Every check (layout on the project's page, reading speed and narration
+ * fit, the soundtrack's loudness), timed by its voice, with the report
+ * written to `checks.json`; or why they did not run. Their warnings do not
+ * stop a render.
  */
-const layoutReport = async (
+const checksReport = async (
   context: ToolContext,
   slug: string,
   project: ProjectFiles | undefined,
+  lines: readonly VoiceLine[],
   missing: readonly MissingTool[],
 ) => {
   if (!project)
     return { state: "not run", reason: "the project does not load (see problems)" } as const;
+  // The layout checks run on the page, and the loudness check mixes the soundtrack.
   if (missing.some((m) => m.tool === "chrome"))
     return { state: "not run", reason: "Chrome is not available" } as const;
+  if (missing.some((m) => m.tool === "ffmpeg"))
+    return { state: "not run", reason: "ffmpeg is not available" } as const;
   const dir = projectDir(context.projectsDir, slug);
   try {
-    const { beats, warnings } = await context.runChecks(dir, project);
+    const { beats, warnings } = await context.runChecks(dir, project, lines);
     return { state: "checked", beats, warnings, report: join(dir, "checks.json") } as const;
   } catch (error) {
     // The page did not build or Chrome would not run: reported, so the rest of the report still arrives.
@@ -121,10 +122,11 @@ export const checkTool = async (context: ToolContext, input: Args) => {
     ready: problems.length === 0,
     problems,
     voice: voice?.report ?? null,
-    layout: await layoutReport(
+    checks: await checksReport(
       context,
       slug,
       loaded.ok ? { ...loaded.value, narration: narrationLengths(voice?.lines ?? []) } : undefined,
+      voice?.lines ?? [],
       missing,
     ),
     staleBeats: opened.value.project.staleBeats,

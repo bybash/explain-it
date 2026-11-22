@@ -27,10 +27,10 @@ let requests: RenderRequest[];
 let missing: MissingTool[];
 /** The voice provider; a test that needs it to fail sets one that does. */
 let tts: TtsProvider;
-/** What the layout checks find, and the projects they were asked about. */
-let layoutWarnings: CheckReport["warnings"];
+/** What the checks find, and the projects they were asked about. */
+let reportedWarnings: CheckReport["warnings"];
 let checked: { dir: string; narration: unknown }[];
-/** When set, the layout run fails with this message. */
+/** When set, the checks fail with this message. */
 let failChecks: string | undefined;
 /** Renders wait on this; a test that needs a job to stay running holds it shut. */
 let gate: Promise<void> = Promise.resolve();
@@ -40,7 +40,7 @@ beforeEach(async () => {
   requests = [];
   missing = [];
   tts = fakeTts().tts;
-  layoutWarnings = [];
+  reportedWarnings = [];
   checked = [];
   failChecks = undefined;
   // A renderer that finishes at once, writing nothing: the tools are under test, not the render.
@@ -71,7 +71,7 @@ beforeEach(async () => {
     runChecks: async (dir, project) => {
       if (failChecks) throw new Error(failChecks);
       checked.push({ dir, narration: project.narration });
-      return { version: 1, checkedAt: NOW, beats: 10, warnings: layoutWarnings };
+      return { version: 1, checkedAt: NOW, beats: 10, warnings: reportedWarnings };
     },
   });
   const [serverSide, clientSide] = InMemoryTransport.createLinkedPair();
@@ -293,7 +293,7 @@ describe("check", () => {
 
   it("runs the layout checks at the voice's timing and reports what they find, by beat", async () => {
     const slug = await project();
-    layoutWarnings = [
+    reportedWarnings = [
       {
         check: "overlap",
         scene: "sign_in",
@@ -304,21 +304,21 @@ describe("check", () => {
       },
     ];
     const report = await succeeds("check", { slug });
-    expect(report.layout).toEqual({
+    expect(report.checks).toEqual({
       state: "checked",
       beats: 10,
-      warnings: layoutWarnings,
+      warnings: reportedWarnings,
       report: join(projectsDir, slug, "checks.json"),
     });
     expect(report.ready).toBe(true);
-    expect(report.notChecked.join("\n")).not.toMatch(/overlap|off-frame/);
+    expect(report.notChecked).toEqual(["contact sheet: not made yet"]);
     expect(checked).toHaveLength(1);
     expect(Object.keys(checked[0]?.narration ?? {}).length).toBeGreaterThan(0);
   });
 
   it("says why the layout was not checked", async () => {
     const slug = await project(false);
-    expect((await succeeds("check", { slug })).layout).toEqual({
+    expect((await succeeds("check", { slug })).checks).toEqual({
       state: "not run",
       reason: "the project does not load (see problems)",
     });
@@ -329,9 +329,14 @@ describe("check", () => {
         message: "not found; install Google Chrome, or set CHROME_PATH to a Chromium",
       },
     ];
-    expect((await succeeds("check", { slug: ready })).layout).toEqual({
+    expect((await succeeds("check", { slug: ready })).checks).toEqual({
       state: "not run",
       reason: "Chrome is not available",
+    });
+    missing = [{ tool: "ffmpeg", message: "not found on PATH; install ffmpeg" }];
+    expect((await succeeds("check", { slug: ready })).checks).toEqual({
+      state: "not run",
+      reason: "ffmpeg is not available",
     });
     expect(checked).toEqual([]);
   });
@@ -340,7 +345,7 @@ describe("check", () => {
     const slug = await project();
     failChecks = "the render page is not built";
     const report = await succeeds("check", { slug });
-    expect(report.layout).toEqual({ state: "failed", error: "the render page is not built" });
+    expect(report.checks).toEqual({ state: "failed", error: "the render page is not built" });
     expect(report.voice.state).toBe("ready");
   });
 });

@@ -368,8 +368,11 @@ overlay, an edge through a node it does not connect, an overlay on a node
 (but not a callout or badge on its own node), and two overlays. An edge
 under a box counts as running through it: the box hides that stretch of
 floor. The title and end cards are laid out on their own and are not
-checked. `explain-it check` exits 1 when it finds problems and 2 when it
-cannot check. Layout warnings do not stop a render; the layout engine keeps
+checked. Reading speed and narration fit come from the beat plan the video
+plays; loudness from the soundtrack a render would make, mixed into a
+scratch file and measured. A loudness warning is about the whole video, so
+it names no beat. `explain-it check` exits 1 when it finds problems and 2
+when it cannot check. Layout warnings do not stop a render; the layout engine keeps
 routes in sight of boxes and places edge labels and badges clear of boxes and
 of each other. Decision 016 says why.
 
@@ -377,9 +380,9 @@ of each other. Decision 016 says why.
 |---|---|---|
 | Overlap | Projected node-top polygons and overlay boxes, at each beat's midpoint | Two elements overlap by more than 4 px (they would have to move more than 4 px apart; an edge runs more than 4 px inside a box) |
 | Off frame | The same shapes | Anything leaves the 1920×1080 safe area (5% margin) |
-| Reading speed | Caption characters ÷ seconds on screen | Above 15 characters per second |
-| Narration fit | Voice length against beat length | A line would need speeding up by more than 1.05× |
-| Loudness | ffmpeg `ebur128` on the final mix | Outside −16 ± 1 LUFS or true peak above −1 dBTP |
+| Reading speed | Caption characters ÷ seconds on screen | Above 15 characters per second for a step caption, or 17 for a narration caption (a subtitle of speech also heard) |
+| Narration fit | Voice length against the room its beat leaves it, from the lead-in to the beat's end | A line would need speeding up by more than 1.05× |
+| Loudness | ffmpeg `ebur128` on the final mix, made by the check as a render would | Outside −16 ± 1 LUFS or true peak above −1 dBTP |
 
 Layout problems go back to the layout engine first and to the LLM second.
 

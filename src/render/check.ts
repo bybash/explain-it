@@ -1,7 +1,13 @@
-import { rename, writeFile } from "node:fs/promises";
+import { mkdtemp, rename, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { z } from "zod";
+import { measureLoudness } from "../audio/master.ts";
+import { makeSoundtrack } from "../audio/soundtrack.ts";
+import type { VoiceLine } from "../audio/voice.ts";
 import { layoutWarnings } from "../checks/layout.ts";
+import { loudnessWarnings, narrationFitWarnings, readingWarnings } from "../checks/timing.ts";
+import { beatOptions, buildBeats } from "../engine/beats/build.ts";
 import {
   BeatSpanSchema,
   type CheckReport,
@@ -69,26 +75,72 @@ export const checkLayout = async ({
   }
 };
 
+/** A loudness meter: the real one is ffmpeg's EBU R128 (`measureLoudness`). */
+type Meter = (file: string) => Promise<{ readonly integrated: number; readonly truePeak: number }>;
+
 /**
- * Checks a loaded project and writes the report as `checks.json` in its
- * folder, written whole and then renamed, for the Preview gate and the
- * tools to read. Builds and serves the render page for the length of it.
+ * The loudness check (SPEC, Checks): the soundtrack a render would make,
+ * mixed and mastered into a scratch file, measured, then removed. Without a
+ * voice or music there is nothing to measure.
+ */
+export const checkSoundtrack = async ({
+  project,
+  lines,
+  measure = measureLoudness,
+}: {
+  readonly project: ProjectFiles;
+  readonly lines: readonly VoiceLine[];
+  readonly measure?: Meter | undefined;
+}): Promise<CheckWarning[]> => {
+  const scratch = await mkdtemp(join(tmpdir(), "explain-it-check-"));
+  try {
+    const file = await makeSoundtrack({ project, lines, out: join(scratch, "audio.wav") });
+    return file ? loudnessWarnings(await measure(file)) : [];
+  } finally {
+    await rm(scratch, { recursive: true, force: true });
+  }
+};
+
+/**
+ * Runs every check on a loaded project (layout on its page, timing from its
+ * beat plan, loudness on its soundtrack) and writes the report as
+ * `checks.json` in its folder, written whole and then renamed, for the
+ * Preview gate and the tools to read.
  */
 export const checkProjectFolder = async ({
   dir,
   project,
+  lines = [],
   now,
 }: {
   readonly dir: string;
   readonly project: ProjectFiles;
+  /** The voice's lines (see `withNarration`), for the soundtrack the loudness check measures. */
+  readonly lines?: readonly VoiceLine[];
   readonly now: Date;
 }): Promise<CheckReport> => {
   const page = await buildRenderPage();
   try {
     const server = await serveRenderPage(page.dir);
     try {
-      const { beats, warnings } = await checkLayout({ project, pageUrl: server.url });
-      const report: CheckReport = { version: 1, checkedAt: now.toISOString(), beats, warnings };
+      const layout = await checkLayout({ project, pageUrl: server.url });
+      const plan = buildBeats(
+        project.storyboard,
+        project.graph,
+        beatOptions(project.config, project.narration),
+      );
+      const warnings = [
+        ...layout.warnings,
+        ...readingWarnings(plan),
+        ...narrationFitWarnings(plan, project.narration ?? {}),
+        ...(await checkSoundtrack({ project, lines })),
+      ];
+      const report: CheckReport = {
+        version: 1,
+        checkedAt: now.toISOString(),
+        beats: layout.beats,
+        warnings,
+      };
       const file = join(dir, "checks.json");
       await writeFile(`${file}.partial`, `${JSON.stringify(report, null, 2)}\n`);
       await rename(`${file}.partial`, file);

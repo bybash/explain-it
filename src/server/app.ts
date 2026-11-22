@@ -74,7 +74,7 @@ export const createApp = ({
   tts,
   renderRun = renderFromFolder(projectsDir, now, tts),
   missingRenderTools = findMissingRenderTools,
-  runChecks = (dir, project) => checkProjectFolder({ dir, project, now: now() }),
+  runChecks = (dir, project, lines) => checkProjectFolder({ dir, project, lines, now: now() }),
 }: AppOptions) => {
   const app = new Hono();
   const events = createEvents();

@@ -86,14 +86,19 @@ const check = async (argv: readonly string[]): Promise<void> => {
     );
     return { project: project.value };
   });
-  const report = await checkProjectFolder({ dir, project: voiced.project, now: new Date() }).catch(
-    (error: unknown) =>
-      fail(
-        [
-          `the layout could not be checked: ${error instanceof Error ? error.message : String(error)}`,
-        ],
-        2,
-      ),
+  const lines = "lines" in voiced ? voiced.lines : [];
+  const report = await checkProjectFolder({
+    dir,
+    project: voiced.project,
+    lines,
+    now: new Date(),
+  }).catch((error: unknown) =>
+    fail(
+      [
+        `the layout could not be checked: ${error instanceof Error ? error.message : String(error)}`,
+      ],
+      2,
+    ),
   );
   for (const line of checkLines(report, join(dir, "checks.json"))) console.log(line);
   if (report.warnings.length > 0) process.exit(1);

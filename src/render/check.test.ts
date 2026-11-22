@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -9,6 +10,8 @@ import { checkLayout, checkProjectFolder } from "./check.ts";
 import { loadProject, type ProjectFiles } from "./load.ts";
 import { buildRenderPage, serveRenderPage } from "./page.ts";
 
+// The whole check also measures a soundtrack, so it needs ffmpeg too.
+const hasFfmpeg = spawnSync("ffmpeg", ["-version"]).status === 0;
 const hasChrome = await chromium
   .launch({ channel: "chrome" })
   .then((browser) => browser.close().then(() => true))
@@ -72,7 +75,7 @@ describe.skipIf(!hasChrome)("the layout checks on the render page (Chrome)", () 
   }, 60_000);
 });
 
-describe.skipIf(!hasChrome)("checkProjectFolder (Chrome)", () => {
+describe.skipIf(!hasChrome || !hasFfmpeg)("checkProjectFolder (Chrome and ffmpeg)", () => {
   let dir: string;
   beforeAll(() => {
     dir = mkdtempSync(join(tmpdir(), "explain-it-check-"));
