@@ -57,6 +57,7 @@ beforeEach(async () => {
         clean: join(projectsDir, request.slug, "out", theme, "video-clean.mp4"),
         captions: join(projectsDir, request.slug, "out", theme, "captions.srt"),
         poster: join(projectsDir, request.slug, "out", theme, "poster.png"),
+        contactSheet: join(projectsDir, request.slug, "out", theme, "contact-sheet.png"),
       }));
     },
   });
@@ -71,12 +72,15 @@ beforeEach(async () => {
     runChecks: async (dir, project, _lines, skip) => {
       if (failChecks) throw new Error(failChecks);
       checked.push({ dir, narration: project.narration });
+      // A stand-in for the small contact sheet the real checks write beside the report.
+      writeFileSync(join(dir, "contact-sheet.jpg"), Buffer.from([0xff, 0xd8, 0xff, 0xd9]));
       return {
         version: 1,
         checkedAt: NOW,
         beats: 10,
         warnings: reportedWarnings,
         skipped: [...skip],
+        contactSheet: { full: "contact-sheet.png", small: "contact-sheet.jpg" },
       };
     },
   });
@@ -91,7 +95,9 @@ afterEach(async () => {
 
 const call = async (name: string, args: Record<string, unknown>) => {
   const result = await client.callTool({ name, arguments: args });
-  const text = (result.content as { text: string }[]).map((c) => c.text).join("\n");
+  const text = (result.content as { type: string; text?: string }[])
+    .flatMap((c) => (c.type === "text" ? [c.text ?? ""] : []))
+    .join("\n");
   return result.isError
     ? { ok: false as const, lines: text.split("\n") }
     : { ok: true as const, body: JSON.parse(text) };
@@ -190,7 +196,7 @@ describe("render_status and cancel_render", () => {
 });
 
 describe("check", () => {
-  it("reports a ready project, its timing, and what it cannot check yet", async () => {
+  it("reports a ready project, its timing, and that nothing is left unchecked", async () => {
     const slug = await project();
     const report = await succeeds("check", { slug });
     expect(report).toMatchObject({
@@ -200,7 +206,7 @@ describe("check", () => {
       preview: preview(slug),
     });
     expect(report.timing.scenes.map((s: { id: string }) => s.id)).toEqual(["sign_in", "exchange"]);
-    expect(report.notChecked.length).toBeGreaterThan(0);
+    expect(report.notChecked).toEqual([]);
   });
 
   it("names what is missing or broken", async () => {
@@ -316,9 +322,12 @@ describe("check", () => {
       warnings: reportedWarnings,
       skipped: [],
       report: join(projectsDir, slug, "checks.json"),
+      contactSheet: {
+        full: join(projectsDir, slug, "contact-sheet.png"),
+        small: join(projectsDir, slug, "contact-sheet.jpg"),
+      },
     });
     expect(report.ready).toBe(true);
-    expect(report.notChecked).toEqual(["contact sheet: not made yet"]);
     expect(checked).toHaveLength(1);
     expect(Object.keys(checked[0]?.narration ?? {}).length).toBeGreaterThan(0);
   });
@@ -361,5 +370,23 @@ describe("check", () => {
     const report = await succeeds("check", { slug });
     expect(report.checks).toEqual({ state: "failed", error: "the render page is not built" });
     expect(report.voice.state).toBe("ready");
+  });
+
+  it("returns the small contact sheet as an image, after the report", async () => {
+    const slug = await project();
+    const result = await client.callTool({ name: "check", arguments: { slug } });
+    const content = result.content as { type: string; data?: string; mimeType?: string }[];
+    expect(content.map((c) => c.type)).toEqual(["text", "image"]);
+    expect(content[1]).toEqual({
+      type: "image",
+      mimeType: "image/jpeg",
+      data: Buffer.from([0xff, 0xd8, 0xff, 0xd9]).toString("base64"),
+    });
+    const report = JSON.parse((content[0] as unknown as { text: string }).text);
+    expect(report.checks.contactSheet).toEqual({
+      full: join(projectsDir, slug, "contact-sheet.png"),
+      small: join(projectsDir, slug, "contact-sheet.jpg"),
+    });
+    expect(report.notChecked).toEqual([]);
   });
 });

@@ -22,7 +22,13 @@ import {
 import { RENDER_STATES } from "../schema/render.ts";
 import { isSlug } from "../server/projects.ts";
 import { VERSION } from "../version.ts";
-import { cancelRenderTool, checkTool, renderStatusTool, renderTool } from "./render-tools.ts";
+import {
+  cancelRenderTool,
+  checkImages,
+  checkTool,
+  renderStatusTool,
+  renderTool,
+} from "./render-tools.ts";
 import {
   createProjectTool,
   getProjectTool,
@@ -136,8 +142,9 @@ const TOOLS = [
     name: TOOL_NAMES.check,
     schema: CheckArgsSchema,
     run: checkTool,
+    images: checkImages,
     description:
-      "Checks whether a project can render: every file it needs, read the way the renderer reads it, and Chrome and ffmpeg on this machine. Generates the narration voice for lines not cached yet; the first time, the voice model downloads, so it can take a minute or two. Returns whether it is ready to render, what is missing or broken, the voice (off, ready with its lines, how many were generated or cached and their total seconds, or failed with the reason), the checks (overlaps and anything off the safe area, reading speed and narration fit, by beat, and the loudness of the mix; also written to checks.json in the project folder; they do not stop a render), the stale beats, the timing measured from the voice, what cannot be checked yet, and a preview link.",
+      "Checks whether a project can render: every file it needs, read the way the renderer reads it, and Chrome and ffmpeg on this machine. Generates the narration voice for lines not cached yet; the first time, the voice model downloads, so it can take a minute or two. Returns whether it is ready to render, what is missing or broken, the voice (off, ready with its lines, how many were generated or cached and their total seconds, or failed with the reason), the checks (overlaps and anything off the safe area, reading speed and narration fit, by beat, and the loudness of the mix; also written to checks.json in the project folder; they do not stop a render), the contact sheet (one still per beat, beats with warnings outlined; its path, and the small one as an image after the report), the stale beats, the timing measured from the voice, what cannot be checked yet, and a preview link.",
   },
   {
     name: TOOL_NAMES.render,
@@ -174,7 +181,10 @@ export const createMcpServer = (context: ToolContext): McpServer => {
         // The guide is prose for the agent to read, not data, so it goes out as plain text.
         if ("text" in tool && result.ok && typeof result.value === "string")
           return { content: [{ type: "text" as const, text: result.value }] };
-        return asContent(result, previewOf(context, args));
+        const content = asContent(result, previewOf(context, args));
+        // A tool can show the agent images after its JSON, as check does with the contact sheet.
+        if (!("images" in tool) || !result.ok) return content;
+        return { ...content, content: [...content.content, ...(await tool.images(result.value))] };
       },
     );
   server.registerPrompt(

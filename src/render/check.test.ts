@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { chromium } from "playwright-core";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { sheetLayout } from "../checks/sheet.ts";
 import { beatOptions, buildBeats } from "../engine/beats/build.ts";
 import { CheckReportSchema } from "../schema/checks.ts";
 import { checkLayout, checkProjectFolder } from "./check.ts";
@@ -95,5 +96,22 @@ describe.skipIf(!hasChrome || !hasFfmpeg)("checkProjectFolder (Chrome and ffmpeg
     expect(written).toEqual(report);
     expect(written.checkedAt).toBe("2026-11-22T10:00:00.000Z");
     expect(written.warnings.some((w) => w.message.includes('node "browser"'))).toBe(true);
+    // The contact sheet beside it: one tile per beat, its beats with warnings marked.
+    expect(written.contactSheet).toEqual({ full: "contact-sheet.png", small: "contact-sheet.jpg" });
+    const png = readFileSync(join(dir, "contact-sheet.png"));
+    const size = sheetLayout({
+      beats: Array.from({ length: written.beats }, (_, i) => ({
+        id: `b${i}`,
+        scene: "s",
+        start: i,
+        end: i + 1,
+      })),
+      warnings: [],
+      tileWidth: 480,
+    });
+    expect([png.readUInt32BE(16), png.readUInt32BE(20)]).toEqual([size.width, size.height]);
+    const jpeg = readFileSync(join(dir, "contact-sheet.jpg"));
+    expect(jpeg.subarray(0, 2).toString("hex")).toBe("ffd8");
+    expect(jpeg.length).toBeLessThan(png.length);
   }, 120_000);
 });

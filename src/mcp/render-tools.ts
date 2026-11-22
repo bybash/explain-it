@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { generateVoice, narrationLengths, VOICE_OFF_HINT, type VoiceLine } from "../audio/voice.ts";
 import { skippedChecks } from "../render/check.ts";
@@ -15,10 +16,10 @@ import type { ToolContext } from "./tools.ts";
 type Args = Readonly<Record<string, unknown>>;
 
 /**
- * What `check` cannot look at yet: the contact sheet comes with slice 2.7.
- * Saying so keeps an agent from reading a clean report as a passed check.
+ * What `check` cannot look at yet: nothing, since the contact sheet (2.7).
+ * The list stays, so a later gap is said rather than read as a passed check.
  */
-const NOT_CHECKED_YET = ["contact sheet: not made yet"] as const;
+const NOT_CHECKED_YET: readonly string[] = [];
 
 /**
  * The narration, spoken: every line not in the cache yet is generated now,
@@ -74,13 +75,26 @@ const checksReport = async (
   const skip = skippedChecks(missing, voice.failed);
   const dir = projectDir(context.projectsDir, slug);
   try {
-    const { beats, warnings, skipped } = await context.runChecks(dir, project, voice.lines, skip);
+    const { beats, warnings, skipped, contactSheet } = await context.runChecks(
+      dir,
+      project,
+      voice.lines,
+      skip,
+    );
     return {
       state: "checked",
       beats,
       warnings,
       skipped,
       report: join(dir, "checks.json"),
+      ...(contactSheet
+        ? {
+            contactSheet: {
+              full: join(dir, contactSheet.full),
+              small: join(dir, contactSheet.small),
+            },
+          }
+        : {}),
     } as const;
   } catch (error) {
     // The page did not build or a program failed: reported, so the rest of the report still arrives.
@@ -171,4 +185,16 @@ export const cancelRenderTool = async (context: ToolContext, input: Args) => {
   const args = parseWith(RenderJobArgsSchema, input);
   if (!args.ok) return args;
   return context.renders.cancel(args.value.job);
+};
+
+/**
+ * What `check` shows the agent after its report: the small contact sheet,
+ * a JPEG about 1280 px wide, when the checks drew one.
+ */
+export const checkImages = async (value: unknown) => {
+  const small = (value as { checks?: { contactSheet?: { small?: string } } }).checks?.contactSheet
+    ?.small;
+  if (!small) return [];
+  const data = (await readFile(small)).toString("base64");
+  return [{ type: "image" as const, data, mimeType: "image/jpeg" }];
 };

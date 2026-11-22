@@ -12,6 +12,7 @@ import { pipeFrames } from "./ffmpeg.ts";
 import { FPS, frameTimes, posterTime } from "./frames.ts";
 import type { ProjectFiles } from "./load.ts";
 import { captureInOrder } from "./parallel.ts";
+import { drawSheet } from "./sheet.ts";
 import { type SrtCue, toSrt } from "./srt.ts";
 
 /** What to render: one video per theme, at one resolution. */
@@ -131,6 +132,7 @@ const renderTheme = async (
     clean: join(dir, "video-clean.mp4"),
     captions: join(dir, "captions.srt"),
     poster: join(dir, "poster.png"),
+    contactSheet: join(dir, "contact-sheet.png"),
     ...(audio ? { audio: join(dir, "audio.wav") } : {}),
   };
   const narrationShown = project.config.captions.narration;
@@ -196,6 +198,7 @@ const renderTheme = async (
     const poster = await frameAt(first, Math.min(posterTime(plan), duration));
     await pipeFrames(posterArgs({ resolution, out: files.poster }), (write) => write(poster));
     await writeFile(files.captions, toSrt(cues));
+    await writeFile(files.contactSheet, await contactSheetOf(browsers[0] as Browser, first));
     return files;
   } finally {
     await closeAll(pages, (page) => page.close());
@@ -243,4 +246,19 @@ const framesAt = async (
   const bare = await page.screenshot({ type: "png" });
   await page.evaluate(() => (window as unknown as Seekable).__captions(true));
   return { captioned, clean: bare };
+};
+
+/** One still per beat, at its midpoint, on one image (SPEC, Rendering); a render runs no checks, so none is marked. */
+const contactSheetOf = async (browser: Browser, page: Page): Promise<Buffer> => {
+  const beats = await page.evaluate(
+    () =>
+      (
+        window as unknown as {
+          __beats: { id: string; scene: string; start: number; end: number }[];
+        }
+      ).__beats,
+  );
+  const stills: Buffer[] = [];
+  for (const beat of beats) stills.push(await frameAt(page, (beat.start + beat.end) / 2));
+  return drawSheet(browser, { beats, stills, warnings: [], size: "full" });
 };
