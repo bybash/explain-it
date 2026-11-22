@@ -143,7 +143,7 @@ const TOOLS = [
     name: TOOL_NAMES.render,
     schema: RenderArgsSchema,
     run: renderTool,
-    description: `Queues a render of a project that is ready (see ${TOOL_NAMES.check}): an MP4, its captions (.srt) and a poster per theme, into the project's out/<time>/ folder. \`theme\` (${oneOf(THEME_MODES)}) and \`resolution\` (${oneOf(RESOLUTIONS)}) default to the project's config when the render starts. Renders run one at a time; returns the job, to follow with ${TOOL_NAMES.renderStatus}.`,
+    description: `Queues a render of a project that is ready (see ${TOOL_NAMES.check}): per theme a video with the narration captions burned in (video.mp4), one without (video-clean.mp4), both with the voice and music, plus the captions (.srt), the soundtrack (audio.wav) and a poster, into the project's out/<time>/ folder. \`theme\` (${oneOf(THEME_MODES)}) and \`resolution\` (${oneOf(RESOLUTIONS)}) default to the project's config when the render starts. Renders run one at a time; returns the job, to follow with ${TOOL_NAMES.renderStatus}.`,
   },
   {
     name: TOOL_NAMES.renderStatus,

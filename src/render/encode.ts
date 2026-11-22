@@ -17,24 +17,30 @@ const scaleTo = (resolution: Resolution): string[] => {
 
 /**
  * ffmpeg arguments that read PNG frames from stdin at `fps` and write an
- * H.264 MP4 to `out`, scaled to `resolution`, playable while it downloads.
+ * H.264 MP4 to `out`, scaled to `resolution`, playable while it downloads,
+ * with the soundtrack when there is one.
  */
 
 export const encodeArgs = ({
   fps,
   resolution,
   out,
+  audio,
 }: {
   readonly fps: number;
   readonly resolution: Resolution;
   readonly out: string;
+  /** The mastered soundtrack (`audio.wav`), muxed in as AAC; without it the video is silent. */
+  readonly audio?: string;
 }): string[] => {
   const scale = scaleTo(resolution);
   return [
     ["-y", "-loglevel", "error"],
     ["-f", "image2pipe", "-framerate", String(fps), "-c:v", "png", "-i", "-"],
+    audio ? ["-i", audio, "-map", "0:v", "-map", "1:a"] : [],
     scale,
     ["-c:v", "libx264", "-preset", "medium", "-crf", "18", "-pix_fmt", "yuv420p"],
+    audio ? ["-c:a", "aac", "-b:a", "192k"] : [],
     ["-r", String(fps), "-movflags", "+faststart", out],
   ].flat();
 };

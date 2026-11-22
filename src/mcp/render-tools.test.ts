@@ -44,6 +44,7 @@ beforeEach(async () => {
       return (["light"] as const).map((theme) => ({
         theme,
         video: join(projectsDir, request.slug, "out", theme, "video.mp4"),
+        clean: join(projectsDir, request.slug, "out", theme, "video-clean.mp4"),
         captions: join(projectsDir, request.slug, "out", theme, "captions.srt"),
         poster: join(projectsDir, request.slug, "out", theme, "poster.png"),
       }));
@@ -215,7 +216,7 @@ describe("check", () => {
       cached: 0,
     });
     expect(first.voice.seconds).toBeGreaterThan(0);
-    expect(first.notChecked.join("\n")).not.toMatch(/^narration voice/m);
+    expect(first.notChecked.join("\n")).not.toMatch(/voice/);
     const second = await succeeds("check", { slug });
     expect(second.voice).toMatchObject({ lines, generated: 0, cached: lines });
   });

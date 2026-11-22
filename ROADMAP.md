@@ -76,7 +76,7 @@ The goal: the CLI renders a hand-written example to an MP4, with no LLM and no v
 | ✅ 2.1 | **Voice**: the `TtsProvider` interface, the kokoro-js provider, model download into the cache, per-line hash cache | A test generates a line; the second run hits the cache |
 | ✅ 2.2 | **Narration-first timing**: measured voice lengths drive beat lengths | The example's beats follow its narration; the cues line up |
 | ✅ 2.3 | **Music**: three procedural moods, seeded, ported from the prototype | Three short samples attached to the PR |
-| 2.4 | **Mix and outputs**: ducking, −16 LUFS normalisation, muxing; the captioned and clean MP4s, `audio.wav`, light, dark and both | The example renders with voice and music |
+| ✅ 2.4 | **Mix and outputs**: ducking, −16 LUFS normalisation, muxing; the captioned and clean MP4s, `audio.wav`, light, dark and both | The example renders with voice and music |
 | 2.5 | **Layout checks**: overlap (polygons) and off-frame at each beat's midpoint, including boxes moved onto each other or onto another zone by manual overrides; a JSON report; `explain-it check` | A broken fixture is caught; an overlapping override is reported; the example passes |
 | 2.6 | **Timing and audio checks**: reading speed, narration fit, loudness | Same as 2.5 |
 | 2.7 | **Contact sheet**: one still per beat on one image | A contact sheet of the example in the PR |
@@ -132,16 +132,30 @@ The goal: make a video end to end from an IDE, with no LLM in explAIn-it.
 Work a finished slice left for a later one. Each list is removed by the slice
 that finishes it.
 
-### For 2.4 (mix and outputs), from 1.9
-
-- Only `video.mp4` (silent, captions burned in), `captions.srt` and
-  `poster.png` are written. `video-clean.mp4` needs the page drawn with
-  captions off; `audio.wav` and the AAC track come with the mix.
-
 ### For 2.7 (contact sheet), from 1.9
 
 - Renders do not write `contact-sheet.png` yet; it belongs in the same
   `out/<timestamp>/<theme>/` folder as the poster.
+
+### For 2.6 (loudness check), from 2.4
+
+- `measureLoudness` in `src/audio/master.ts` reads ffmpeg's EBU R128 meter
+  (integrated LUFS and true peak); the loudness check can run it on the
+  render's `audio.wav`.
+
+### For 3.8 and 3.9 (preview, render gate), from 2.1, 2.2 and 2.4
+
+- Lines are generated when `check` runs or a render starts, without
+  progress: the first time that includes the model download and can take
+  a minute or two. A render job shows no progress while it speaks or mixes,
+  and a cancel waits for a model download already under way. 3.8 generates
+  the voice when a project enters the Preview gate, with progress.
+- A render captures every frame twice (captioned and clean), about twice
+  the time; the music takes 1.4–2.8 s per 75 s to make. If renders feel slow,
+  cache the music keyed by mood, seed and length, as the voice is, or make
+  the clean video optional.
+- Old lines stay in `cache/tts/` when a line is edited; nothing prunes
+  them yet.
 
 ### For 2.5 (layout checks), from 4.4
 
@@ -150,36 +164,6 @@ that finishes it.
   corner: "explain-it server" shows as "exp". Edges also cross boxes they
   do not connect to. The overlap check should cover zone labels and edges
   against boxes, and layout should keep a zone's label clear.
-
-### For 2.4 (mix), from 2.3
-
-- The music exists: `renderMusic(musicPlan({ mood, seed, seconds }))` in
-  `src/audio/music.ts` gives 48 kHz samples at −22 dBFS RMS for the video's
-  whole length (`plan.duration`). 2.4 applies `music.volumeDb`, ducks it
-  under the voice, skips it when `music.enabled` is false, and mixes it with
-  the lines (24 kHz, resampled).
-- Making music takes 1.4–2.8 s per 75 s, about 20 s for ten minutes. Cache
-  it in the project's `cache/` keyed by mood, seed and length (as the voice
-  is), or move the plucks to phasors too, as the pads are.
-
-### For 2.4 (mix), from 2.1 and 2.2
-
-- Every render generates the voice and times the video by it
-  (`withNarration` in `src/render/run.ts`), and `check` and
-  `set_storyboard` report measured timing. 2.4 mixes the lines into the
-  video, each at its beat's narration start (the beat's start plus
-  `LEAD_IN`), and removes the "voice in the video" line from `check`'s
-  `notChecked`. A throwaway mix of the example at those times is in
-  `docs/clips/2.2-oauth-login-voiced.mp4`.
-- Lines are generated when `check` runs or a render starts, without
-  progress: the first time that includes the model download and can take
-  a minute or two. A render job shows no progress while it speaks, and a
-  cancel waits for a model download already under way. SPEC
-  also generates them when a project enters the Preview gate; 3.8 does
-  that with progress, and could report progress to MCP clients and render
-  jobs too.
-- Old lines stay in `cache/tts/` when a line is edited; nothing prunes
-  them yet.
 
 ### For 2.6 (timing checks), from 2.2
 

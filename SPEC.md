@@ -152,7 +152,7 @@ type Config = {
   pacing: "relaxed" | "normal" | "brisk";                   // how unhurried the video is; "relaxed" by default
   voice: { enabled: boolean; id: string; speed: number };   // a kokoro voice, e.g. "af_heart"
   captions: { narration: boolean; step: boolean; size: "S" | "M" | "L" };
-  music: { enabled: boolean; mood: "calm" | "upbeat" | "technical"; seed: number; volumeDb: number };
+  music: { enabled: boolean; mood: "calm" | "upbeat" | "technical"; seed: number; volumeDb: number }; // volumeDb: under the voice, −12 by default
   output: { resolution: "1080p" | "720p" };
   cards?: {
     title?: { title: string; description?: string };   // ≤ 100 and ≤ 160 characters, wrapped
@@ -337,8 +337,20 @@ for frame capture, so what the user approves is what gets rendered.
   music), and every mood sits at −22 dBFS RMS with peaks under −1 dBFS;
   `music.volumeDb` is applied in the mix. `npm run music` writes a sample.
   Decision 014 says why.
-- **Mix.** Music ducks under the voice; the mix is normalised to −16 LUFS
-  integrated with a true peak at or below −1 dBTP.
+- **Mix.** Each voice line starts at its beat's narration start, and the
+  voice is levelled to −18 dBFS RMS while it speaks. The music sits
+  `music.volumeDb` (−12 by default) under the voice while nobody speaks,
+  and dips 6 dB further while the voice speaks: it starts to dip about
+  0.17 s before a line and is fully down 0.05 s before it (the prototype's
+  envelope). Without a voice the music is the whole mix, so `volumeDb` has
+  no effect. Kokoro's 24 kHz lines are resampled to 48 kHz by windowed sinc.
+  The mix
+  is normalised to −16 LUFS integrated with a true peak at or below −1 dBTP
+  (its spikes limited, then ffmpeg's loudnorm in two passes), written as
+  `audio.wav` (16-bit, 48 kHz),
+  and muxed into both videos as AAC at 192 kbps. With neither voice nor
+  music the videos are silent and there is no `audio.wav`. Decision 015
+  says why.
 
 ## Checks
 
@@ -380,9 +392,12 @@ The **contact sheet** is one still per beat on a single image.
   SSE and a cancel button.
 - Outputs per theme (light, dark or both):
   - `video.mp4`: with captions and audio
-  - `video-clean.mp4`: no burned-in captions, with audio
+  - `video-clean.mp4`: no burned-in narration captions (the step captions
+    stay), with audio. It is captured in the same pass, a second screenshot
+    of each frame with the narration hidden, so capture takes about twice
+    as long; with narration captions off it is a copy of `video.mp4`.
   - `captions.srt`
-  - `audio.wav`
+  - `audio.wav`, when the video has voice or music
   - `poster.png`
   - `contact-sheet.png`
 

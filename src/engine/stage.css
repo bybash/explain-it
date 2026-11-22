@@ -209,6 +209,14 @@ body {
   background: color-mix(in srgb, var(--bg) 82%, transparent);
 }
 
+/*
+ * The clean video is captured with the narration captions hidden (see `expose`).
+ * Posing sets each overlay's visibility inline on every seek, but never its display.
+ */
+.without-narration .narration-caption {
+  display: none;
+}
+
 .callout {
   width: max-content;
   max-width: 340px;

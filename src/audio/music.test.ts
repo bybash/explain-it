@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { MUSIC_MOODS } from "../schema/config.ts";
-import { MUSIC_RATE, MUSIC_RMS_DB, musicPlan, renderMusic } from "./music.ts";
+import { AUDIO_RATE } from "./level.ts";
+import { MUSIC_RMS_DB, musicPlan, renderMusic } from "./music.ts";
 
 const db = (x: number) => 20 * Math.log10(x);
 const peak = (samples: Float32Array) => samples.reduce((max, s) => Math.max(max, Math.abs(s)), 0);
@@ -40,8 +41,8 @@ describe("musicPlan", () => {
 describe("renderMusic", () => {
   it("is exactly as long as asked, at 48 kHz", () => {
     const audio = renderMusic(musicPlan({ mood: "calm", seed: 1, seconds: 7.5 }));
-    expect(audio.sampleRate).toBe(MUSIC_RATE);
-    expect(audio.samples.length).toBe(7.5 * MUSIC_RATE);
+    expect(audio.sampleRate).toBe(AUDIO_RATE);
+    expect(audio.samples.length).toBe(7.5 * AUDIO_RATE);
   });
 
   it("gives the same samples for the same plan", () => {
@@ -62,7 +63,7 @@ describe("renderMusic", () => {
       const { samples } = renderMusic(musicPlan({ mood, seed: 2, seconds: 12 }));
       expect(samples.every(Number.isFinite)).toBe(true);
       // Measured away from the fades.
-      const middle = samples.subarray(4 * MUSIC_RATE, 7 * MUSIC_RATE);
+      const middle = samples.subarray(4 * AUDIO_RATE, 7 * AUDIO_RATE);
       expect(db(rms(middle))).toBeGreaterThan(MUSIC_RMS_DB - 2);
       expect(db(rms(middle))).toBeLessThan(MUSIC_RMS_DB + 2);
       expect(db(peak(samples))).toBeLessThanOrEqual(-1);
@@ -73,8 +74,8 @@ describe("renderMusic", () => {
     // One short bell alone, so its tail is easy to see: the last sample before the cut is near silence.
     const note = { at: 1, length: 0.4, midi: 72, instrument: "bell" as const, gain: 0.5, phase: 0 };
     const { samples } = renderMusic({ seconds: 10, notes: [note] }, { master: false });
-    const cut = Math.round((note.at + note.length) * MUSIC_RATE) - 1;
-    const loudest = peak(samples.subarray(Math.round(note.at * MUSIC_RATE), cut));
+    const cut = Math.round((note.at + note.length) * AUDIO_RATE) - 1;
+    const loudest = peak(samples.subarray(Math.round(note.at * AUDIO_RATE), cut));
     expect(Math.abs(samples[cut] ?? 1)).toBeLessThan(loudest * 0.01);
   });
 
@@ -91,7 +92,7 @@ describe("renderMusic", () => {
     // Zero crossings a second, early and late in the note.
     const crossings = (from: number, to: number) => {
       let count = 0;
-      for (let i = Math.round(from * MUSIC_RATE) + 1; i < Math.round(to * MUSIC_RATE); i++)
+      for (let i = Math.round(from * AUDIO_RATE) + 1; i < Math.round(to * AUDIO_RATE); i++)
         if (Math.sign(samples[i] ?? 0) !== Math.sign(samples[i - 1] ?? 0)) count++;
       return count / (to - from) / 2;
     };
@@ -133,8 +134,8 @@ describe("renderMusic", () => {
       return note.gain * release * Math.sin((Math.PI * t) / note.length) ** 2 * sum;
     };
     for (const t of [0.01, 0.7, 1.9, 3.3, 3.99]) {
-      const i = Math.round((note.at + t) * MUSIC_RATE);
-      expect(samples[i]).toBeCloseTo(expected(i / MUSIC_RATE - note.at), 5);
+      const i = Math.round((note.at + t) * AUDIO_RATE);
+      expect(samples[i]).toBeCloseTo(expected(i / AUDIO_RATE - note.at), 5);
     }
   });
 });

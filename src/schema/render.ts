@@ -36,9 +36,14 @@ export const RenderProgressSchema = z.object({
 /** The files written for one theme. */
 export const RenderedThemeSchema = z.object({
   theme: RenderedThemeModeSchema,
+  /** With the narration captions burned in. */
   video: z.string(),
+  /** Without them, for players and platforms that show the .srt. */
+  clean: z.string(),
   captions: z.string(),
   poster: z.string(),
+  /** The soundtrack, when the video has voice or music. */
+  audio: z.string().optional(),
 });
 
 /** A render job as `render`, `render_status` and the event stream show it. */

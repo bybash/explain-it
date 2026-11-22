@@ -39,6 +39,7 @@ const render = async (argv: readonly string[]): Promise<void> => {
       const rendered = await renderProjectFolder({
         dir,
         project: voiced.project,
+        lines: voiced.lines,
         settings,
         now: new Date(),
         onProgress: ({ theme, done, total }) =>
@@ -47,7 +48,15 @@ const render = async (argv: readonly string[]): Promise<void> => {
           ),
       });
       for (const r of rendered)
-        console.log(`${r.theme}: ${r.video}\n       ${r.captions}\n       ${r.poster}`);
+        console.log(
+          [
+            `${r.theme}: ${r.video}`,
+            r.clean,
+            r.captions,
+            r.poster,
+            ...(r.audio ? [r.audio] : []),
+          ].join("\n       "),
+        );
     }
   }
 };

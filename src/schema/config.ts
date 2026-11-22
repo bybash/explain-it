@@ -8,6 +8,8 @@ export const THEME_MODES = ["light", "dark", "both"] as const;
 export const CAPTION_SIZES = ["S", "M", "L"] as const;
 export const MUSIC_MOODS = ["calm", "upbeat", "technical"] as const;
 export type MusicMood = (typeof MUSIC_MOODS)[number];
+/** How far further the music dips while the voice speaks, in dB (decision 015). */
+export const MUSIC_DUCK_DB = -6;
 /** The music's seed: the same seed always gives the same music (decision 014). */
 export const MusicSeedSchema = z.int().min(0);
 export const RESOLUTIONS = ["1080p", "720p"] as const;
@@ -190,7 +192,14 @@ export const ConfigSchema = z
         enabled: z.boolean().default(true),
         mood: z.enum(MUSIC_MOODS).default("calm"),
         seed: MusicSeedSchema.default(1),
-        volumeDb: z.number().min(-60).max(0).default(-24),
+        volumeDb: z
+          .number()
+          .min(-60)
+          .max(0)
+          .default(-12)
+          .describe(
+            `The music's level against the voice while nobody speaks, in dB; it dips ${-MUSIC_DUCK_DB} dB more while the voice speaks. Without a voice the music is the whole mix, brought to the target loudness, so this has no effect.`,
+          ),
       })
       .prefault({}),
     output: z

@@ -28,6 +28,7 @@ const steppedRenderer = () => {
             {
               theme: "light",
               video: `/out/${request.slug}/video.mp4`,
+              clean: `/out/${request.slug}/video-clean.mp4`,
               captions: `/out/${request.slug}/captions.srt`,
               poster: `/out/${request.slug}/poster.png`,
             },
