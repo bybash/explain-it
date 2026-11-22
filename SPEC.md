@@ -103,7 +103,9 @@ type Zone = { id: string; label: string; category?: string };
 ```
 
 Each kind has a default box size, height, category and icon. A zone is drawn
-as a tinted platform under its nodes. Categories are `accent`, `muted` and
+as a tinted platform under its nodes, its label laid flat on the floor along
+the platform's front-left edge, just outside it, where its own boxes cannot
+cover it. Categories are `accent`, `muted` and
 `c1` to `c6`; a palette with fewer than six category colours repeats them in
 order, and an unknown category draws in the accent colour. Edges and zones
 without a category use the accent.
@@ -355,11 +357,25 @@ for frame capture, so what the user approves is what gets rendered.
 ## Checks
 
 Checks run on the server against the preview page before rendering, and write
-a JSON report that the Preview gate shows as warnings linked to beats.
+a JSON report, `checks.json` in the project's folder, that the Preview gate
+shows as warnings linked to beats. `explain-it check` and the MCP `check`
+tool run them, timed by the voice. The page seeks each beat's midpoint and
+reports what it draws (`__shapes()`): every node's box, every zone's platform
+and label, every edge as drawn so far, and every overlay (scene title,
+captions, callouts, badges, edge labels, the logo). The overlap check counts
+two nodes, a node on a zone it is not in, a zone's label under a node or an
+overlay, an edge through a node it does not connect, an overlay on a node
+(but not a callout or badge on its own node), and two overlays. An edge
+under a box counts as running through it: the box hides that stretch of
+floor. The title and end cards are laid out on their own and are not
+checked. `explain-it check` exits 1 when it finds problems and 2 when it
+cannot check. Layout warnings do not stop a render; the layout engine keeps
+routes in sight of boxes and places edge labels and badges clear of boxes and
+of each other. Decision 016 says why.
 
 | Check | Measured | Warns when |
 |---|---|---|
-| Overlap | Projected node-top polygons and overlay boxes, at each beat's midpoint | Two elements overlap by more than 4 px |
+| Overlap | Projected node-top polygons and overlay boxes, at each beat's midpoint | Two elements overlap by more than 4 px (they would have to move more than 4 px apart; an edge runs more than 4 px inside a box) |
 | Off frame | The same shapes | Anything leaves the 1920×1080 safe area (5% margin) |
 | Reading speed | Caption characters ÷ seconds on screen | Above 15 characters per second |
 | Narration fit | Voice length against beat length | A line would need speeding up by more than 1.05× |

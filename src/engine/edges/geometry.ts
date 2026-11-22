@@ -1,3 +1,4 @@
+import { overlapDepth } from "../../checks/geometry.ts";
 import type { FloorPoint } from "../../schema/layout.ts";
 import { project, type ScreenPoint, type View } from "../iso/project.ts";
 import type { Polygon } from "../iso/scene.ts";
@@ -144,4 +145,54 @@ const labelAnchor = (
     }
   }
   return anchor;
+};
+
+/** How far apart candidate spots along a line are, in pixels. */
+const LABEL_STEP = 6;
+/** Room kept around a label, from boxes and other labels. */
+const LABEL_CLEARANCE = 6;
+
+/**
+ * Where an upright label of `size` goes on its line: the spot that covers
+ * the least of `avoid` (boxes and labels already placed, convex), then the
+ * one nearest the line, then the one nearest `preferred`. Spots run along
+ * the line, and a label's height above or below it, so a short line between
+ * two boxes can still carry its label beside it.
+ */
+export const placeLabel = (
+  points: readonly ScreenPoint[],
+  size: { readonly width: number; readonly height: number },
+  avoid: readonly (readonly ScreenPoint[])[],
+  preferred: ScreenPoint,
+): ScreenPoint => {
+  const half = { x: size.width / 2 + LABEL_CLEARANCE, y: size.height / 2 + LABEL_CLEARANCE };
+  const offsets = [0, -1, 1, -2, 2, -3, 3, -4, 4].map((k) => k * (size.height + LABEL_CLEARANCE));
+  // The preferred spot is on the line (the middle of its longest stretch in sight), so it is a candidate too.
+  const along: ScreenPoint[] = [preferred];
+  for (const [i, a] of points.entries()) {
+    const b = points[i + 1];
+    if (!b) break;
+    const steps = Math.max(1, Math.ceil(distance(a, b) / LABEL_STEP));
+    for (let s = 0; s <= steps; s++) along.push(lerp(a, b, s / steps));
+  }
+  let best = { at: preferred, covered: Number.POSITIVE_INFINITY, offset: 0, away: 0 };
+  for (const offset of offsets)
+    for (const point of along) {
+      const at = { x: point.x, y: point.y + offset };
+      const box = [
+        { x: at.x - half.x, y: at.y - half.y },
+        { x: at.x + half.x, y: at.y - half.y },
+        { x: at.x + half.x, y: at.y + half.y },
+        { x: at.x - half.x, y: at.y + half.y },
+      ];
+      const covered = avoid.reduce((sum, polygon) => sum + overlapDepth(box, polygon), 0);
+      const away = distance(at, preferred);
+      const better =
+        covered < best.covered - 1e-9 ||
+        (Math.abs(covered - best.covered) <= 1e-9 &&
+          (Math.abs(offset) < Math.abs(best.offset) ||
+            (Math.abs(offset) === Math.abs(best.offset) && away < best.away)));
+      if (better) best = { at, covered, offset, away };
+    }
+  return best.at;
 };

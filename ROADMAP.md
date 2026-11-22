@@ -77,7 +77,7 @@ The goal: the CLI renders a hand-written example to an MP4, with no LLM and no v
 | ✅ 2.2 | **Narration-first timing**: measured voice lengths drive beat lengths | The example's beats follow its narration; the cues line up |
 | ✅ 2.3 | **Music**: three procedural moods, seeded, ported from the prototype | Three short samples attached to the PR |
 | ✅ 2.4 | **Mix and outputs**: ducking, −16 LUFS normalisation, muxing; the captioned and clean MP4s, `audio.wav`, light, dark and both | The example renders with voice and music |
-| 2.5 | **Layout checks**: overlap (polygons) and off-frame at each beat's midpoint, including boxes moved onto each other or onto another zone by manual overrides; a JSON report; `explain-it check` | A broken fixture is caught; an overlapping override is reported; the example passes |
+| ✅ 2.5 | **Layout checks**: overlap (polygons) and off-frame at each beat's midpoint, including boxes moved onto each other or onto another zone by manual overrides; a JSON report; `explain-it check` | A broken fixture is caught; an overlapping override is reported; the example passes |
 | 2.6 | **Timing and audio checks**: reading speed, narration fit, loudness | Same as 2.5 |
 | 2.7 | **Contact sheet**: one still per beat on one image | A contact sheet of the example in the PR |
 
@@ -157,14 +157,6 @@ that finishes it.
 - Old lines stay in `cache/tts/` when a line is edited; nothing prunes
   them yet.
 
-### For 2.5 (layout checks), from 4.4
-
-- In the 4.4 walkthrough video (`docs/clips/4.4-render-job-walkthrough.mp4`)
-  a zone's label is hidden behind the node standing in the zone's back
-  corner: "explain-it server" shows as "exp". Edges also cross boxes they
-  do not connect to. The overlap check should cover zone labels and edges
-  against boxes, and layout should keep a zone's label clear.
-
 ### For 2.6 (timing checks), from 2.2
 
 - With the voice off, lines are timed at 15 characters per second, the
@@ -176,15 +168,26 @@ that finishes it.
 - `config.pacing` (relaxed, normal, brisk) needs a picker in the style
   panel; MCP already sets it through `set_style`.
 
-### For 2.5, 2.6 and 2.7 (checks, contact sheet), from 4.3
+### For 2.6 and 2.7 (checks, contact sheet), from 4.3 and 2.5
 
-- The MCP `check` tool returns a readiness report and the voice for now,
-  with a `notChecked` list naming what is not checked yet: the overlap and
-  off-frame checks, reading speed and narration fit, and the contact sheet
-  (`src/mcp/render-tools.ts`). Each of these slices adds its part to
-  `check`, removes its line from `notChecked`, and the contact sheet
-  comes back as an image (SPEC, MCP). `set_storyboard` can then return
-  the check warnings too.
+- The MCP `check` tool returns a readiness report, the voice and the layout
+  checks (`layout`: warnings by beat, and where `checks.json` is), with a
+  `notChecked` list naming what is not checked yet: reading speed, narration
+  fit and loudness, and the contact sheet (`src/mcp/render-tools.ts`). Each
+  slice adds its part to `check` and to `checks.json` (`CheckReportSchema`
+  in `src/schema/checks.ts`; `CHECKS` lists the kinds), removes its line from
+  `notChecked`, and the contact sheet comes back as an image (SPEC, MCP).
+- `set_storyboard` could return the check warnings too, but the layout
+  checks need Chrome and take seconds; it may return only the cheap ones.
+
+### For 5.6 (layout repair), from 2.5
+
+- The layout engine now keeps routes in sight of boxes and places edge
+  labels and badges clear of boxes and of each other; the example passes
+  its checks. What it cannot fix stays a warning in `checks.json`, which
+  5.6 sends to the LLM. On a crowded line a label may sit a few label
+  heights off its line (the example's "save session").
+- Not checked yet: the title and end cards, and edges against zone labels.
 
 ### For 3.9 (render gate), from 4.3
 

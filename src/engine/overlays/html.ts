@@ -1,9 +1,10 @@
+import { STAGE } from "../../schema/checks.ts";
 import type { BADGE_TONES } from "../../schema/storyboard.ts";
 import type { NodeShape, Polygon } from "../iso/scene.ts";
 import { categoryStyle } from "../theme/kinds.ts";
 import type { State } from "../timeline.ts";
 import { type CalloutPlacement, placeBadge, placeCallout } from "./place.ts";
-import { LINE_HEIGHT, NARRATION_LINES, type Rect, STAGE, type StageRegions } from "./regions.ts";
+import { LINE_HEIGHT, NARRATION_LINES, type Rect, type StageRegions } from "./regions.ts";
 import { overlayTarget } from "./tweens.ts";
 
 /** When an overlay is on screen, in seconds. */
@@ -19,6 +20,8 @@ export type OverlayDrawing = { readonly shown?: Interval } & (
   | {
       readonly kind: "callout";
       readonly id: string;
+      /** The node it points at, for the checks to know a callout is meant to sit by it. */
+      readonly nodeId: string;
       readonly node: NodeShape["faces"];
       readonly title?: string;
       readonly text: string;
@@ -28,6 +31,7 @@ export type OverlayDrawing = { readonly shown?: Interval } & (
   | {
       readonly kind: "badge";
       readonly id: string;
+      readonly nodeId: string;
       readonly node: NodeShape["faces"];
       readonly text: string;
       readonly tone: (typeof BADGE_TONES)[number];
@@ -160,16 +164,18 @@ const draw = (
     }
     case "badge": {
       const badge = div(`overlay badge tone-${overlay.tone}`, root);
+      badge.dataset.node = overlay.nodeId;
       badge.style.setProperty("--tone", `var(--tone-${overlay.tone})`);
       div("badge-text", badge, overlay.text);
       const size = { width: badge.offsetWidth, height: badge.offsetHeight };
-      const box = placeBadge(overlay.node, size, regions.content);
+      const box = placeBadge(overlay.node, size, regions.content, obstacles);
       badge.style.left = `${box.x}px`;
       badge.style.top = `${box.y}px`;
       return [badge];
     }
     case "callout": {
       const card = div("overlay callout", root);
+      card.dataset.node = overlay.nodeId;
       card.setAttribute("style", categoryStyle(overlay.category));
       if (overlay.title) div("callout-title", card, overlay.title);
       div("callout-text", card, overlay.text);

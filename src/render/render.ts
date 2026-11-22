@@ -2,9 +2,9 @@ import { copyFile, mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { type Browser, chromium, type Page } from "playwright-core";
 import { beatOptions, buildBeats } from "../engine/beats/build.ts";
-import { STAGE } from "../engine/overlays/regions.ts";
 import type { InjectedProject } from "../engine/page/render.ts";
 import type { ThemeMode } from "../engine/theme/palettes.ts";
+import { STAGE } from "../schema/checks.ts";
 import type { Resolution } from "../schema/config.ts";
 import type { RenderedTheme, RenderProgress } from "../schema/render.ts";
 import { encodeArgs, posterArgs } from "./encode.ts";
@@ -203,7 +203,11 @@ const renderTheme = async (
 };
 
 /** Opens the render page with the project on it, and waits until it is drawn. */
-const openPage = async (browser: Browser, url: string, project: InjectedProject): Promise<Page> => {
+export const openPage = async (
+  browser: Browser,
+  url: string,
+  project: InjectedProject,
+): Promise<Page> => {
   const page = await browser.newPage({ viewport: STAGE });
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));

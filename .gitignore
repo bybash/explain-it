@@ -7,6 +7,8 @@ coverage/
 projects/
 cache/
 out/
+# The checks' report, made again by every check.
+checks.json
 *.log
 .DS_Store
 .vitest/

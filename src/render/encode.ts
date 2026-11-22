@@ -1,4 +1,4 @@
-import { STAGE } from "../engine/overlays/regions.ts";
+import { STAGE } from "../schema/checks.ts";
 import type { Resolution } from "../schema/config.ts";
 
 /** Output frame sizes. The stage is always captured at 1080p and scaled down. */

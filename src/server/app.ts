@@ -6,7 +6,12 @@ import { streamSSE } from "hono/streaming";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import type { TtsProvider } from "../audio/tts.ts";
 import { createMcpServer } from "../mcp/server.ts";
-import { missingRenderTools as findMissingRenderTools } from "../render/environment.ts";
+import type { ToolContext } from "../mcp/tools.ts";
+import { checkProjectFolder } from "../render/check.ts";
+import {
+  missingRenderTools as findMissingRenderTools,
+  type MissingTool,
+} from "../render/environment.ts";
 import { RenderQueue, type RenderRun } from "../render/queue.ts";
 import { renderFromFolder } from "../render/run.ts";
 import type { ValidationError } from "../schema/errors.ts";
@@ -31,7 +36,9 @@ export type AppOptions = {
   /** Speaks the narration: Kokoro in the app (see `main.ts`), a fake in tests. */
   readonly tts: TtsProvider;
   /** What a render needs and this machine lacks; probed for real by default. */
-  readonly missingRenderTools?: () => Promise<readonly string[]>;
+  readonly missingRenderTools?: () => Promise<readonly MissingTool[]>;
+  /** Runs the layout checks and writes the report; the real ones by default, a fake in tests. */
+  readonly runChecks?: ToolContext["runChecks"];
 };
 
 /** How often an idle event stream sends a comment, so proxies and browsers keep it open. */
@@ -67,6 +74,7 @@ export const createApp = ({
   tts,
   renderRun = renderFromFolder(projectsDir, now, tts),
   missingRenderTools = findMissingRenderTools,
+  runChecks = (dir, project) => checkProjectFolder({ dir, project, now: now() }),
 }: AppOptions) => {
   const app = new Hono();
   const events = createEvents();
@@ -139,6 +147,7 @@ export const createApp = ({
       events,
       renders,
       missingRenderTools,
+      runChecks,
       tts,
       previewUrl: (slug) => `${origin}/#/projects/${slug}`,
     });

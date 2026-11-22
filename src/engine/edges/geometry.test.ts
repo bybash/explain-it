@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { overlapDepth } from "../../checks/geometry.ts";
 import { project, type ScreenPoint, type View } from "../iso/project.ts";
-import { edgeGeometry } from "./geometry.ts";
+import { edgeGeometry, placeLabel } from "./geometry.ts";
 
 const view: View = { scale: 10, originX: 100, originY: 50 };
 const floor = (x: number, y: number): ScreenPoint => project({ x, y, z: 0 }, view);
@@ -73,5 +74,47 @@ describe("edgeGeometry", () => {
       { x: 6, y: 0 },
     ];
     expectNear(edgeGeometry(straight, view, [rect(-1, -1, 2.5, 2)]).label, floor(3.75, 0));
+  });
+});
+
+describe("placeLabel", () => {
+  const rect = (x: number, y: number, w: number, h: number) => [
+    { x, y },
+    { x: x + w, y },
+    { x: x + w, y: y + h },
+    { x, y: y + h },
+  ];
+  const size = { width: 120, height: 30 };
+  const line = [
+    { x: 0, y: 100 },
+    { x: 600, y: 100 },
+  ];
+
+  it("keeps a label in the middle of its line when nothing is in the way", () => {
+    expect(placeLabel(line, size, [], { x: 300, y: 100 })).toEqual({ x: 300, y: 100 });
+  });
+
+  it("slides a label along its line, off a box it would cover", () => {
+    const box = rect(230, 60, 120, 80);
+    const at = placeLabel(line, size, [box], { x: 300, y: 100 });
+    expect(at.y).toBe(100);
+    expect(overlapDepth(rect(at.x - 60, at.y - 15, 120, 30), box)).toBe(0);
+  });
+
+  it("sets a label beside a short line that has no room for it between its boxes", () => {
+    const short = [
+      { x: 200, y: 100 },
+      { x: 300, y: 100 },
+    ];
+    const boxes = [rect(100, 60, 100, 80), rect(300, 60, 100, 80)];
+    const at = placeLabel(short, size, boxes, { x: 250, y: 100 });
+    expect(at.x).toBeCloseTo(250, 0);
+    for (const box of boxes) expect(overlapDepth(rect(at.x - 60, at.y - 15, 120, 30), box)).toBe(0);
+  });
+
+  it("keeps clear of labels already placed", () => {
+    const placed = rect(240, 85, 120, 30);
+    const at = placeLabel(line, size, [placed], { x: 300, y: 100 });
+    expect(overlapDepth(rect(at.x - 60, at.y - 15, 120, 30), placed)).toBe(0);
   });
 });

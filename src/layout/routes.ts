@@ -1,3 +1,4 @@
+import { convexHull, insideLength } from "../checks/geometry.ts";
 import type { Footprint } from "../engine/iso/sizes.ts";
 import type { FloorPoint as Point } from "../schema/layout.ts";
 
@@ -186,3 +187,88 @@ const keepsDirection = (
   const is = Math.sign(far[key] - now[key]);
   return is === 0 || is === was;
 };
+
+/** A box on the floor, with its height: what it can hide behind it. */
+export type Standing = Footprint & { readonly h: number };
+
+/** Room kept beyond what a box hides, and around a box, when a run moves. */
+const SIGHT_MARGIN = 0.3;
+/** A run hidden for less than this, in grid units, is left alone. */
+const HIDDEN_TOLERANCE = 0.05;
+
+/**
+ * The floor a box hides: moving back t along x and y and up t lands on the
+ * same screen point, so the box hides its footprint swept back diagonally by
+ * its height (decision 016).
+ */
+const hiddenFloor = ({ x, y, w, d, h }: Standing): Point[] =>
+  convexHull(
+    [
+      { x, y },
+      { x: x + w, y },
+      { x: x + w, y: y + d },
+      { x, y: y + d },
+    ].flatMap((p) => [p, { x: p.x - h, y: p.y - h }]),
+  );
+
+const hiddenLength = (run: readonly Point[], boxes: readonly Standing[]): number =>
+  boxes.reduce((sum, box) => sum + insideLength(run, hiddenFloor(box)), 0);
+
+/** Whether a run crosses a box, or comes within half the margin of it (moves leave the whole margin). */
+const CLEARANCE = SIGHT_MARGIN / 2;
+const crossesBox = (run: readonly Point[], boxes: readonly Standing[]): boolean =>
+  boxes.some(
+    (b) =>
+      insideLength(run, [
+        { x: b.x - CLEARANCE, y: b.y - CLEARANCE },
+        { x: b.x + b.w + CLEARANCE, y: b.y - CLEARANCE },
+        { x: b.x + b.w + CLEARANCE, y: b.y + b.d + CLEARANCE },
+        { x: b.x - CLEARANCE, y: b.y + b.d + CLEARANCE },
+      ]) > HIDDEN_TOLERANCE,
+  );
+
+/**
+ * Moves the runs of a route that pass out of sight behind a box: each goes
+ * back past the floor the box hides, or in front of the box, whichever is
+ * nearer and keeps it in sight and off every box. Its neighbours stretch
+ * to follow, so the route stays horizontal and vertical. The first and
+ * last runs end on their boxes and stay. The most hidden run moves first,
+ * which often brings its neighbours into sight with it.
+ */
+export const inSight = (route: readonly Point[], boxes: readonly Standing[]): Point[] => {
+  let points = [...route];
+  for (let pass = 0; pass < points.length; pass++) {
+    let worst = { index: -1, hidden: HIDDEN_TOLERANCE, box: undefined as Standing | undefined };
+    for (let i = 1; i + 2 < points.length; i++) {
+      const run = [points[i] as Point, points[i + 1] as Point];
+      for (const box of boxes) {
+        const hidden = insideLength(run, hiddenFloor(box));
+        if (hidden > worst.hidden) worst = { index: i, hidden, box };
+      }
+    }
+    const { index, box } = worst;
+    if (!box) break;
+    const a = points[index] as Point;
+    const b = points[index + 1] as Point;
+    const axis = a.y === b.y ? "y" : "x";
+    const size = axis === "y" ? box.d : box.w;
+    const options = [box[axis] - box.h - SIGHT_MARGIN, box[axis] + size + SIGHT_MARGIN]
+      .map((at) => ({
+        at,
+        run: [
+          { ...a, [axis]: at },
+          { ...b, [axis]: at },
+        ],
+      }))
+      .filter((o) => hiddenLength(o.run, boxes) <= HIDDEN_TOLERANCE && !crossesBox(o.run, boxes))
+      .sort((p, q) => Math.abs(p.at - a[axis]) - Math.abs(q.at - a[axis]));
+    const chosen = options[0];
+    if (!chosen) break;
+    points = points.map((p, i) =>
+      i === index || i === index + 1 ? { ...p, [axis]: round(chosen.at) } : p,
+    );
+  }
+  return points;
+};
+
+const round = (n: number) => Math.round(n * 1e6) / 1e6;
