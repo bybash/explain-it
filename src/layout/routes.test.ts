@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { withoutJogs } from "./routes.ts";
+import { inSight, withoutJogs } from "./routes.ts";
 
 const box = (x: number, y: number, w = 2, d = 2) => ({ x, y, w, d });
 const pts = (...xy: [number, number][]) => xy.map(([x, y]) => ({ x, y }));
@@ -42,5 +42,41 @@ describe("withoutJogs", () => {
     expect(withoutJogs(route, box(0, 0), box(7, 4), MIN, [other])).toEqual(
       pts([2, 1.2], [8, 1.2], [8, 4]),
     );
+  });
+});
+
+describe("inSight", () => {
+  const tall = (x: number, y: number, h: number) => ({ x, y, w: 2.8, d: 2.6, h });
+
+  it("moves a run that passes behind a box out of the floor it hides", () => {
+    // Behind `sessions` (y 6, height 1.4): the floor from y 4.6 to 6 is out of sight.
+    const route = pts([24, 3.3], [26.2, 3.3], [26.2, 4.7], [32.8, 4.7], [32.8, 10.7], [15, 10.7]);
+    const boxes = [tall(27, 6, 1.4), tall(27, 1, 0.9)];
+    const moved = inSight(route, boxes);
+    // Pulled back, clear of what the box hides, and still in front of the box behind it.
+    expect(moved).toEqual(
+      pts([24, 3.3], [26.2, 3.3], [26.2, 4.3], [32.8, 4.3], [32.8, 10.7], [15, 10.7]),
+    );
+  });
+
+  it("moves a run in front of the box when there is no room behind it", () => {
+    // Behind is a box reaching to y 3.9, too close to fit the run, so it goes in front instead.
+    const route = pts([20, 3], [22, 3], [22, 4.9], [32, 4.9], [32, 12], [40, 12]);
+    const boxes = [tall(27, 5.5, 1.4), tall(27, 1.3, 0.9)];
+    expect(inSight(route, boxes)).toEqual(
+      pts([20, 3], [22, 3], [22, 8.4], [32, 8.4], [32, 12], [40, 12]),
+    );
+  });
+
+  it("moves an upright run the same way, along x", () => {
+    const route = pts([10, 0], [10, 2], [25.5, 2], [25.5, 12], [30, 12]);
+    expect(inSight(route, [tall(26, 6, 1.4)])).toEqual(
+      pts([10, 0], [10, 2], [24.3, 2], [24.3, 12], [30, 12]),
+    );
+  });
+
+  it("leaves a route in sight, and the runs that end on a box, as they are", () => {
+    const route = pts([24, 3.3], [26.2, 3.3], [26.2, 4.0], [32.8, 4.0]);
+    expect(inSight(route, [tall(27, 6, 1.4)])).toEqual(route);
   });
 });

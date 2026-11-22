@@ -167,7 +167,7 @@ const draw = (
       badge.style.setProperty("--tone", `var(--tone-${overlay.tone})`);
       div("badge-text", badge, overlay.text);
       const size = { width: badge.offsetWidth, height: badge.offsetHeight };
-      const box = placeBadge(overlay.node, size, regions.content);
+      const box = placeBadge(overlay.node, size, regions.content, obstacles);
       badge.style.left = `${box.x}px`;
       badge.style.top = `${box.y}px`;
       return [badge];

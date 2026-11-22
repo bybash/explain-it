@@ -6,7 +6,7 @@ import type { Validated } from "../schema/errors.ts";
 import type { Graph, GraphNode } from "../schema/graph.ts";
 import type { Layout, FloorPoint as Point } from "../schema/layout.ts";
 import { fail, ok } from "../schema/result.ts";
-import { withoutJogs } from "./routes.ts";
+import { inSight, withoutJogs } from "./routes.ts";
 
 /**
  * ELK's default spacings assume pixel-sized numbers, so grid units go in
@@ -130,12 +130,15 @@ export const layoutGraph = async (
       snapOffsets.get(graphEdge.from) ?? { x: 0, y: 0 },
       snapOffsets.get(graphEdge.to) ?? { x: 0, y: 0 },
     ).map(roundOffNoise);
-    routes[edge.id] = withoutJogs(
-      routes[edge.id] ?? [],
-      footprint(graphEdge.from),
-      footprint(graphEdge.to),
-      GRID,
-      graph.nodes.map((node) => footprint(node.id)),
+    routes[edge.id] = inSight(
+      withoutJogs(
+        routes[edge.id] ?? [],
+        footprint(graphEdge.from),
+        footprint(graphEdge.to),
+        GRID,
+        graph.nodes.map((node) => footprint(node.id)),
+      ),
+      graph.nodes.map((node) => ({ ...footprint(node.id), h: KIND_SIZES[node.kind].h })),
     );
   }
 

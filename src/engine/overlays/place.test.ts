@@ -121,6 +121,19 @@ describe("placeBadge", () => {
     expect(box.y).toBe(0);
     expect(insideBounds(box)).toBe(true);
   });
+
+  it("slides sideways off something already there, such as an edge's label", () => {
+    // A label sitting exactly where the badge would go.
+    const label = [
+      { x: 750, y: 390 },
+      { x: 850, y: 390 },
+      { x: 850, y: 430 },
+      { x: 750, y: 430 },
+    ];
+    const box = placeBadge(faces(800, 500), BADGE, BOUNDS, [label]);
+    expect(box.y).toBe(442 - BADGE_LIFT - 34);
+    expect(box.x + box.width <= 750 || box.x >= 850).toBe(true);
+  });
 });
 
 describe("placeCallout: properties", () => {

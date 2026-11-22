@@ -70,12 +70,36 @@ export const badgeAnchor = (node: NodeShape["faces"]): ScreenPoint =>
   node.top.reduce((highest, p) => (p.y < highest.y ? p : highest));
 
 /** A badge of `size` standing centred over its node's anchor, moved inside `bounds`. */
-export const placeBadge = (node: NodeShape["faces"], size: Size, bounds: Rect): Rect => {
+/** How far a badge may slide sideways off something in its way, in badge widths. */
+const BADGE_SLIDES = [0, -0.6, 0.6, -1.2, 1.2] as const;
+
+/**
+ * A badge over its node: centred above the top face's back corner, or slid
+ * sideways when something is already there (an edge's label, another
+ * overlay), whichever covers least.
+ */
+export const placeBadge = (
+  node: NodeShape["faces"],
+  size: Size,
+  bounds: Rect,
+  obstacles: readonly Polygon[] = [],
+): Rect => {
   const anchor = badgeAnchor(node);
-  return clampInto(
-    { x: anchor.x - size.width / 2, y: anchor.y - BADGE_LIFT - size.height, ...size },
-    bounds,
-  );
+  const candidates = BADGE_SLIDES.map((slide) => {
+    const box = clampInto(
+      {
+        x: anchor.x - size.width / 2 + slide * size.width,
+        y: anchor.y - BADGE_LIFT - size.height,
+        ...size,
+      },
+      bounds,
+    );
+    return { box, covered: obstacles.reduce((sum, polygon) => sum + overlapArea(polygon, box), 0) };
+  });
+  const best =
+    candidates.find((c) => c.covered < TOUCHING) ??
+    candidates.reduce((a, b) => (b.covered < a.covered ? b : a));
+  return best.box;
 };
 
 const allPoints = (node: NodeShape["faces"]): ScreenPoint[] => [

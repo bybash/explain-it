@@ -1,3 +1,4 @@
+import { convexHull } from "../checks/geometry.ts";
 import type { Shape } from "../schema/checks.ts";
 import type { Config, LogoImages } from "../schema/config.ts";
 import { orThrow } from "../schema/errors.ts";
@@ -205,6 +206,9 @@ const drawScene = (
   });
 
   const occluders = shape.nodes.flatMap((n) => [n.faces.top, n.faces.left, n.faces.right]);
+  const boxes = shape.nodes.map((n) =>
+    convexHull([...n.faces.top, ...n.faces.left, ...n.faces.right]),
+  );
   const lines = stage.querySelector<SVGGElement>(".edges");
   const labels = stage.querySelector<SVGGElement>(".edge-labels");
   if (!lines || !labels) throw new Error("missing edge layers");
@@ -219,6 +223,7 @@ const drawScene = (
         category: edge.category ?? DEFAULT_CATEGORY,
       };
     }),
+    boxes,
   );
 
   const shapes = new Map(shape.nodes.map((n) => [n.id, n]));

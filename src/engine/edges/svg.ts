@@ -3,7 +3,7 @@ import { NODE_TIMING } from "../iso/tweens.ts";
 import { categoryStyle } from "../theme/kinds.ts";
 import type { State } from "../timeline.ts";
 import { edgeTarget } from "./flow.ts";
-import type { EdgeGeometry } from "./geometry.ts";
+import { type EdgeGeometry, placeLabel } from "./geometry.ts";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 
@@ -45,9 +45,16 @@ export type EdgeLayers = { readonly lines: SVGGElement; readonly labels: SVGGEle
  * the edge's category colour from the theme. A `dim` state fades it back
  * with the nodes.
  */
-export const renderEdges = (layers: EdgeLayers, edges: readonly EdgeDrawing[]): ApplyEdges => {
+export const renderEdges = (
+  layers: EdgeLayers,
+  edges: readonly EdgeDrawing[],
+  /** The boxes' outlines, which labels keep clear of. */
+  boxes: readonly (readonly ScreenPoint[])[] = [],
+): ApplyEdges => {
   layers.lines.replaceChildren();
   layers.labels.replaceChildren();
+  // Each label keeps clear of the boxes and of the labels placed before it.
+  const avoid = [...boxes];
   const posers = edges.map(({ id, geometry, label, category }) => {
     const style = categoryStyle(category);
     const g = element("g", { class: "edge", "data-id": id, style }, layers.lines);
@@ -55,7 +62,7 @@ export const renderEdges = (layers: EdgeLayers, edges: readonly EdgeDrawing[]): 
     const dashes = element("polyline", { class: "edge-dashes" }, g);
     const arrow = element("polygon", { class: "edge-arrow" }, g);
     const dot = element("circle", { class: "edge-dot", r: 8 }, g);
-    const pill = label ? labelPill(layers.labels, id, label, geometry.label, style) : undefined;
+    const pill = label ? labelPill(layers.labels, id, label, geometry, style, avoid) : undefined;
 
     return (state: State): void => {
       const s = state[edgeTarget(id)] ?? {};
@@ -94,25 +101,39 @@ const arrowHead = (geometry: EdgeGeometry, draw: number): ScreenPoint[] => {
   ];
 };
 
-/** An upright pill centred on `at`; it measures its text, so it needs a live DOM. */
+/**
+ * An upright pill on its edge's line, where it covers no box and no label
+ * already placed (see `placeLabel`), which it then joins in `avoid`. It
+ * measures its text first, so it needs a live DOM.
+ */
 const labelPill = (
   parent: Element,
   id: string,
   text: string,
-  at: ScreenPoint,
+  geometry: EdgeGeometry,
   style: string,
+  avoid: (readonly ScreenPoint[])[],
 ): SVGElement => {
   const g = element("g", { class: "edge-label", "data-id": id, opacity: 0, style }, parent);
   const rect = element("rect", {}, g);
   const label = element(
     "text",
-    { x: at.x, y: at.y, "text-anchor": "middle", "dominant-baseline": "central" },
+    { "text-anchor": "middle", "dominant-baseline": "central" },
     g,
   ) as SVGTextElement;
   label.textContent = text;
   const box = label.getBBox();
   const width = box.width + 2 * PILL_PADDING.x;
   const height = box.height + 2 * PILL_PADDING.y;
+  const at = placeLabel(geometry.points, { width, height }, avoid, geometry.label);
+  label.setAttribute("x", at.x.toFixed(2));
+  label.setAttribute("y", at.y.toFixed(2));
+  avoid.push([
+    { x: at.x - width / 2, y: at.y - height / 2 },
+    { x: at.x + width / 2, y: at.y - height / 2 },
+    { x: at.x + width / 2, y: at.y + height / 2 },
+    { x: at.x - width / 2, y: at.y + height / 2 },
+  ]);
   rect.setAttribute("x", (at.x - width / 2).toFixed(2));
   rect.setAttribute("y", (at.y - height / 2).toFixed(2));
   rect.setAttribute("width", width.toFixed(2));
