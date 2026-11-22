@@ -7,6 +7,7 @@ const report = (warnings: CheckReport["warnings"]): CheckReport => ({
   checkedAt: "2026-11-22T10:00:00.000Z",
   beats: 10,
   warnings,
+  skipped: [],
 });
 
 describe("checkLines", () => {
@@ -40,6 +41,21 @@ describe("checkLines", () => {
 
   it("says so when there is nothing to fix", () => {
     expect(checkLines(report([]), "/p/checks.json")).toEqual([
+      "no problems in 10 beats; the report is in /p/checks.json",
+    ]);
+  });
+
+  it("names the checks that did not run, and why", () => {
+    expect(
+      checkLines(
+        {
+          ...report([]),
+          skipped: [{ checks: ["overlap", "off-frame"], reason: "Chrome is not available" }],
+        },
+        "/p/checks.json",
+      ),
+    ).toEqual([
+      "not checked: overlap, off-frame (Chrome is not available)",
       "no problems in 10 beats; the report is in /p/checks.json",
     ]);
   });

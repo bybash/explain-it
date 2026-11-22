@@ -286,8 +286,8 @@ for frame capture, so what the user approves is what gets rendered.
      | normal | 0.6 s | 2 s |
      | brisk | 0.3 s | 1.5 s |
 
-     Without narration, a beat also lasts at least its caption length ÷ 15
-     characters per second.
+     A beat also lasts at least its step caption's reading time, 15
+     characters per second, spoken or not (decision 017).
   3. Actions run in order at their default length, with the spare time
      shared out after each; callouts stay until the narration ends, and
      badges until the scene ends.
@@ -371,7 +371,12 @@ floor. The title and end cards are laid out on their own and are not
 checked. Reading speed and narration fit come from the beat plan the video
 plays; loudness from the soundtrack a render would make, mixed into a
 scratch file and measured. A loudness warning is about the whole video, so
-it names no beat. `explain-it check` exits 1 when it finds problems and 2
+it names no beat. With narration-first timing a line always fits the beat
+built from it, so narration fit guards that rule. Title cards, end cards
+and scene titles hold their text long enough by design and are not
+reading-checked. A check that cannot run (no Chrome for the layout, no
+ffmpeg for loudness, no voice for narration fit and loudness) is listed in
+the report as skipped, with the reason; the others still run. `explain-it check` exits 1 when it finds problems and 2
 when it cannot check. Layout warnings do not stop a render; the layout engine keeps
 routes in sight of boxes and places edge labels and badges clear of boxes and
 of each other. Decision 016 says why.

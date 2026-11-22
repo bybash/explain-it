@@ -6,7 +6,7 @@ import type { ProjectFiles } from "../render/load.ts";
 import { inFile, readAssetLogo, readJson } from "../render/load.ts";
 import type { RenderQueue } from "../render/queue.ts";
 import type { OpenedProject } from "../schema/api.ts";
-import type { CheckReport } from "../schema/checks.ts";
+import type { CheckReport, SkippedChecks } from "../schema/checks.ts";
 import { type Config, DEFAULT_CONFIG, parseConfig } from "../schema/config.ts";
 import { formatErrors, parseWith, type Validated, type ValidationError } from "../schema/errors.ts";
 import { parseGraph } from "../schema/graph.ts";
@@ -46,11 +46,12 @@ export type ToolContext = {
   readonly renders: RenderQueue;
   /** What a render needs from this machine and cannot find (see \`missingRenderTools\`). */
   readonly missingRenderTools: () => Promise<readonly MissingTool[]>;
-  /** Runs the layout checks on a project's page and writes its `checks.json` (see `render/check.ts`). */
+  /** Runs the checks on a project, but those it is told to skip, and writes its `checks.json` (see `render/check.ts`). */
   readonly runChecks: (
     dir: string,
     project: ProjectFiles,
     lines: readonly VoiceLine[],
+    skip: readonly SkippedChecks[],
   ) => Promise<CheckReport>;
   /** Speaks the narration; Kokoro in the app, a fake in tests. */
   readonly tts: TtsProvider;

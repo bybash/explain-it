@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 // The explain-it command line. Usage:
 //   explain-it render <project> [--theme light|dark|both] [--resolution 1080p|720p]
-//   explain-it check  <project>   layout checks into <project>/checks.json; exits 1 on problems, 2 when it cannot check
+//   explain-it check  <project>   every check into <project>/checks.json; exits 1 on problems, 2 when it cannot check
 //   CACHE_DIR   the cache folder, for the voice model; ./cache by default
 import { join, resolve } from "node:path";
 import { kokoroProvider } from "../audio/kokoro.ts";
-import { checkProjectFolder } from "../render/check.ts";
+import { checkProjectFolder, skippedChecks } from "../render/check.ts";
+import { missingRenderTools } from "../render/environment.ts";
 import { loadProject } from "../render/load.ts";
 import { renderProjectFolder, withNarration } from "../render/run.ts";
 import { renderSettings } from "../render/settings.ts";
@@ -66,11 +67,11 @@ const render = async (argv: readonly string[]): Promise<void> => {
   }
 };
 
-/** Checks a project's layout, as the MCP check tool does, timed by its voice. */
 /**
- * Checks a project's layout, as the MCP check tool does, timed by its voice
- * (or by the estimate when the voice cannot be made). Exits 1 when it finds
- * problems, 2 when it cannot check at all.
+ * Runs every check on a project, as the MCP check tool does, timed by its
+ * voice (or by the estimate when the voice cannot be made), skipping those
+ * a missing program or voice stops. Exits 1 when it finds problems, 2 when
+ * it cannot check at all.
  */
 const check = async (argv: readonly string[]): Promise<void> => {
   const args = parseCheckArgs(argv);
@@ -80,26 +81,25 @@ const check = async (argv: readonly string[]): Promise<void> => {
   if (!project.ok)
     return fail([`${dir} is not a valid project:`, ...formatErrors(project.errors)], 2);
   const tts = kokoroProvider({ cacheDir: resolve(process.env.CACHE_DIR ?? "cache") });
-  const voiced = await withNarration(dir, project.value, tts).catch((error: unknown) => {
-    console.error(
-      `${error instanceof Error ? error.message : String(error)}; checking at the estimated timing`,
-    );
-    return { project: project.value };
-  });
-  const lines = "lines" in voiced ? voiced.lines : [];
+  const voiced = await withNarration(dir, project.value, tts).then(
+    (done) => ({ ...done, failed: false }),
+    (error: unknown) => {
+      const reason = error instanceof Error ? error.message : String(error);
+      console.error(`${reason}; checking at the estimated timing`);
+      return { project: project.value, lines: [], failed: true };
+    },
+  );
+  const skip = skippedChecks(await missingRenderTools(), voiced.failed);
   const report = await checkProjectFolder({
     dir,
     project: voiced.project,
-    lines,
+    lines: voiced.lines,
+    skip,
     now: new Date(),
-  }).catch((error: unknown) =>
-    fail(
-      [
-        `the layout could not be checked: ${error instanceof Error ? error.message : String(error)}`,
-      ],
-      2,
-    ),
-  );
+  }).catch((error: unknown) => {
+    const reason = error instanceof Error ? error.message : String(error);
+    return fail([`the checks could not run: ${reason}`], 2);
+  });
   for (const line of checkLines(report, join(dir, "checks.json"))) console.log(line);
   if (report.warnings.length > 0) process.exit(1);
 };

@@ -8,10 +8,6 @@ import { type Audio, encodeWav } from "./wav.ts";
 
 const run = promisify(execFile);
 
-/** SPEC, Mix: integrated loudness, and the true peak never above −1 dBTP (the limits live in the schema). */
-export const TARGET_LUFS = LOUDNESS.target;
-export const MAX_TRUE_PEAK = LOUDNESS.maxTruePeak;
-export const LOUDNESS_TOLERANCE = LOUDNESS.tolerance;
 /** loudnorm can overshoot its true-peak target slightly, so it aims a little lower. */
 const AIM_TRUE_PEAK = -1.5;
 const RANGE_LU = 11;
@@ -28,7 +24,7 @@ const MeasuredSchema = z.object({
 });
 
 const loudnorm = (extra = "") =>
-  `loudnorm=I=${TARGET_LUFS}:TP=${AIM_TRUE_PEAK}:LRA=${RANGE_LU}${extra}`;
+  `loudnorm=I=${LOUDNESS.target}:TP=${AIM_TRUE_PEAK}:LRA=${RANGE_LU}${extra}`;
 
 /** How far above its own level the mix may peak before the limiter catches it. */
 const PEAK_ABOVE_LEVEL_DB = 13;

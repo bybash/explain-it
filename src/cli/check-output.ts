@@ -2,7 +2,7 @@ import type { CheckReport, CheckWarning } from "../schema/checks.ts";
 
 /** Where a problem shows: its beat and time, or the whole video. */
 const whereIn = (w: CheckWarning): string =>
-  w.beat === undefined ? "the whole video" : `${w.scene}/${w.beat} (${(w.at ?? 0).toFixed(1)} s)`;
+  "beat" in w ? `${w.scene}/${w.beat} (${w.at.toFixed(1)} s)` : "the whole video";
 
 /**
  * What the check command prints: each problem once, with the beats it shows
@@ -14,8 +14,10 @@ export const checkLines = (report: CheckReport, file: string): string[] => {
   const beats = new Map<string, string[]>();
   for (const w of report.warnings)
     beats.set(w.message, [...(beats.get(w.message) ?? []), whereIn(w)]);
-  if (beats.size === 0) return [`no problems ${where}`];
+  const notRun = report.skipped.map((s) => `not checked: ${s.checks.join(", ")} (${s.reason})`);
+  if (beats.size === 0) return [...notRun, `no problems ${where}`];
   return [
+    ...notRun,
     ...[...beats].map(([message, at]) => `${message}: ${at.join(", ")}`),
     `${beats.size} problem${beats.size === 1 ? "" : "s"} ${where}`,
   ];

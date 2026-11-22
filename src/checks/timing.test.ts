@@ -38,29 +38,54 @@ describe("readingWarnings", () => {
     expect(readingWarnings(plan(example.value, silent))).toEqual([]);
   });
 
-  it("names a step caption on screen too briefly to read, at 15 characters a second", () => {
+  it("never flags a step caption: every beat leaves time to read it, spoken or read", () => {
+    // The crowded beat's 60 characters get their 4 s even at the brisk pace, on a short line.
     const brisk = { ...DEFAULT_CONFIG, pacing: "brisk" as const };
-    // Only the changed beat is looked at: the others are timed by an estimate here.
-    const warnings = readingWarnings(plan(crowded(), brisk, { start: 0.4 })).filter(
-      (w) => w.beat === "start",
-    );
-    expect(warnings).toEqual([
-      {
-        check: "reading-speed",
-        scene: "sign_in",
-        beat: "start",
-        at: 0,
-        message:
-          'the step caption of beat "start" needs 40 characters a second to read; 15 is the most',
-      },
-    ]);
+    expect(
+      readingWarnings(plan(crowded(), brisk, { start: 0.4 })).filter(
+        (w) => w.check === "reading-speed" && w.message.startsWith("the step caption"),
+      ),
+    ).toEqual([]);
+  });
+
+  it("passes any voice-off video, whatever its captions and lines", () => {
+    const silent = (narrationCaptions: boolean) => ({
+      ...DEFAULT_CONFIG,
+      voice: { ...DEFAULT_CONFIG.voice, enabled: false },
+      captions: { ...DEFAULT_CONFIG.captions, narration: narrationCaptions },
+    });
+    const [first, ...rest] = example.value.scenes;
+    if (!first) throw new Error("no scene");
+    for (const captionLength of [1, 7, 23, 44, 59, 60])
+      for (const sayLength of [1, 3, 17, 90])
+        for (const pacing of ["relaxed", "normal", "brisk"] as const)
+          for (const narrationCaptions of [true, false]) {
+            const [beat, ...others] = first.beats;
+            if (!beat) throw new Error("no beat");
+            const storyboard = {
+              ...example.value,
+              scenes: [
+                {
+                  ...first,
+                  beats: [
+                    { ...beat, caption: "c".repeat(captionLength), say: "s".repeat(sayLength) },
+                    ...others,
+                  ],
+                },
+                ...rest,
+              ],
+            };
+            expect(
+              readingWarnings(plan(storyboard, { ...silent(narrationCaptions), pacing })),
+            ).toEqual([]);
+          }
   });
 
   it("judges narration captions at 17 characters a second, as subtitles of speech", () => {
     // A 40-character line spoken in 2.5 s reads at 16 a second: fine for a subtitle.
     const ofStart = (lengths: { start: number }) =>
       readingWarnings(plan(example.value, DEFAULT_CONFIG, lengths)).filter(
-        (w) => w.beat === "start",
+        (w) => "beat" in w && w.beat === "start",
       );
     expect(ofStart({ start: 2.5 })).toEqual([]);
     const fast = ofStart({ start: 2 });

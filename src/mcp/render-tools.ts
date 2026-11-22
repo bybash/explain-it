@@ -1,5 +1,6 @@
 import { join } from "node:path";
 import { generateVoice, narrationLengths, VOICE_OFF_HINT, type VoiceLine } from "../audio/voice.ts";
+import { skippedChecks } from "../render/check.ts";
 import type { MissingTool } from "../render/environment.ts";
 import { loadProject, type ProjectFiles } from "../render/load.ts";
 import type { VoiceConfig } from "../schema/config.ts";
@@ -65,22 +66,24 @@ const checksReport = async (
   context: ToolContext,
   slug: string,
   project: ProjectFiles | undefined,
-  lines: readonly VoiceLine[],
+  voice: { readonly lines: readonly VoiceLine[]; readonly failed: boolean },
   missing: readonly MissingTool[],
 ) => {
   if (!project)
     return { state: "not run", reason: "the project does not load (see problems)" } as const;
-  // The layout checks run on the page, and the loudness check mixes the soundtrack.
-  if (missing.some((m) => m.tool === "chrome"))
-    return { state: "not run", reason: "Chrome is not available" } as const;
-  if (missing.some((m) => m.tool === "ffmpeg"))
-    return { state: "not run", reason: "ffmpeg is not available" } as const;
+  const skip = skippedChecks(missing, voice.failed);
   const dir = projectDir(context.projectsDir, slug);
   try {
-    const { beats, warnings } = await context.runChecks(dir, project, lines);
-    return { state: "checked", beats, warnings, report: join(dir, "checks.json") } as const;
+    const { beats, warnings, skipped } = await context.runChecks(dir, project, voice.lines, skip);
+    return {
+      state: "checked",
+      beats,
+      warnings,
+      skipped,
+      report: join(dir, "checks.json"),
+    } as const;
   } catch (error) {
-    // The page did not build or Chrome would not run: reported, so the rest of the report still arrives.
+    // The page did not build or a program failed: reported, so the rest of the report still arrives.
     return {
       state: "failed",
       error: error instanceof Error ? error.message : String(error),
@@ -126,7 +129,7 @@ export const checkTool = async (context: ToolContext, input: Args) => {
       context,
       slug,
       loaded.ok ? { ...loaded.value, narration: narrationLengths(voice?.lines ?? []) } : undefined,
-      voice?.lines ?? [],
+      { lines: voice?.lines ?? [], failed: voice?.report.state === "failed" },
       missing,
     ),
     staleBeats: opened.value.project.staleBeats,

@@ -71,7 +71,7 @@ describe.skipIf(!hasChrome)("the layout checks on the render page (Chrome)", () 
     );
     expect(caught.length).toBeGreaterThan(0);
     expect(caught[0]).toMatchObject({ check: "overlap", scene: "sign_in" });
-    expect(caught[0]?.px).toBeGreaterThan(4);
+    expect(caught[0] && "px" in caught[0] ? caught[0].px : 0).toBeGreaterThan(4);
   }, 60_000);
 });
 
@@ -86,6 +86,7 @@ describe.skipIf(!hasChrome || !hasFfmpeg)("checkProjectFolder (Chrome and ffmpeg
     const report = await checkProjectFolder({
       dir,
       project: await overlapping(),
+      lines: [],
       now: new Date("2026-11-22T10:00:00.000Z"),
     });
     const written = CheckReportSchema.parse(

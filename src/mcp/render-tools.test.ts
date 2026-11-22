@@ -68,10 +68,16 @@ beforeEach(async () => {
     renders,
     missingRenderTools: async () => missing,
     tts: { id: "fake", generate: (text, options) => tts.generate(text, options) },
-    runChecks: async (dir, project) => {
+    runChecks: async (dir, project, _lines, skip) => {
       if (failChecks) throw new Error(failChecks);
       checked.push({ dir, narration: project.narration });
-      return { version: 1, checkedAt: NOW, beats: 10, warnings: reportedWarnings };
+      return {
+        version: 1,
+        checkedAt: NOW,
+        beats: 10,
+        warnings: reportedWarnings,
+        skipped: [...skip],
+      };
     },
   });
   const [serverSide, clientSide] = InMemoryTransport.createLinkedPair();
@@ -291,7 +297,7 @@ describe("check", () => {
     expect(report.timing.narration.read).toBeGreaterThan(0);
   });
 
-  it("runs the layout checks at the voice's timing and reports what they find, by beat", async () => {
+  it("runs the checks at the voice's timing and reports what they find, by beat", async () => {
     const slug = await project();
     reportedWarnings = [
       {
@@ -308,6 +314,7 @@ describe("check", () => {
       state: "checked",
       beats: 10,
       warnings: reportedWarnings,
+      skipped: [],
       report: join(projectsDir, slug, "checks.json"),
     });
     expect(report.ready).toBe(true);
@@ -316,7 +323,7 @@ describe("check", () => {
     expect(Object.keys(checked[0]?.narration ?? {}).length).toBeGreaterThan(0);
   });
 
-  it("says why the layout was not checked", async () => {
+  it("says why the checks did not run, or which of them could not", async () => {
     const slug = await project(false);
     expect((await succeeds("check", { slug })).checks).toEqual({
       state: "not run",
@@ -328,20 +335,27 @@ describe("check", () => {
         tool: "chrome",
         message: "not found; install Google Chrome, or set CHROME_PATH to a Chromium",
       },
+      { tool: "ffmpeg", message: "not found on PATH; install ffmpeg" },
     ];
-    expect((await succeeds("check", { slug: ready })).checks).toEqual({
-      state: "not run",
-      reason: "Chrome is not available",
+    // Reading speed and narration fit need neither, so they still run.
+    expect((await succeeds("check", { slug: ready })).checks).toMatchObject({
+      state: "checked",
+      skipped: [
+        { checks: ["overlap", "off-frame"], reason: "Chrome is not available" },
+        { checks: ["loudness"], reason: "ffmpeg is not available" },
+      ],
     });
-    missing = [{ tool: "ffmpeg", message: "not found on PATH; install ffmpeg" }];
-    expect((await succeeds("check", { slug: ready })).checks).toEqual({
-      state: "not run",
-      reason: "ffmpeg is not available",
+    missing = [];
+    // A project with no lines cached yet, so the failing voice is asked.
+    const unvoiced = await project();
+    tts = fakeTts({ failWith: "the voice model did not load" }).tts;
+    expect((await succeeds("check", { slug: unvoiced })).checks).toMatchObject({
+      state: "checked",
+      skipped: [{ checks: ["narration-fit", "loudness"], reason: "the voice did not generate" }],
     });
-    expect(checked).toEqual([]);
   });
 
-  it("reports a layout run that fails, and still returns the rest", async () => {
+  it("reports checks that fail to run, and still returns the rest", async () => {
     const slug = await project();
     failChecks = "the render page is not built";
     const report = await succeeds("check", { slug });

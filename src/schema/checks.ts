@@ -67,24 +67,31 @@ export const ShapeSchema = z.discriminatedUnion("kind", [
   }),
 ]);
 
-export const CHECKS = [
-  "overlap",
-  "off-frame",
-  "reading-speed",
-  "narration-fit",
-  "loudness",
-] as const;
+/** The checks that find a problem at a beat. */
+export const BEAT_CHECKS = ["overlap", "off-frame", "reading-speed", "narration-fit"] as const;
+/** The checks that judge the whole video. */
+export const VIDEO_CHECKS = ["loudness"] as const;
+export const CHECKS = [...BEAT_CHECKS, ...VIDEO_CHECKS] as const;
 
-/** One problem the checks found, at the beat it shows in, or for the whole video (loudness). */
-export const CheckWarningSchema = z.object({
-  check: z.enum(CHECKS),
-  scene: IdSchema.optional(),
-  beat: IdSchema.optional(),
-  /** Seconds into the video where it shows. */
-  at: z.number().optional(),
-  /** For a layout problem, by how many pixels: overlap depth, line inside a box, or distance past the safe area. */
-  px: z.number().optional(),
-  message: z.string(),
+/** One problem the checks found: at the beat it shows in, or (loudness) for the whole video. */
+export const CheckWarningSchema = z.union([
+  z.strictObject({
+    check: z.enum(BEAT_CHECKS),
+    scene: IdSchema,
+    beat: IdSchema,
+    /** Seconds into the video where it shows. */
+    at: z.number(),
+    /** For a layout problem, by how many pixels: overlap depth, line inside a box, or distance past the safe area. */
+    px: z.number().optional(),
+    message: z.string(),
+  }),
+  z.strictObject({ check: z.enum(VIDEO_CHECKS), message: z.string() }),
+]);
+
+/** Checks that could not run this time, and why (a program missing, the voice failed). */
+export const SkippedChecksSchema = z.strictObject({
+  checks: z.array(z.enum(CHECKS)).min(1),
+  reason: z.string(),
 });
 
 /** The checks' report, `checks.json` in the project's folder (SPEC, Checks). */
@@ -93,11 +100,15 @@ export const CheckReportSchema = z.strictObject({
   checkedAt: z.iso.datetime(),
   beats: z.int().nonnegative(),
   warnings: z.array(CheckWarningSchema),
+  skipped: z.array(SkippedChecksSchema).default([]),
 });
 
 export type Shape = z.output<typeof ShapeSchema>;
 export type CheckWarning = z.output<typeof CheckWarningSchema>;
 export type CheckReport = z.output<typeof CheckReportSchema>;
+export type SkippedChecks = z.output<typeof SkippedChecksSchema>;
+/** A warning at a beat: everything but loudness. */
+export type BeatWarning = Extract<CheckWarning, { readonly beat: string }>;
 
 /** A beat's place in the video, as the render page reports it (`__beats`). */
 export const BeatSpanSchema = z.object({
