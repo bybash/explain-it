@@ -278,11 +278,16 @@ const drawScene = (
   };
 };
 
-/** Puts the player on the page as `__seek`, `__duration` and `__cues`, for capture. */
+/**
+ * Puts the player on the page as `__seek`, `__duration` and `__cues`, for
+ * capture, and `__captions(show)`, which hides the narration captions for
+ * the clean video (SPEC, Rendering).
+ */
 export const expose = (player: Player): void => {
   Object.assign(window, {
     __seek: player.seek,
     __duration: player.duration,
     __cues: player.cues,
+    __captions: (show: boolean) => document.body.classList.toggle("without-narration", !show),
   });
 };

@@ -1,5 +1,6 @@
-import { rm } from "node:fs/promises";
+import { mkdir, rm } from "node:fs/promises";
 import { join } from "node:path";
+import { makeSoundtrack } from "../audio/soundtrack.ts";
 import type { TtsProvider } from "../audio/tts.ts";
 import { generateVoice, narrationLengths, VOICE_OFF_HINT, type VoiceLine } from "../audio/voice.ts";
 import { formatErrors } from "../schema/errors.ts";
@@ -19,6 +20,8 @@ export type RenderFolderOptions = RenderControl & {
   readonly project: ProjectFiles;
   readonly settings: RenderSettings;
   readonly now: Date;
+  /** The spoken lines (see `withNarration`), mixed into the soundtrack; none for a silent voice. */
+  readonly lines?: readonly VoiceLine[];
 };
 
 /**
@@ -32,21 +35,35 @@ export const renderProjectFolder = async ({
   project,
   settings,
   now,
+  lines = [],
   ...control
 }: RenderFolderOptions): Promise<RenderedTheme[]> => {
   const outDir = join(dir, "out", renderStamp(now));
   try {
+    await mkdir(outDir, { recursive: true });
+    // One soundtrack for every theme; each theme's folder gets a copy (`renderProject`).
+    const soundtrack = join(outDir, "audio.wav");
+    const audio = await makeSoundtrack({ project, lines, out: soundtrack });
+    control.signal?.throwIfAborted();
     const page = await buildRenderPage();
     try {
       control.signal?.throwIfAborted();
       const server = await serveRenderPage(page.dir);
       try {
-        return await renderProject({ project, settings, outDir, pageUrl: server.url, ...control });
+        return await renderProject({
+          project,
+          settings,
+          outDir,
+          pageUrl: server.url,
+          ...control,
+          ...(audio ? { audio } : {}),
+        });
       } finally {
         await server.close();
       }
     } finally {
       await page.remove();
+      await rm(soundtrack, { force: true });
     }
   } catch (error) {
     await rm(outDir, { recursive: true, force: true });
@@ -101,6 +118,13 @@ export const renderFromFolder =
       { ...(theme ? { theme } : {}), ...(resolution ? { resolution } : {}) },
       loaded.value.config,
     );
-    const { project } = await withNarration(dir, loaded.value, tts, control.signal);
-    return renderProjectFolder({ dir, project, settings, now: now(), ...control });
+    const voiced = await withNarration(dir, loaded.value, tts, control.signal);
+    return renderProjectFolder({
+      dir,
+      project: voiced.project,
+      lines: voiced.lines,
+      settings,
+      now: now(),
+      ...control,
+    });
   };

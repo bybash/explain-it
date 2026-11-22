@@ -12,14 +12,13 @@ import type { ToolContext } from "./tools.ts";
 type Args = Readonly<Record<string, unknown>>;
 
 /**
- * What `check` cannot look at yet: the mix and the checks come with the
- * audio and checks slices (2.4 to 2.7). Saying so keeps an agent from
+ * What `check` cannot look at yet: the checks come with slices 2.5 to 2.7,
+ * loudness among them. Saying so keeps an agent from
  * reading a clean report as a passed check.
  */
 const NOT_CHECKED_YET = [
-  "voice in the video: the narration is generated but not mixed in yet; the video is silent, with captions",
   "overlap and off-frame checks: not run yet",
-  "reading speed and narration fit: not run yet",
+  "reading speed, narration fit and loudness: not run yet",
   "contact sheet: not made yet",
 ] as const;
 

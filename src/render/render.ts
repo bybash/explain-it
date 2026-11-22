@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { type Browser, chromium, type Page } from "playwright-core";
 import { beatOptions, buildBeats } from "../engine/beats/build.ts";
@@ -37,6 +37,8 @@ export type RenderOptions = RenderControl & {
   readonly pageUrl: string;
   /** How many pages capture frames at once; 4 by default (SPEC, Rendering). */
   readonly pages?: number;
+  /** The mastered soundtrack, muxed into both videos and copied beside them; none for a silent video. */
+  readonly audio?: string;
 };
 
 const PAGES = 4;
@@ -46,6 +48,7 @@ type Seekable = {
   __seek: (t: number) => void;
   __duration: number;
   __cues: SrtCue[];
+  __captions: (show: boolean) => void;
 };
 
 /**
@@ -118,16 +121,20 @@ const closeAll = async <T>(items: readonly T[], close: (item: T) => Promise<void
 const renderTheme = async (
   browsers: readonly Browser[],
   { theme, themeIndex, themes }: { theme: ThemeMode; themeIndex: number; themes: number },
-  { project, settings, outDir, pageUrl, onProgress, signal }: RenderOptions,
+  { project, settings, outDir, pageUrl, onProgress, signal, audio }: RenderOptions,
 ): Promise<RenderedTheme> => {
   const dir = join(outDir, theme);
   await mkdir(dir, { recursive: true });
   const files: RenderedTheme = {
     theme,
     video: join(dir, "video.mp4"),
+    clean: join(dir, "video-clean.mp4"),
     captions: join(dir, "captions.srt"),
     poster: join(dir, "poster.png"),
+    ...(audio ? { audio: join(dir, "audio.wav") } : {}),
   };
+  // Without narration captions the two videos are the same, so the clean one is a copy.
+  const twoVideos = project.config.captions.narration;
   const injected = { ...project, mode: theme };
   const pages = await allOrClose(
     browsers.map((browser) => openPage(browser, pageUrl, injected)),
@@ -144,26 +151,36 @@ const renderTheme = async (
     const times = frameTimes(duration);
     const resolution = settings.resolution;
     let shown = 0;
-    await pipeFrames(encodeArgs({ fps: FPS, resolution, out: files.video }), (write) =>
-      captureInOrder({
-        count: times.length,
-        workers: pages.length,
-        // Two frames a page keeps every page busy while one waits on a slower neighbour.
-        ahead: 2 * pages.length,
-        capture: (worker, i) => {
-          signal?.throwIfAborted();
-          return frameAt(pages[worker] as Page, times[i] as number);
-        },
-        write: async (frame, i) => {
-          await write(frame);
-          const tenth = Math.floor(((i + 1) / times.length) * 10);
-          if (tenth > shown) {
-            shown = tenth;
-            onProgress?.({ theme, done: i + 1, total: times.length, themeIndex, themes });
-          }
-        },
-      }),
+    const encode = (out: string) =>
+      encodeArgs({ fps: FPS, resolution, out, ...(audio ? { audio } : {}) });
+    // One seek a frame feeds both videos: the clean frame is taken with the narration hidden.
+    await pipeFrames(encode(files.video), (writeVideo) =>
+      (twoVideos ? pipeFrames : skipPipe)(encode(files.clean), (writeClean) =>
+        captureInOrder({
+          count: times.length,
+          workers: pages.length,
+          // Two frames a page keeps every page busy while one waits on a slower neighbour.
+          ahead: 2 * pages.length,
+          capture: (worker, i) => {
+            signal?.throwIfAborted();
+            return framesAt(pages[worker] as Page, times[i] as number, twoVideos);
+          },
+          write: async (frames, i) => {
+            await Promise.all([
+              writeVideo(frames.captioned),
+              frames.clean ? writeClean(frames.clean) : undefined,
+            ]);
+            const tenth = Math.floor(((i + 1) / times.length) * 10);
+            if (tenth > shown) {
+              shown = tenth;
+              onProgress?.({ theme, done: i + 1, total: times.length, themeIndex, themes });
+            }
+          },
+        }),
+      ),
     );
+    if (!twoVideos) await copyFile(files.video, files.clean);
+    if (audio && files.audio) await copyFile(audio, files.audio);
     signal?.throwIfAborted();
     const plan = buildBeats(
       project.storyboard,
@@ -203,3 +220,23 @@ const frameAt = async (page: Page, t: number): Promise<Buffer> => {
   await page.evaluate((time) => (window as unknown as Seekable).__seek(time), t);
   return page.screenshot({ type: "png" });
 };
+
+/** The frame at `t` with its narration captions, and, when asked, the same frame without them. */
+const framesAt = async (
+  page: Page,
+  t: number,
+  clean: boolean,
+): Promise<{ readonly captioned: Buffer; readonly clean?: Buffer }> => {
+  const captioned = await frameAt(page, t);
+  if (!clean) return { captioned };
+  await page.evaluate(() => (window as unknown as Seekable).__captions(false));
+  const bare = await page.screenshot({ type: "png" });
+  await page.evaluate(() => (window as unknown as Seekable).__captions(true));
+  return { captioned, clean: bare };
+};
+
+/** Stands in for `pipeFrames` when there is no second video: its writes go nowhere. */
+const skipPipe = <T>(
+  _args: readonly string[],
+  use: (write: (frame: Buffer) => Promise<void>) => Promise<T>,
+) => use(async () => {});

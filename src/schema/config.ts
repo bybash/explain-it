@@ -190,7 +190,14 @@ export const ConfigSchema = z
         enabled: z.boolean().default(true),
         mood: z.enum(MUSIC_MOODS).default("calm"),
         seed: MusicSeedSchema.default(1),
-        volumeDb: z.number().min(-60).max(0).default(-24),
+        volumeDb: z
+          .number()
+          .min(-60)
+          .max(0)
+          .default(-12)
+          .describe(
+            "The music's level against the voice while nobody speaks, in dB; it dips 6 dB more while the voice speaks.",
+          ),
       })
       .prefault({}),
     output: z

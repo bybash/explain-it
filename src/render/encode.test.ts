@@ -21,6 +21,22 @@ describe("encodeArgs", () => {
     expect(args.at(-1)).toBe("/tmp/out/video.mp4");
   });
 
+  it("adds the soundtrack as AAC at 192 kbps when there is one, and no audio when not", () => {
+    expect(args).not.toContain("-c:a");
+    const voiced = encodeArgs({
+      fps: 30,
+      resolution: "1080p",
+      out: "v.mp4",
+      audio: "/tmp/audio.wav",
+    });
+    const inputs = voiced.flatMap((arg, i) => (arg === "-i" ? [voiced[i + 1]] : []));
+    expect(inputs).toEqual(["-", "/tmp/audio.wav"]);
+    expect(voiced.join(" ")).toContain("-map 0:v -map 1:a");
+    expect(argAfter(voiced, "-c:a")).toBe("aac");
+    expect(argAfter(voiced, "-b:a")).toBe("192k");
+    expect(voiced.at(-1)).toBe("v.mp4");
+  });
+
   it("keeps 1080p frames as they are, and scales them down for 720p", () => {
     expect(args).not.toContain("-vf");
     const small = encodeArgs({ fps: 30, resolution: "720p", out: "v.mp4" });
