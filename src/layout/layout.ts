@@ -139,6 +139,7 @@ export const layoutGraph = async (
         graph.nodes.map((node) => footprint(node.id)),
       ),
       graph.nodes.map((node) => ({ ...footprint(node.id), h: KIND_SIZES[node.kind].h })),
+      GRID,
     );
   }
 

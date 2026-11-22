@@ -235,7 +235,11 @@ const crossesBox = (run: readonly Point[], boxes: readonly Standing[]): boolean 
  * last runs end on their boxes and stay. The most hidden run moves first,
  * which often brings its neighbours into sight with it.
  */
-export const inSight = (route: readonly Point[], boxes: readonly Standing[]): Point[] => {
+export const inSight = (
+  route: readonly Point[],
+  boxes: readonly Standing[],
+  grid: number,
+): Point[] => {
   let points = [...route];
   for (let pass = 0; pass < points.length; pass++) {
     let worst = { index: -1, hidden: HIDDEN_TOLERANCE, box: undefined as Standing | undefined };
@@ -252,7 +256,18 @@ export const inSight = (route: readonly Point[], boxes: readonly Standing[]): Po
     const b = points[index + 1] as Point;
     const axis = a.y === b.y ? "y" : "x";
     const size = axis === "y" ? box.d : box.w;
-    const options = [box[axis] - box.h - SIGHT_MARGIN, box[axis] + size + SIGHT_MARGIN]
+    // Past the box, or onto the line of a parallel run beside it, which then joins it.
+    const before = points[index - 1]?.[axis];
+    const after = points[index + 2]?.[axis];
+    const joins = [before, after].filter((at): at is number => at !== undefined);
+    // A move must not leave a step shorter than the grid to the runs either side.
+    const stepsClean = (at: number) =>
+      joins.every((line) => {
+        const step = Math.abs(line - at);
+        return step < 1e-6 || step >= grid - 1e-6;
+      });
+    const options = [box[axis] - box.h - SIGHT_MARGIN, box[axis] + size + SIGHT_MARGIN, ...joins]
+      .filter((at) => stepsClean(at) && Math.abs(at - a[axis]) > 1e-6)
       .map((at) => ({
         at,
         run: [
@@ -268,7 +283,23 @@ export const inSight = (route: readonly Point[], boxes: readonly Standing[]): Po
       i === index || i === index + 1 ? { ...p, [axis]: round(chosen.at) } : p,
     );
   }
-  return points;
+  return straightened(points);
+};
+
+/**
+ * A route without repeated points or bends that go straight on: a run moved
+ * into sight can land on its neighbour's line, which makes both.
+ */
+const straightened = (route: readonly Point[]): Point[] => {
+  const distinct = route.filter((p, i) => {
+    const before = route[i - 1];
+    return !before || before.x !== p.x || before.y !== p.y;
+  });
+  return distinct.filter((b, i) => {
+    const a = distinct[i - 1];
+    const c = distinct[i + 1];
+    return !a || !c || !((a.x === b.x && b.x === c.x) || (a.y === b.y && b.y === c.y));
+  });
 };
 
 const round = (n: number) => Math.round(n * 1e6) / 1e6;
