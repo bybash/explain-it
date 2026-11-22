@@ -1,4 +1,5 @@
-import type { CheckWarning, Shape } from "../schema/checks.ts";
+import { safeArea } from "../engine/overlays/regions.ts";
+import { type CheckWarning, OVERLAP_PX, type Shape } from "../schema/checks.ts";
 import {
   convexHull,
   insideLength,
@@ -8,20 +9,22 @@ import {
   type Rect,
 } from "./geometry.ts";
 
-/** Two shapes may overlap by this much before it counts (SPEC, Checks). */
-export const OVERLAP_PX = 4;
-const STAGE = { width: 1920, height: 1080 };
-/** SPEC, Checks: the safe area is the stage less a 5 % margin on every side. */
-const MARGIN = 0.05;
-export const SAFE_AREA: Rect = {
-  x: STAGE.width * MARGIN,
-  y: STAGE.height * MARGIN,
-  width: STAGE.width * (1 - 2 * MARGIN),
-  height: STAGE.height * (1 - 2 * MARGIN),
-};
+/** SPEC, Checks: the stage less its margin, which nothing should leave. */
+export const SAFE_AREA: Rect = safeArea();
 
 type Where = Pick<CheckWarning, "scene" | "beat" | "at">;
 type Of<K extends Shape["kind"]> = Extract<Shape, { kind: K }>;
+
+/** How an overlay is named in a message, by its role. */
+const OVERLAY_NAMES: Readonly<Record<Of<"overlay">["role"], (o: Of<"overlay">) => string>> = {
+  title: () => "the scene title",
+  step: () => "the step caption",
+  narration: () => "the narration caption",
+  callout: (o) => `callout on "${o.node}"`,
+  badge: (o) => `badge on "${o.node}"`,
+  "edge-label": (o) => `the label of edge "${o.edge}"`,
+  logo: () => "the logo",
+};
 
 /** What a shape is called in a message. */
 const nameOf = (shape: Shape): string => {
@@ -35,12 +38,7 @@ const nameOf = (shape: Shape): string => {
     case "edge":
       return `edge "${shape.id}"`;
     case "overlay":
-      if (shape.role === "callout" || shape.role === "badge")
-        return `${shape.role} on "${shape.node}"`;
-      if (shape.role === "edge-label") return `the label of edge "${shape.edge}"`;
-      return shape.role === "logo"
-        ? "the logo"
-        : `the ${shape.role === "title" ? "scene title" : `${shape.role} caption`}`;
+      return OVERLAY_NAMES[shape.role](shape);
   }
 };
 
@@ -60,7 +58,7 @@ const round = (px: number) => Math.round(px * 10) / 10;
 
 /**
  * The layout problems at one moment of the video (SPEC, Checks), from the
- * shapes drawn then. Overlaps of more than 4 px between:
+ * shapes drawn then. Overlaps deeper than `OVERLAP_PX` between:
  * - two nodes;
  * - a node and a zone it is not in, as a manual override can leave it;
  * - a zone's label and a node or an overlay that covers it;

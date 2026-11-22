@@ -2,7 +2,12 @@ import { rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
 import { layoutWarnings } from "../checks/layout.ts";
-import { type CheckReport, type CheckWarning, ShapeSchema } from "../schema/checks.ts";
+import {
+  BeatSpanSchema,
+  type CheckReport,
+  type CheckWarning,
+  ShapeSchema,
+} from "../schema/checks.ts";
 import { formatErrors, parseWith } from "../schema/errors.ts";
 import type { ProjectFiles } from "./load.ts";
 import { buildRenderPage, serveRenderPage } from "./page.ts";
@@ -11,7 +16,7 @@ import { launchBrowser, openPage } from "./render.ts";
 /** What the render page exposes for the checks (see `expose` in the engine's player). */
 type Checkable = {
   __seek: (t: number) => void;
-  __beats: { id: string; scene: string; start: number; end: number }[];
+  __beats: unknown;
   __shapes: () => unknown;
 };
 
@@ -33,7 +38,15 @@ export const checkLayout = async ({
   const browser = await launchBrowser();
   try {
     const page = await openPage(browser, pageUrl, { ...project, mode: "light" });
-    const beats = await page.evaluate(() => (window as unknown as Checkable).__beats);
+    const reported = parseWith(
+      z.array(BeatSpanSchema),
+      await page.evaluate(() => (window as unknown as Checkable).__beats),
+    );
+    if (!reported.ok)
+      throw new Error(
+        `the render page reported beats it should not:\n${formatErrors(reported.errors).join("\n")}`,
+      );
+    const beats = reported.value;
     const warnings: CheckWarning[] = [];
     for (const beat of beats) {
       const at = Math.round(((beat.start + beat.end) / 2) * 1000) / 1000;

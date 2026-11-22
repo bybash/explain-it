@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // The explain-it command line. Usage:
 //   explain-it render <project> [--theme light|dark|both] [--resolution 1080p|720p]
-//   explain-it check  <project>   layout checks into <project>/checks.json; exits 1 on problems
+//   explain-it check  <project>   layout checks into <project>/checks.json; exits 1 on problems, 2 when it cannot check
 //   CACHE_DIR   the cache folder, for the voice model; ./cache by default
 import { join, resolve } from "node:path";
 import { kokoroProvider } from "../audio/kokoro.ts";
@@ -11,7 +11,8 @@ import { renderProjectFolder, withNarration } from "../render/run.ts";
 import { renderSettings } from "../render/settings.ts";
 import { formatErrors } from "../schema/errors.ts";
 import { parseRenderArgs } from "./args.ts";
-import { checkLines, parseCheckArgs } from "./check-output.ts";
+import { parseCheckArgs } from "./check-args.ts";
+import { checkLines } from "./check-output.ts";
 
 const USAGE = `usage:
   explain-it render <project> [--theme light|dark|both] [--resolution 1080p|720p]
@@ -66,18 +67,34 @@ const render = async (argv: readonly string[]): Promise<void> => {
 };
 
 /** Checks a project's layout, as the MCP check tool does, timed by its voice. */
+/**
+ * Checks a project's layout, as the MCP check tool does, timed by its voice
+ * (or by the estimate when the voice cannot be made). Exits 1 when it finds
+ * problems, 2 when it cannot check at all.
+ */
 const check = async (argv: readonly string[]): Promise<void> => {
   const args = parseCheckArgs(argv);
   if (!args.ok) return fail([...formatErrors(args.errors), USAGE], 2);
   const dir = resolve(args.value.project);
   const project = await loadProject(dir);
   if (!project.ok)
-    return fail([`${dir} is not a valid project:`, ...formatErrors(project.errors)], 1);
+    return fail([`${dir} is not a valid project:`, ...formatErrors(project.errors)], 2);
   const tts = kokoroProvider({ cacheDir: resolve(process.env.CACHE_DIR ?? "cache") });
-  const voiced = await withNarration(dir, project.value, tts).catch((error: unknown) =>
-    fail([error instanceof Error ? error.message : String(error)], 1),
+  const voiced = await withNarration(dir, project.value, tts).catch((error: unknown) => {
+    console.error(
+      `${error instanceof Error ? error.message : String(error)}; checking at the estimated timing`,
+    );
+    return { project: project.value };
+  });
+  const report = await checkProjectFolder({ dir, project: voiced.project, now: new Date() }).catch(
+    (error: unknown) =>
+      fail(
+        [
+          `the layout could not be checked: ${error instanceof Error ? error.message : String(error)}`,
+        ],
+        2,
+      ),
   );
-  const report = await checkProjectFolder({ dir, project: voiced.project, now: new Date() });
   for (const line of checkLines(report, join(dir, "checks.json"))) console.log(line);
   if (report.warnings.length > 0) process.exit(1);
 };

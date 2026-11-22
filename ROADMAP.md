@@ -182,13 +182,12 @@ that finishes it.
 
 ### For 5.6 (layout repair), from 2.5
 
-- The checks find what the layout engine gets wrong. On the example and the
-  4.4 walkthrough project: edge labels covering the boxes at their ends on
-  short edges, two edge labels on top of each other, and an edge routed
-  under a box it does not connect (`exchange` under `sessions`). The layout
-  engine should place edge labels clear of boxes and route edges around
-  them; 5.6 sends what it cannot fix to the LLM. `explain-it check
-  examples/oauth-login` lists them.
+- The layout engine now keeps routes in sight of boxes and places edge
+  labels and badges clear of boxes and of each other; the example passes
+  its checks. What it cannot fix stays a warning in `checks.json`, which
+  5.6 sends to the LLM. On a crowded line a label may sit a few label
+  heights off its line (the example's "save session").
+- Not checked yet: the title and end cards, and edges against zone labels.
 
 ### For 3.9 (render gate), from 4.3
 

@@ -1,6 +1,13 @@
 import { z } from "zod";
 import { IdSchema } from "./common.ts";
 
+/** The stage, in pixels: every frame is drawn at this size and scaled down for 720p. */
+export const STAGE = { width: 1920, height: 1080 } as const;
+/** SPEC, Checks: the safe area's margin, as a share of each side of the frame. */
+export const SAFE_MARGIN = 0.05;
+/** SPEC, Checks: two shapes may overlap by this much (how far they must move apart) before it counts. */
+export const OVERLAP_PX = 4;
+
 /** A point on the stage, in pixels (1920 × 1080). */
 export const PointSchema = z.object({ x: z.number(), y: z.number() });
 const Polygon = z.array(PointSchema).min(2);
@@ -74,3 +81,11 @@ export const CheckReportSchema = z.strictObject({
 export type Shape = z.output<typeof ShapeSchema>;
 export type CheckWarning = z.output<typeof CheckWarningSchema>;
 export type CheckReport = z.output<typeof CheckReportSchema>;
+
+/** A beat's place in the video, as the render page reports it (`__beats`). */
+export const BeatSpanSchema = z.object({
+  id: IdSchema,
+  scene: IdSchema,
+  start: z.number(),
+  end: z.number(),
+});

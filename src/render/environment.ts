@@ -26,11 +26,9 @@ export const missingRenderTools = async (): Promise<MissingTool[]> => {
       : [
           {
             tool: "chrome" as const,
-            message: "chrome: not found; install Google Chrome, or set CHROME_PATH to a Chromium",
+            message: "not found; install Google Chrome, or set CHROME_PATH to a Chromium",
           },
         ]),
-    ...(ffmpeg
-      ? []
-      : [{ tool: "ffmpeg" as const, message: "ffmpeg: not found on PATH; install ffmpeg" }]),
+    ...(ffmpeg ? [] : [{ tool: "ffmpeg" as const, message: "not found on PATH; install ffmpeg" }]),
   ];
 };

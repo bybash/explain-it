@@ -75,8 +75,16 @@ const layoutReport = async (
   if (missing.some((m) => m.tool === "chrome"))
     return { state: "not run", reason: "Chrome is not available" } as const;
   const dir = projectDir(context.projectsDir, slug);
-  const { beats, warnings } = await context.runChecks(dir, project);
-  return { state: "checked", beats, warnings, report: join(dir, "checks.json") } as const;
+  try {
+    const { beats, warnings } = await context.runChecks(dir, project);
+    return { state: "checked", beats, warnings, report: join(dir, "checks.json") } as const;
+  } catch (error) {
+    // The page did not build or Chrome would not run: reported, so the rest of the report still arrives.
+    return {
+      state: "failed",
+      error: error instanceof Error ? error.message : String(error),
+    } as const;
+  }
 };
 
 const noProject = (slug: string) => fail([{ path: "slug", message: `no project "${slug}"` }]);
@@ -104,7 +112,7 @@ export const checkTool = async (context: ToolContext, input: Args) => {
   // A render generates the voice while it is on, so a voice that fails stops it too.
   const problems = [
     ...(loaded.ok ? [] : formatErrors(loaded.errors)),
-    ...missing.map((m) => m.message),
+    ...missing.map((m) => `${m.tool}: ${m.message}`),
     ...(voice?.report.state === "failed"
       ? [`voice: ${voice.report.error}. ${VOICE_OFF_HINT}`]
       : []),

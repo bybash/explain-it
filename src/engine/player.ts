@@ -1,5 +1,6 @@
 import { convexHull } from "../checks/geometry.ts";
 import type { Shape } from "../schema/checks.ts";
+import { STAGE } from "../schema/checks.ts";
 import type { Config, LogoImages } from "../schema/config.ts";
 import { orThrow } from "../schema/errors.ts";
 import type { Graph } from "../schema/graph.ts";
@@ -33,7 +34,7 @@ import { buildScene, type Scene } from "./iso/scene.ts";
 import { renderScene } from "./iso/svg.ts";
 import { nodeTarget, zoneTarget } from "./iso/tweens.ts";
 import { type OverlayDrawing, renderOverlays } from "./overlays/html.ts";
-import { STAGE, type StageRegions, stageRegions } from "./overlays/regions.ts";
+import { type StageRegions, stageRegions } from "./overlays/regions.ts";
 import { drawnShapes } from "./shapes.ts";
 import { applyTheme, loadFont } from "./theme/apply.ts";
 import { fontFor } from "./theme/fonts.ts";

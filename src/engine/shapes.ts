@@ -63,7 +63,7 @@ const visible = <T extends Element>(root: ParentNode, selector: string): T[] =>
  */
 export const drawnShapes = (frame: ParentNode, graph: Graph): Shape[] => {
   const zoneOf = new Map(graph.nodes.map((n) => [n.id, n.zone]));
-  const ends = new Map(graph.edges.map((e) => [e.id, e]));
+  const edgeEnds = new Map(graph.edges.map((e) => [e.id, e]));
   const shapes: Shape[] = [];
   for (const node of visible<SVGGElement>(frame, ".node[data-id]")) {
     const id = node.dataset.id ?? "";
@@ -82,9 +82,15 @@ export const drawnShapes = (frame: ParentNode, graph: Graph): Shape[] => {
   for (const edge of visible<SVGGElement>(frame, ".edge[data-id]")) {
     const id = edgeId(edge);
     const line = edge.querySelector<SVGPolylineElement>(".edge-line");
-    const ends_ = ends.get(id);
-    if (line && ends_)
-      shapes.push({ kind: "edge", id, from: ends_.from, to: ends_.to, points: screenPoints(line) });
+    const endpoints = edgeEnds.get(id);
+    if (line && endpoints)
+      shapes.push({
+        kind: "edge",
+        id,
+        from: endpoints.from,
+        to: endpoints.to,
+        points: screenPoints(line),
+      });
   }
   for (const label of visible<SVGGElement>(frame, ".edge-label[data-id]"))
     shapes.push({

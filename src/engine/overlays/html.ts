@@ -1,9 +1,10 @@
+import { STAGE } from "../../schema/checks.ts";
 import type { BADGE_TONES } from "../../schema/storyboard.ts";
 import type { NodeShape, Polygon } from "../iso/scene.ts";
 import { categoryStyle } from "../theme/kinds.ts";
 import type { State } from "../timeline.ts";
 import { type CalloutPlacement, placeBadge, placeCallout } from "./place.ts";
-import { LINE_HEIGHT, NARRATION_LINES, type Rect, STAGE, type StageRegions } from "./regions.ts";
+import { LINE_HEIGHT, NARRATION_LINES, type Rect, type StageRegions } from "./regions.ts";
 import { overlayTarget } from "./tweens.ts";
 
 /** When an overlay is on screen, in seconds. */

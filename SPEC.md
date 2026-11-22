@@ -365,12 +365,17 @@ and label, every edge as drawn so far, and every overlay (scene title,
 captions, callouts, badges, edge labels, the logo). The overlap check counts
 two nodes, a node on a zone it is not in, a zone's label under a node or an
 overlay, an edge through a node it does not connect, an overlay on a node
-(but not a callout or badge on its own node), and two overlays. Layout
-warnings do not stop a render. Decision 016 says why.
+(but not a callout or badge on its own node), and two overlays. An edge
+under a box counts as running through it: the box hides that stretch of
+floor. The title and end cards are laid out on their own and are not
+checked. `explain-it check` exits 1 when it finds problems and 2 when it
+cannot check. Layout warnings do not stop a render; the layout engine keeps
+routes in sight of boxes and places edge labels and badges clear of boxes and
+of each other. Decision 016 says why.
 
 | Check | Measured | Warns when |
 |---|---|---|
-| Overlap | Projected node-top polygons and overlay boxes, at each beat's midpoint | Two elements overlap by more than 4 px |
+| Overlap | Projected node-top polygons and overlay boxes, at each beat's midpoint | Two elements overlap by more than 4 px (they would have to move more than 4 px apart; an edge runs more than 4 px inside a box) |
 | Off frame | The same shapes | Anything leaves the 1920×1080 safe area (5% margin) |
 | Reading speed | Caption characters ÷ seconds on screen | Above 15 characters per second |
 | Narration fit | Voice length against beat length | A line would need speeding up by more than 1.05× |

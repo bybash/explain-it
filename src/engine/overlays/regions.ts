@@ -1,3 +1,4 @@
+import { SAFE_MARGIN, STAGE } from "../../schema/checks.ts";
 import type { Config, Logo } from "../../schema/config.ts";
 
 /** An axis-aligned box in stage pixels. */
@@ -22,10 +23,6 @@ export type StageRegions = {
   /** Font sizes in pixels, which the bands were measured for. */
   readonly fonts: { readonly title: number; readonly step: number; readonly narration: number };
 };
-
-export const STAGE = { width: 1920, height: 1080 } as const;
-/** The safe area's margin, as a share of each side of the frame (SPEC, Checks). */
-const SAFE_MARGIN = 0.05;
 
 type CaptionSize = Config["captions"]["size"];
 
@@ -52,7 +49,7 @@ export const LOGO_SIZE = { width: 200, height: 64 } as const;
 /** The logo alone as the closing card is fitted inside this box, in the middle (SPEC, Logo). */
 export const MIDDLE_LOGO_SIZE = { width: 480, height: 160 } as const;
 
-const safeArea = (): Rect => {
+export const safeArea = (): Rect => {
   const mx = STAGE.width * SAFE_MARGIN;
   const my = STAGE.height * SAFE_MARGIN;
   return { x: mx, y: my, width: STAGE.width - 2 * mx, height: STAGE.height - 2 * my };

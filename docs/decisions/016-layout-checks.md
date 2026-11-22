@@ -32,9 +32,28 @@ shown a problem no rule named: a zone's label hidden behind a node.
   edge, just outside it; a zone's boxes stand on its platform, so they
   cannot reach it there. The checks confirm it on the example and the 4.4
   project.
+- **The layout fixes what the checks find.** The example has to pass
+  (the slice's done-when), and it did not:
+  - routes passed out of sight behind boxes. A box of height h hides its
+    footprint swept back by h, so after ELK a route's runs that cross
+    that floor move back past it, or in front of the box (`inSight` in
+    `src/layout/routes.ts`). ELK's own spacing options did not reach the
+    nodes inside a zone, so this is done after it;
+  - edge labels covered the boxes at their ends, and each other. A label
+    is placed once measured, along its line or a few label heights
+    beside it, where it covers the least of every box and the labels
+    placed before it (`placeLabel`). On a crowded line it may sit a
+    little off its line, as the example's "save session" does;
+  - badges now slide sideways off a label in their way, as callouts did.
+
+  The example and the 4.4 walkthrough project both pass.
+- **Not checked:** the title and end cards (laid out on their own, with
+  their own tests), and an edge against a zone's label (the example's
+  `exchange` line crosses "Your backend" faintly).
 - **A report, not a gate.** `checks.json` (`CheckReportSchema`) holds every
   warning with its scene, beat, time, size and a sentence naming both
-  shapes. `explain-it check` prints them and exits 1 when there are any;
+  shapes. `explain-it check` prints each problem once with the beats it
+  shows in, and exits 1 when there are any and 2 when it cannot check;
   the MCP `check` tool returns them under `layout`. Layout warnings do not
   stop a render: the layout engine, and in 5.6 the LLM, fix them.
 - **Missing tools are explicit.** `missingRenderTools` names each tool, so

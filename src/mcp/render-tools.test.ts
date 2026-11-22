@@ -30,6 +30,8 @@ let tts: TtsProvider;
 /** What the layout checks find, and the projects they were asked about. */
 let layoutWarnings: CheckReport["warnings"];
 let checked: { dir: string; narration: unknown }[];
+/** When set, the layout run fails with this message. */
+let failChecks: string | undefined;
 /** Renders wait on this; a test that needs a job to stay running holds it shut. */
 let gate: Promise<void> = Promise.resolve();
 beforeEach(async () => {
@@ -40,6 +42,7 @@ beforeEach(async () => {
   tts = fakeTts().tts;
   layoutWarnings = [];
   checked = [];
+  failChecks = undefined;
   // A renderer that finishes at once, writing nothing: the tools are under test, not the render.
   const renders = new RenderQueue({
     now: () => new Date(NOW),
@@ -66,6 +69,7 @@ beforeEach(async () => {
     missingRenderTools: async () => missing,
     tts: { id: "fake", generate: (text, options) => tts.generate(text, options) },
     runChecks: async (dir, project) => {
+      if (failChecks) throw new Error(failChecks);
       checked.push({ dir, narration: project.narration });
       return { version: 1, checkedAt: NOW, beats: 10, warnings: layoutWarnings };
     },
@@ -200,7 +204,7 @@ describe("check", () => {
       problems: ["storyboard.json: missing"],
       timing: null,
     });
-    missing = [{ tool: "ffmpeg", message: "ffmpeg: not found on PATH; install ffmpeg" }];
+    missing = [{ tool: "ffmpeg", message: "not found on PATH; install ffmpeg" }];
     expect((await succeeds("check", { slug })).problems).toEqual([
       "storyboard.json: missing",
       "ffmpeg: not found on PATH; install ffmpeg",
@@ -322,7 +326,7 @@ describe("check", () => {
     missing = [
       {
         tool: "chrome",
-        message: "chrome: not found; install Google Chrome, or set CHROME_PATH to a Chromium",
+        message: "not found; install Google Chrome, or set CHROME_PATH to a Chromium",
       },
     ];
     expect((await succeeds("check", { slug: ready })).layout).toEqual({
@@ -330,5 +334,13 @@ describe("check", () => {
       reason: "Chrome is not available",
     });
     expect(checked).toEqual([]);
+  });
+
+  it("reports a layout run that fails, and still returns the rest", async () => {
+    const slug = await project();
+    failChecks = "the render page is not built";
+    const report = await succeeds("check", { slug });
+    expect(report.layout).toEqual({ state: "failed", error: "the render page is not built" });
+    expect(report.voice.state).toBe("ready");
   });
 });
