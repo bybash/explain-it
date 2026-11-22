@@ -236,7 +236,7 @@
         },
         "volumeDb": {
           "default": -12,
-          "description": "The music's level against the voice while nobody speaks, in dB; it dips 6 dB more while the voice speaks.",
+          "description": "The music's level against the voice while nobody speaks, in dB; it dips 6 dB more while the voice speaks. Without a voice the music is the whole mix, brought to the target loudness, so this has no effect.",
           "type": "number",
           "minimum": -60,
           "maximum": 0

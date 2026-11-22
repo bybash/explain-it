@@ -3,8 +3,15 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { masterAudio, measureLoudness } from "./master.ts";
-import { MIX_RATE, mixAudio } from "./mix.ts";
+import { AUDIO_RATE } from "./level.ts";
+import {
+  LOUDNESS_TOLERANCE,
+  MAX_TRUE_PEAK,
+  masterAudio,
+  measureLoudness,
+  TARGET_LUFS,
+} from "./master.ts";
+import { mixAudio } from "./mix.ts";
 import { musicPlan, renderMusic } from "./music.ts";
 import type { Audio } from "./wav.ts";
 
@@ -52,10 +59,32 @@ describe.skipIf(!hasFfmpeg)("masterAudio (ffmpeg)", () => {
       const out = join(dir, `${name.replaceAll(" ", "-")}.wav`);
       await masterAudio(mix, out);
       const loudness = await measureLoudness(out);
-      expect(loudness.integrated).toBeGreaterThanOrEqual(-17);
-      expect(loudness.integrated).toBeLessThanOrEqual(-15);
-      expect(loudness.truePeak).toBeLessThanOrEqual(-1);
+      expect(Math.abs(loudness.integrated - TARGET_LUFS)).toBeLessThanOrEqual(LOUDNESS_TOLERANCE);
+      expect(loudness.truePeak).toBeLessThanOrEqual(MAX_TRUE_PEAK);
       expect(loudness.seconds).toBeCloseTo(seconds, 1);
-      expect(loudness.sampleRate).toBe(MIX_RATE);
+      expect(loudness.sampleRate).toBe(AUDIO_RATE);
     }, 60_000);
+
+  it("masters music alone at any volume the config allows", async () => {
+    for (const volumeDb of [-24, -60]) {
+      const mix = mixAudio({
+        seconds: 10,
+        lines: [],
+        music: renderMusic(musicPlan({ mood: "calm", seed: 1, seconds: 10 })),
+        volumeDb,
+      });
+      if (!mix) throw new Error("no mix");
+      const out = join(dir, `music-${-volumeDb}.wav`);
+      await masterAudio(mix, out);
+      expect((await measureLoudness(out)).integrated).toBeCloseTo(TARGET_LUFS, 0);
+    }
+  }, 60_000);
+
+  it("stops when the render is cancelled", async () => {
+    const mix = mixAudio({ seconds: 5, lines, volumeDb: -12 });
+    if (!mix) throw new Error("no mix");
+    const controller = new AbortController();
+    controller.abort(new Error("cancelled"));
+    await expect(masterAudio(mix, join(dir, "cancelled.wav"), controller.signal)).rejects.toThrow();
+  });
 });

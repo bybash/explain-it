@@ -340,7 +340,11 @@ for frame capture, so what the user approves is what gets rendered.
 - **Mix.** Each voice line starts at its beat's narration start, and the
   voice is levelled to −18 dBFS RMS while it speaks. The music sits
   `music.volumeDb` (−12 by default) under the voice while nobody speaks,
-  and dips 6 dB further while the voice speaks, eased over 0.35 s. The mix
+  and dips 6 dB further while the voice speaks: it starts to dip about
+  0.17 s before a line and is fully down 0.05 s before it (the prototype's
+  envelope). Without a voice the music is the whole mix, so `volumeDb` has
+  no effect. Kokoro's 24 kHz lines are resampled to 48 kHz by windowed sinc.
+  The mix
   is normalised to −16 LUFS integrated with a true peak at or below −1 dBTP
   (its spikes limited, then ffmpeg's loudnorm in two passes), written as
   `audio.wav` (16-bit, 48 kHz),

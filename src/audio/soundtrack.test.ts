@@ -41,7 +41,7 @@ describe("linePlacements", () => {
       files.graph,
       beatOptions(files.config, files.narration),
     );
-    const placed = linePlacements(files, lines);
+    const placed = linePlacements(plan, lines);
     expect(placed.map((p) => p.file)).toEqual(lines.map((l) => l.file));
     for (const [i, line] of lines.entries()) {
       const beat = plan.beats.find((b) => b.id === line.beat);

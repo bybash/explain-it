@@ -43,7 +43,12 @@ export const renderProjectFolder = async ({
     await mkdir(outDir, { recursive: true });
     // One soundtrack for every theme; each theme's folder gets a copy (`renderProject`).
     const soundtrack = join(outDir, "audio.wav");
-    const audio = await makeSoundtrack({ project, lines, out: soundtrack });
+    const audio = await makeSoundtrack({
+      project,
+      lines,
+      out: soundtrack,
+      ...(control.signal ? { signal: control.signal } : {}),
+    });
     control.signal?.throwIfAborted();
     const page = await buildRenderPage();
     try {

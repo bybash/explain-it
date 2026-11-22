@@ -1,10 +1,9 @@
 import type { MusicMood } from "../schema/config.ts";
+import { AUDIO_RATE } from "./level.ts";
 import { type Instrument, MOODS } from "./music-moods.ts";
 import { seededRandom } from "./random.ts";
 import type { Audio } from "./wav.ts";
 
-/** Music is made at 48 kHz, the rate the mix and the video use. */
-export const MUSIC_RATE = 48_000;
 /** Every mood is brought to this loudness (RMS, dBFS); the config's volume is applied in the mix. */
 export const MUSIC_RMS_DB = -22;
 /** Peaks never go above this (dBFS), so the mix has headroom. */
@@ -153,7 +152,7 @@ const LOWPASS_TAPS = 29;
  */
 const addPad = (out: Float32Array, note: MusicNote, from: number, to: number) => {
   const f = hz(note.midi);
-  const start = from / MUSIC_RATE - note.at;
+  const start = from / AUDIO_RATE - note.at;
   const partials = PAD_DETUNES.flatMap((detune, k) => {
     const phase = note.phase + (k * TAU) / PAD_DETUNES.length;
     return [
@@ -172,8 +171,8 @@ const addPad = (out: Float32Array, note: MusicNote, from: number, to: number) =>
     const angle = TAU * partial.hz * start + partial.phase;
     re[k] = Math.cos(angle);
     im[k] = Math.sin(angle);
-    stepRe[k] = Math.cos((TAU * partial.hz) / MUSIC_RATE);
-    stepIm[k] = Math.sin((TAU * partial.hz) / MUSIC_RATE);
+    stepRe[k] = Math.cos((TAU * partial.hz) / AUDIO_RATE);
+    stepIm[k] = Math.sin((TAU * partial.hz) / AUDIO_RATE);
   }
   const amplitude = partials.map((p) => p.amplitude);
   const swellAt = count - 1;
@@ -188,7 +187,7 @@ const addPad = (out: Float32Array, note: MusicNote, from: number, to: number) =>
     }
     // The swell phasor started at a quarter turn, so its imaginary part is cos(2πt/L).
     const swelling = (1 - (im[swellAt] ?? 1)) / 2;
-    const t = i / MUSIC_RATE - note.at;
+    const t = i / AUDIO_RATE - note.at;
     const release = Math.min(1, (note.length - t) / RELEASE);
     out[i] = (out[i] ?? 0) + note.gain * release * swelling * sum;
   }
@@ -201,11 +200,11 @@ const addPad = (out: Float32Array, note: MusicNote, from: number, to: number) =>
  * `master: false` gives the bare notes, to check an instrument on its own.
  */
 export const renderMusic = (plan: MusicPlan, { master = true } = {}): Audio => {
-  const n = Math.round(plan.seconds * MUSIC_RATE);
+  const n = Math.round(plan.seconds * AUDIO_RATE);
   const out = new Float32Array(n);
   for (const note of plan.notes) {
-    const from = Math.max(0, Math.ceil(note.at * MUSIC_RATE));
-    const to = Math.min(n, Math.floor((note.at + note.length) * MUSIC_RATE));
+    const from = Math.max(0, Math.ceil(note.at * AUDIO_RATE));
+    const to = Math.min(n, Math.floor((note.at + note.length) * AUDIO_RATE));
     if (note.instrument === "pad") {
       addPad(out, note, from, to);
       continue;
@@ -213,15 +212,15 @@ export const renderMusic = (plan: MusicPlan, { master = true } = {}): Audio => {
     const voice = VOICES[note.instrument];
     const f = hz(note.midi);
     for (let i = from; i < to; i++) {
-      const t = i / MUSIC_RATE - note.at;
+      const t = i / AUDIO_RATE - note.at;
       const release = Math.min(1, (note.length - t) / RELEASE);
       out[i] = (out[i] ?? 0) + note.gain * release * voice(t, note.length, f, note.phase);
     }
   }
-  if (!master) return { samples: out, sampleRate: MUSIC_RATE };
+  if (!master) return { samples: out, sampleRate: AUDIO_RATE };
   const fades = fadesFor(plan.seconds);
   const mastered = faded(echoed(lowpassed(out)), plan.seconds, fades);
-  return { samples: atLoudness(mastered, fades), sampleRate: MUSIC_RATE };
+  return { samples: atLoudness(mastered, fades), sampleRate: AUDIO_RATE };
 };
 
 const lowpassed = (samples: Float32Array): Float32Array => {
@@ -242,7 +241,7 @@ const lowpassed = (samples: Float32Array): Float32Array => {
 
 /** Each pass adds a copy `delay` later, from before the pass: the prototype's `lp[d:] += lp[:-d] * g`. */
 const echoed = (samples: Float32Array): Float32Array => {
-  const delay = Math.round(ECHO.delay * MUSIC_RATE);
+  const delay = Math.round(ECHO.delay * AUDIO_RATE);
   for (let pass = 0; pass < ECHO.passes; pass++)
     for (let i = samples.length - 1; i >= delay; i--)
       samples[i] = (samples[i] ?? 0) + ECHO.gain * (samples[i - delay] ?? 0);
@@ -259,7 +258,7 @@ const fadesFor = (seconds: number): Fades => ({
 
 const faded = (samples: Float32Array, seconds: number, fades: Fades): Float32Array => {
   for (let i = 0; i < samples.length; i++) {
-    const t = i / MUSIC_RATE;
+    const t = i / AUDIO_RATE;
     const level = Math.max(0, Math.min(1, t / fades.in, (seconds - t) / fades.out));
     samples[i] = (samples[i] ?? 0) * level;
   }
@@ -269,8 +268,8 @@ const faded = (samples: Float32Array, seconds: number, fades: Fades): Float32Arr
 /** Scales to the music's loudness, measured between the fades, then down further if a peak would pass −1 dBFS. */
 const atLoudness = (samples: Float32Array, fades: Fades): Float32Array => {
   const steady = samples.subarray(
-    Math.round(fades.in * MUSIC_RATE),
-    samples.length - Math.round(fades.out * MUSIC_RATE),
+    Math.round(fades.in * AUDIO_RATE),
+    samples.length - Math.round(fades.out * AUDIO_RATE),
   );
   let sum = 0;
   for (const s of steady) sum += s * s;

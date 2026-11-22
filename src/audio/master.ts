@@ -1,7 +1,8 @@
 import { execFile } from "node:child_process";
 import { rm, writeFile } from "node:fs/promises";
 import { promisify } from "node:util";
-import { MIX_RATE } from "./mix.ts";
+import { z } from "zod";
+import { AUDIO_RATE, dbToGain, soundingRms } from "./level.ts";
 import { type Audio, encodeWav } from "./wav.ts";
 
 const run = promisify(execFile);
@@ -9,25 +10,28 @@ const run = promisify(execFile);
 /** SPEC, Mix: integrated loudness, and the true peak never above −1 dBTP. */
 export const TARGET_LUFS = -16;
 export const MAX_TRUE_PEAK = -1;
+/** SPEC, Checks: loudness passes within this many LU of the target. */
+export const LOUDNESS_TOLERANCE = 1;
 /** loudnorm can overshoot its true-peak target slightly, so it aims a little lower. */
 const AIM_TRUE_PEAK = -1.5;
 const RANGE_LU = 11;
 
-type Measured = {
-  readonly input_i: string;
-  readonly input_tp: string;
-  readonly input_lra: string;
-  readonly input_thresh: string;
-  readonly target_offset: string;
-};
+/** A loudnorm measurement: a number, or minus infinity for silence. */
+const Level = z.string().regex(/^-?(\d+(\.\d+)?|inf)$/);
+/** What loudnorm's first pass prints, checked before it goes back into the second. */
+const MeasuredSchema = z.object({
+  input_i: Level,
+  input_tp: Level,
+  input_lra: Level,
+  input_thresh: Level,
+  target_offset: Level,
+});
 
 const loudnorm = (extra = "") =>
   `loudnorm=I=${TARGET_LUFS}:TP=${AIM_TRUE_PEAK}:LRA=${RANGE_LU}${extra}`;
 
 /** How far above its own level the mix may peak before the limiter catches it. */
 const PEAK_ABOVE_LEVEL_DB = 13;
-/** Quiet enough to count as silence when measuring the mix's level. */
-const SILENCE = 1e-3;
 
 /**
  * A short-attack limiter set `PEAK_ABOVE_LEVEL_DB` above the mix's level
@@ -37,16 +41,21 @@ const SILENCE = 1e-3;
  * about 0.5 % of the example's samples.
  */
 const peakLimiter = ({ samples }: Audio): string => {
-  let sum = 0;
-  let count = 0;
-  for (const s of samples)
-    if (Math.abs(s) > SILENCE) {
-      sum += s * s;
-      count++;
-    }
-  const level = Math.sqrt(sum / Math.max(1, count));
-  const limit = Math.min(0.99, level * 10 ** (PEAK_ABOVE_LEVEL_DB / 20));
+  // alimiter takes a limit from 1/16 to 1; a quiet mix is limited no lower than that.
+  const limit = Math.min(
+    0.99,
+    Math.max(1 / 16, soundingRms(samples) * dbToGain(PEAK_ABOVE_LEVEL_DB)),
+  );
   return `alimiter=limit=${limit.toFixed(4)}:attack=2:release=80:level=false`;
+};
+
+/** The mix scaled so its loudest sample is just under full scale. */
+const toFullScale = (mix: Audio): Audio => {
+  let peak = 0;
+  for (const s of mix.samples) peak = Math.max(peak, Math.abs(s));
+  if (peak === 0) return mix;
+  const gain = 0.99 / peak;
+  return { ...mix, samples: mix.samples.map((s) => s * gain) };
 };
 
 /**
@@ -55,17 +64,24 @@ const peakLimiter = ({ samples }: Audio): string => {
  * ffmpeg's loudnorm measures it and applies one gain from what it measured
  * (two passes, linear), so speech and pauses keep their balance.
  */
-export const masterAudio = async (mix: Audio, out: string): Promise<void> => {
+export const masterAudio = async (mix: Audio, out: string, signal?: AbortSignal): Promise<void> => {
   const raw = `${out}.mix.wav`;
-  await writeFile(raw, encodeWav(mix));
-  const limiter = peakLimiter(mix);
+  // Brought to full scale first: loudnorm sets the level anyway, and a quiet mix
+  // (music alone at a low volumeDb) would otherwise round towards silence in 16 bits.
+  const full = toFullScale(mix);
+  await writeFile(raw, encodeWav(full));
+  const limiter = peakLimiter(full);
   try {
-    const first = await run("ffmpeg", [
-      ...["-hide_banner", "-nostats", "-i", raw],
-      ...["-af", `${limiter},${loudnorm(":print_format=json")}`, "-f", "null", "-"],
-    ]);
+    const first = await run(
+      "ffmpeg",
+      [
+        ...["-hide_banner", "-nostats", "-i", raw],
+        ...["-af", `${limiter},${loudnorm(":print_format=json")}`, "-f", "null", "-"],
+      ],
+      { signal },
+    );
     const json = first.stderr.slice(first.stderr.lastIndexOf("{"));
-    const measured = JSON.parse(json.slice(0, json.indexOf("}") + 1)) as Measured;
+    const measured = MeasuredSchema.parse(JSON.parse(json.slice(0, json.indexOf("}") + 1)));
     const known = [
       `:measured_I=${measured.input_i}`,
       `:measured_TP=${measured.input_tp}`,
@@ -74,18 +90,22 @@ export const masterAudio = async (mix: Audio, out: string): Promise<void> => {
       `:offset=${measured.target_offset}`,
       ":linear=true",
     ].join("");
-    await run("ffmpeg", [
-      ...["-y", "-loglevel", "error", "-i", raw],
-      ...[
-        "-af",
-        `${limiter},${loudnorm(known)}`,
-        "-ar",
-        String(MIX_RATE),
-        "-c:a",
-        "pcm_s16le",
-        out,
+    await run(
+      "ffmpeg",
+      [
+        ...["-y", "-loglevel", "error", "-i", raw],
+        ...[
+          "-af",
+          `${limiter},${loudnorm(known)}`,
+          "-ar",
+          String(AUDIO_RATE),
+          "-c:a",
+          "pcm_s16le",
+          out,
+        ],
       ],
-    ]);
+      { signal },
+    );
   } finally {
     await rm(raw, { force: true });
   }

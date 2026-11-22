@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { chromium } from "playwright-core";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { AUDIO_RATE } from "../audio/level.ts";
 import { encodeWav } from "../audio/wav.ts";
 import { beatOptions, buildBeats } from "../engine/beats/build.ts";
 import { formatErrors } from "../schema/errors.ts";
@@ -155,15 +156,14 @@ describe.skipIf(!hasFfmpeg || !hasChrome)("renderProject (Chrome and ffmpeg)", (
     const plan = buildBeats(project.storyboard, project.graph, beatOptions(project.config));
     // A quiet tone stands in for the mastered soundtrack.
     const audio = join(out, "soundtrack.wav");
-    const rate = 48_000;
     writeFileSync(
       audio,
       encodeWav({
         samples: Float32Array.from(
-          { length: Math.ceil(plan.duration * rate) },
-          (_, i) => 0.1 * Math.sin((2 * Math.PI * 220 * i) / rate),
+          { length: Math.ceil(plan.duration * AUDIO_RATE) },
+          (_, i) => 0.1 * Math.sin((2 * Math.PI * 220 * i) / AUDIO_RATE),
         ),
-        sampleRate: rate,
+        sampleRate: AUDIO_RATE,
       }),
     );
     const [light] = await renderProject({
