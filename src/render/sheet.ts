@@ -1,8 +1,11 @@
 import type { Browser } from "playwright-core";
 import { sheetHtml, sheetLayout } from "../checks/sheet.ts";
-import type { BeatWarning } from "../schema/checks.ts";
+import type { BeatSpan, BeatWarning } from "../schema/checks.ts";
 
-/** Tile widths: the sheet on disk, and the small one an agent is sent (1280 px wide, four to a row). */
+/** The contact sheet's file names, in a render's theme folder and beside `checks.json`. */
+export const CONTACT_SHEET = { full: "contact-sheet.png", small: "contact-sheet.jpg" } as const;
+
+/** Tile widths: the sheet on disk, and the small one an agent is sent (up to 1280 px wide, at four to a row). */
 export const SHEET_TILE = { full: 480, small: 300 } as const;
 /** The small sheet is a JPEG of this quality. */
 const SMALL_QUALITY = 70;
@@ -20,7 +23,7 @@ export const drawSheet = async (
     warnings,
     size,
   }: {
-    readonly beats: readonly { id: string; scene: string; start: number; end: number }[];
+    readonly beats: readonly BeatSpan[];
     readonly stills: readonly Buffer[];
     readonly warnings: readonly BeatWarning[];
     readonly size: keyof typeof SHEET_TILE;

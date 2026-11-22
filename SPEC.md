@@ -395,7 +395,7 @@ The **contact sheet** is one still per beat on a single image: each beat at
 its midpoint, four to a row, labelled with its number, scene, beat and time,
 and outlined in red with a count when the checks found warnings there. Chrome
 lays it out from a page, so the labels need no font tools. `check` writes
-`contact-sheet.png` beside `checks.json`, and a small JPEG (1280 px wide)
+`contact-sheet.png` beside `checks.json`, and a small JPEG (up to 1280 px wide)
 that the MCP tool returns as an image; every render writes one per theme.
 Decision 018 says why.
 

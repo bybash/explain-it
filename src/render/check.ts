@@ -6,10 +6,11 @@ import { measureLoudness } from "../audio/master.ts";
 import { makeSoundtrack } from "../audio/soundtrack.ts";
 import type { VoiceLine } from "../audio/voice.ts";
 import { layoutWarnings } from "../checks/layout.ts";
+import { stillAt } from "../checks/sheet.ts";
 import { loudnessWarnings, narrationFitWarnings, readingWarnings } from "../checks/timing.ts";
 import { beatOptions, buildBeats } from "../engine/beats/build.ts";
 import {
-  BeatSpanSchema,
+  type BeatSpan,
   type BeatWarning,
   type CheckReport,
   type CheckWarning,
@@ -20,13 +21,12 @@ import { formatErrors, parseWith } from "../schema/errors.ts";
 import type { MissingTool } from "./environment.ts";
 import type { ProjectFiles } from "./load.ts";
 import { buildRenderPage, serveRenderPage } from "./page.ts";
-import { launchBrowser, openPage } from "./render.ts";
-import { drawSheet } from "./sheet.ts";
+import { beatsOnPage, launchBrowser, openPage } from "./render.ts";
+import { CONTACT_SHEET, drawSheet } from "./sheet.ts";
 
 /** What the render page exposes for the checks (see `expose` in the engine's player). */
 type Checkable = {
   __seek: (t: number) => void;
-  __beats: unknown;
   __shapes: () => unknown;
 };
 
@@ -48,25 +48,17 @@ export const checkLayout = async ({
   readonly beats: number;
   readonly warnings: CheckWarning[];
   /** Each beat's span and its still at the midpoint, for the contact sheet. */
-  readonly spans: readonly { id: string; scene: string; start: number; end: number }[];
+  readonly spans: readonly BeatSpan[];
   readonly stills: readonly Buffer[];
 }> => {
   const browser = await launchBrowser();
   try {
     const page = await openPage(browser, pageUrl, { ...project, mode: "light" });
-    const reported = parseWith(
-      z.array(BeatSpanSchema),
-      await page.evaluate(() => (window as unknown as Checkable).__beats),
-    );
-    if (!reported.ok)
-      throw new Error(
-        `the render page reported beats it should not:\n${formatErrors(reported.errors).join("\n")}`,
-      );
-    const beats = reported.value;
+    const beats = await beatsOnPage(page);
     const warnings: CheckWarning[] = [];
     const stills: Buffer[] = [];
     for (const beat of beats) {
-      const at = Math.round(((beat.start + beat.end) / 2) * 1000) / 1000;
+      const at = stillAt(beat);
       const drawn = await page.evaluate((t) => {
         const w = window as unknown as Checkable;
         w.__seek(t);
@@ -144,7 +136,7 @@ const writeSheets = async (
     stills,
     warnings,
   }: {
-    readonly beats: readonly { id: string; scene: string; start: number; end: number }[];
+    readonly beats: readonly BeatSpan[];
     readonly stills: readonly Buffer[];
     readonly warnings: readonly CheckWarning[];
   },
@@ -152,13 +144,12 @@ const writeSheets = async (
   const atBeats = warnings.filter((w): w is BeatWarning => "beat" in w);
   const browser = await launchBrowser();
   try {
-    const names = { full: "contact-sheet.png", small: "contact-sheet.jpg" } as const;
     for (const size of ["full", "small"] as const) {
       const image = await drawSheet(browser, { beats, stills, warnings: atBeats, size });
-      await writeFile(join(dir, `${names[size]}.partial`), image);
-      await rename(join(dir, `${names[size]}.partial`), join(dir, names[size]));
+      await writeFile(join(dir, `${CONTACT_SHEET[size]}.partial`), image);
+      await rename(join(dir, `${CONTACT_SHEET[size]}.partial`), join(dir, CONTACT_SHEET[size]));
     }
-    return names;
+    return CONTACT_SHEET;
   } finally {
     await browser.close();
   }
@@ -220,6 +211,11 @@ export const checkProjectFolder = async ({
     layout.stills.length > 0
       ? await writeSheets(dir, { beats: layout.spans, stills: layout.stills, warnings })
       : undefined;
+  // Without stills there is no sheet, and an older one would show a project that has changed.
+  if (!contactSheet)
+    await Promise.all(
+      Object.values(CONTACT_SHEET).map((name) => rm(join(dir, name), { force: true })),
+    );
   const report: CheckReport = {
     version: 1,
     checkedAt: now.toISOString(),

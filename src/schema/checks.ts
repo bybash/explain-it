@@ -119,3 +119,4 @@ export const BeatSpanSchema = z.object({
   start: z.number(),
   end: z.number(),
 });
+export type BeatSpan = z.output<typeof BeatSpanSchema>;

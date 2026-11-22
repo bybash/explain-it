@@ -189,12 +189,17 @@ export const cancelRenderTool = async (context: ToolContext, input: Args) => {
 
 /**
  * What `check` shows the agent after its report: the small contact sheet,
- * a JPEG about 1280 px wide, when the checks drew one.
+ * a JPEG up to 1280 px wide, when the checks drew one. A sheet removed since
+ * is left out; the report still names where it was.
  */
 export const checkImages = async (value: unknown) => {
   const small = (value as { checks?: { contactSheet?: { small?: string } } }).checks?.contactSheet
     ?.small;
   if (!small) return [];
-  const data = (await readFile(small)).toString("base64");
-  return [{ type: "image" as const, data, mimeType: "image/jpeg" }];
+  try {
+    const data = (await readFile(small)).toString("base64");
+    return [{ type: "image" as const, data, mimeType: "image/jpeg" }];
+  } catch {
+    return [];
+  }
 };

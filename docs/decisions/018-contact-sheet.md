@@ -17,7 +17,7 @@ beat on a single image".
   sheet out from a small page (`sheetLayout` and `sheetHtml` in
   `src/checks/sheet.ts`, pure) and captures it. No new dependency.
 - **Two sizes.** `contact-sheet.png` (480 px tiles) for people; a JPEG at
-  quality 70 with 300 px tiles, 1280 px wide (about 60 KB for the example),
+  quality 70 with 300 px tiles, up to 1280 px wide (about 60 KB for the example),
   which the MCP `check` tool sends after its report as image content, small
   enough for an agent's context.
 - **Where.** `check` writes both beside `checks.json`; every render writes

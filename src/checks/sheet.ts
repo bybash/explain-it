@@ -1,12 +1,12 @@
-import { type BeatWarning, STAGE } from "../schema/checks.ts";
+import { type BeatSpan, type BeatWarning, STAGE } from "../schema/checks.ts";
 
-/** A beat's place in the video, as the page and the plan give it. */
-type BeatSpan = {
-  readonly id: string;
-  readonly scene: string;
-  readonly start: number;
-  readonly end: number;
-};
+/**
+ * The moment a beat is looked at: its midpoint, to the millisecond. The
+ * layout checks measure it and the contact sheet shows it, so a warning and
+ * its tile are the same frame.
+ */
+export const stillAt = (beat: Pick<BeatSpan, "start" | "end">): number =>
+  Math.round(((beat.start + beat.end) / 2) * 1000) / 1000;
 
 /** Tiles to a row: a 10-beat video fits on three rows. */
 const COLUMNS = 4;
@@ -53,7 +53,7 @@ export const sheetLayout = ({
   const columns = Math.min(COLUMNS, Math.max(1, beats.length));
   const rows = Math.ceil(beats.length / columns);
   const tiles = beats.map((beat, i): SheetTile => {
-    const at = (beat.start + beat.end) / 2;
+    const at = stillAt(beat);
     return {
       beat: beat.id,
       scene: beat.scene,
@@ -74,7 +74,8 @@ export const sheetLayout = ({
   };
 };
 
-const escapeHtml = (text: string): string => text.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+const escapeHtml = (text: string): string =>
+  text.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
 /**
  * The sheet as a page for Chrome to lay out and capture: each still (a data

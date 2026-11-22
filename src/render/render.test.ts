@@ -234,5 +234,8 @@ describe.skipIf(!hasFfmpeg || !hasChrome)("renderProject (Chrome and ffmpeg)", (
     if (!one || !four) throw new Error("no result");
     expect(readFileSync(four.video).equals(readFileSync(one.video))).toBe(true);
     expect(readFileSync(four.poster).equals(readFileSync(one.poster))).toBe(true);
+    // Each theme gets its own contact sheet; this one is the dark theme's.
+    expect(four.contactSheet).toBe(join(out, "pages-4", "dark", "contact-sheet.png"));
+    expect(readFileSync(four.contactSheet).subarray(1, 4).toString()).toBe("PNG");
   }, 240_000);
 });
