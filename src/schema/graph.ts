@@ -19,6 +19,30 @@ export const MERMAID_KEYWORDS = [
   "callback",
 ] as const;
 
+/**
+ * The keywords that break `from id@--> to` when they name an edge, found by
+ * the pinned Mermaid (src/server/mermaid.test.ts). The rest, such as
+ * "click", name an edge without trouble.
+ */
+export const MERMAID_EDGE_KEYWORDS = [
+  "end",
+  "graph",
+  "flowchart",
+  "subgraph",
+  "style",
+  "class",
+  "default",
+] as const satisfies readonly (typeof MERMAID_KEYWORDS)[number][];
+
+/** An edge id: written in the graph's Mermaid, so not a keyword that breaks an edge there. */
+const EdgeIdSchema = IdSchema.refine(
+  (id) => !(MERMAID_EDGE_KEYWORDS as readonly string[]).includes(id),
+  {
+    error: (issue) =>
+      `"${String(issue.input)}" is a Mermaid keyword that cannot name an edge; use another id`,
+  },
+);
+
 /** A node or zone id: also shown in the graph's Mermaid, so not one of its keywords. */
 const DiagramIdSchema = IdSchema.refine(
   (id) => !(MERMAID_KEYWORDS as readonly string[]).includes(id),
@@ -60,7 +84,7 @@ export const GraphNodeSchema = z.strictObject({
 });
 
 export const GraphEdgeSchema = z.strictObject({
-  id: IdSchema,
+  id: EdgeIdSchema,
   from: IdSchema.describe("A node id."),
   to: IdSchema.describe("A node id."),
   label: z.string().min(1).max(MAX_NODE_LABEL).optional(),

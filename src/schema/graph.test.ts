@@ -62,6 +62,17 @@ describe("parseGraph", () => {
     );
   });
 
+  it("keeps edge ids clear of the Mermaid keywords that break an edge", () => {
+    const graph = validGraph();
+    graph.edges[0] = { ...graph.edges[0], id: "end" } as (typeof graph.edges)[number];
+    expect(errorsFor(graph)).toContain(
+      'edges[0].id: "end" is a Mermaid keyword that cannot name an edge; use another id',
+    );
+    // The others name an edge without trouble, as the example's "click" does.
+    graph.edges[0] = { ...graph.edges[0], id: "click" } as (typeof graph.edges)[number];
+    expect(parseGraph(graph).ok).toBe(true);
+  });
+
   it("requires ids a slug can use", () => {
     const graph = validGraph();
     graph.nodes[0] = { id: "Browser", label: "Browser", kind: "actor" };

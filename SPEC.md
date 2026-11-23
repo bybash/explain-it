@@ -106,6 +106,8 @@ type NodeKind =
 // The eighth kind from the design, "group", is a Zone.
 
 type GraphEdge = { id: string; from: string; to: string; label?: string; category?: string };
+// An edge id may be a Mermaid keyword except end, graph, flowchart, subgraph, style, class
+// and default, which break an edge in the diagram.
 type Zone = { id: string; label: string; category?: string };
 ```
 
@@ -536,7 +538,22 @@ comes later.
 - Parsing uses the full `mermaid` package (pinned version) with jsdom globals
   on the server, reading nodes, edges and subgraphs from the diagram's
   internal database. This is not a public Mermaid API, so it is wrapped in one
-  module with round-trip tests.
+  module with round-trip tests. It runs in a worker thread of its own, so the
+  browser globals Mermaid needs never reach the server's thread, where other
+  libraries (transformers.js) would take them for a browser.
+- Reading back: each node's kind comes from its shape (the shapes the
+  generator writes); icons and categories, and the order of nodes, come from
+  the graph before the edit, matched by id. An edge keeps the id the diagram
+  names (`from id@--> to`); an edge without one takes the id of the previous
+  edge between the same nodes, or `<from>_to_<to>`. The title comes from the
+  diagram's front matter, else the graph before.
+- What the graph cannot hold is kept as near as it can be and named in notes:
+  styling (`style`, `classDef`, `class`, `:::`, `linkStyle`) and `click`
+  lines, shapes with no kind (a service, or the node's kind before), line
+  kinds other than a plain arrow, nested subgraphs (each its own zone). A
+  diagram that is not a flowchart, or that Mermaid cannot read, is an error
+  naming its line; a graph the schema refuses names the node or edge
+  (decision 021).
 - The web UI renders Mermaid on the client.
 
 ## App and stack
@@ -644,7 +661,8 @@ The pull requests that make up each milestone are listed in [`ROADMAP.md`](ROADM
 ## Licences
 
 - explAIn-it is MIT. The videos people make are theirs.
-- Dependencies: Mermaid (MIT), Playwright (Apache-2.0), Kokoro-82M and
+- Dependencies: Mermaid (MIT) with jsdom (MIT) to parse it on the server,
+  Playwright (Apache-2.0), Kokoro-82M and
   kokoro-js (Apache-2.0), transformers.js (Apache-2.0), onnxruntime-node
   (MIT), AI SDK (Apache-2.0), MCP TypeScript SDK (MIT),
   fast-json-patch (MIT),
