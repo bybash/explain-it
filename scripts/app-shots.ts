@@ -8,6 +8,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { chromium, type Page } from "playwright-core";
 import { build } from "vite";
+import { isProjectOutput } from "../src/render/project-output.ts";
 
 const [outArg] = process.argv.slice(2);
 if (!outArg) throw new Error("usage: node scripts/app-shots.ts <out-dir>");
@@ -25,7 +26,7 @@ const seed = (dir: string) => {
   const example = join(dir, "oauth-example");
   cpSync(join(root, "examples", "oauth-login"), example, {
     recursive: true,
-    filter: (source) => !source.includes("/out") && !source.includes("/cache"),
+    filter: (source) => !isProjectOutput(source),
   });
   const project = JSON.parse(readFileSync(join(example, "project.json"), "utf8"));
   writeFileSync(join(example, "project.json"), JSON.stringify({ ...project, gate: "preview" }));
@@ -210,6 +211,34 @@ const SHOTS: readonly {
     },
   },
   {
+    name: "preview-checks",
+    hash: "#/projects/oauth-example/preview",
+    ready: async (p) => {
+      await checksRun(p);
+      await p.waitForTimeout(300);
+    },
+  },
+  {
+    name: "preview-warning-jump",
+    hash: "#/projects/oauth-example/preview",
+    ready: async (p) => {
+      await checksRun(p);
+      await p.getByRole("list", { name: "Warnings at beats" }).getByRole("button").nth(3).click();
+      await p.waitForTimeout(800);
+    },
+  },
+  {
+    name: "preview-contact-sheet",
+    hash: "#/projects/oauth-example/preview",
+    ready: async (p) => {
+      await checksRun(p);
+      await p.getByRole("tab", { name: "Contact sheet" }).click();
+      await p
+        .getByRole("img", { name: /^The contact sheet/ })
+        .evaluate((img: HTMLImageElement) => img.decode());
+    },
+  },
+  {
     name: "broken",
     hash: "#/projects/broken-file",
     ready: (p) => p.getByText("project.json").first().waitFor(),
@@ -225,6 +254,14 @@ const SHOTS: readonly {
     ready: (p) => p.getByText("API key").waitFor(),
   },
 ];
+
+/** The preview's sound made and its checks run, from the Checks tab. */
+const checksRun = async (page: Page) => {
+  await page.getByText("The voice and the music are ready").waitFor({ timeout: 60_000 });
+  await page.getByRole("tab", { name: /^Checks/ }).click();
+  await page.getByRole("button", { name: /^Run the checks/ }).click();
+  await page.getByRole("list", { name: "Warnings at beats" }).waitFor({ timeout: 120_000 });
+};
 
 /** Mermaid has drawn, and the drawing has settled. */
 const diagramDrawn = async (page: Page) => {

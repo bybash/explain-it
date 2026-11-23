@@ -57,3 +57,38 @@ describe.skipIf(!hasFfmpeg)("checkSoundtrack (ffmpeg)", () => {
     expect(await checkSoundtrack({ project: silent, lines: [], measure: undefined })).toEqual([]);
   });
 });
+
+describe("checkSoundtrack, given a soundtrack already mixed", () => {
+  it("measures that file and mixes nothing", async () => {
+    const loaded = await loadProject(resolve("examples/oauth-login"));
+    if (!loaded.ok) throw new Error("the example does not load");
+    const measured: string[] = [];
+    const warnings = await checkSoundtrack({
+      project: loaded.value,
+      lines: [],
+      soundtrack: "/the/preview/abc.wav",
+      measure: async (file) => {
+        measured.push(file);
+        return { integrated: -12.5, truePeak: -2 };
+      },
+    });
+    expect(measured).toEqual(["/the/preview/abc.wav"]);
+    expect(warnings.map((w) => w.message)).toEqual([
+      "the mix is at -12.5 LUFS; it should be -16 ± 1",
+    ]);
+  });
+
+  it("has nothing to measure when the video is silent", async () => {
+    const loaded = await loadProject(resolve("examples/oauth-login"));
+    if (!loaded.ok) throw new Error("the example does not load");
+    const warnings = await checkSoundtrack({
+      project: loaded.value,
+      lines: [],
+      soundtrack: null,
+      measure: async () => {
+        throw new Error("nothing should be measured");
+      },
+    });
+    expect(warnings).toEqual([]);
+  });
+});

@@ -69,7 +69,7 @@ beforeEach(async () => {
     renders,
     missingRenderTools: async () => missing,
     tts: { id: "fake", generate: (text, options) => tts.generate(text, options) },
-    runChecks: async (dir, project, _lines, skip) => {
+    runChecks: async ({ dir, project, skip = [] }) => {
       if (failChecks) throw new Error(failChecks);
       checked.push({ dir, narration: project.narration });
       // A stand-in for the small contact sheet the real checks write beside the report.

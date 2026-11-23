@@ -390,6 +390,21 @@ when it cannot check. Layout warnings do not stop a render; the layout engine ke
 routes in sight of boxes and places edge labels and badges clear of boxes and
 of each other. Decision 016 says why.
 
+The Preview gate runs the same checks from a button. They wait for the
+preview's sound (see Audio), so narration fit is timed by its voice and
+loudness measures its soundtrack, `cache/preview/<key>.wav`, which is
+mixed as a render mixes it, instead of mixing another. When the voice
+failed, narration fit and loudness are skipped; when only the mix failed,
+loudness is skipped with the mix's own words. Running them asks for the
+sound again, so a sound that failed is tried once more. Each step (waiting,
+each beat checked, done) is told over the event stream and its progress
+("beat 4 of 10") read from the API; a newer run stops the older and starts
+once it has ended. A file edited while the checks wait for the sound makes
+them wait for the sound of the new files. The report keeps a key of the
+files it checked (`filesKey`: the graph, the script, the layout and the
+style), so the gate shows an older report marked as out of date rather
+than hiding it. Decision 027 says why.
+
 | Check | Measured | Warns when |
 |---|---|---|
 | Overlap | Projected node-top polygons and overlay boxes, at each beat's midpoint | Two elements overlap by more than 4 px (they would have to move more than 4 px apart; an edge runs more than 4 px inside a box) |
@@ -582,8 +597,14 @@ comes later.
   files the sound follows; a change to them makes it again, speaking only
   the lines that changed. Until it is ready the video plays silently with
   estimated timing; then the picture follows the soundtrack's clock, timed
-  by the measured narration. Below the player, the beats by scene: the one
-  playing is marked, and a click goes to it (decision 026).
+  by the measured narration. Below the player, three tabs. Beats lists the
+  beats by scene: the one playing is marked, a click goes to it, and a
+  beat the checks warned about carries the count (decision 026). Checks
+  runs the checks (see Checks) and lists their warnings, those about the
+  whole video and the skipped checks first, then those at beats in the
+  order they show; a click on one goes to where it shows, in the Beats
+  tab. Contact sheet shows the sheet the checks drew. A report older than
+  the files is shown, marked as out of date (decision 027).
 
 ## App and stack
 

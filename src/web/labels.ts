@@ -16,7 +16,7 @@ export const GATE_PANELS: Readonly<Record<Gate, string>> = {
   style:
     "How the video looks and sounds. Changes show in the preview straight away; the voice and the music have samples to listen to.",
   preview:
-    "The video with its voice and music, as the render will make it. The voice is made when the gate opens; until then the video plays silently.",
+    "The video with its voice and music, as the render will make it. The voice is made when the gate opens; until then the video plays silently. The checks warn about anything that overlaps, leaves the frame, reads too fast or sounds too loud.",
   render: "Render progress, then the downloads.",
 };
 
@@ -26,3 +26,7 @@ export const updatedLabel = (iso: string): string =>
 
 /** A name as a label shows it: "ocean" as "Ocean". */
 export const capitalised = (name: string): string => name.charAt(0).toUpperCase() + name.slice(1);
+
+/** "1 warning", "3 warnings": a count with its noun. */
+export const counted = (n: number, one: string, many = `${one}s`): string =>
+  `${n} ${n === 1 ? one : many}`;

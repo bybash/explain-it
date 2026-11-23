@@ -115,7 +115,7 @@ describe("previewSound", () => {
 
   it("never takes a soundtrack whose mix was cut short as made", async () => {
     const failed = await setUp({ mixFailsWith: "ffmpeg was stopped" }).settled();
-    expect(failed).toEqual({ state: "failed", message: "ffmpeg was stopped" });
+    expect(failed).toEqual({ state: "failed", step: "mix", message: "ffmpeg was stopped" });
     const next = setUp();
     await next.settled();
     expect(next.mixer.mixes).toHaveLength(1);
@@ -124,7 +124,7 @@ describe("previewSound", () => {
   it("names ffmpeg when it is missing, after speaking the lines", async () => {
     const message = "ffmpeg is not installed: install it (macOS: brew install ffmpeg)";
     const { voices, settled } = setUp({ missing: [{ tool: "ffmpeg", message }] });
-    expect(await settled()).toEqual({ state: "failed", message });
+    expect(await settled()).toEqual({ state: "failed", step: "mix", message });
     expect(voices.asked).toHaveLength(LINES);
   });
 
@@ -143,8 +143,18 @@ describe("previewSound", () => {
     const { settled } = setUp({ failWith: "the voice model did not load: offline" });
     expect(await settled()).toEqual({
       state: "failed",
+      step: "voice",
       message: "the voice model did not load: offline",
     });
+  });
+
+  it("tells when the sound is no longer being made", async () => {
+    const { sound } = setUp();
+    expect(await sound.settled("oauth")).toEqual({ status: { state: "idle" } });
+    await sound.start("oauth");
+    const { key, status } = await sound.settled("oauth");
+    expect(status.state).toBe("ready");
+    expect(status.state === "ready" && status.key).toBe(key);
   });
 
   it("names what the preview needs when the script is missing", async () => {
