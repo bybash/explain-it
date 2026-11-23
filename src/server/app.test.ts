@@ -331,6 +331,30 @@ describe("/api/settings", () => {
     });
   });
 
+  it("takes a key only from a page on this machine, where it never crosses a network", async () => {
+    const shared = createApp({
+      projectsDir,
+      now: () => new Date(NOW),
+      tts: fakeTts().tts,
+      hosts: ["192.168.1.20"],
+      settings: settingsStore({ envFile: join(projectsDir, ".env"), environment: {} }),
+    });
+    const putTo = (host: string, body: unknown) =>
+      shared.request(`http://${host}/api/settings`, {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      });
+    const overNetwork = await putTo("192.168.1.20:3000", { apiKey: KEY });
+    expect(overNetwork.status).toBe(403);
+    const { errors } = await overNetwork.json();
+    expect(errors).toEqual([{ path: "apiKey", message: expect.stringContaining(".env") }]);
+    expect(existsSync(join(projectsDir, ".env"))).toBe(false);
+    // Nothing secret travels in the other settings, or in removing the key.
+    expect((await putTo("192.168.1.20:3000", { model: "gpt-5", apiKey: null })).status).toBe(200);
+    expect((await putTo("127.0.0.1:3000", { apiKey: KEY })).status).toBe(200);
+  });
+
   it("takes settings only as JSON from this app's own pages", async () => {
     const form = await app.request("/api/settings", {
       method: "PUT",

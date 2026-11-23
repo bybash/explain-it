@@ -16,6 +16,7 @@ import { RenderQueue, type RenderRun } from "../render/queue.ts";
 import { renderFromFolder } from "../render/run.ts";
 import type { ValidationError } from "../schema/errors.ts";
 import { MCP_PATH } from "../schema/mcp.ts";
+import { LOCAL_HOSTS } from "../schema/settings.ts";
 import { createEvents } from "./events.ts";
 import { createProject, listProjects, openProject } from "./projects.ts";
 import type { SettingsStore } from "./settings.ts";
@@ -49,8 +50,15 @@ const KEEP_ALIVE_MS = 15_000;
 /** The largest request bodies: projects' own files are far smaller; MCP can carry a 2 MB logo as base64. */
 const MAX_API_BYTES = 1024 * 1024;
 const MAX_MCP_BYTES = 4 * 1024 * 1024;
-/** Names this machine answers to; a request addressed to any other name did not come from its user. */
-const LOCAL_HOSTS = ["localhost", "127.0.0.1", "[::1]"];
+/** Whether a request was addressed to this machine's own name, so it never left it. */
+const fromThisMachine = (url: string) =>
+  (LOCAL_HOSTS as readonly string[]).includes(new URL(url).hostname);
+
+/** Whether a settings update carries a new key. */
+const sendsKey = (body: unknown) =>
+  typeof body === "object" &&
+  body !== null &&
+  typeof (body as { apiKey?: unknown }).apiKey === "string";
 
 /** Every error response has this shape: what is wrong, each naming its place. */
 const errorResponse = (
@@ -195,6 +203,15 @@ export const createApp = ({
     } catch {
       return errorResponse(c, 400, [{ path: "(body)", message: "not valid JSON" }]);
     }
+    // Plain HTTP to another machine's address crosses a network unencrypted: a key may not.
+    if (sendsKey(body) && !fromThisMachine(c.req.url))
+      return errorResponse(c, 403, [
+        {
+          path: "apiKey",
+          message:
+            "this page is reached over the network, which would send the key unencrypted: open it on this machine, or set the key in .env",
+        },
+      ]);
     const saved = await settings.update(body);
     if (!saved.ok) return errorResponse(c, 400, saved.errors);
     return c.json(saved.value);
