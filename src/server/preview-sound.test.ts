@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { fakeMix } from "../audio/fake-mix.testing.ts";
 import { fakeTts } from "../audio/fake-tts.testing.ts";
 import type { MissingTool } from "../render/environment.ts";
+import { loadProject } from "../render/load.ts";
 import type { PreviewSound } from "../schema/api.ts";
 import { createEvents } from "./events.ts";
 import { copyExample } from "./example.testing.ts";
@@ -155,6 +156,23 @@ describe("previewSound", () => {
     const { key, status } = await sound.settled("oauth");
     expect(status.state).toBe("ready");
     expect(status.state === "ready" && status.key).toBe(key);
+  });
+
+  it("gives a render its soundtrack when it was mixed for the same files, and none otherwise", async () => {
+    const { sound, settled } = setUp();
+    const ready = await settled();
+    if (ready.state !== "ready") throw new Error("the sound was not made");
+    const loaded = await loadProject(join(projectsDir, "oauth"));
+    if (!loaded.ok) throw new Error("the example does not load");
+    expect(await sound.soundtrackFor("oauth", loaded.value)).toBe(sound.file("oauth", ready.key));
+    const [scene, ...rest] = loaded.value.storyboard.scenes;
+    if (!scene) throw new Error("the example has no scene");
+    const edited = {
+      ...loaded.value,
+      storyboard: { ...loaded.value.storyboard, scenes: [{ ...scene, title: "Another" }, ...rest] },
+    };
+    expect(await sound.soundtrackFor("oauth", edited)).toBeUndefined();
+    expect(await sound.soundtrackFor("nope", loaded.value)).toBeUndefined();
   });
 
   it("names what the preview needs when the script is missing", async () => {

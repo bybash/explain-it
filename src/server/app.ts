@@ -27,6 +27,7 @@ import { previewChecks } from "./preview-checks.ts";
 import { previewRoutes } from "./preview-routes.ts";
 import { previewSound } from "./preview-sound.ts";
 import { createProject, listProjects, openProject, projectDir, projectExists } from "./projects.ts";
+import { renderRoutes } from "./render-routes.ts";
 import { errorResponse, jsonBody, noProject } from "./responses.ts";
 import { sampleRoutes } from "./sample-routes.ts";
 import type { SettingsStore } from "./settings.ts";
@@ -89,7 +90,7 @@ export const createApp = ({
   hosts = [],
   publicUrl,
   tts,
-  renderRun = renderFromFolder(projectsDir, now, tts),
+  renderRun,
   missingRenderTools = findMissingRenderTools,
   runChecks = (run) => checkProjectFolder({ ...run, now: now() }),
   settings,
@@ -97,9 +98,18 @@ export const createApp = ({
 }: AppOptions) => {
   const app = new Hono();
   const events = createEvents();
+  // The preview's sound: the Preview gate's, and the soundtrack a render takes when it is the same mix.
+  const sound = previewSound({
+    projectsDir,
+    tts,
+    mix: mixSoundtrack,
+    missingTools: missingRenderTools,
+    events,
+  });
   // One queue for the app: MCP and, from 3.9, the web app's render gate share it.
   const renders = new RenderQueue({
-    run: renderRun,
+    run:
+      renderRun ?? renderFromFolder(projectsDir, now, tts, { soundtrackFor: sound.soundtrackFor }),
     now,
     onChange: (job) =>
       events.publish({
@@ -240,13 +250,7 @@ export const createApp = ({
   graphRoutes(app, { projectsDir, now, events });
   styleRoutes(app, { projectsDir, now, events });
   sampleRoutes(app, { projectsDir, tts });
-  const sound = previewSound({
-    projectsDir,
-    tts,
-    mix: mixSoundtrack,
-    missingTools: missingRenderTools,
-    events,
-  });
+  renderRoutes(app, { projectsDir, renders });
   previewRoutes(app, {
     projectsDir,
     sound,

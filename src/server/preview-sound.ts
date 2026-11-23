@@ -212,6 +212,18 @@ export const previewSound = ({
       }
     },
 
+    /**
+     * The soundtrack mixed for these files, for a render to take instead of
+     * mixing the same one again; undefined when there is none.
+     */
+    soundtrackFor: async (
+      slug: string,
+      project: SoundtrackProject,
+    ): Promise<string | undefined> => {
+      const file = soundFile(slug, soundKey(tts, project));
+      return existsSync(file) ? file : undefined;
+    },
+
     /** The key the sound for these files has: a sound settled under another is for other files. */
     keyOf: (project: SoundtrackProject): string => soundKey(tts, project),
 

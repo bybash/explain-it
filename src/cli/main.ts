@@ -43,16 +43,21 @@ const render = async (argv: readonly string[]): Promise<void> => {
         console.log(
           `voice: ${voiced.lines.length} lines (${made} generated, ${voiced.lines.length - made} cached)`,
         );
+      const shown = new Map<string, number>();
       const rendered = await renderProjectFolder({
         dir,
         project: voiced.project,
         lines: voiced.lines,
         settings,
         now: new Date(),
-        onProgress: ({ theme, done, total }) =>
-          console.log(
-            `${theme}: ${Math.floor((done / total) * 10) * 10}% (${done}/${total} frames)`,
-          ),
+        onProgress: ({ theme, done, total }) => {
+          // Progress comes every hundredth; a terminal needs only every tenth.
+          const tenth = Math.floor((done / total) * 10);
+          if (tenth > (shown.get(theme) ?? 0)) {
+            shown.set(theme, tenth);
+            console.log(`${theme}: ${tenth * 10}% (${done}/${total} frames)`);
+          }
+        },
       });
       for (const r of rendered)
         console.log(
