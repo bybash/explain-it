@@ -101,6 +101,11 @@ export const CheckReportSchema = z.strictObject({
   beats: z.int().nonnegative(),
   warnings: z.array(CheckWarningSchema),
   skipped: z.array(SkippedChecksSchema).default([]),
+  /**
+   * A key of the files checked (graph, script, layout, style), so a reader
+   * can tell the project has changed since; missing in older reports.
+   */
+  filesKey: z.string().optional(),
   /** The contact sheet beside the report, full size and small; missing when the page could not be drawn. */
   contactSheet: z.strictObject({ full: z.string(), small: z.string() }).optional(),
 });

@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { generateVoice, narrationLengths, VOICE_OFF_HINT, type VoiceLine } from "../audio/voice.ts";
 import { skippedChecks } from "../render/check.ts";
+import { CHECK_REPORT } from "../render/check-files.ts";
 import type { MissingTool } from "../render/environment.ts";
 import { loadProject, type ProjectFiles } from "../render/load.ts";
 import type { VoiceConfig } from "../schema/config.ts";
@@ -72,21 +73,21 @@ const checksReport = async (
 ) => {
   if (!project)
     return { state: "not run", reason: "the project does not load (see problems)" } as const;
-  const skip = skippedChecks(missing, voice.failed);
+  const skip = skippedChecks(missing, { voiceFailed: voice.failed });
   const dir = projectDir(context.projectsDir, slug);
   try {
-    const { beats, warnings, skipped, contactSheet } = await context.runChecks(
+    const { beats, warnings, skipped, contactSheet } = await context.runChecks({
       dir,
       project,
-      voice.lines,
+      lines: voice.lines,
       skip,
-    );
+    });
     return {
       state: "checked",
       beats,
       warnings,
       skipped,
-      report: join(dir, "checks.json"),
+      report: join(dir, CHECK_REPORT),
       ...(contactSheet
         ? {
             contactSheet: {

@@ -23,6 +23,7 @@ import { addChat, readChat } from "./chat.ts";
 import { createEvents } from "./events.ts";
 import { approveGate } from "./gates.ts";
 import { graphRoutes } from "./graph-routes.ts";
+import { previewChecks } from "./preview-checks.ts";
 import { previewRoutes } from "./preview-routes.ts";
 import { previewSound } from "./preview-sound.ts";
 import { createProject, listProjects, openProject, projectDir, projectExists } from "./projects.ts";
@@ -90,8 +91,7 @@ export const createApp = ({
   tts,
   renderRun = renderFromFolder(projectsDir, now, tts),
   missingRenderTools = findMissingRenderTools,
-  runChecks = (dir, project, lines, skip) =>
-    checkProjectFolder({ dir, project, lines, skip, now: now() }),
+  runChecks = (run) => checkProjectFolder({ ...run, now: now() }),
   settings,
   mixSoundtrack = makeSoundtrack,
 }: AppOptions) => {
@@ -240,12 +240,21 @@ export const createApp = ({
   graphRoutes(app, { projectsDir, now, events });
   styleRoutes(app, { projectsDir, now, events });
   sampleRoutes(app, { projectsDir, tts });
+  const sound = previewSound({
+    projectsDir,
+    tts,
+    mix: mixSoundtrack,
+    missingTools: missingRenderTools,
+    events,
+  });
   previewRoutes(app, {
     projectsDir,
-    sound: previewSound({
+    sound,
+    checks: previewChecks({
       projectsDir,
+      sound,
       tts,
-      mix: mixSoundtrack,
+      run: runChecks,
       missingTools: missingRenderTools,
       events,
     }),

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { CheckReportSchema } from "./checks.ts";
 import { SlugSchema } from "./common.ts";
 import {
   BYTES_PER_MB,
@@ -155,11 +156,42 @@ export const PreviewSoundSchema = z.discriminatedUnion("state", [
     narration: NarrationSchema,
   }),
   z.object({ state: z.literal("silent") }),
-  z.object({ state: z.literal("failed"), message: z.string() }),
+  z.object({
+    state: z.literal("failed"),
+    /** What failed: the voice, or the mix (ffmpeg missing, or the mix itself). */
+    step: z.enum(["voice", "mix"]),
+    message: z.string(),
+  }),
 ]);
 export type PreviewSound = z.output<typeof PreviewSoundSchema>;
 /** Each state the preview's sound can be in. */
 const PREVIEW_SOUND_STATES = PreviewSoundSchema.options.map((option) => option.shape.state.value);
+
+/**
+ * A run of the checks from the Preview gate: waiting for the preview's
+ * sound (the checks are timed by its voice and measure its soundtrack),
+ * checking the beats on the page, done, or failed with why.
+ */
+export const ChecksRunSchema = z.discriminatedUnion("state", [
+  z.object({ state: z.literal("idle") }),
+  z.object({ state: z.literal("waiting") }),
+  z.object({ state: z.literal("checking"), checked: z.int().min(0), total: z.int().min(0) }),
+  z.object({ state: z.literal("done") }),
+  z.object({ state: z.literal("failed"), message: z.string() }),
+]);
+export type ChecksRun = z.output<typeof ChecksRunSchema>;
+const CHECKS_RUN_STATES = ChecksRunSchema.options.map((option) => option.shape.state.value);
+
+/**
+ * `GET /api/projects/:slug/checks`: the run under way, if any, and the last
+ * report (`checks.json`), with whether it is about the files as they are now.
+ */
+export const PreviewChecksSchema = z.object({
+  run: ChecksRunSchema,
+  report: CheckReportSchema.nullable(),
+  upToDate: z.boolean(),
+});
+export type PreviewChecks = z.output<typeof PreviewChecksSchema>;
 
 /** `GET /api/events`: what the server tells listeners about, including each render job's changes. */
 export const ServerEventSchema = z.discriminatedUnion("type", [
@@ -172,6 +204,12 @@ export const ServerEventSchema = z.discriminatedUnion("type", [
     type: z.literal("preview-sound"),
     slug: SlugSchema,
     state: z.enum(PREVIEW_SOUND_STATES),
+  }),
+  /** A run of the checks moved on: a beat checked, done or failed. */
+  z.object({
+    type: z.literal("preview-checks"),
+    slug: SlugSchema,
+    state: z.enum(CHECKS_RUN_STATES),
   }),
   RenderEventSchema,
 ]);
