@@ -11,9 +11,16 @@ import { getSettings, saveSettings } from "./api.ts";
 import { Errors } from "./Errors.tsx";
 import { formOf, type SettingsForm, settingsChanges } from "./settings-form.ts";
 
+/** A line under a field. */
+const NOTE = "text-muted text-sm";
+/** A field's label. */
+const LABEL = "mt-3.5 font-semibold";
+/** A text box or the provider select. */
+const INPUT = "field bg-surface disabled:opacity-60";
+
 /** Says that the environment sets a field, which then cannot be changed here. */
 const FromEnvironment = ({ variable }: { variable: string }) => (
-  <p className="field-note">
+  <p className={NOTE}>
     Set by <code>{variable}</code> in the environment, which wins over <code>.env</code>.
   </p>
 );
@@ -42,9 +49,13 @@ export const Settings = () => {
 
   if (!view || !form)
     return (
-      <section className="page">
-        <h1 className="page-title">Settings</h1>
-        {errors.length === 0 ? <p className="muted">Loading…</p> : <Errors errors={errors} />}
+      <section>
+        <h1 className="mb-2 font-bold text-2xl">Settings</h1>
+        {errors.length === 0 ? (
+          <p className="my-4 text-muted">Loading…</p>
+        ) : (
+          <Errors errors={errors} />
+        )}
       </section>
     );
 
@@ -68,15 +79,18 @@ export const Settings = () => {
   };
 
   return (
-    <section className="page">
-      <h1 className="page-title">Settings</h1>
-      <p className="muted">
+    <section>
+      <h1 className="mb-2 font-bold text-2xl">Settings</h1>
+      <p className="my-4 text-muted">
         The LLM that drafts the graph and the script: OpenRouter by default, or any
         OpenAI-compatible endpoint. Saved to <code>.env</code> on this machine.
       </p>
-      <form className="settings" onSubmit={submit}>
-        <label htmlFor="settings-provider">Provider</label>
+      <form className="mt-6 grid max-w-[560px] gap-1.5" onSubmit={submit}>
+        <label className={LABEL} htmlFor="settings-provider">
+          Provider
+        </label>
         <select
+          className={INPUT}
           id="settings-provider"
           value={provider}
           disabled={locked("baseUrl")}
@@ -95,8 +109,11 @@ export const Settings = () => {
           <option value="custom">Custom endpoint</option>
         </select>
 
-        <label htmlFor="settings-base-url">Base URL</label>
+        <label className={LABEL} htmlFor="settings-base-url">
+          Base URL
+        </label>
         <input
+          className={INPUT}
           id="settings-base-url"
           value={form.baseUrl}
           disabled={locked("baseUrl")}
@@ -105,8 +122,11 @@ export const Settings = () => {
         />
         {locked("baseUrl") && <FromEnvironment variable={ENV_NAMES.baseUrl} />}
 
-        <label htmlFor="settings-model">Model</label>
+        <label className={LABEL} htmlFor="settings-model">
+          Model
+        </label>
         <input
+          className={INPUT}
           id="settings-model"
           value={form.model}
           disabled={locked("model")}
@@ -118,12 +138,15 @@ export const Settings = () => {
           <FromEnvironment variable={ENV_NAMES.model} />
         ) : (
           view.modelIsSuggested && (
-            <p className="field-note">Suggested; saving keeps it, or type another.</p>
+            <p className={NOTE}>Suggested; saving keeps it, or type another.</p>
           )
         )}
 
-        <label htmlFor="settings-key">API key</label>
+        <label className={LABEL} htmlFor="settings-key">
+          API key
+        </label>
         <input
+          className={INPUT}
           id="settings-key"
           type="password"
           autoComplete="off"
@@ -137,7 +160,7 @@ export const Settings = () => {
         {locked("apiKey") && view.key.state === "set" ? (
           <FromEnvironment variable={view.key.variable} />
         ) : view.key.state === "set" ? (
-          <label className="check">
+          <label className="flex items-center gap-2 text-muted text-sm">
             <input
               type="checkbox"
               checked={form.removeKey}
@@ -147,16 +170,16 @@ export const Settings = () => {
           </label>
         ) : (
           (provider === "ollama" || provider === "lmstudio") && (
-            <p className="field-note">A local model needs no key.</p>
+            <p className={NOTE}>A local model needs no key.</p>
           )
         )}
 
-        <div className="settings-actions">
-          <button type="submit" disabled={saving}>
+        <div className="mt-5 flex items-center gap-3">
+          <button className="btn" type="submit" disabled={saving}>
             Save
           </button>
           {saved && (
-            <span className="muted" role="status">
+            <span className="text-muted" role="status">
               Saved to .env
             </span>
           )}

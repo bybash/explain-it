@@ -8,6 +8,9 @@ import { editorState, errorLine, STARTER_MERMAID } from "./graph-editor.ts";
 import { MermaidDiagram } from "./MermaidDiagram.tsx";
 import { MermaidEditor } from "./MermaidEditor.tsx";
 
+/** What the graph leaves out or warns of, as a list under the code. */
+const NOTES = "mt-2 list-disc pl-5 text-muted text-sm";
+
 /** How long typing pauses before the code is read and drawn again. */
 const PAUSE_MS = 400;
 
@@ -98,8 +101,8 @@ export const GraphPanel = ({
   };
 
   return (
-    <div className="graph-panel">
-      <div className="graph-columns">
+    <div className="mt-3 mb-2">
+      <div className="grid grid-cols-[1fr] items-start gap-4 min-[1101px]:grid-cols-2">
         <div>
           <MermaidEditor
             value={text}
@@ -112,7 +115,7 @@ export const GraphPanel = ({
           />
           {read && !read.ok && <Errors errors={read.errors} />}
           {read?.ok && read.notes.length > 0 && (
-            <ul className="notes" aria-label="Left out of the graph">
+            <ul className={NOTES} aria-label="Left out of the graph">
               {read.notes.map((note) => (
                 <li key={note}>{note}</li>
               ))}
@@ -121,16 +124,16 @@ export const GraphPanel = ({
         </div>
         <MermaidDiagram text={shown} />
       </div>
-      <div className="graph-actions">
-        <button type="button" onClick={save} disabled={!state.canSave || saving}>
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        <button className="btn" type="button" onClick={save} disabled={!state.canSave || saving}>
           Save the graph
         </button>
-        {state.unsaved && <span className="unsaved">Unsaved changes</span>}
+        {state.unsaved && <span className="font-semibold text-accent">Unsaved changes</span>}
         {elsewhere && state.unsaved && (
-          <span className="muted">The graph was changed elsewhere; saving replaces it.</span>
+          <span className="text-muted">The graph was changed elsewhere; saving replaces it.</span>
         )}
         {outcome && !state.unsaved && (
-          <span className="muted" role="status">
+          <span className="text-muted" role="status">
             Saved.
             {outcome.staleBeats.length > 0 &&
               ` ${outcome.staleBeats.length} beat${outcome.staleBeats.length === 1 ? "" : "s"} to rewrite at the script gate.`}
@@ -139,7 +142,7 @@ export const GraphPanel = ({
       </div>
       <Errors errors={saveErrors} />
       {outcome && [...outcome.storyboardProblems, ...outcome.warnings].length > 0 && (
-        <ul className="notes">
+        <ul className={NOTES}>
           {[...outcome.storyboardProblems, ...outcome.warnings].map((line) => (
             <li key={line}>{line}</li>
           ))}

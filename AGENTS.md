@@ -61,6 +61,8 @@ npm run music -- calm 30 calm.wav          # 30 s of a music mood (calm, upbeat,
 npm run dev:engine  # the engine dev page in a browser
 npm run screenshot -- "dev/iso.html?t=4" out.png   # a still of a dev page
 npm run clip -- dev/iso.html out.mp4               # a clip of a dev page (needs ffmpeg)
+npm run shots -- shots/before                      # every web app page, light and dark, as PNGs (needs Chrome)
+npm run shots:compare -- shots/before shots/after shots/diff   # pixel differences between two sets of shots
 npm run build:engine                               # build the render page into dist/render
 npx explain-it render examples/oauth-login         # render a project to out/ (needs Chrome and ffmpeg)
 npx explain-it check examples/oauth-login          # all checks into checks.json, and contact-sheet.png (needs Chrome and ffmpeg)

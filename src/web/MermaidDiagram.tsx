@@ -55,9 +55,20 @@ export const MermaidDiagram = ({ text }: { text: string }) => {
   }, [text]);
 
   return (
-    <figure className="mermaid-diagram" aria-label="The graph as a diagram">
-      {problem && <figcaption className="diagram-problem">{problem}</figcaption>}
-      <div ref={box} data-stale={problem !== undefined} />
+    <figure
+      className="h-[360px] overflow-auto rounded-box border border-line bg-surface p-3"
+      aria-label="The graph as a diagram"
+    >
+      {/* Stays in view while a wide diagram scrolls under it. */}
+      {problem && (
+        <figcaption className="sticky top-0 left-0 mb-2 text-muted text-sm">{problem}</figcaption>
+      )}
+      {/* At its own size, so labels stay readable; the box scrolls a wide graph. */}
+      <div
+        className="data-[stale=true]:opacity-40 [&_svg]:max-w-none"
+        ref={box}
+        data-stale={problem !== undefined}
+      />
     </figure>
   );
 };

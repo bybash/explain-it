@@ -14,3 +14,6 @@ contact-sheet.jpg
 *.log
 .DS_Store
 .vitest/
+
+# npm run shots
+shots/

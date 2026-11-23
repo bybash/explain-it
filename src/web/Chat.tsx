@@ -64,34 +64,44 @@ export const Chat = ({ slug, gate }: { slug: string; gate: Gate }) => {
   };
 
   return (
-    <aside className="chat" aria-label="Chat">
-      <div className="chat-messages">
+    <aside
+      className="sticky top-4 flex h-[calc(100vh-56px-64px)] min-h-[420px] flex-col rounded-box border border-line bg-surface"
+      aria-label="Chat"
+    >
+      <div className="flex-1 overflow-y-auto p-4">
         {messages.length === 0 && (
-          <p className="muted chat-empty">Describe the flow the video should explain.</p>
+          <p className="text-muted">Describe the flow the video should explain.</p>
         )}
-        {messages.map((m, i) => (
-          // A message has no id; its place in the file never changes.
-          // biome-ignore lint/suspicious/noArrayIndexKey: chat.jsonl is append-only.
-          <div key={i} className="message" data-role={m.role}>
-            <span className="message-meta">
-              {m.role === "user" ? "You" : "explAIn-it"} · {GATE_LABELS[m.gate]}
-            </span>
-            <p>{m.text}</p>
-          </div>
-        ))}
+        <ol aria-label="Messages">
+          {messages.map((m, i) => (
+            <li
+              // A message has no id; its place in the file never changes.
+              // biome-ignore lint/suspicious/noArrayIndexKey: chat.jsonl is append-only.
+              key={i}
+              className="mb-3 rounded-box bg-page px-3 py-2.5 data-[role=user]:bg-accent-soft"
+              data-role={m.role}
+            >
+              <span className="font-semibold text-muted text-xs">
+                {m.role === "user" ? "You" : "explAIn-it"} · {GATE_LABELS[m.gate]}
+              </span>
+              <p className="mt-1 whitespace-pre-wrap">{m.text}</p>
+            </li>
+          ))}
+        </ol>
         {problems.length > 0 && (
-          <details className="broken">
+          <details className="mt-6 text-muted">
             <summary>Some lines of chat.jsonl could not be read</summary>
             <Errors errors={problems} />
           </details>
         )}
         <div ref={end} />
       </div>
-      <form className="chat-form" onSubmit={send}>
-        <label htmlFor="chat-text" className="visually-hidden">
+      <form className="grid grid-cols-[1fr_auto] gap-2 border-line border-t p-3" onSubmit={send}>
+        <label htmlFor="chat-text" className="sr-only">
           Message
         </label>
         <textarea
+          className="field resize-none bg-page"
           id="chat-text"
           value={text}
           rows={3}
@@ -105,10 +115,10 @@ export const Chat = ({ slug, gate }: { slug: string; gate: Gate }) => {
             }
           }}
         />
-        <button type="submit" disabled={sending || text.trim() === ""}>
+        <button className="btn self-end" type="submit" disabled={sending || text.trim() === ""}>
           Send
         </button>
-        <Errors errors={errors} />
+        <Errors className="col-span-full" errors={errors} />
       </form>
     </aside>
   );

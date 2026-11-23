@@ -49,18 +49,18 @@ export const ProjectView = ({ slug, gate }: { slug: string; gate?: Gate | undefi
   }, [slug]);
 
   return (
-    <section className="page">
-      <a className="back" href="#/">
+    <section>
+      <a className="mb-4 inline-block text-muted" href="#/">
         ← All projects
       </a>
       {errors.length > 0 && (
         <>
-          <h1 className="page-title">{slug}</h1>
-          <p>This project could not be opened:</p>
+          <h1 className="mb-2 font-bold text-2xl">{slug}</h1>
+          <p className="my-4">This project could not be opened:</p>
           <Errors errors={errors} />
         </>
       )}
-      {!opened && errors.length === 0 && <p className="muted">Opening…</p>}
+      {!opened && errors.length === 0 && <p className="my-4 text-muted">Opening…</p>}
       {opened && (
         <Opened
           opened={opened}
@@ -71,6 +71,10 @@ export const ProjectView = ({ slug, gate }: { slug: string; gate?: Gate | undefi
     </section>
   );
 };
+
+/** A gate in the stepper: done, the one reached, or not reached yet. */
+const PILL =
+  "rounded-full border border-line px-3 py-1.5 text-muted text-sm data-[state=current]:border-accent data-[state=current]:bg-accent-soft data-[state=current]:font-semibold data-[state=current]:text-accent data-[state=done]:text-ink";
 
 const Opened = ({
   opened,
@@ -90,30 +94,30 @@ const Opened = ({
       location.replace(`#/projects/${slug}/${viewed}`);
   }, [requested, viewed, slug]);
   return (
-    <div className="workspace">
+    <div className="grid grid-cols-[1fr] items-start gap-6 min-[861px]:grid-cols-[minmax(280px,380px)_1fr]">
       <Chat key={slug} slug={slug} gate={viewed} />
-      <div className="panel">
-        <h1 className="page-title">{project.name}</h1>
-        <p className="muted">
+      <div>
+        <h1 className="mb-2 font-bold text-2xl">{project.name}</h1>
+        <p className="my-4 text-muted">
           {slug} · {project.origin === "mcp" ? "made over MCP" : "made in the app"} ·{" "}
           {updatedLabel(project.updatedAt)}
         </p>
-        <ol className="gates" aria-label="Gates">
+        <ol className="mt-6 flex flex-wrap gap-2" aria-label="Gates">
           {steps.map((step, i) => (
             <li key={step.gate}>
               {step.open ? (
                 <a
-                  className="gate"
+                  className={`${PILL} inline-block hover:border-accent data-[viewed=true]:outline-2 data-[viewed=true]:outline-accent data-[viewed=true]:outline-offset-1`}
                   href={`#/projects/${slug}/${step.gate}`}
                   data-state={step.state}
                   data-viewed={step.viewed}
                   aria-current={step.viewed ? "step" : undefined}
                 >
-                  <span className="gate-number">{i + 1}</span> {GATE_LABELS[step.gate]}
+                  <span className="tabular-nums">{i + 1}</span> {GATE_LABELS[step.gate]}
                 </a>
               ) : (
-                <span className="gate" data-state={step.state} aria-disabled="true">
-                  <span className="gate-number">{i + 1}</span> {GATE_LABELS[step.gate]}
+                <span className={`${PILL} opacity-60`} data-state={step.state} aria-disabled="true">
+                  <span className="tabular-nums">{i + 1}</span> {GATE_LABELS[step.gate]}
                 </span>
               )}
             </li>
@@ -155,30 +159,38 @@ const GatePanel = ({
   };
 
   return (
-    <section className="gate-panel" aria-label={`${GATE_LABELS[gate]} gate`}>
-      <h2 className="section-title">{GATE_LABELS[gate]}</h2>
-      <p>{GATE_PANELS[gate]}</p>
+    <section className="mt-2" aria-label={`${GATE_LABELS[gate]} gate`}>
+      <h2 className="mt-8 mb-3 font-bold text-base">{GATE_LABELS[gate]}</h2>
+      <p className="my-4">{GATE_PANELS[gate]}</p>
       {gate === "graph" ? (
-        <Suspense fallback={<p className="muted">Opening the graph editor…</p>}>
+        <Suspense fallback={<p className="my-4 text-muted">Opening the graph editor…</p>}>
           <GraphPanel opened={opened} blocked={setBlocked} />
         </Suspense>
       ) : (
-        <p className="muted">This gate's panel comes in a later version.</p>
+        <p className="my-4 text-muted">This gate's panel comes in a later version.</p>
       )}
       {gate === project.gate ? (
         next && (
-          <div className="approve">
-            <button type="button" onClick={approve} disabled={approving || blocked !== undefined}>
+          <div className="my-4">
+            <button
+              className="btn"
+              type="button"
+              onClick={approve}
+              disabled={approving || blocked !== undefined}
+            >
               Approve and go to {GATE_LABELS[next]}
             </button>
-            {blocked && <span className="muted"> {blocked}</span>}
+            {blocked && <span className="text-muted"> {blocked}</span>}
             <Errors errors={errors} />
           </div>
         )
       ) : (
-        <p className="approved">
+        <p className="my-4">
           Approved. The project is at the{" "}
-          <a href={`#/projects/${slug}/${project.gate}`}>{GATE_LABELS[project.gate]}</a> gate.
+          <a className="underline" href={`#/projects/${slug}/${project.gate}`}>
+            {GATE_LABELS[project.gate]}
+          </a>{" "}
+          gate.
         </p>
       )}
       <Files opened={opened} />
@@ -204,18 +216,18 @@ const Files = ({ opened }: { opened: OpenedProject }) => {
   ];
   return (
     <>
-      <h3 className="section-title">Files</h3>
+      <h3 className="mt-8 mb-3 font-bold text-base">Files</h3>
       {problems.length > 0 && (
         <>
-          <p>Some files are broken:</p>
+          <p className="my-4">Some files are broken:</p>
           <Errors errors={problems} />
         </>
       )}
-      <ul className="files">
+      <ul className="divide-y divide-line overflow-hidden rounded-box border border-line bg-surface">
         {files.map(({ file, summary }) => (
-          <li key={file} className="file" data-present={summary !== null}>
-            <code>{file}</code>
-            <span className="muted">
+          <li key={file} className="flex justify-between gap-3 px-4 py-3">
+            <code className={summary === null ? "text-muted" : undefined}>{file}</code>
+            <span className="text-muted">
               {summary ??
                 (problems.some((p) => p.path.startsWith(file)) ? "broken" : "not made yet")}
             </span>

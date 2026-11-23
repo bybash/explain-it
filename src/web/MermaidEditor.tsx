@@ -99,5 +99,11 @@ export const MermaidEditor = ({
     view.current?.dispatch({ effects: setErrorLine.of(errorLine) });
   }, [errorLine]);
 
-  return <div className="mermaid-editor" ref={host} />;
+  // `mermaid-editor` scopes the rules for CodeMirror's own elements in app.css.
+  return (
+    <div
+      className="mermaid-editor overflow-hidden rounded-box border border-line bg-surface"
+      ref={host}
+    />
+  );
 };
