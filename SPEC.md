@@ -597,8 +597,14 @@ comes later.
   files the sound follows; a change to them makes it again, speaking only
   the lines that changed. Until it is ready the video plays silently with
   estimated timing; then the picture follows the soundtrack's clock, timed
-  by the measured narration. Below the player, the beats by scene: the one
-  playing is marked, and a click goes to it (decision 026).
+  by the measured narration. Below the player, three tabs. Beats lists the
+  beats by scene: the one playing is marked, a click goes to it, and a
+  beat the checks warned about carries the count (decision 026). Checks
+  runs the checks (see Checks) and lists their warnings, those about the
+  whole video and the skipped checks first, then those at beats in the
+  order they show; a click on one goes to where it shows, in the Beats
+  tab. Contact sheet shows the sheet the checks drew. A report older than
+  the files is shown, marked as out of date (decision 027).
 
 ## App and stack
 

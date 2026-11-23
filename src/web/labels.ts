@@ -16,7 +16,7 @@ export const GATE_PANELS: Readonly<Record<Gate, string>> = {
   style:
     "How the video looks and sounds. Changes show in the preview straight away; the voice and the music have samples to listen to.",
   preview:
-    "The video with its voice and music, as the render will make it. The voice is made when the gate opens; until then the video plays silently.",
+    "The video with its voice and music, as the render will make it. The voice is made when the gate opens; until then the video plays silently. The checks warn about anything that overlaps, leaves the frame, reads too fast or sounds too loud.",
   render: "Render progress, then the downloads.",
 };
 

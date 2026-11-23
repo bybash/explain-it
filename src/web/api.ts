@@ -1,12 +1,14 @@
 import type { z } from "zod";
 import {
   ApprovedSchema,
+  ChecksRunSchema,
   CreatedProjectSchema,
   ErrorsResponseSchema,
   GraphReadSchema,
   GraphSavedSchema,
   type OpenedProject,
   OpenedProjectSchema,
+  PreviewChecksSchema,
   PreviewSoundSchema,
   type ProjectList,
   ProjectListSchema,
@@ -160,6 +162,21 @@ export const getPreviewSound = (slug: string) =>
 /** Where the ready soundtrack is served; its key changes whenever the sound does. */
 export const previewSoundUrl = (slug: string, key: string) =>
   `/api/projects/${encodeURIComponent(slug)}/preview-sound/${key}.wav`;
+
+/** Runs the checks from the Preview gate; they wait for the sound first. */
+export const startChecks = (slug: string) =>
+  postJson(ChecksRunSchema, `/api/projects/${encodeURIComponent(slug)}/checks`, {});
+
+/** The run of the checks under way, the last report, and whether the files are still the ones it checked. */
+export const getChecks = (slug: string) =>
+  fetchChecked(PreviewChecksSchema, `/api/projects/${encodeURIComponent(slug)}/checks`);
+
+/**
+ * Where the contact sheet is served: full size (PNG) or small (JPEG). Each
+ * run draws it again under the same name, so the report's time tells them apart.
+ */
+export const contactSheetUrl = (slug: string, file: string, checkedAt: string) =>
+  `/api/projects/${encodeURIComponent(slug)}/checks/${encodeURIComponent(file)}?v=${encodeURIComponent(checkedAt)}`;
 
 export const approveGate = (slug: string, gate: Gate) =>
   postJson(ApprovedSchema, `/api/projects/${encodeURIComponent(slug)}/approve`, { gate });

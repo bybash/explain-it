@@ -6,6 +6,8 @@ import { join } from "node:path";
 import { type Browser, chromium, type Page } from "playwright-core";
 import { build } from "vite";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { CHECK_REPORT } from "../render/check-files.ts";
+import { CONTACT_SHEET } from "../render/sheet.ts";
 import { MAX_PROJECT_NAME } from "../schema/project.ts";
 import { clockTime } from "../web/preview-time.ts";
 import { DEFAULT_HOST } from "./listen.ts";
@@ -137,7 +139,12 @@ const devServer = async (projectsDir: string): Promise<Server> => {
 /** The example under `slug`, moved back to `gate`. */
 const exampleAt = (projectsDir: string, slug: string, gate: string) => {
   const dir = join(projectsDir, slug);
-  cpSync(example, dir, { recursive: true, filter: (source) => !source.includes("/out") });
+  // A check run leaves its report and contact sheet in the example; they are not part of it.
+  cpSync(example, dir, {
+    recursive: true,
+    filter: (source) =>
+      !["out", CHECK_REPORT, ...Object.values(CONTACT_SHEET)].some((o) => source.includes(`/${o}`)),
+  });
   const file = join(dir, "project.json");
   writeFileSync(file, JSON.stringify({ ...JSON.parse(readFileSync(file, "utf8")), gate }));
 };
@@ -370,6 +377,42 @@ const flow = (
       await page.getByRole("button", { name: "Pause" }).click();
     },
     90_000,
+  );
+
+  it.skipIf(!hasFfmpeg)(
+    "checks the video from the preview: a warning jumps to its beat, and the contact sheet shows",
+    async () => {
+      // The tone voice speaks faster than a reader reads, so the example's captions get warnings.
+      await page.getByRole("tab", { name: /^Checks/ }).click();
+      await page.getByRole("button", { name: "Run the checks" }).click();
+      const warnings = page.getByRole("list", { name: "Warnings at beats" });
+      await warnings.waitFor({ timeout: 120_000 });
+      await expect.poll(() => page.getByRole("tab", { name: /^Checks \(\d+\)$/ }).count()).toBe(1);
+
+      const warning = warnings.getByRole("button").last();
+      const beat = await warning.getAttribute("data-beat");
+      const at = Number(await warning.getAttribute("data-at"));
+      await warning.click();
+      expect(await page.getByRole("tab", { name: "Beats" }).getAttribute("aria-selected")).toBe(
+        "true",
+      );
+      const time = () => page.getByText(/^\d+:\d\d \/ \d+:\d\d$/).textContent();
+      await expect.poll(time, SOON).toMatch(new RegExp(`^${clockTime(at)} /`));
+      const jumpedTo = page.locator(`[data-beat="${beat}"][data-starts-at]`);
+      await expect.poll(() => jumpedTo.getAttribute("aria-current"), SOON).toBe("step");
+      // The beat carries its warnings' count in the list.
+      expect(await jumpedTo.textContent()).toMatch(/▲ \d+ warnings?/);
+
+      await page.getByRole("tab", { name: "Contact sheet" }).click();
+      const sheet = page.getByRole("img", { name: /^The contact sheet/ });
+      await expect
+        .poll(
+          () => sheet.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth),
+          SOON,
+        )
+        .toBeGreaterThan(0);
+    },
+    150_000,
   );
 };
 

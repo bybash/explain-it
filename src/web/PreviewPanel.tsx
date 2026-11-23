@@ -9,9 +9,17 @@ import {
   previewSoundUrl,
   startPreviewSound,
 } from "./api.ts";
+import { ChecksTab, ContactSheet } from "./ChecksTab.tsx";
+import { checkRows } from "./check-rows.ts";
+import { PreviewBeats } from "./PreviewBeats.tsx";
 import { beatAt, clockTime } from "./preview-time.ts";
-import { Pill } from "./ui.tsx";
+import { Pill, Tabs } from "./ui.tsx";
+import { usePreviewChecks } from "./usePreviewChecks.ts";
 import { usePreviewFrame } from "./usePreviewFrame.ts";
+
+/** The tabs under the player. */
+type PanelTab = "beats" | "checks" | "sheet";
+const NO_WARNINGS: ReadonlyMap<string, number> = new Map();
 
 /** How long the first line may take before the panel says the model may be downloading. */
 const SLOW_START_MS = 3000;
@@ -53,6 +61,7 @@ export const PreviewPanel = ({ opened }: { opened: OpenedProject }) => {
   const [darkShown, setDarkShown] = useState(false);
   const [at, setAt] = useState(0);
   const [playing, setPlaying] = useState(false);
+  const [tab, setTab] = useState<PanelTab>("beats");
   const audio = useRef<HTMLAudioElement>(null);
   /** When the silent clock read 0 s, so a seek while playing moves it. */
   const clockZero = useRef(0);
@@ -83,6 +92,7 @@ export const PreviewPanel = ({ opened }: { opened: OpenedProject }) => {
   useEffect(() => {
     void start();
   }, [start, projectFiles]);
+  const checks = usePreviewChecks(slug, projectFiles);
 
   const waitingForFirstLine = sound.state === "speaking" && sound.spoken === 0;
   useEffect(() => {
@@ -154,7 +164,19 @@ export const PreviewPanel = ({ opened }: { opened: OpenedProject }) => {
     );
 
   const current = beatAt(beats, at);
-  const startOf = new Map(beats.map((beat) => [beat.id, beat.start]));
+  const report = checks.checks?.report;
+  const rows = report ? checkRows(report, storyboard) : undefined;
+  const warningCount = report?.warnings.length ?? 0;
+  /** Goes to where a warning shows, in the beat list, with that beat in sight. */
+  const jump = (t: number, beat: string) => {
+    seek(t);
+    setTab("beats");
+    requestAnimationFrame(() =>
+      document.querySelector(`[data-beat="${CSS.escape(beat)}"][data-starts-at]`)?.scrollIntoView({
+        block: "nearest",
+      }),
+    );
+  };
   const busy = sound.state === "speaking" || sound.state === "mixing" || sound.state === "idle";
 
   return (
@@ -236,46 +258,46 @@ export const PreviewPanel = ({ opened }: { opened: OpenedProject }) => {
 
       <section
         className="rounded-box border border-line bg-surface p-4"
-        aria-labelledby="preview-beats-heading"
+        aria-label="Beats and checks"
       >
-        <h3 id="preview-beats-heading" className="mb-1 font-bold text-base">
-          Beats
-        </h3>
-        {storyboard.scenes.map((scene, s) => (
-          <div key={scene.id} className="mt-3">
-            <h4 className="font-semibold text-muted text-sm">
-              {s + 1} · {scene.title}
-            </h4>
-            <ol className="mt-1 divide-y divide-line" aria-label={`Beats of ${scene.title}`}>
-              {scene.beats.map((beat, b) => {
-                const startsAt = startOf.get(beat.id);
-                const now = current?.id === beat.id;
-                return (
-                  <li key={beat.id}>
-                    <button
-                      type="button"
-                      aria-current={now ? "step" : undefined}
-                      data-starts-at={startsAt}
-                      className="grid w-full cursor-pointer grid-cols-[2rem_1fr_auto] items-baseline gap-2 px-2 py-2 text-left hover:bg-accent-soft aria-[current=step]:bg-accent-soft"
-                      onClick={() => startsAt !== undefined && seek(startsAt)}
-                    >
-                      <span className="text-muted text-sm tabular-nums">{b + 1}</span>
-                      <span>
-                        <span className={now ? "font-semibold text-accent" : "font-semibold"}>
-                          {beat.caption}
-                        </span>
-                        {beat.say && <span className="block text-muted text-sm">{beat.say}</span>}
-                      </span>
-                      <span className="text-muted text-sm tabular-nums">
-                        {startsAt === undefined ? "" : clockTime(startsAt)}
-                      </span>
-                    </button>
-                  </li>
-                );
-              })}
-            </ol>
-          </div>
-        ))}
+        <Tabs
+          label="Beats and checks"
+          selected={tab}
+          select={setTab}
+          tabs={[
+            {
+              id: "beats",
+              label: "Beats",
+              content: (
+                <PreviewBeats
+                  storyboard={storyboard}
+                  beats={beats}
+                  current={current?.id}
+                  warnings={rows?.countByBeat ?? NO_WARNINGS}
+                  seek={seek}
+                />
+              ),
+            },
+            {
+              id: "checks",
+              label: warningCount > 0 ? `Checks (${warningCount})` : "Checks",
+              content: (
+                <ChecksTab
+                  checks={checks.checks}
+                  rows={rows}
+                  problem={checks.problem}
+                  run={checks.run}
+                  jump={jump}
+                />
+              ),
+            },
+            {
+              id: "sheet",
+              label: "Contact sheet",
+              content: <ContactSheet slug={slug} checks={checks.checks} />,
+            },
+          ]}
+        />
       </section>
     </div>
   );
