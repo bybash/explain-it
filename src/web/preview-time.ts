@@ -1,10 +1,4 @@
-/** A beat's place in the video, as the player plans it. */
-export type BeatSpan = {
-  readonly id: string;
-  readonly scene: string;
-  readonly start: number;
-  readonly end: number;
-};
+import type { BeatSpan } from "./preview-protocol.ts";
 
 /** The beat playing at `t`, or none while a card shows or between scenes. */
 export const beatAt = <B extends BeatSpan>(beats: readonly B[], t: number): B | undefined =>

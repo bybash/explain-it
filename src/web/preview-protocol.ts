@@ -27,6 +27,15 @@ export const SeekMessageSchema = z.object({ type: z.literal("seek"), at: z.numbe
 export const ToPreviewSchema = z.discriminatedUnion("type", [DrawMessageSchema, SeekMessageSchema]);
 export type ToPreview = z.output<typeof ToPreviewSchema>;
 
+/** A beat's place in the video, as the player plans it. */
+export const BeatSpanSchema = z.object({
+  id: z.string(),
+  scene: z.string(),
+  start: z.number(),
+  end: z.number(),
+});
+export type BeatSpan = z.output<typeof BeatSpanSchema>;
+
 /** A moment worth jumping to: the title card, a beat, the end. */
 export const MarkSchema = z.object({ label: z.string(), at: z.number().min(0) });
 export type Mark = z.output<typeof MarkSchema>;
@@ -38,9 +47,7 @@ export const FromPreviewSchema = z.discriminatedUnion("type", [
     duration: z.number(),
     marks: z.array(MarkSchema),
     /** Each beat's place in the video, for a beat list. */
-    beats: z.array(
-      z.object({ id: z.string(), scene: z.string(), start: z.number(), end: z.number() }),
-    ),
+    beats: z.array(BeatSpanSchema),
   }),
   z.object({ type: z.literal("failed"), message: z.string() }),
 ]);

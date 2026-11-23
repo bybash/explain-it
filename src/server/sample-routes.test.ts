@@ -1,4 +1,4 @@
-import { cpSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -6,9 +6,9 @@ import { fakeTts } from "../audio/fake-tts.testing.ts";
 import { decodeWav } from "../audio/wav.ts";
 import { MUSIC_SAMPLE_SECONDS, SAMPLE_LINE } from "../schema/api.ts";
 import { createApp } from "./app.ts";
+import { copyExample } from "./example.testing.ts";
 import { settingsStore } from "./settings.ts";
 
-const example = new URL("../../examples/oauth-login/", import.meta.url).pathname;
 const FIRST_LINE = "A user opens the app and clicks Sign in.";
 
 let projectsDir: string;
@@ -16,10 +16,7 @@ let voices: ReturnType<typeof fakeTts>;
 let app: ReturnType<typeof createApp>;
 beforeEach(() => {
   projectsDir = mkdtempSync(join(tmpdir(), "explain-it-samples-"));
-  cpSync(example, join(projectsDir, "oauth"), {
-    recursive: true,
-    filter: (source) => !source.includes("/out") && !source.includes("/cache"),
-  });
+  copyExample(projectsDir, "oauth");
   voices = fakeTts();
   app = createApp({
     projectsDir,

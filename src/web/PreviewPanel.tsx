@@ -13,6 +13,9 @@ import { beatAt, clockTime } from "./preview-time.ts";
 import { Pill } from "./ui.tsx";
 import { usePreviewFrame } from "./usePreviewFrame.ts";
 
+/** How long the first line may take before the panel says the model may be downloading. */
+const SLOW_START_MS = 3000;
+
 /** What the voice and the mix are doing, in a line. */
 const soundLine = (sound: PreviewSound, voiced: boolean): string => {
   switch (sound.state) {
@@ -21,7 +24,8 @@ const soundLine = (sound: PreviewSound, voiced: boolean): string => {
     case "speaking":
       return sound.total === 0
         ? "Getting the voice ready…"
-        : `Speaking line ${sound.spoken} of ${sound.total}…`;
+        : // The line being spoken is the one after those done.
+          `Speaking line ${Math.min(sound.spoken + 1, sound.total)} of ${sound.total}…`;
     case "mixing":
       return "Mixing the soundtrack…";
     case "ready":
@@ -50,6 +54,10 @@ export const PreviewPanel = ({ opened }: { opened: OpenedProject }) => {
   const [at, setAt] = useState(0);
   const [playing, setPlaying] = useState(false);
   const audio = useRef<HTMLAudioElement>(null);
+  /** When the silent clock read 0 s, so a seek while playing moves it. */
+  const clockZero = useRef(0);
+  /** No line has come for a while: the first time, the voice model is downloading. */
+  const [slowStart, setSlowStart] = useState(false);
   const mode = config.theme.mode === "both" ? (darkShown ? "dark" : "light") : config.theme.mode;
   const narration = sound.state === "ready" ? sound.narration : undefined;
   const preview = usePreviewFrame({ opened, config, mode, logo, narration });
@@ -65,11 +73,24 @@ export const PreviewPanel = ({ opened }: { opened: OpenedProject }) => {
 
   // Opening the gate, and any change to the project's files, asks for the sound: the server
   // answers at once when nothing changed, and speaks only the lines that did.
-  const files = JSON.stringify([opened.graph, opened.storyboard, opened.layout, opened.config]);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: `files` stands for the project's files.
+  const projectFiles = JSON.stringify([
+    opened.graph,
+    opened.storyboard,
+    opened.layout,
+    opened.config,
+  ]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `projectFiles` stands for the files.
   useEffect(() => {
     void start();
-  }, [start, files]);
+  }, [start, projectFiles]);
+
+  const waitingForFirstLine = sound.state === "speaking" && sound.spoken === 0;
+  useEffect(() => {
+    setSlowStart(false);
+    if (!waitingForFirstLine) return;
+    const timer = setTimeout(() => setSlowStart(true), SLOW_START_MS);
+    return () => clearTimeout(timer);
+  }, [waitingForFirstLine]);
 
   useEffect(
     () =>
@@ -83,17 +104,20 @@ export const PreviewPanel = ({ opened }: { opened: OpenedProject }) => {
     [slug, start],
   );
 
+  // A logo saved in another tab arrives with the project's files.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `projectFiles` stands for the files.
   useEffect(() => {
     void getLogo(slug).then((result) => {
       if (result.ok) setLogo(result.value.logo ?? undefined);
     });
-  }, [slug]);
+  }, [slug, projectFiles]);
 
   const seek = (t: number) => {
     const to = Math.max(0, Math.min(t, duration));
     setAt(to);
     preview.seek(to);
     if (audio.current) audio.current.currentTime = to;
+    clockZero.current = performance.now() - to * 1000;
   };
 
   // While playing, the picture follows the soundtrack's clock, or a clock of its own when silent.
@@ -101,13 +125,15 @@ export const PreviewPanel = ({ opened }: { opened: OpenedProject }) => {
   useEffect(() => {
     if (!playing) return;
     const sounding = audio.current && sound.state === "ready" ? audio.current : undefined;
-    const from = performance.now() - at * 1000;
+    // Play at the end starts again from the beginning.
+    const from = at >= duration - 0.05 ? 0 : at;
+    clockZero.current = performance.now() - from * 1000;
     if (sounding) {
-      sounding.currentTime = at;
+      sounding.currentTime = from;
       void sounding.play().catch(() => setPlaying(false));
     }
     let frame = requestAnimationFrame(function tick() {
-      const t = sounding ? sounding.currentTime : (performance.now() - from) / 1000;
+      const t = sounding ? sounding.currentTime : (performance.now() - clockZero.current) / 1000;
       if (t >= duration || sounding?.ended) {
         setPlaying(false);
         return;
@@ -189,8 +215,8 @@ export const PreviewPanel = ({ opened }: { opened: OpenedProject }) => {
           {busy && (
             <span className="text-muted">
               Until then the video plays silently, with its timing estimated
-              {sound.state === "speaking" && sound.spoken === 0
-                ? "; the first time also downloads the voice model, a minute or two"
+              {slowStart
+                ? "; the first time, the voice model downloads, which takes a minute or two"
                 : ""}
               .
             </span>
@@ -229,6 +255,7 @@ export const PreviewPanel = ({ opened }: { opened: OpenedProject }) => {
                     <button
                       type="button"
                       aria-current={now ? "step" : undefined}
+                      data-starts-at={startsAt}
                       className="grid w-full cursor-pointer grid-cols-[2rem_1fr_auto] items-baseline gap-2 px-2 py-2 text-left hover:bg-accent-soft aria-[current=step]:bg-accent-soft"
                       onClick={() => startsAt !== undefined && seek(startsAt)}
                     >

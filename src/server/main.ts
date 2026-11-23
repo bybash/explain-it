@@ -6,7 +6,7 @@
 //   CACHE_DIR      the cache folder, for the voice model; ./cache by default
 //   PUBLIC_URL     where users open the app, for preview links; the request's own address by default
 //   ENV_FILE       the .env file the settings page reads and writes; ./.env by default
-//   VOICE          "tone" speaks each word as a tone with no model (for tests); Kokoro by default
+//   VOICE          kokoro (the default), or tone: a tone a word with no model, for tests
 import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -25,6 +25,11 @@ if (!listen.ok) {
   process.exit(2);
 }
 const { hostname, port } = listen.value;
+const voice = process.env.VOICE || "kokoro";
+if (voice !== "kokoro" && voice !== "tone") {
+  console.error(`VOICE: "${voice}" is not a voice; use kokoro (the default) or tone (for tests)`);
+  process.exit(2);
+}
 const projectsDir = resolve(process.env.PROJECTS_DIR ?? "projects");
 // A specific HOST is a name the app is reached by; a wildcard is not one.
 const wildcard = hostname === "0.0.0.0" || hostname === "::";
@@ -32,7 +37,7 @@ const app = createApp({
   projectsDir,
   // VOICE=tone speaks each word as a tone, with no model: for the browser test, not for videos.
   tts:
-    process.env.VOICE === "tone"
+    voice === "tone"
       ? toneProvider()
       : kokoroProvider({ cacheDir: resolve(process.env.CACHE_DIR ?? "cache") }),
   now: () => new Date(),

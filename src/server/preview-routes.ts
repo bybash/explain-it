@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import type { Hono } from "hono";
+import { PreviewKeySchema } from "../schema/api.ts";
 import type { PreviewSoundJobs } from "./preview-sound.ts";
 import { projectExists } from "./projects.ts";
 import { errorResponse, noProject } from "./responses.ts";
@@ -29,8 +30,8 @@ export const previewRoutes = (
 
   app.get("/api/projects/:slug/preview-sound/:file{[0-9a-f]+\\.wav}", async (c) => {
     const slug = c.req.param("slug");
-    const key = c.req.param("file").replace(/\.wav$/, "");
-    const file = sound.file(slug, key);
+    const key = PreviewKeySchema.safeParse(c.req.param("file").replace(/\.wav$/, ""));
+    const file = key.success ? sound.file(slug, key.data) : undefined;
     if (!file)
       return errorResponse(c, 404, [{ path: "url", message: "no soundtrack ready for this key" }]);
     return c.body(new Uint8Array(await readFile(file)), 200, {

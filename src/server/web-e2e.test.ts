@@ -7,6 +7,7 @@ import { type Browser, chromium, type Page } from "playwright-core";
 import { build } from "vite";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { MAX_PROJECT_NAME } from "../schema/project.ts";
+import { clockTime } from "../web/preview-time.ts";
 import { DEFAULT_HOST } from "./listen.ts";
 
 // The web app in a real browser (AGENTS.md, Tests, layer 5): skipped without Chrome, as on CI.
@@ -355,16 +356,17 @@ const flow = (
         .first()
         .getByRole("button")
         .nth(2);
-      const startsAt = (await third.locator("span").last().textContent()) ?? "";
+      const startsAt = Number(await third.getAttribute("data-starts-at"));
+      const shown = clockTime(startsAt);
       await third.click();
-      await expect.poll(time, SOON).toMatch(new RegExp(`^${startsAt} /`));
+      await expect.poll(time, SOON).toMatch(new RegExp(`^${shown} /`));
       await expect.poll(() => third.getAttribute("aria-current"), SOON).toBe("step");
 
       await page.getByRole("button", { name: "Play" }).click();
       await expect
         .poll(() => page.locator("audio").evaluate((a: HTMLAudioElement) => a.paused), SOON)
         .toBe(false);
-      await expect.poll(time, SOON).not.toMatch(new RegExp(`^${startsAt} /`));
+      await expect.poll(time, SOON).not.toMatch(new RegExp(`^${shown} /`));
       await page.getByRole("button", { name: "Pause" }).click();
     },
     90_000,

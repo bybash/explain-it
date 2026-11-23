@@ -233,6 +233,9 @@ that finishes it.
 - The end-to-end test (`src/server/web-e2e.test.ts`) runs the app as
   `npm start` and as `npm run dev` on ports of its own; each panel slice
   adds its gate's steps to its flow. It needs Chrome, so CI skips it.
+- SPEC's preview gate says "jump to a beat and edit it": 3.8's beat list
+  (`src/web/PreviewPanel.tsx`) jumps; editing a beat there can reuse 3.6's
+  beat editor once it exists.
 - 3.6's stale beats come from saving the graph: `saveGraph`
   (`src/server/graphs.ts`) marks them in `project.json`, as MCP's
   `update_graph` does.

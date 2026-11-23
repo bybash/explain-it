@@ -2,8 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { OpenedProject } from "../schema/api.ts";
 import type { Config, LogoImages } from "../schema/config.ts";
 import type { Narration } from "../schema/narration.ts";
-import { FromPreviewSchema, type Mark, type ToPreview } from "./preview-protocol.ts";
-import type { BeatSpan } from "./preview-time.ts";
+import { type BeatSpan, FromPreviewSchema, type Mark, type ToPreview } from "./preview-protocol.ts";
 
 /** How long changes pause before the preview draws them again. */
 const PAUSE_MS = 150;

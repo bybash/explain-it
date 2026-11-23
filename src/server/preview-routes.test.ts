@@ -1,34 +1,26 @@
-import { cpSync, mkdtempSync, rmSync } from "node:fs";
-import { writeFile } from "node:fs/promises";
+import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { fakeMix } from "../audio/fake-mix.testing.ts";
 import { fakeTts } from "../audio/fake-tts.testing.ts";
-import type { makeSoundtrack } from "../audio/soundtrack.ts";
-import { encodeWav } from "../audio/wav.ts";
+import { type PreviewSound, PreviewSoundSchema } from "../schema/api.ts";
 import { createApp } from "./app.ts";
+import { copyExample } from "./example.testing.ts";
 import { settingsStore } from "./settings.ts";
-
-const example = new URL("../../examples/oauth-login/", import.meta.url).pathname;
-
-const fakeMix: typeof makeSoundtrack = async ({ out }) => {
-  await writeFile(out, encodeWav({ samples: new Float32Array(48_000), sampleRate: 48_000 }));
-  return out;
-};
 
 let projectsDir: string;
 let app: ReturnType<typeof createApp>;
 beforeEach(() => {
   projectsDir = mkdtempSync(join(tmpdir(), "explain-it-preview-routes-"));
-  cpSync(example, join(projectsDir, "oauth"), {
-    recursive: true,
-    filter: (source) => !source.includes("/out") && !source.includes("/cache"),
-  });
+  copyExample(projectsDir, "oauth");
   app = createApp({
     projectsDir,
     now: () => new Date("2026-11-23T10:00:00.000Z"),
     tts: fakeTts().tts,
-    mixSoundtrack: fakeMix,
+    mixSoundtrack: fakeMix().mix,
+    // CI has no ffmpeg; the fake mix needs none.
+    missingRenderTools: async () => [],
     settings: settingsStore({ envFile: join(projectsDir, ".env"), environment: {} }),
   });
 });
@@ -42,19 +34,17 @@ const start = (slug: string) =>
     body: "{}",
   });
 
-const status = async () =>
-  (await app.request("/api/projects/oauth/preview-sound")).json() as Promise<{
-    state: string;
-    key?: string;
-    narration?: Record<string, number>;
-  }>;
+const status = async (): Promise<PreviewSound> =>
+  PreviewSoundSchema.parse(await (await app.request("/api/projects/oauth/preview-sound")).json());
 
 describe("the preview's sound", () => {
   it("starts on a POST, reports its progress, and serves the soundtrack once ready", async () => {
     expect(await status()).toEqual({ state: "idle" });
     const started = await start("oauth");
     expect(started.status).toBe(200);
-    expect(["speaking", "mixing", "ready"]).toContain((await started.json()).state);
+    expect(["speaking", "mixing", "ready"]).toContain(
+      PreviewSoundSchema.parse(await started.json()).state,
+    );
 
     let now = await status();
     for (let i = 0; i < 200 && now.state !== "ready"; i++) {
@@ -62,7 +52,8 @@ describe("the preview's sound", () => {
       now = await status();
     }
     expect(now.state).toBe("ready");
-    expect(Object.keys(now.narration ?? {})).toHaveLength(10);
+    if (now.state !== "ready") return;
+    expect(Object.keys(now.narration)).toHaveLength(10);
 
     const sound = await app.request(`/api/projects/oauth/preview-sound/${now.key}.wav`);
     expect(sound.status).toBe(200);
@@ -70,7 +61,7 @@ describe("the preview's sound", () => {
   });
 
   it("serves no soundtrack for a key that is not the ready one", async () => {
-    const response = await app.request("/api/projects/oauth/preview-sound/0123abcd.wav");
+    const response = await app.request(`/api/projects/oauth/preview-sound/${"0".repeat(32)}.wav`);
     expect(response.status).toBe(404);
   });
 

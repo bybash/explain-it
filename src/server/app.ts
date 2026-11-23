@@ -242,7 +242,13 @@ export const createApp = ({
   sampleRoutes(app, { projectsDir, tts });
   previewRoutes(app, {
     projectsDir,
-    sound: previewSound({ projectsDir, tts, mix: mixSoundtrack, events }),
+    sound: previewSound({
+      projectsDir,
+      tts,
+      mix: mixSoundtrack,
+      missingTools: missingRenderTools,
+      events,
+    }),
   });
 
   app.post("/api/projects/:slug/approve", async (c) => {
