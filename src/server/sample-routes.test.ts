@@ -95,7 +95,8 @@ describe("GET /api/projects/:slug/samples/voice", () => {
   });
 });
 
-describe("GET /api/samples/music", () => {
+// Each sample makes 15 s of music, CPU-bound: about a second alone, several under the full suite's load.
+describe("GET /api/samples/music", { timeout: 30_000 }, () => {
   const sample = (query: string) => app.request(`/api/samples/music?${query}`);
 
   it("plays a few seconds of the mood and take, at the volume asked", async () => {
