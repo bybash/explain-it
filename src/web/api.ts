@@ -11,6 +11,7 @@ import {
 } from "../schema/api.ts";
 import { parseWith, type Validated } from "../schema/errors.ts";
 import { fail } from "../schema/result.ts";
+import { type SettingsUpdate, type SettingsView, SettingsViewSchema } from "../schema/settings.ts";
 
 /**
  * Calls the API and checks what comes back against its schema. Expected
@@ -60,6 +61,16 @@ export const createProject = (name: string) =>
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ name }),
+  });
+
+export const getSettings = (): Promise<Validated<SettingsView>> =>
+  fetchChecked(SettingsViewSchema, "/api/settings");
+
+export const saveSettings = (update: SettingsUpdate): Promise<Validated<SettingsView>> =>
+  fetchChecked(SettingsViewSchema, "/api/settings", {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(update),
   });
 
 /**

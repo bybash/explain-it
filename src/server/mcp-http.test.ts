@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { fakeTts } from "../audio/fake-tts.testing.ts";
 import { createApp } from "./app.ts";
+import { settingsStore } from "./settings.ts";
 
 let projectsDir: string;
 let app: ReturnType<typeof createApp>;
@@ -13,6 +14,7 @@ beforeEach(() => {
     projectsDir,
     now: () => new Date("2026-11-20T10:00:00.000Z"),
     tts: fakeTts().tts,
+    settings: settingsStore({ envFile: join(projectsDir, ".env"), environment: {} }),
   });
 });
 afterEach(() => rmSync(projectsDir, { recursive: true, force: true }));
@@ -101,6 +103,7 @@ describe("/mcp", () => {
       now: () => new Date("2026-11-20T10:00:00.000Z"),
       publicUrl: "http://127.0.0.1:3000",
       tts: fakeTts().tts,
+      settings: settingsStore({ envFile: join(projectsDir, ".env"), environment: {} }),
     });
     const response = await proxied.request("http://127.0.0.1:3001/mcp", {
       method: "POST",
