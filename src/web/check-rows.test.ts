@@ -51,6 +51,7 @@ describe("checkRows", () => {
         beat: "hand_off",
         where: "1·2",
         caption: "The app hands off to the identity provider.",
+        inScript: true,
       },
       {
         check: "Reading speed",
@@ -59,6 +60,7 @@ describe("checkRows", () => {
         beat: "token",
         where: "2·2",
         caption: "The provider returns an access token.",
+        inScript: true,
       },
       {
         check: "Off frame",
@@ -67,6 +69,7 @@ describe("checkRows", () => {
         beat: "token",
         where: "2·2",
         caption: "The provider returns an access token.",
+        inScript: true,
       },
     ]);
   });
@@ -94,7 +97,15 @@ describe("checkRows", () => {
       ],
     };
     expect(checkRows(gone, storyboard).atBeats).toEqual([
-      { check: "Overlap", message: "overlap", at: 3, beat: "removed", where: "", caption: "" },
+      {
+        check: "Overlap",
+        message: "overlap",
+        at: 3,
+        beat: "removed",
+        where: "",
+        caption: "",
+        inScript: false,
+      },
     ]);
   });
 });

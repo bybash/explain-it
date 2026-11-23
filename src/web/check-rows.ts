@@ -12,19 +12,22 @@ const CHECK_LABELS: Readonly<Record<Check, string>> = {
   loudness: "Loudness",
 };
 
+/** Where a warning shows: its beat, and the moment in it. */
+export type WarningPlace = { readonly beat: string; readonly at: number };
+
 /** A warning at a beat, as the Checks tab lists it: a click goes to `at`. */
-export type BeatWarningRow = {
+export type BeatWarningRow = WarningPlace & {
   readonly check: string;
   readonly message: string;
-  readonly at: number;
-  readonly beat: string;
+  /** Whether the script still has the beat; an older report can name one since removed. */
+  readonly inScript: boolean;
   /** "2·3": the scene's number and the beat's within it, as the beat list numbers them. */
   readonly where: string;
   readonly caption: string;
 };
 
-/** "Narration fit and loudness". */
-const listed = (checks: readonly Check[]): string => {
+/** The checks named in a sentence: "Narration fit and loudness". */
+const inWords = (checks: readonly Check[]): string => {
   const names = checks.map((c, i) => (i === 0 ? CHECK_LABELS[c] : CHECK_LABELS[c].toLowerCase()));
   return names.length < 2 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
 };
@@ -53,6 +56,7 @@ export const checkRows = (report: CheckReport, storyboard: Storyboard) => {
         at: w.at,
         beat: w.beat,
         ...(places.get(w.beat) ?? { where: "", caption: "" }),
+        inScript: places.has(w.beat),
       }),
     )
     // A stable sort: warnings at the same moment keep the report's order.
@@ -65,7 +69,7 @@ export const checkRows = (report: CheckReport, storyboard: Storyboard) => {
   return {
     atBeats,
     forVideo,
-    skipped: report.skipped.map((s) => `${listed(s.checks)}: ${s.reason}`),
+    skipped: report.skipped.map((s) => `${inWords(s.checks)}: ${s.reason}`),
     countByBeat: countByBeat as ReadonlyMap<string, number>,
   };
 };

@@ -6,8 +6,7 @@ import { join } from "node:path";
 import { type Browser, chromium, type Page } from "playwright-core";
 import { build } from "vite";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { CHECK_REPORT } from "../render/check-files.ts";
-import { CONTACT_SHEET } from "../render/sheet.ts";
+import { isProjectOutput } from "../render/project-output.ts";
 import { MAX_PROJECT_NAME } from "../schema/project.ts";
 import { clockTime } from "../web/preview-time.ts";
 import { DEFAULT_HOST } from "./listen.ts";
@@ -139,12 +138,7 @@ const devServer = async (projectsDir: string): Promise<Server> => {
 /** The example under `slug`, moved back to `gate`. */
 const exampleAt = (projectsDir: string, slug: string, gate: string) => {
   const dir = join(projectsDir, slug);
-  // A check run leaves its report and contact sheet in the example; they are not part of it.
-  cpSync(example, dir, {
-    recursive: true,
-    filter: (source) =>
-      !["out", CHECK_REPORT, ...Object.values(CONTACT_SHEET)].some((o) => source.includes(`/${o}`)),
-  });
+  cpSync(example, dir, { recursive: true, filter: (source) => !isProjectOutput(source) });
   const file = join(dir, "project.json");
   writeFileSync(file, JSON.stringify({ ...JSON.parse(readFileSync(file, "utf8")), gate }));
 };
@@ -401,7 +395,9 @@ const flow = (
       const jumpedTo = page.locator(`[data-beat="${beat}"][data-starts-at]`);
       await expect.poll(() => jumpedTo.getAttribute("aria-current"), SOON).toBe("step");
       // The beat carries its warnings' count in the list.
-      expect(await jumpedTo.textContent()).toMatch(/▲ \d+ warnings?/);
+      expect(await jumpedTo.getByText(/^\d+ warnings?$/).count()).toBe(1);
+      // The warning's button went with its tab, so the beat jumped to has the focus.
+      expect(await jumpedTo.evaluate((button) => button === document.activeElement)).toBe(true);
 
       await page.getByRole("tab", { name: "Contact sheet" }).click();
       const sheet = page.getByRole("img", { name: /^The contact sheet/ });

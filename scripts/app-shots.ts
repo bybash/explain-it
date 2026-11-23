@@ -8,8 +8,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { chromium, type Page } from "playwright-core";
 import { build } from "vite";
-import { CHECK_REPORT } from "../src/render/check-files.ts";
-import { CONTACT_SHEET } from "../src/render/sheet.ts";
+import { isProjectOutput } from "../src/render/project-output.ts";
 
 const [outArg] = process.argv.slice(2);
 if (!outArg) throw new Error("usage: node scripts/app-shots.ts <out-dir>");
@@ -27,11 +26,7 @@ const seed = (dir: string) => {
   const example = join(dir, "oauth-example");
   cpSync(join(root, "examples", "oauth-login"), example, {
     recursive: true,
-    // Renders, caches, and a local check run's report and contact sheet are not part of the example.
-    filter: (source) =>
-      !["out", "cache", CHECK_REPORT, ...Object.values(CONTACT_SHEET)].some((o) =>
-        source.includes(`/${o}`),
-      ),
+    filter: (source) => !isProjectOutput(source),
   });
   const project = JSON.parse(readFileSync(join(example, "project.json"), "utf8"));
   writeFileSync(join(example, "project.json"), JSON.stringify({ ...project, gate: "preview" }));
@@ -230,6 +225,17 @@ const SHOTS: readonly {
       await checksRun(p);
       await p.getByRole("list", { name: "Warnings at beats" }).getByRole("button").nth(3).click();
       await p.waitForTimeout(800);
+    },
+  },
+  {
+    name: "preview-contact-sheet",
+    hash: "#/projects/oauth-example/preview",
+    ready: async (p) => {
+      await checksRun(p);
+      await p.getByRole("tab", { name: "Contact sheet" }).click();
+      await p
+        .getByRole("img", { name: /^The contact sheet/ })
+        .evaluate((img: HTMLImageElement) => img.decode());
     },
   },
   {

@@ -9,8 +9,9 @@ import {
   previewSoundUrl,
   startPreviewSound,
 } from "./api.ts";
-import { ChecksTab, ContactSheet } from "./ChecksTab.tsx";
-import { checkRows } from "./check-rows.ts";
+import { ChecksTab } from "./ChecksTab.tsx";
+import { ContactSheet } from "./ContactSheet.tsx";
+import { checkRows, type WarningPlace } from "./check-rows.ts";
 import { PreviewBeats } from "./PreviewBeats.tsx";
 import { beatAt, clockTime } from "./preview-time.ts";
 import { Pill, Tabs } from "./ui.tsx";
@@ -62,6 +63,7 @@ export const PreviewPanel = ({ opened }: { opened: OpenedProject }) => {
   const [at, setAt] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [tab, setTab] = useState<PanelTab>("beats");
+  const [revealed, setRevealed] = useState<WarningPlace | undefined>();
   const audio = useRef<HTMLAudioElement>(null);
   /** When the silent clock read 0 s, so a seek while playing moves it. */
   const clockZero = useRef(0);
@@ -167,15 +169,12 @@ export const PreviewPanel = ({ opened }: { opened: OpenedProject }) => {
   const report = checks.checks?.report;
   const rows = report ? checkRows(report, storyboard) : undefined;
   const warningCount = report?.warnings.length ?? 0;
+  const upToDate = checks.checks?.upToDate ?? false;
   /** Goes to where a warning shows, in the beat list, with that beat in sight. */
-  const jump = (t: number, beat: string) => {
-    seek(t);
+  const jump = (place: WarningPlace) => {
+    seek(place.at);
     setTab("beats");
-    requestAnimationFrame(() =>
-      document.querySelector(`[data-beat="${CSS.escape(beat)}"][data-starts-at]`)?.scrollIntoView({
-        block: "nearest",
-      }),
-    );
+    setRevealed({ ...place });
   };
   const busy = sound.state === "speaking" || sound.state === "mixing" || sound.state === "idle";
 
@@ -274,13 +273,20 @@ export const PreviewPanel = ({ opened }: { opened: OpenedProject }) => {
                   beats={beats}
                   current={current?.id}
                   warnings={rows?.countByBeat ?? NO_WARNINGS}
+                  warningsOutOfDate={!upToDate}
+                  revealed={revealed}
                   seek={seek}
                 />
               ),
             },
             {
               id: "checks",
-              label: warningCount > 0 ? `Checks (${warningCount})` : "Checks",
+              label:
+                warningCount === 0
+                  ? "Checks"
+                  : upToDate
+                    ? `Checks (${warningCount})`
+                    : "Checks (out of date)",
               content: (
                 <ChecksTab
                   checks={checks.checks}

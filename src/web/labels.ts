@@ -26,3 +26,7 @@ export const updatedLabel = (iso: string): string =>
 
 /** A name as a label shows it: "ocean" as "Ocean". */
 export const capitalised = (name: string): string => name.charAt(0).toUpperCase() + name.slice(1);
+
+/** "1 warning", "3 warnings": a count with its noun. */
+export const counted = (n: number, one: string, many = `${one}s`): string =>
+  `${n} ${n === 1 ? one : many}`;

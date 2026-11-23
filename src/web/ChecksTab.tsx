@@ -1,13 +1,12 @@
 import type { ChecksRun, PreviewChecks } from "../schema/api.ts";
-import { contactSheetUrl } from "./api.ts";
-import type { checkRows } from "./check-rows.ts";
+import type { checkRows, WarningPlace } from "./check-rows.ts";
+import { counted } from "./labels.ts";
 import { clockTime } from "./preview-time.ts";
 
-type Rows = ReturnType<typeof checkRows>;
+type CheckRows = ReturnType<typeof checkRows>;
 
 /** Whether a run is under way: waiting for the sound or checking beats. */
-export const running = (run: ChecksRun): boolean =>
-  run.state === "waiting" || run.state === "checking";
+const isRunning = (run: ChecksRun): boolean => run.state === "waiting" || run.state === "checking";
 
 /** What the run is doing, in a line; nothing once it is done. */
 const runLine = (run: ChecksRun): string => {
@@ -27,16 +26,44 @@ const runLine = (run: ChecksRun): string => {
 };
 
 /** "Checked 23 Nov 2026, 10:00" in the viewer's own time zone. */
-const checkedLabel = (iso: string): string =>
+export const checkedLabel = (iso: string): string =>
   `Checked ${new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}`;
 
 /** The note an older report carries once the files have changed since. */
-const OutOfDate = ({ checks }: { checks: PreviewChecks }) =>
+export const OutOfDate = ({ checks }: { checks: PreviewChecks }) =>
   checks.report && !checks.upToDate ? (
     <p className="mt-2 text-muted text-sm">
       The project has changed since these checks: run them again to check it as it is.
     </p>
   ) : null;
+
+/** A warning's row: its mark, what it is with where, its words, and when it shows. */
+const WarningLine = ({
+  check,
+  where,
+  message,
+  at,
+}: {
+  check: string;
+  where: string;
+  message: string;
+  at?: number;
+}) => (
+  <>
+    <span className="text-error" aria-hidden="true">
+      ▲
+    </span>
+    <span>
+      <span className="font-semibold">{check}</span>
+      <span className="text-muted"> · {where}</span>
+      <span className="block text-muted text-sm">{message}</span>
+    </span>
+    <span className="text-muted text-sm tabular-nums">{at === undefined ? "" : clockTime(at)}</span>
+  </>
+);
+
+/** The grid every warning row shares. */
+const ROW = "grid grid-cols-[2rem_1fr_auto] items-baseline gap-2 px-2 py-2";
 
 /**
  * The Preview gate's Checks tab (SPEC, Checks): a button runs them, with
@@ -52,40 +79,39 @@ export const ChecksTab = ({
   jump,
 }: {
   checks: PreviewChecks | undefined;
-  rows: Rows | undefined;
+  rows: CheckRows | undefined;
   problem: string | undefined;
   run: () => void;
-  /** Goes to the moment a warning shows, at its beat. */
-  jump: (at: number, beat: string) => void;
+  /** Goes to where a warning shows, in the beat list. */
+  jump: (place: WarningPlace) => void;
 }) => {
-  const now = checks?.run ?? { state: "idle" };
+  const current = checks?.run ?? { state: "idle" };
   const report = checks?.report;
-  const busy = running(now);
-  const line = problem ?? runLine(now);
+  const running = isRunning(current);
   return (
     <div>
       <div className="flex flex-wrap items-center gap-3">
         <button type="button" className="btn px-4 py-1.5" onClick={run}>
-          {busy ? "Run again" : report ? "Run the checks again" : "Run the checks"}
+          {running ? "Run again" : report ? "Run the checks again" : "Run the checks"}
         </button>
         <span
           role="status"
           className={
-            now.state === "failed" || problem ? "text-error text-sm" : "text-muted text-sm"
+            current.state === "failed" || problem ? "text-error text-sm" : "text-muted text-sm"
           }
         >
-          {line}
+          {problem ?? runLine(current)}
         </span>
-        {now.state === "checking" && now.total > 0 && (
+        {current.state === "checking" && current.total > 0 && (
           <progress
             className="h-1.5 w-40 accent-accent"
-            value={now.checked}
-            max={now.total}
+            value={current.checked}
+            max={current.total}
             aria-label="Beats checked"
           />
         )}
       </div>
-      {!report && !busy && (
+      {!report && !running && (
         <p className="mt-3 text-muted text-sm">
           The checks look at every beat for overlaps, anything off the frame, captions too fast to
           read and narration that does not fit, and at the mix's loudness. They take about half a
@@ -99,7 +125,7 @@ export const ChecksTab = ({
             {checkedLabel(report.checkedAt)} · {report.beats} beats ·{" "}
             {report.warnings.length === 0
               ? "no warnings"
-              : `${report.warnings.length} ${report.warnings.length === 1 ? "warning" : "warnings"}`}
+              : counted(report.warnings.length, "warning")}
           </p>
           {rows.skipped.length > 0 && (
             <ul className="mt-2 text-muted text-sm" aria-label="Checks skipped">
@@ -111,17 +137,12 @@ export const ChecksTab = ({
           {rows.forVideo.length > 0 && (
             <ul className="mt-3 divide-y divide-line" aria-label="Warnings about the whole video">
               {rows.forVideo.map((warning) => (
-                <li
-                  key={warning.message}
-                  className="grid grid-cols-[2rem_1fr] items-baseline gap-2 px-2 py-2"
-                >
-                  <span className="text-error" aria-hidden="true">
-                    ▲
-                  </span>
-                  <span>
-                    <span className="font-semibold">{warning.check}</span> · the whole video
-                    <span className="block text-muted text-sm">{warning.message}</span>
-                  </span>
+                <li key={warning.message} className={ROW}>
+                  <WarningLine
+                    check={warning.check}
+                    where="the whole video"
+                    message={warning.message}
+                  />
                 </li>
               ))}
             </ul>
@@ -131,69 +152,38 @@ export const ChecksTab = ({
               {rows.atBeats.map((warning) => (
                 // A beat's warning is told once, so its words and place name it.
                 <li key={`${warning.beat}-${warning.at}-${warning.message}`}>
-                  <button
-                    type="button"
-                    data-beat={warning.beat}
-                    data-at={warning.at}
-                    className="grid w-full cursor-pointer grid-cols-[2rem_1fr_auto] items-baseline gap-2 px-2 py-2 text-left hover:bg-accent-soft"
-                    onClick={() => jump(warning.at, warning.beat)}
-                  >
-                    <span className="text-error" aria-hidden="true">
-                      ▲
-                    </span>
-                    <span>
-                      <span className="font-semibold">{warning.check}</span>
-                      {warning.where && (
-                        <span className="text-muted">
-                          {" "}
-                          · {warning.where} {warning.caption}
-                        </span>
-                      )}
-                      <span className="block text-muted text-sm">{warning.message}</span>
-                    </span>
-                    <span className="text-muted text-sm tabular-nums">{clockTime(warning.at)}</span>
-                  </button>
+                  {warning.inScript ? (
+                    <button
+                      type="button"
+                      data-beat={warning.beat}
+                      data-at={warning.at}
+                      className={`${ROW} w-full cursor-pointer text-left hover:bg-accent-soft`}
+                      onClick={() => jump(warning)}
+                    >
+                      <WarningLine
+                        check={warning.check}
+                        where={`${warning.where} ${warning.caption}`}
+                        message={warning.message}
+                        at={warning.at}
+                      />
+                    </button>
+                  ) : (
+                    // The script has lost the beat since, so there is nowhere to go.
+                    <div className={ROW}>
+                      <WarningLine
+                        check={warning.check}
+                        where="a beat no longer in the script"
+                        message={warning.message}
+                        at={warning.at}
+                      />
+                    </div>
+                  )}
                 </li>
               ))}
             </ol>
           )}
         </>
       )}
-    </div>
-  );
-};
-
-/** The contact sheet: one still per beat at its midpoint, the beats with warnings outlined in red. */
-export const ContactSheet = ({
-  slug,
-  checks,
-}: {
-  slug: string;
-  checks: PreviewChecks | undefined;
-}) => {
-  const report = checks?.report;
-  if (!report?.contactSheet)
-    return (
-      <p className="text-muted text-sm">
-        {report
-          ? "These checks drew no contact sheet: the layout checks were skipped."
-          : "The checks draw a contact sheet: run them from the Checks tab."}
-      </p>
-    );
-  const full = contactSheetUrl(slug, report.contactSheet.full, report.checkedAt);
-  return (
-    <div>
-      {checks && <OutOfDate checks={checks} />}
-      <a href={full} target="_blank" rel="noreferrer" className="mt-2 block">
-        <img
-          src={full}
-          alt="The contact sheet: a still of every beat, those with warnings outlined in red"
-          className="w-full rounded-box border border-line"
-        />
-      </a>
-      <p className="mt-2 text-muted text-sm">
-        {checkedLabel(report.checkedAt)}. Open it full size in a new tab with a click.
-      </p>
     </div>
   );
 };
