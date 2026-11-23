@@ -9,6 +9,7 @@ import {
   GraphNodeSchema,
   GraphSchema,
   MAX_NODE_LABEL,
+  MERMAID_EDGE_KEYWORDS,
   MERMAID_KEYWORDS,
   NODE_KINDS,
   ZoneSchema,
@@ -77,7 +78,7 @@ const GRAPH = `## graph.json: the structure
 ${ts(schemaShape("Graph", GraphSchema, GRAPH_SHAPE_NAMES))}
 
 - Every id in graph.json is unique across nodes, edges and zones together.
-- Node and zone ids may not be one of Mermaid's words: ${commaList(MERMAID_KEYWORDS)}.
+- Node and zone ids may not be one of Mermaid's words: ${commaList(MERMAID_KEYWORDS)}. Edge ids may not be ${commaList(MERMAID_EDGE_KEYWORDS)}.
 - An edge's \`from\` and \`to\` and a node's \`zone\` name ids in the graph. Edges carry the flow, so their direction matters.
 - An icon is a Lucide name as lucide.dev shows it (kebab-case, such as "shield-check"); an unknown one is an error.
 - A category is one of ${commaList(CATEGORIES)}.

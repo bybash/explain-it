@@ -1,18 +1,22 @@
-import type { Graph, GraphNode } from "../schema/graph.ts";
+import type { Graph, GraphNode, NodeKind } from "../schema/graph.ts";
 
 /**
- * Each kind's Mermaid shape, so the diagram reads like the video. Mermaid
- * has no field for the kind itself: it, the icon and the category are kept
- * in graph.json and matched back by id (SPEC, Graph).
+ * Each kind's Mermaid shape, so the diagram reads like the video: the
+ * brackets the generator writes, and the name Mermaid's parser gives that
+ * shape, which `parse.ts` reads the kind back from. Mermaid has no field for
+ * the kind itself: it, the icon and the category are kept in graph.json and
+ * matched back by id (SPEC, Graph).
  */
-const SHAPES: Readonly<Record<GraphNode["kind"], readonly [string, string]>> = {
-  actor: ["([", "])"],
-  service: ["[", "]"],
-  database: ["[(", ")]"],
-  queue: ["[[", "]]"],
-  document: [">", "]"],
-  decision: ["{", "}"],
-  external: ["{{", "}}"],
+export const KIND_SHAPES: Readonly<
+  Record<NodeKind, { readonly open: string; readonly close: string; readonly mermaid: string }>
+> = {
+  actor: { open: "([", close: "])", mermaid: "stadium" },
+  service: { open: "[", close: "]", mermaid: "square" },
+  database: { open: "[(", close: ")]", mermaid: "cylinder" },
+  queue: { open: "[[", close: "]]", mermaid: "subroutine" },
+  document: { open: ">", close: "]", mermaid: "odd" },
+  decision: { open: "{", close: "}", mermaid: "diamond" },
+  external: { open: "{{", close: "}}", mermaid: "hexagon" },
 };
 
 /** Mermaid entity codes for characters it would otherwise read as syntax. */
@@ -30,7 +34,7 @@ const text = (label: string): string =>
   `"${label.replace(/[#"|<>`]/g, (c) => ENTITIES[c] ?? c).replace(/\r?\n/g, "<br>")}"`;
 
 const nodeLine = (node: GraphNode, indent: string): string => {
-  const [open, close] = SHAPES[node.kind];
+  const { open, close } = KIND_SHAPES[node.kind];
   return `${indent}${node.id}${open}${text(node.label)}${close}`;
 };
 

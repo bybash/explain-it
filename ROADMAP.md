@@ -88,7 +88,7 @@ The goal: the CLI renders a hand-written example to an MP4, with no LLM and no v
 | ✅ 3.1 | **Server and shell**: Hono, the projects API over folders, SSE, `127.0.0.1` by default, a Vite and React shell listing projects, `npm run dev` and `npm start` | Projects can be created, listed and opened |
 | ✅ 3.2 | **Settings**: base URL, key and model read from and written to `.env`; keys are never logged or sent to the browser in full | Settings round-trip; the key is masked in the UI |
 | ✅ 3.3 | **Chat and gates**: the chat column, the gate stepper, the split layout, `chat.jsonl`; no LLM yet (a stub reply) | Messages persist across restarts |
-| 3.4 | **Mermaid round-trip**: Mermaid to graph (jsdom, pinned version) and graph to Mermaid, keeping kind, icon and category by id | Round-trip tests on all examples and a set of Mermaid fixtures |
+| ✅ 3.4 | **Mermaid round-trip**: Mermaid to graph (jsdom, pinned version) and graph to Mermaid, keeping kind, icon and category by id | Round-trip tests on all examples and a set of Mermaid fixtures |
 | 3.5 | **Graph gate panel**: a Mermaid editor with the rendered diagram, approve and edit | Editing the Mermaid updates `graph.json` |
 | 3.6 | **Script gate panel**: the scene and beat editor; stale beats after graph edits | Changing a node marks only its beats as stale |
 | 3.7 | **Style gate panel**: palettes, custom palette, fonts and font upload, voice picker with a sample, captions, music, output, title and end cards, logo upload | Changes show in the preview straight away |
@@ -221,17 +221,14 @@ that finishes it.
   by chat ("looks good") waits for it too, since only the LLM can tell what
   the user means.
 
-### For 3.4 (Mermaid round-trip), from 4.1
+### For 3.5 (graph gate panel), from 3.4
 
-- Graph to Mermaid already exists in `src/mermaid/generate.ts`, for the MCP
-  tools: shapes by kind, zones as subgraphs, edges named by id
-  (`from id@--> to`), labels quoted with entity codes. 3.4 adds the parser
-  and must check that this output parses with the pinned `mermaid` and comes
-  back to the same graph. Nothing has run it through Mermaid yet.
-- Node and zone ids may not be Mermaid keywords (4.1). Edge ids may: the
-  example's edge is named `click`. Check with the real parser whether
-  `from click@--> to` parses, and rename the example's edge or widen the
-  rule if it does not.
+- `mermaidToGraph(text, previous)` in `src/server/mermaid.ts` reads edited
+  Mermaid back into the graph, with `notes` naming what it left out and
+  errors naming the Mermaid line or the node. It runs Mermaid in a worker
+  thread; the first parse starts it (about 200 ms). The panel shows the notes
+  beside the editor and the errors on their lines. The web app renders the
+  diagram itself with the same pinned `mermaid`.
 
 ### For 5.3 (graph drafting), from 4.2
 

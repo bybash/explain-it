@@ -1,0 +1,18 @@
+---
+title: Checkout
+---
+flowchart TD
+  %% Written by hand, the way someone pastes a diagram from their docs.
+  shopper([Shopper]) --> cart[Cart service]
+  cart -->|reserve| stock[(Stock DB)]
+  cart -.->|"pay #35;1"| psp{{Payment provider}}
+  psp --> hook>Webhook]
+  hook ==> orders[[Order queue]]
+  subgraph shop[Our shop]
+    cart
+    stock
+    orders
+  end
+  orders --> ok{Paid?}
+  style cart fill:#f9f
+  click psp href "https://example.com"

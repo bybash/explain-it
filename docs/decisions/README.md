@@ -30,3 +30,4 @@ later record supersedes an earlier one and says so.
 | [018](018-contact-sheet.md) | Contact sheet |
 | [019](019-llm-settings.md) | LLM settings |
 | [020](020-chat-and-gates.md) | Chat and gates |
+| [021](021-mermaid-round-trip.md) | Mermaid round-trip |
