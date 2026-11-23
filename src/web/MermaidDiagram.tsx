@@ -13,6 +13,9 @@ const loadMermaid = () => {
       theme: matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "default",
       // Drawn at its own size and scrolled, so a wide graph stays readable instead of shrinking to fit.
       flowchart: { useMaxWidth: false },
+      // A diagram that cannot be drawn is said above the last good one; Mermaid's own error drawing
+      // would otherwise be left at the bottom of the page.
+      suppressErrorRendering: true,
     });
     return mermaid;
   });

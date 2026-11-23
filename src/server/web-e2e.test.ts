@@ -217,6 +217,8 @@ const flow = (
     await page.keyboard.insertText("\n  photos -->");
     await page.waitForSelector(".cm-error-line");
     expect(await page.isDisabled("text=Save the graph")).toBe(true);
+    // The problem is said once, above the diagram: Mermaid adds no error drawing of its own to the page.
+    expect(await page.getByText("Syntax error in text").count()).toBe(0);
     await page.keyboard.press("ControlOrMeta+Z");
     await expect.poll(() => page.locator(".cm-error-line").count(), SOON).toBe(0);
 
