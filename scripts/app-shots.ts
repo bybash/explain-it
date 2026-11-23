@@ -179,7 +179,7 @@ const SHOTS: readonly {
     hash: "#/projects/oauth-example/style",
     ready: async (p) => {
       await p.getByRole("button", { name: "Beat 1", exact: true }).waitFor();
-      await p.selectOption("#style-palette", "ocean");
+      await p.getByLabel("Palette").selectOption("ocean");
       await p.getByLabel("Show the dark video").check();
       await p.getByRole("button", { name: "Beat 3", exact: true }).click();
       await p.waitForTimeout(1500);

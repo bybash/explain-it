@@ -1,15 +1,14 @@
-import { type ReactNode, useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FONTS } from "../engine/theme/fonts.ts";
 import { PALETTES } from "../engine/theme/palettes.ts";
 import type { OpenedProject } from "../schema/api.ts";
 import {
-  CARD_LIMITS,
   type Config,
-  LOGO_CORNERS,
+  DEFAULT_CONFIG,
   LOGO_MAX_BYTES,
   LOGO_MAX_MB,
-  LOGO_SHOWS,
   type LogoImages,
+  type LogoMode,
   parseConfig,
   RESOLUTIONS,
   THEME_MODES,
@@ -18,86 +17,23 @@ import type { ValidationError } from "../schema/errors.ts";
 import { getLogo, saveStyle } from "./api.ts";
 import { Errors } from "./Errors.tsx";
 import { StylePreview } from "./StylePreview.tsx";
-import {
-  type PendingLogos,
-  previewLogo,
-  savedStyle,
-  styleEdit,
-  withLogoFile,
-} from "./style-form.ts";
+import { CardFields, INPUT_CLASS, LABEL_CLASS, LogoFields, Section } from "./style-fields.tsx";
+import { type PendingLogos, previewLogo, styleEdit, withLogoFile } from "./style-form.ts";
 import { SectionTitle } from "./ui.tsx";
 
-const LABEL_CLASS = "mt-3 block font-semibold";
-const INPUT_CLASS = "field mt-1.5 w-full bg-surface";
-const NOTE_CLASS = "mt-1 text-muted text-sm";
-
 const MODE_LABELS = { light: "Light", dark: "Dark", both: "Both (two videos)" } as const;
-const CORNER_LABELS = { "top-right": "Top right", "bottom-right": "Bottom right" } as const;
-const SHOW_LABELS = {
-  start: "On the title card",
-  end: "On the end card",
-  both: "On both cards",
-  all: "On every frame",
-} as const;
-type Cards = NonNullable<Config["cards"]>;
 const capitalised = (name: string) => name.charAt(0).toUpperCase() + name.slice(1);
 
-/** A text box whose empty value means the field is left out. */
-const Text = ({
-  id,
-  label,
-  value,
-  max,
-  onChange,
-  long = false,
-}: {
-  id: string;
-  label: string;
-  value: string | undefined;
-  max: number;
-  onChange: (value: string | undefined) => void;
-  long?: boolean;
-}) => {
-  const Input = long ? "textarea" : "input";
-  return (
-    <>
-      <label className={LABEL_CLASS} htmlFor={id}>
-        {label}
-      </label>
-      <Input
-        id={id}
-        className={`${INPUT_CLASS} ${long ? "resize-y" : ""}`}
-        value={value ?? ""}
-        maxLength={max}
-        {...(long ? { rows: 3 } : {})}
-        onChange={(e) => onChange(e.target.value === "" ? undefined : e.target.value)}
-      />
-    </>
-  );
-};
-
-const Section = ({ title, children }: { title: string; children: ReactNode }) => (
-  <fieldset className="mt-6 border-0 p-0">
-    <legend className="p-0 font-bold">{title}</legend>
-    {children}
-  </fieldset>
-);
-
-/** `card` with `field` set, or without it when the value is left out. */
-const withField = <C extends object, K extends keyof C>(
-  card: C,
-  field: K,
-  value: C[K] | undefined,
-) => {
-  const { [field]: _old, ...rest } = card;
-  return (value === undefined ? rest : { ...rest, [field]: value }) as C;
-};
+/** Whether opening the project found config.json broken, so the defaults stand in for it. */
+const configBroken = (opened: OpenedProject) =>
+  opened.problems.some((p) => p.path === "config.json" || p.path.startsWith("config.json:"));
 
 /**
  * The style gate's panel (SPEC, User flow): the look of the video (palette
  * and mode, font, output, the title and end cards, the logo) as a form, the
  * video drawn with it straight away, and Save. `blocked` says why the gate
- * cannot be approved yet: there are unsaved changes.
+ * cannot be approved yet: there are unsaved changes, or config.json is
+ * broken and Save writes it again.
  */
 export const StylePanel = ({
   opened,
@@ -107,17 +43,22 @@ export const StylePanel = ({
   blocked: (reason: string | undefined) => void;
 }) => {
   const { slug } = opened;
-  const [saved, setSaved] = useState(savedStyle(opened.config));
+  const [saved, setSaved] = useState(opened.config ?? DEFAULT_CONFIG);
   const [draft, setDraft] = useState(saved);
   const [pending, setPending] = useState<PendingLogos>({});
   const [savedLogo, setSavedLogo] = useState<LogoImages | null>(null);
   const [fileErrors, setFileErrors] = useState<readonly ValidationError[]>([]);
   const [saveErrors, setSaveErrors] = useState<readonly ValidationError[]>([]);
+  const [warnings, setWarnings] = useState<readonly string[]>([]);
   const [saving, setSaving] = useState(false);
   const [justSaved, setJustSaved] = useState(false);
+  /** The style was saved elsewhere (MCP, another tab) while this form had changes. */
+  const [elsewhere, setElsewhere] = useState(false);
 
+  const broken = configBroken(opened);
   const edit = styleEdit(saved, draft, pending);
-  const unsaved = Object.keys(edit.config ?? {}).length > 0 || edit.logo !== undefined;
+  const changed = Object.keys(edit.config ?? {}).length > 0 || edit.logo !== undefined;
+  const unsaved = changed || broken;
   const checked = parseConfig(draft);
   const formErrors = checked.ok ? [] : checked.errors;
 
@@ -127,53 +68,51 @@ export const StylePanel = ({
     });
   }, [slug]);
 
-  // A style saved elsewhere (MCP, another tab) replaces the form when it has no changes.
+  // A style saved elsewhere replaces the form when the form has no changes; while it has some,
+  // the user is told, and the new style is taken once those changes are gone.
   const onDisk = JSON.stringify(opened.config);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: `onDisk` stands for `opened.config`.
+  const seen = useRef(onDisk);
   useEffect(() => {
-    if (unsaved) return;
-    const next = savedStyle(opened.config);
+    if (onDisk === seen.current) return;
+    if (changed) return setElsewhere(true);
+    seen.current = onDisk;
+    const next = opened.config ?? DEFAULT_CONFIG;
     setSaved(next);
     setDraft(next);
-  }, [onDisk]);
+    setElsewhere(false);
+  }, [onDisk, changed, opened.config]);
 
   useEffect(() => {
-    blocked(unsaved ? "Save the style before approving it." : undefined);
-  }, [blocked, unsaved]);
+    blocked(
+      broken
+        ? "config.json is broken: save the style to write it again."
+        : changed
+          ? "Save the style before approving it."
+          : undefined,
+    );
+  }, [blocked, broken, changed]);
 
   const change = (next: Config) => {
     setDraft(next);
     setJustSaved(false);
   };
-  const cards = draft.cards ?? {};
-  const setCards = (next: Cards) => {
-    const { cards: _cards, ...rest } = draft;
-    // A card that is left out is no key at all, so it compares equal to one never set.
-    const kept = Object.fromEntries(Object.entries(next).filter(([, card]) => card !== undefined));
-    change(Object.keys(kept).length === 0 ? rest : { ...rest, cards: kept as Cards });
-  };
 
-  const pickLogo = (mode: "light" | "dark", file: File | undefined) => {
+  const pickLogo = (mode: LogoMode, file: File | undefined) => {
     if (!file) return;
     if (file.size > LOGO_MAX_BYTES)
       return setFileErrors([
         { path: `logo.${mode}`, message: `${file.name} is larger than ${LOGO_MAX_MB} MB` },
       ]);
-    setFileErrors([]);
     const reader = new FileReader();
     reader.onload = () => {
       const dataUrl = String(reader.result);
+      const next = withLogoFile(draft, mode, dataUrl);
+      if (!next.ok) return setFileErrors(next.errors);
+      setFileErrors([]);
       setPending((p) => ({ ...p, [mode]: dataUrl }));
-      setDraft((d) => withLogoFile(d, mode, dataUrl));
-      setJustSaved(false);
+      change(next.value);
     };
     reader.readAsDataURL(file);
-  };
-
-  const removeLogo = () => {
-    const { logo: _logo, ...rest } = draft;
-    setPending({});
-    change(rest);
   };
 
   const save = async () => {
@@ -182,9 +121,12 @@ export const StylePanel = ({
     setSaving(false);
     if (!result.ok) return setSaveErrors(result.errors);
     setSaveErrors([]);
+    setWarnings(result.value.warnings);
+    seen.current = JSON.stringify(result.value.config);
     setSaved(result.value.config);
     setDraft(result.value.config);
     setPending({});
+    setElsewhere(false);
     setJustSaved(true);
     const logo = await getLogo(slug);
     if (logo.ok) setSavedLogo(logo.value.logo);
@@ -199,6 +141,11 @@ export const StylePanel = ({
           void save();
         }}
       >
+        {broken && (
+          <p className="my-4 text-error">
+            config.json is broken, so the form shows the defaults. Saving writes it again.
+          </p>
+        )}
         <Section title="Colours">
           <label className={LABEL_CLASS} htmlFor="style-palette">
             Palette
@@ -256,185 +203,28 @@ export const StylePanel = ({
           </select>
         </Section>
 
-        <Section title="Title card">
-          <label className="mt-3 flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={cards.title !== undefined}
-              onChange={(e) =>
-                setCards(
-                  e.target.checked
-                    ? { ...cards, title: { title: opened.project.name } }
-                    : withField(cards, "title", undefined),
-                )
-              }
-            />
-            Open the video with a title card
-          </label>
-          {cards.title && (
-            <>
-              <Text
-                id="style-title"
-                label="Title"
-                value={cards.title.title}
-                max={CARD_LIMITS.title}
-                onChange={(title) =>
-                  cards.title &&
-                  setCards({ ...cards, title: { ...cards.title, title: title ?? "" } })
-                }
-              />
-              <Text
-                id="style-description"
-                label="Description"
-                long
-                value={cards.title.description}
-                max={CARD_LIMITS.description}
-                onChange={(value) =>
-                  cards.title &&
-                  setCards({ ...cards, title: withField(cards.title, "description", value) })
-                }
-              />
-            </>
-          )}
-        </Section>
+        <CardFields
+          cards={draft.cards ?? {}}
+          name={opened.project.name}
+          change={(cards) => {
+            const { cards: _cards, ...rest } = draft;
+            // A card that is left out is no key at all, so it compares equal to one never set.
+            const kept = Object.fromEntries(Object.entries(cards).filter(([, c]) => c));
+            change(Object.keys(kept).length === 0 ? rest : { ...rest, cards: kept });
+          }}
+        />
 
-        <Section title="End card">
-          <label className="mt-3 flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={cards.end !== undefined}
-              onChange={(e) =>
-                setCards(
-                  e.target.checked
-                    ? { ...cards, end: { headline: opened.project.name } }
-                    : withField(cards, "end", undefined),
-                )
-              }
-            />
-            Close the video with an end card
-          </label>
-          {cards.end && (
-            <>
-              <Text
-                id="style-headline"
-                label="Headline"
-                value={cards.end.headline}
-                max={CARD_LIMITS.headline}
-                onChange={(headline) =>
-                  cards.end &&
-                  setCards({ ...cards, end: { ...cards.end, headline: headline ?? "" } })
-                }
-              />
-              <Text
-                id="style-link"
-                label="Link (also drawn as a QR code)"
-                value={cards.end.link}
-                max={CARD_LIMITS.link}
-                onChange={(value) =>
-                  cards.end && setCards({ ...cards, end: withField(cards.end, "link", value) })
-                }
-              />
-              <Text
-                id="style-where"
-                label="Where to find it"
-                value={cards.end.where}
-                max={CARD_LIMITS.where}
-                onChange={(value) =>
-                  cards.end && setCards({ ...cards, end: withField(cards.end, "where", value) })
-                }
-              />
-              <Text
-                id="style-credit"
-                label="Credit"
-                value={cards.end.credit}
-                max={CARD_LIMITS.credit}
-                onChange={(value) =>
-                  cards.end && setCards({ ...cards, end: withField(cards.end, "credit", value) })
-                }
-              />
-            </>
-          )}
-        </Section>
-
-        <Section title="Logo">
-          <p className={NOTE_CLASS}>
-            PNG, JPG or SVG, at most {LOGO_MAX_MB} MB. One file serves both modes.
-          </p>
-          {(["light", "dark"] as const).map((mode) => (
-            <div key={mode}>
-              <label className={LABEL_CLASS} htmlFor={`style-logo-${mode}`}>
-                For the {mode} video
-                {draft.logo?.[mode] && (
-                  <span className="font-normal text-muted"> · {draft.logo[mode]}</span>
-                )}
-              </label>
-              <input
-                id={`style-logo-${mode}`}
-                type="file"
-                accept=".png,.jpg,.jpeg,.svg,image/png,image/jpeg,image/svg+xml"
-                className="mt-1.5 block text-sm"
-                onChange={(e) => pickLogo(mode, e.target.files?.[0])}
-              />
-            </div>
-          ))}
-          {draft.logo && (
-            <>
-              <label className={LABEL_CLASS} htmlFor="style-logo-corner">
-                Corner
-              </label>
-              <select
-                id="style-logo-corner"
-                className={INPUT_CLASS}
-                value={draft.logo.corner}
-                onChange={(e) =>
-                  draft.logo &&
-                  change({
-                    ...draft,
-                    logo: {
-                      ...draft.logo,
-                      corner: e.target.value as (typeof LOGO_CORNERS)[number],
-                    },
-                  })
-                }
-              >
-                {LOGO_CORNERS.map((corner) => (
-                  <option key={corner} value={corner}>
-                    {CORNER_LABELS[corner]}
-                  </option>
-                ))}
-              </select>
-              <label className={LABEL_CLASS} htmlFor="style-logo-show">
-                Shown
-              </label>
-              <select
-                id="style-logo-show"
-                className={INPUT_CLASS}
-                value={draft.logo.show}
-                onChange={(e) =>
-                  draft.logo &&
-                  change({
-                    ...draft,
-                    logo: { ...draft.logo, show: e.target.value as (typeof LOGO_SHOWS)[number] },
-                  })
-                }
-              >
-                {LOGO_SHOWS.map((show) => (
-                  <option key={show} value={show}>
-                    {SHOW_LABELS[show]}
-                  </option>
-                ))}
-              </select>
-              <button
-                type="button"
-                className="mt-3 text-error text-sm underline"
-                onClick={removeLogo}
-              >
-                Take the logo out
-              </button>
-            </>
-          )}
-          <Errors errors={fileErrors} />
-        </Section>
+        <LogoFields
+          logo={draft.logo}
+          errors={fileErrors}
+          pick={pickLogo}
+          place={(logo) => change({ ...draft, logo })}
+          remove={() => {
+            const { logo: _logo, ...rest } = draft;
+            setPending({});
+            change(rest);
+          }}
+        />
 
         <Section title="Output">
           <label className={LABEL_CLASS} htmlFor="style-resolution">
@@ -468,7 +258,10 @@ export const StylePanel = ({
           >
             Save the style
           </button>
-          {unsaved && <span className="font-semibold text-accent">Unsaved changes</span>}
+          {changed && <span className="font-semibold text-accent">Unsaved changes</span>}
+          {elsewhere && changed && (
+            <span className="text-muted">The style was changed elsewhere; saving replaces it.</span>
+          )}
           {justSaved && !unsaved && (
             <span className="text-muted" role="status">
               Saved.
@@ -476,6 +269,13 @@ export const StylePanel = ({
           )}
         </div>
         <Errors errors={saveErrors} />
+        {warnings.length > 0 && (
+          <ul className="mt-2 list-disc pl-5 text-muted text-sm">
+            {warnings.map((warning) => (
+              <li key={warning}>{warning}</li>
+            ))}
+          </ul>
+        )}
       </form>
       <div className="min-[1101px]:sticky min-[1101px]:top-4">
         <SectionTitle level={3}>Preview</SectionTitle>

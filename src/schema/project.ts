@@ -41,3 +41,7 @@ export type Gate = (typeof GATES)[number];
 export const nextGate = (gate: Gate): Gate | undefined => GATES[GATES.indexOf(gate) + 1];
 
 export const parseProject = (data: unknown): Validated<Project> => parseWith(ProjectSchema, data);
+
+/** The later of two gates: files arriving move a project forward, never back. */
+export const laterGate = (current: Gate, reached: Gate): Gate =>
+  GATES.indexOf(reached) > GATES.indexOf(current) ? reached : current;

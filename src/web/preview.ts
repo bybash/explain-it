@@ -4,6 +4,7 @@
 // It takes messages only from the app's own pages (see preview-protocol.ts).
 
 import { mountPlayer, type Player } from "../engine/player.ts";
+import { FONTS_PATH } from "../schema/api.ts";
 import { parseConfig, parseLogoImages } from "../schema/config.ts";
 import { orThrow } from "../schema/errors.ts";
 import { parseGraph } from "../schema/graph.ts";
@@ -20,6 +21,9 @@ const FRAME_WIDTH = 1920;
 const frame = document.querySelector<HTMLElement>(".frame");
 if (!frame) throw new Error("missing .frame");
 
+// The frame is scaled from its corner, and nothing scrolls past it.
+frame.style.transformOrigin = "0 0";
+document.body.style.overflow = "hidden";
 const scaleToFit = () => {
   frame.style.transform = `scale(${innerWidth / FRAME_WIDTH})`;
 };
@@ -52,7 +56,7 @@ const draw = async (message: DrawMessage) => {
     layout: orThrow(parseLayout(message.layout, graph), "layout.json"),
     config: orThrow(parseConfig(message.config), "config.json"),
     mode: message.mode,
-    fonts: new URL("/api/fonts/", location.href),
+    fonts: new URL(FONTS_PATH, location.href),
     ...(message.logo === undefined ? {} : { logo: orThrow(parseLogoImages(message.logo), "logo") }),
   });
   if (asked !== drawing) return;
@@ -62,7 +66,8 @@ const draw = async (message: DrawMessage) => {
 };
 
 addEventListener("message", (event: MessageEvent<unknown>) => {
-  if (event.origin !== location.origin) return;
+  // Only the panel that shows this page drives it.
+  if (event.origin !== location.origin || event.source !== parent) return;
   const message = ToPreviewSchema.safeParse(event.data);
   if (!message.success) return;
   if (message.data.type === "seek") player?.seek(Math.min(message.data.at, player.duration));

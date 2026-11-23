@@ -1,26 +1,17 @@
-import { laterGate, under } from "../mcp/edits.ts";
+import type { z } from "zod";
 import { readAssetLogo, readJson } from "../render/load.ts";
 import type { OpenedProject } from "../schema/api.ts";
-import { type Config, type LOGO_CORNERS, type LOGO_SHOWS, parseConfig } from "../schema/config.ts";
-import type { Validated, ValidationError } from "../schema/errors.ts";
+import { type Config, LOGO_MODES, parseConfig } from "../schema/config.ts";
+import { under, type Validated, type ValidationError } from "../schema/errors.ts";
+import type { SetStyleArgsSchema } from "../schema/mcp.ts";
 import { asObject, merged } from "../schema/merge-patch.ts";
+import { laterGate } from "../schema/project.ts";
 import { fail, ok } from "../schema/result.ts";
-import { type CheckedLogo, checkLogo, type LogoSource, saveLogo } from "./logo.ts";
+import { type CheckedLogo, checkLogo, saveLogo } from "./logo.ts";
 import { projectDir, writeProjectFile } from "./projects.ts";
 
-/** A change to a project's style: settings merged into config.json, and logo files to copy in. */
-export type StyleChange = {
-  /** Merged into config.json as a JSON Merge Patch: objects merge, null removes, the rest replaces. */
-  readonly config?: Readonly<Record<string, unknown>> | undefined;
-  readonly logo?:
-    | {
-        readonly light?: LogoSource | undefined;
-        readonly dark?: LogoSource | undefined;
-        readonly corner?: (typeof LOGO_CORNERS)[number] | undefined;
-        readonly show?: (typeof LOGO_SHOWS)[number] | undefined;
-      }
-    | undefined;
-};
+/** A change to a project's style, as MCP's `set_style` takes it: settings merged into config.json, and logo files to copy in. */
+export type StyleChange = Omit<z.output<typeof SetStyleArgsSchema>, "slug">;
 
 /**
  * Saves a style change over a project's config (SPEC, Config): every setting
@@ -39,7 +30,7 @@ export const saveStyle = async (
   const logos: CheckedLogo[] = [];
   const errors: ValidationError[] = [];
   const names: Record<string, string> = {};
-  for (const mode of ["light", "dark"] as const) {
+  for (const mode of LOGO_MODES) {
     const source = change.logo?.[mode];
     if (!source) continue;
     const checked = await checkLogo(mode, source);
@@ -65,7 +56,7 @@ export const saveStyle = async (
   if (!config.ok) errors.push(...under("config", config.errors));
   // A logo named in config.json without being sent must already be in assets/ and pass its checks.
   else
-    for (const mode of ["light", "dark"] as const) {
+    for (const mode of LOGO_MODES) {
       const name = config.value.logo?.[mode];
       if (name === undefined || name === names[mode]) continue;
       const asset = await readAssetLogo(dir, mode, name);

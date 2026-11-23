@@ -140,3 +140,10 @@ const invalidUnion = (
   if (closest) return closest.flatMap((nested) => issueToErrors(nested, path));
   return [{ path: formatPath(path), message: "does not match any allowed form" }];
 };
+
+/** Puts a document's name in front of its errors' paths: `graph.nodes[0].kind`. */
+export const under = (name: string, errors: readonly ValidationError[]): ValidationError[] =>
+  errors.map((e) => ({
+    path: e.path === "(root)" ? name : `${name}.${e.path}`,
+    message: e.message,
+  }));

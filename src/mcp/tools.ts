@@ -7,7 +7,7 @@ import type { RenderQueue } from "../render/queue.ts";
 import type { OpenedProject } from "../schema/api.ts";
 import type { CheckReport, SkippedChecks } from "../schema/checks.ts";
 import { type Config, DEFAULT_CONFIG } from "../schema/config.ts";
-import { parseWith, type Validated } from "../schema/errors.ts";
+import { parseWith, under, type Validated } from "../schema/errors.ts";
 import { parseGraph } from "../schema/graph.ts";
 import {
   CreateProjectArgsSchema,
@@ -18,7 +18,7 @@ import {
   UpdateGraphArgsSchema,
 } from "../schema/mcp.ts";
 import type { Narration } from "../schema/narration.ts";
-import type { Project } from "../schema/project.ts";
+import { laterGate, type Project } from "../schema/project.ts";
 import { fail, ok } from "../schema/result.ts";
 import { parseStoryboard, type Storyboard } from "../schema/storyboard.ts";
 import type { Events } from "../server/events.ts";
@@ -32,7 +32,7 @@ import {
   writeProjectFile,
 } from "../server/projects.ts";
 import { saveStyle } from "../server/styles.ts";
-import { allOf, edited, laterGate, timingOf, under } from "./edits.ts";
+import { allOf, edited, timingOf } from "./edits.ts";
 
 /** What the tools work with: the projects folder, the clock, the event hub and preview links. */
 export type ToolContext = {

@@ -1,8 +1,7 @@
 import { layoutGraph } from "../layout/layout.ts";
-import { under } from "../mcp/edits.ts";
 import { inFile } from "../render/load.ts";
 import type { GraphSaveOutcome, OpenedProject } from "../schema/api.ts";
-import { formatErrors, type Validated } from "../schema/errors.ts";
+import { formatErrors, under, type Validated } from "../schema/errors.ts";
 import type { Graph } from "../schema/graph.ts";
 import type { Layout } from "../schema/layout.ts";
 import { fail, ok } from "../schema/result.ts";

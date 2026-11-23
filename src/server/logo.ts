@@ -1,7 +1,13 @@
 import { mkdir, readdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import { extname, isAbsolute, join } from "node:path";
 import { imageProblem, sizeProblem } from "../render/load.ts";
-import { LOGO_TYPES, LogoDataUrlSchema, type LogoType, logoFileName } from "../schema/config.ts";
+import {
+  LOGO_TYPES,
+  LogoDataUrlSchema,
+  type LogoMode,
+  type LogoType,
+  logoFileName,
+} from "../schema/config.ts";
 import type { Validated } from "../schema/errors.ts";
 import { fail, ok } from "../schema/result.ts";
 
@@ -55,7 +61,7 @@ export type CheckedLogo = { readonly name: string; readonly data: Buffer };
  * size) without writing anything; its file name is `logo-<mode>.<ext>`.
  */
 export const checkLogo = async (
-  mode: "light" | "dark",
+  mode: LogoMode,
   source: LogoSource,
 ): Promise<Validated<CheckedLogo>> => {
   const place = `logo.${mode}.${"dataUrl" in source ? "dataUrl" : "path"}`;

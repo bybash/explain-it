@@ -94,6 +94,16 @@ describe("PUT /api/projects/:slug/style", () => {
     expect((await response.json()).errors[0].path).toMatch(/^logo\.light/);
   });
 
+  it("writes a broken config.json again from the change, and says so", async () => {
+    writeFileSync(configFile(), "{ not json");
+    const response = await putStyle("oauth", { config: { font: "manrope" } });
+    expect(response.status).toBe(200);
+    expect((await response.json()).warnings).toEqual([
+      "config.json was broken, so it was started again from these settings",
+    ]);
+    expect(configOnDisk()).toEqual({ font: "manrope" });
+  });
+
   it("answers 404 for a project that does not exist", async () => {
     expect((await putStyle("nope", { config: {} })).status).toBe(404);
     expect((await app.request("/api/projects/nope/logo")).status).toBe(404);

@@ -5,24 +5,12 @@ import { type Config, DEFAULT_CONFIG } from "../schema/config.ts";
 import type { Validated, ValidationError } from "../schema/errors.ts";
 import type { Graph } from "../schema/graph.ts";
 import type { Narration } from "../schema/narration.ts";
-import { GATES, type Gate } from "../schema/project.ts";
 import { fail, ok } from "../schema/result.ts";
 import type { Storyboard } from "../schema/storyboard.ts";
-
-/** Puts a document's name in front of its errors' paths: `graph.nodes[0].kind`. */
-export const under = (name: string, errors: readonly ValidationError[]): ValidationError[] =>
-  errors.map((e) => ({
-    path: e.path === "(root)" ? name : `${name}.${e.path}`,
-    message: e.message,
-  }));
 
 /** Collects the errors of several checks, so the agent sees all of them at once. */
 export const allOf = (...results: readonly Validated<unknown>[]): ValidationError[] =>
   results.flatMap((r) => (r.ok ? [] : r.errors));
-
-/** The later of two gates: files arriving move a project forward, never back. */
-export const laterGate = (current: Gate, reached: Gate): Gate =>
-  GATES.indexOf(reached) > GATES.indexOf(current) ? reached : current;
 
 /**
  * The new document from a whole one or a JSON Patch on the current one:

@@ -3,7 +3,7 @@ import { extname, normalize, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Hono } from "hono";
 import { readLogo } from "../render/load.ts";
-import { StyleEditSchema } from "../schema/api.ts";
+import { FONTS_PATH, StyleEditSchema } from "../schema/api.ts";
 import { parseWith } from "../schema/errors.ts";
 import type { Events } from "./events.ts";
 import { openProject, projectDir, withProjectLock } from "./projects.ts";
@@ -12,7 +12,13 @@ import { saveStyle } from "./styles.ts";
 
 /** The bundled fonts, which the style gate's preview loads as the renderer does. */
 const FONTS = fileURLToPath(new URL("../../assets/fonts/", import.meta.url));
-export const FONTS_PATH = "/api/fonts/";
+
+/** The style gate's save, whose requests may carry two logos. */
+const STYLE_PATH = "/api/projects/:slug/style";
+const STYLE_PATTERN = /^\/api\/projects\/[^/]+\/style$/;
+
+/** Whether a request path is the style gate's save, which may be larger than the rest of the API's. */
+export const isStyleSave = (path: string): boolean => STYLE_PATTERN.test(path);
 
 /**
  * The style gate (SPEC, User flow): save the style as MCP's `set_style` does,
@@ -23,7 +29,7 @@ export const styleRoutes = (
   app: Hono,
   { projectsDir, now, events }: { projectsDir: string; now: () => Date; events: Events },
 ) => {
-  app.put("/api/projects/:slug/style", async (c) => {
+  app.put(STYLE_PATH, async (c) => {
     const slug = c.req.param("slug");
     const body = await jsonBody(c);
     if (!body.ok) return errorResponse(c, 400, body.errors);

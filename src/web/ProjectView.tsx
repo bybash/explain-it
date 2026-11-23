@@ -53,7 +53,7 @@ export const ProjectView = ({ slug, gate }: { slug: string; gate?: Gate | undefi
 
   // Until the project the address names has opened, the one before it is not shown: its gates
   // would be checked against the new address, and the address corrected back to it.
-  const current = opened?.slug === slug ? opened : undefined;
+  const addressed = opened?.slug === slug ? opened : undefined;
   return (
     <section>
       <a className="mb-4 inline-block text-muted" href="#/">
@@ -66,12 +66,12 @@ export const ProjectView = ({ slug, gate }: { slug: string; gate?: Gate | undefi
           <Errors errors={errors} />
         </>
       )}
-      {!current && errors.length === 0 && <Muted>Opening…</Muted>}
-      {current && (
+      {!addressed && errors.length === 0 && <Muted>Opening…</Muted>}
+      {addressed && (
         <Opened
-          opened={current}
+          opened={addressed}
           requested={gate}
-          approved={(project) => setOpened({ ...current, project })}
+          approved={(project) => setOpened({ ...addressed, project })}
         />
       )}
     </section>

@@ -46,6 +46,9 @@ export type GraphSaved = z.output<typeof GraphSavedSchema>;
 /** What saving a graph did to the rest of the project. */
 export type GraphSaveOutcome = Pick<GraphSaved, "staleBeats" | "storyboardProblems" | "warnings">;
 
+/** Where the API serves the bundled fonts, which the preview loads as the renderer does. */
+export const FONTS_PATH = "/api/fonts/";
+
 /** A logo file the style gate sends: the image itself, since the page cannot name a file on the server. */
 const LogoUploadSchema = z.strictObject({ dataUrl: z.string() });
 

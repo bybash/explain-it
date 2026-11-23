@@ -180,6 +180,8 @@ that finishes it.
 - `fontFor` (`src/engine/theme/fonts.ts`) knows only bundled fonts; an
   uploaded one needs the renderer, the checks and the preview to load it
   from the project's `assets/`.
+- Taking a saved logo out leaves its file in `assets/`; nothing removes
+  files the config no longer names, as with old voice lines in `cache/`.
 
 ### For 3.8 (preview gate), from 3.7
 

@@ -3,6 +3,13 @@ import { type Config, DEFAULT_CONFIG, parseConfig } from "../schema/config.ts";
 import { merged } from "../schema/merge-patch.ts";
 import { previewLogo, styleEdit, withLogoFile } from "./style-form.ts";
 
+/** The draft with the logo file, which must be one the logo may be. */
+const withFile = (...args: Parameters<typeof withLogoFile>) => {
+  const result = withLogoFile(...args);
+  if (!result.ok) throw new Error(JSON.stringify(result.errors));
+  return result.value;
+};
+
 const PNG = "data:image/png;base64,iVBORw0KGgo=";
 const SVG = "data:image/svg+xml;base64,PHN2Zy8+";
 const config = (patch: object): Config => {
@@ -31,7 +38,7 @@ describe("styleEdit", () => {
   });
 
   it("sends a new logo file with the name the server will save it under", () => {
-    const draft = withLogoFile(DEFAULT_CONFIG, "light", PNG);
+    const draft = withFile(DEFAULT_CONFIG, "light", PNG);
     expect(draft.logo).toEqual({ light: "logo-light.png", corner: "top-right", show: "both" });
     expect(styleEdit(DEFAULT_CONFIG, draft, { light: PNG })).toEqual({
       config: { logo: { light: "logo-light.png", corner: "top-right", show: "both" } },
@@ -48,6 +55,20 @@ describe("styleEdit", () => {
   });
 });
 
+describe("withLogoFile", () => {
+  it("names a file that is not an image the logo may be", () => {
+    expect(withLogoFile(DEFAULT_CONFIG, "dark", "data:text/html;base64,PGI+")).toEqual({
+      ok: false,
+      errors: [
+        {
+          path: "logo.dark",
+          message: "must be a base64 data URL of image/png, image/jpeg or image/svg+xml",
+        },
+      ],
+    });
+  });
+});
+
 describe("previewLogo", () => {
   const saved = { light: PNG, dark: PNG };
 
@@ -57,9 +78,9 @@ describe("previewLogo", () => {
   });
 
   it("draws a file picked but not saved yet, and one file serves both modes", () => {
-    const draft = withLogoFile(DEFAULT_CONFIG, "dark", SVG);
+    const draft = withFile(DEFAULT_CONFIG, "dark", SVG);
     expect(previewLogo(draft, null, { dark: SVG })).toEqual({ light: SVG, dark: SVG });
-    const both = withLogoFile(config({ logo: { light: "logo-light.png" } }), "dark", SVG);
+    const both = withFile(config({ logo: { light: "logo-light.png" } }), "dark", SVG);
     expect(previewLogo(both, saved, { dark: SVG })).toEqual({ light: PNG, dark: SVG });
   });
 

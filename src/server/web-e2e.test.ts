@@ -277,18 +277,23 @@ const flow = (
       preview.locator("html").evaluate((html) => getComputedStyle(html).getPropertyValue("--bg"));
     const before = await background();
 
-    await page.selectOption("#style-palette", "ocean");
+    await page.getByLabel("Palette").selectOption("ocean");
     await expect.poll(background, SOON).not.toBe(before);
     expect(await page.isDisabled("text=Approve and go to Preview")).toBe(true);
 
-    await page.setInputFiles("#style-logo-light", {
+    await page.getByLabel("Logo for the light video").setInputFiles({
       name: "logo.png",
       mimeType: "image/png",
       buffer: TINY_PNG,
     });
-    await page.selectOption("#style-logo-show", "all");
+    await page.getByLabel("Shown").selectOption("all");
     // A logo on every frame is drawn in the preview before it is saved.
-    await expect.poll(() => preview.locator(".frame img").count(), SOON).toBeGreaterThan(0);
+    await expect
+      .poll(
+        () => preview.getByRole("img", { name: "The video at this moment" }).locator("img").count(),
+        SOON,
+      )
+      .toBeGreaterThan(0);
 
     await page.click("text=Save the style");
     await expect
