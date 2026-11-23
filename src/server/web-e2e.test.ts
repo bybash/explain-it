@@ -273,6 +273,9 @@ const flow = (
     const preview = page.frameLocator("iframe[title='The video with this style']");
     // The player has drawn the video and offers its moments to jump to.
     await page.getByRole("button", { name: "Beat 1", exact: true }).waitFor(SOON);
+    // The stage's own styles are on the page: the frame is the video's size, scaled to fit.
+    const stage = preview.getByRole("img", { name: "The video at this moment" });
+    expect(await stage.evaluate((frame) => getComputedStyle(frame).width)).toBe("1920px");
     const background = () =>
       preview.locator("html").evaluate((html) => getComputedStyle(html).getPropertyValue("--bg"));
     const before = await background();

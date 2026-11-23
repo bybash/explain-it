@@ -3,6 +3,9 @@
 // what is rendered, and scales the 1920 × 1080 frame to the iframe's width.
 // It takes messages only from the app's own pages (see preview-protocol.ts).
 
+// Imported, not linked from the page: the stage sits outside the web app's folder, which
+// Vite's dev server serves as its root, so a link to it would not load under `npm run dev`.
+import "../engine/stage.css";
 import { mountPlayer, type Player } from "../engine/player.ts";
 import { FONTS_PATH } from "../schema/api.ts";
 import { parseConfig, parseLogoImages } from "../schema/config.ts";
