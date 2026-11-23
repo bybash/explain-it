@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { type Browser, chromium, type Page } from "playwright-core";
 import { z } from "zod";
 import { stillAt } from "../checks/sheet.ts";
-import { beatOptions, buildBeats } from "../engine/beats/build.ts";
+import { projectBeats } from "../engine/beats/build.ts";
 import type { InjectedProject } from "../engine/page/render.ts";
 import type { ThemeMode } from "../engine/theme/palettes.ts";
 import { type BeatSpan, BeatSpanSchema, STAGE } from "../schema/checks.ts";
@@ -35,6 +35,8 @@ export type RenderControl = {
   readonly onProgress?: (progress: RenderProgress) => void;
   /** Called as the render moves on: the voice, the mix, each theme's frames, then its files. */
   readonly onStep?: (step: RenderStep) => void;
+  /** Called once the render's folder in `out/` is made, with its name. */
+  readonly onFolder?: (stamp: string) => void;
   /** Stops the render at its next step: a frame, a theme, the poster. */
   readonly signal?: AbortSignal;
 };
@@ -202,11 +204,7 @@ const renderTheme = async (
     if (audio && files.audio) await copyFile(audio, files.audio);
     signal?.throwIfAborted();
     onStep?.({ step: "finishing" });
-    const plan = buildBeats(
-      project.storyboard,
-      project.graph,
-      beatOptions(project.config, project.narration),
-    );
+    const plan = projectBeats(project);
     const poster = await frameAt(first, Math.min(posterTime(plan), duration));
     await pipeFrames(posterArgs({ resolution, out: files.poster }), (write) => write(poster));
     await writeFile(files.captions, toSrt(cues));

@@ -18,7 +18,8 @@ Preview gate had just mixed the same one (3.8).
   the project, then every folder with a manifest. Renders survive a
   restart, and renders made by MCP or the CLI show too. A folder without a
   manifest (still running, or stopped) is never listed, so a render is
-  shown only when it is complete.
+  shown only when it is complete. A job names its folder (`stamp`) once it is
+  made, so the panel can tell a done job from the render it left on disk.
 - **A job names its step.** `step` on the job is one of: the voice, with
   lines spoken of how many; the mix; a theme's frames, whose count stays
   in `progress`, now reported every hundredth rather than every tenth; or

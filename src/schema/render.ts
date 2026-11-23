@@ -44,6 +44,19 @@ export const RENDER_FILES = {
 } as const;
 export type RenderFile = keyof typeof RENDER_FILES;
 
+/** How each of a render's files is served. */
+export const RENDER_FILE_TYPES: Readonly<Record<RenderFile, string>> = {
+  video: "video/mp4",
+  clean: "video/mp4",
+  captions: "application/x-subrip",
+  audio: "audio/wav",
+  poster: "image/png",
+  contactSheet: "image/png",
+};
+
+/** Written into `out/<time>/` once every theme is: a folder without it is not a finished render. */
+export const RENDER_MANIFEST = "render.json";
+
 /** What a render is doing: speaking its voice, mixing its sound, capturing frames, or finishing its files. */
 export const RenderStepSchema = z.discriminatedUnion("step", [
   z.object({ step: z.literal("voice"), spoken: z.int().min(0), total: z.int().min(0) }),
@@ -76,6 +89,8 @@ export const RenderJobSchema = z.object({
   createdAt: z.iso.datetime(),
   startedAt: z.iso.datetime().optional(),
   finishedAt: z.iso.datetime().optional(),
+  /** Its folder in the project's `out/`, once the render has started writing it. */
+  stamp: z.string().optional(),
   /** What it is doing now; the frames' progress is `progress`. */
   step: RenderStepSchema.optional(),
   /** Over the whole job: every theme counts the same. */
@@ -93,7 +108,10 @@ export const RenderEventSchema = z.object({
   percent: z.number().optional(),
 });
 
-/** The timestamp folder a render writes into: `out/<time>/`, its start time made safe for a path. */
+/** A render's folder name: the time it started, to the millisecond, made safe for a path. */
+export const renderStamp = (now: Date): string => now.toISOString().replaceAll(":", "-");
+
+/** The timestamp folder a render writes into: `out/<time>/`, named by `renderStamp`. */
 export const RenderStampSchema = z
   .string()
   .regex(
@@ -121,7 +139,7 @@ export const RenderedFolderSchema = RenderManifestSchema.omit({ version: true })
     z.object({
       theme: RenderedThemeModeSchema,
       file: z.enum(Object.keys(RENDER_FILES) as [RenderFile, ...RenderFile[]]),
-      name: z.string(),
+      name: z.enum(Object.values(RENDER_FILES) as [string, ...string[]]),
       bytes: z.int().nonnegative(),
     }),
   ),

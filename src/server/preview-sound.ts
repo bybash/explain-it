@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
-import { mkdir, readdir, rename, rm } from "node:fs/promises";
+import { access, mkdir, readdir, rename, rm } from "node:fs/promises";
 import { join } from "node:path";
 import type { makeSoundtrack, SoundtrackProject } from "../audio/soundtrack.ts";
 import type { TtsProvider } from "../audio/tts.ts";
@@ -221,7 +221,12 @@ export const previewSound = ({
       project: SoundtrackProject,
     ): Promise<string | undefined> => {
       const file = soundFile(slug, soundKey(tts, project));
-      return existsSync(file) ? file : undefined;
+      return (await access(file).then(
+        () => true,
+        () => false,
+      ))
+        ? file
+        : undefined;
     },
 
     /** The key the sound for these files has: a sound settled under another is for other files. */

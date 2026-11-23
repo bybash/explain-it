@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import { type BeatPlan, beatOptions, buildBeats } from "../engine/beats/build.ts";
+import { type BeatPlan, projectBeats } from "../engine/beats/build.ts";
 import { LEAD_IN } from "../engine/beats/timing.ts";
 import type { Config } from "../schema/config.ts";
 import { formatErrors } from "../schema/errors.ts";
@@ -49,11 +49,7 @@ export const makeSoundtrack = async ({
   readonly out: string;
   readonly signal?: AbortSignal;
 }): Promise<string | undefined> => {
-  const plan = buildBeats(
-    project.storyboard,
-    project.graph,
-    beatOptions(project.config, project.narration),
-  );
+  const plan = projectBeats(project);
   const { duration } = plan;
   const placed: PlacedLine[] = await Promise.all(
     linePlacements(plan, lines).map(async ({ at, file }) => {

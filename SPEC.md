@@ -443,7 +443,8 @@ Decision 018 says why.
   frame in the middle of the first scene's last beat, when that scene is
   fully drawn. Outputs go in `out/<timestamp>/<theme>/`.
 - One render job runs at a time, in an in-process queue, with progress over
-  SSE and a cancel button. A job names its step: the voice, line by line;
+  SSE and a cancel button: each change to a job is an event, and the page
+  reads the job, with its folder in `out/`, from the API. A job names its step: the voice, line by line;
   the mix; each theme's frames, by the hundredth; then its files. When the
   Preview gate has mixed the same soundtrack (`cache/preview/<key>.wav`, its
   key a hash of what the sound follows), the render copies it instead of

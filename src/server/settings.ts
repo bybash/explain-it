@@ -1,4 +1,5 @@
-import { chmod, readFile, rename, writeFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
+import { writeWhole } from "../render/write-whole.ts";
 import { parseWith, type Validated } from "../schema/errors.ts";
 import { fail, ok } from "../schema/result.ts";
 import {
@@ -135,10 +136,7 @@ export const settingsStore = ({
           ? { [ENV_NAMES.apiKey]: apiKey, [ENV_NAMES.openRouterKey]: null }
           : {}),
       };
-      const partial = `${envFile}.partial`;
-      await writeFile(partial, updateEnvFile(await readFileText(), changes), { mode: 0o600 });
-      await chmod(partial, 0o600);
-      await rename(partial, envFile);
+      await writeWhole(envFile, updateEnvFile(await readFileText(), changes), { mode: 0o600 });
       return ok(await view());
     },
   };

@@ -14,17 +14,19 @@ const steppedRenderer = () => {
       themes?: number,
     ) => void;
     step: (step: RenderStep) => void;
+    folder: (stamp: string) => void;
     finish: () => void;
     fail: (message: string) => void;
     signal: AbortSignal;
   }[] = [];
-  const run: RenderRun = (request, { onProgress, onStep, signal }) =>
+  const run: RenderRun = (request, { onProgress, onStep, onFolder, signal }) =>
     new Promise((resolve, reject) => {
       runs.push({
         slug: request.slug,
         report: (theme, done, total, themeIndex = 0, themes = 1) =>
           onProgress({ theme, done, total, themeIndex, themes }),
         step: onStep,
+        folder: onFolder,
         finish: () =>
           resolve([
             {
@@ -103,6 +105,7 @@ describe("RenderQueue", () => {
     const { queue, renderer } = setup();
     const job = queue.add(request("one"));
     await settle();
+    renderer.runs[0]?.folder("2026-11-20T10-00-00.000Z");
     renderer.runs[0]?.step({ step: "voice", spoken: 3, total: 10 });
     expect(queue.get(job.id)?.step).toEqual({ step: "voice", spoken: 3, total: 10 });
     renderer.runs[0]?.step({ step: "mix" });
@@ -110,6 +113,8 @@ describe("RenderQueue", () => {
     renderer.runs[0]?.finish();
     await settle();
     expect(queue.get(job.id)?.step).toBeUndefined();
+    // Its folder stays named, so the gate can tell its render on disk from it.
+    expect(queue.get(job.id)?.stamp).toBe("2026-11-20T10-00-00.000Z");
   });
 
   it("records a failed job with its error and goes on to the next", async () => {

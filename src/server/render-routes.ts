@@ -1,6 +1,6 @@
 import { createReadStream } from "node:fs";
 import { stat } from "node:fs/promises";
-import { extname } from "node:path";
+import { basename } from "node:path";
 import { Readable } from "node:stream";
 import type { Context, Hono } from "hono";
 import { loadProject } from "../render/load.ts";
@@ -8,15 +8,14 @@ import type { RenderQueue } from "../render/queue.ts";
 import { renderFilePath, rendersIn } from "../render/renders.ts";
 import { RenderAskSchema, type RendersView } from "../schema/api.ts";
 import { parseWith } from "../schema/errors.ts";
+import { RENDER_FILE_TYPES, RENDER_FILES, type RenderFile } from "../schema/render.ts";
 import { projectDir, projectExists } from "./projects.ts";
 import { errorResponse, jsonBody, noProject } from "./responses.ts";
 
-/** How each kind of file a render writes is served. */
-const TYPES: Readonly<Record<string, string>> = {
-  ".mp4": "video/mp4",
-  ".srt": "application/x-subrip",
-  ".wav": "audio/wav",
-  ".png": "image/png",
+/** How a render's file is served, by its name. */
+const typeOf = (name: string): string => {
+  const file = (Object.keys(RENDER_FILES) as RenderFile[]).find((f) => RENDER_FILES[f] === name);
+  return file ? RENDER_FILE_TYPES[file] : "application/octet-stream";
 };
 
 /**
@@ -41,7 +40,7 @@ const rangeOf = (
 const fileResponse = async (c: Context, path: string, download: string | undefined) => {
   const { size } = await stat(path);
   const headers: Record<string, string> = {
-    "content-type": TYPES[extname(path)] ?? "application/octet-stream",
+    "content-type": typeOf(basename(path)),
     "accept-ranges": "bytes",
     // A render's folder is never written again once it is finished.
     "cache-control": "private, max-age=31536000, immutable",
@@ -49,6 +48,9 @@ const fileResponse = async (c: Context, path: string, download: string | undefin
   };
   const header = c.req.header("range");
   const asked = header ? rangeOf(header, size) : undefined;
+  // An empty file has no bytes to range over; it is sent whole, as nothing.
+  if (size === 0)
+    return new Response(null, { status: 200, headers: { ...headers, "content-length": "0" } });
   if (asked === "unsatisfiable")
     return new Response(null, { status: 416, headers: { "content-range": `bytes */${size}` } });
   const range = asked ?? { start: 0, end: size - 1 };
@@ -115,7 +117,7 @@ export const renderRoutes = (
       : undefined;
     if (!path)
       return errorResponse(c, 404, [{ path: "url", message: "no such file in a finished render" }]);
-    const download = c.req.query("download") ? `${slug}-${theme}-${file}` : undefined;
+    const download = c.req.query("download") === "1" ? `${slug}-${theme}-${file}` : undefined;
     return fileResponse(c, path, download);
   });
 };

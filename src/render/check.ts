@@ -1,4 +1,4 @@
-import { mkdtemp, rename, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { z } from "zod";
@@ -8,7 +8,7 @@ import type { VoiceLine } from "../audio/voice.ts";
 import { layoutWarnings } from "../checks/layout.ts";
 import { stillAt } from "../checks/sheet.ts";
 import { loudnessWarnings, narrationFitWarnings, readingWarnings } from "../checks/timing.ts";
-import { beatOptions, buildBeats } from "../engine/beats/build.ts";
+import { projectBeats } from "../engine/beats/build.ts";
 import {
   type BeatSpan,
   type BeatWarning,
@@ -24,6 +24,7 @@ import type { ProjectFiles } from "./load.ts";
 import { buildRenderPage, serveRenderPage } from "./page.ts";
 import { beatsOnPage, launchBrowser, openPage } from "./render.ts";
 import { CONTACT_SHEET, drawSheet } from "./sheet.ts";
+import { writeWhole } from "./write-whole.ts";
 
 /** What the render page exposes for the checks (see `expose` in the engine's player). */
 type Checkable = {
@@ -169,8 +170,7 @@ const writeSheets = async (
   try {
     for (const size of ["full", "small"] as const) {
       const image = await drawSheet(browser, { beats, stills, warnings: atBeats, size });
-      await writeFile(join(dir, `${CONTACT_SHEET[size]}.partial`), image);
-      await rename(join(dir, `${CONTACT_SHEET[size]}.partial`), join(dir, CONTACT_SHEET[size]));
+      await writeWhole(join(dir, CONTACT_SHEET[size]), image);
     }
     return CONTACT_SHEET;
   } finally {
@@ -238,11 +238,7 @@ export const checkProjectFolder = async ({
   onProgress,
 }: CheckRun & { readonly now: Date }): Promise<CheckReport> => {
   const skipped = new Set(skip.flatMap((s) => s.checks));
-  const plan = buildBeats(
-    project.storyboard,
-    project.graph,
-    beatOptions(project.config, project.narration),
-  );
+  const plan = projectBeats(project);
   const layout = skipped.has("overlap")
     ? { beats: plan.beats.length, warnings: [], spans: [], stills: [] }
     : await layoutOnPage(project, { signal, onProgress });
@@ -273,7 +269,6 @@ export const checkProjectFolder = async ({
     ...(contactSheet ? { contactSheet } : {}),
   };
   const file = join(dir, CHECK_REPORT);
-  await writeFile(`${file}.partial`, `${JSON.stringify(report, null, 2)}\n`);
-  await rename(`${file}.partial`, file);
+  await writeWhole(file, `${JSON.stringify(report, null, 2)}\n`);
   return report;
 };

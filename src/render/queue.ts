@@ -126,6 +126,9 @@ export class RenderQueue {
         onStep: (step) => {
           current = this.#update({ ...current, step });
         },
+        onFolder: (stamp) => {
+          current = this.#update({ ...current, stamp });
+        },
       });
       // A cancel that came after the render's last look at the signal still wins: the caller was told it would stop.
       this.#finish(

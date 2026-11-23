@@ -150,6 +150,10 @@ describe("a render's files", () => {
     expect(tail.headers.get("content-range")).toBe("bytes 990-999/1000");
     const beyond = await file("video.mp4", { headers: { range: "bytes=5000-" } });
     expect(beyond.status).toBe(416);
+    writeFileSync(join(projectsDir, "oauth", "out", STAMP, "light", "poster.png"), "");
+    const empty = await file("poster.png", { headers: { range: "bytes=0-" } });
+    expect([empty.status, (await empty.arrayBuffer()).byteLength]).toEqual([200, 0]);
+    expect((await file("captions.srt?download=0")).headers.get("content-disposition")).toBeNull();
     const odd = await file("video.mp4", { headers: { range: "lines=1-2" } });
     expect(odd.status).toBe(200);
     expect((await odd.arrayBuffer()).byteLength).toBe(1000);

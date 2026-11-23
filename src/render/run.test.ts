@@ -153,6 +153,45 @@ describe("renderProjectFolder", () => {
     expect(steps.map((s) => s.step)).toEqual(["frames"]);
   });
 
+  it("mixes its own soundtrack when the preview's is gone by the time it is copied", async () => {
+    const { mix, mixes } = fakeMix();
+    await renderProjectFolder({
+      dir,
+      project: await example(),
+      settings: { themes: ["light"], resolution: "720p" },
+      now: NOW,
+      premixed: join(dir, "removed-by-a-newer-preview.wav"),
+      mix,
+      renderPages: fakePages().renderPages,
+    });
+    expect(mixes).toHaveLength(1);
+  });
+
+  it("keeps nothing of a render cancelled as it finishes, and names its folder as it starts", async () => {
+    const stop = new AbortController();
+    const pages = fakePages();
+    const folders: string[] = [];
+    const finishing: RenderPages = async (options) => {
+      const rendered = await pages.renderPages(options);
+      stop.abort(new Error("cancelled"));
+      return rendered;
+    };
+    await expect(
+      renderProjectFolder({
+        dir,
+        project: await example(),
+        settings: { themes: ["light"], resolution: "720p" },
+        now: NOW,
+        mix: fakeMix().mix,
+        renderPages: finishing,
+        signal: stop.signal,
+        onFolder: (stamp) => folders.push(stamp),
+      }),
+    ).rejects.toThrow("cancelled");
+    expect(folders).toEqual(["2026-11-23T10-30-00.000Z"]);
+    expect(await rendersIn(dir)).toEqual([]);
+  });
+
   it("leaves nothing behind when the render fails", async () => {
     const pages = fakePages({ failWith: "Chrome crashed" });
     await expect(
@@ -187,6 +226,7 @@ describe("renderFromFolder", () => {
           signal: new AbortController().signal,
           onProgress: (p) => progress.push(p),
           onStep: (s) => steps.push(s),
+          onFolder: () => {},
         },
       );
       const spoken = steps.filter((s) => s.step === "voice");
@@ -217,7 +257,12 @@ describe("renderFromFolder", () => {
       });
       await run(
         { slug: "oauth" },
-        { signal: new AbortController().signal, onProgress: () => {}, onStep: () => {} },
+        {
+          signal: new AbortController().signal,
+          onProgress: () => {},
+          onStep: () => {},
+          onFolder: () => {},
+        },
       );
       expect(asked).toEqual(["oauth:2"]);
       expect(mixes).toEqual([]);

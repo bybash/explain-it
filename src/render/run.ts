@@ -1,11 +1,17 @@
-import { copyFile, mkdir, rename, rm, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { makeSoundtrack } from "../audio/soundtrack.ts";
 import type { TtsProvider } from "../audio/tts.ts";
 import { generateVoice, narrationLengths, VOICE_OFF_HINT, type VoiceLine } from "../audio/voice.ts";
-import { beatOptions, buildBeats } from "../engine/beats/build.ts";
+import { projectBeats } from "../engine/beats/build.ts";
 import { formatErrors } from "../schema/errors.ts";
-import { RENDER_FILES, type RenderedTheme, type RenderManifest } from "../schema/render.ts";
+import {
+  RENDER_FILES,
+  RENDER_MANIFEST,
+  type RenderedTheme,
+  type RenderManifest,
+  renderStamp,
+} from "../schema/render.ts";
 import { loadProject, type ProjectFiles } from "./load.ts";
 import { buildRenderPage, serveRenderPage } from "./page.ts";
 import type { RenderRun } from "./queue.ts";
@@ -15,11 +21,8 @@ import {
   type RenderSettings,
   renderProject,
 } from "./render.ts";
-import { RENDER_MANIFEST } from "./renders.ts";
 import { renderSettings } from "./settings.ts";
-
-/** A folder name for one render: the time it started, to the millisecond, safe in a path. */
-export const renderStamp = (now: Date): string => now.toISOString().replaceAll(":", "-");
+import { writeWhole } from "./write-whole.ts";
 
 /** Renders the served page's frames into each theme's folder: Chrome and ffmpeg in the app, a fake in tests. */
 export type RenderPages = (options: Omit<RenderOptions, "pageUrl">) => Promise<RenderedTheme[]>;
@@ -40,20 +43,37 @@ const onRenderPage: RenderPages = async (options) => {
   }
 };
 
-export type RenderFolderOptions = RenderControl & {
-  /** The project's folder; the render goes in its `out/<time>/`. */
-  readonly dir: string;
-  readonly project: ProjectFiles;
-  readonly settings: RenderSettings;
-  readonly now: Date;
-  /** The spoken lines (see `withNarration`), mixed into the soundtrack; none for a silent voice. */
-  readonly lines?: readonly VoiceLine[];
-  /** The same soundtrack mixed already (the Preview gate's), copied instead of mixing it again. */
-  readonly premixed?: string | undefined;
-  /** Mixes the soundtrack: ffmpeg's master in the app, a fake in tests. */
+/** The tools a render works with: ffmpeg's mix and Chrome's pages in the app, stand-ins in tests. */
+export type RenderTools = {
+  /** Mixes the soundtrack. */
   readonly mix?: typeof makeSoundtrack;
+  /** Renders every theme's frames and files on the render page. */
   readonly renderPages?: RenderPages;
 };
+
+export type RenderFolderOptions = RenderControl &
+  RenderTools & {
+    /** The project's folder; the render goes in its `out/<time>/`. */
+    readonly dir: string;
+    readonly project: ProjectFiles;
+    readonly settings: RenderSettings;
+    readonly now: Date;
+    /** The spoken lines (see `withNarration`), mixed into the soundtrack; none for a silent voice. */
+    readonly lines?: readonly VoiceLine[];
+    /** The same soundtrack mixed already (the Preview gate's), copied instead of mixing it again. */
+    readonly premixed?: string | undefined;
+  };
+
+/**
+ * The preview's soundtrack copied in as this render's, when it is still
+ * there: a preview of edited files may remove it between being found and
+ * being copied, and then the render mixes its own.
+ */
+const copied = (premixed: string, to: string): Promise<boolean> =>
+  copyFile(premixed, to).then(
+    () => true,
+    () => false,
+  );
 
 /**
  * Renders a loaded project into its `out/<time>/<theme>/` folders: the
@@ -73,16 +93,16 @@ export const renderProjectFolder = async ({
   renderPages = onRenderPage,
   ...control
 }: RenderFolderOptions): Promise<RenderedTheme[]> => {
-  const outDir = join(dir, "out", renderStamp(now));
+  const stamp = renderStamp(now);
+  const outDir = join(dir, "out", stamp);
   try {
     await mkdir(outDir, { recursive: true });
+    control.onFolder?.(stamp);
     // One soundtrack for every theme; each theme's folder gets a copy (`renderProject`).
     const soundtrack = join(outDir, RENDER_FILES.audio);
     let audio: string | undefined;
-    if (premixed) {
-      await copyFile(premixed, soundtrack);
-      audio = soundtrack;
-    } else {
+    if (premixed && (await copied(premixed, soundtrack))) audio = soundtrack;
+    else {
       control.onStep?.({ step: "mix" });
       audio = await mix({
         project,
@@ -106,12 +126,10 @@ export const renderProjectFolder = async ({
         createdAt: now.toISOString(),
         resolution: settings.resolution,
         themes: rendered.map((r) => r.theme),
-        seconds: buildBeats(
-          project.storyboard,
-          project.graph,
-          beatOptions(project.config, project.narration),
-        ).duration,
+        seconds: projectBeats(project).duration,
       });
+      // A cancel while the manifest was written still wins: the queue records it as cancelled, so nothing is kept.
+      control.signal?.throwIfAborted();
       return rendered;
     } finally {
       await rm(soundtrack, { force: true });
@@ -123,11 +141,8 @@ export const renderProjectFolder = async ({
 };
 
 /** The manifest, written whole and then renamed: a render is listed only once it is complete. */
-const writeManifest = async (outDir: string, manifest: RenderManifest) => {
-  const file = join(outDir, RENDER_MANIFEST);
-  await writeFile(`${file}.partial`, `${JSON.stringify(manifest, null, 2)}\n`);
-  await rename(`${file}.partial`, file);
-};
+const writeManifest = (outDir: string, manifest: RenderManifest) =>
+  writeWhole(join(outDir, RENDER_MANIFEST), `${JSON.stringify(manifest, null, 2)}\n`);
 
 /**
  * The project with its measured narration: every spoken line generated, or
@@ -160,11 +175,9 @@ export const withNarration = async (
 };
 
 /** What the app's renderer can be given besides the projects: the preview's soundtracks, and stand-ins for tests. */
-export type FolderRenderOptions = {
+export type FolderRenderOptions = RenderTools & {
   /** The preview's soundtrack for these files, when it has been mixed: the same mix a render would make. */
   readonly soundtrackFor?: (slug: string, project: ProjectFiles) => Promise<string | undefined>;
-  readonly mix?: typeof makeSoundtrack;
-  readonly renderPages?: RenderPages;
 };
 
 /**
@@ -178,7 +191,7 @@ export const renderFromFolder =
     projectsDir: string,
     now: () => Date,
     tts: TtsProvider,
-    { soundtrackFor, mix, renderPages }: FolderRenderOptions = {},
+    { soundtrackFor, ...tools }: FolderRenderOptions = {},
   ): RenderRun =>
   async ({ slug, theme, resolution }, control) => {
     const dir = join(projectsDir, slug);
@@ -203,8 +216,7 @@ export const renderFromFolder =
       settings,
       now: now(),
       premixed,
-      ...(mix ? { mix } : {}),
-      ...(renderPages ? { renderPages } : {}),
+      ...tools,
       ...control,
     });
   };

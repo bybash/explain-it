@@ -3,14 +3,12 @@ import { join } from "node:path";
 import { parseWith } from "../schema/errors.ts";
 import {
   RENDER_FILES,
+  RENDER_MANIFEST,
   type RenderedFolder,
   type RenderFile,
   RenderManifestSchema,
   RenderStampSchema,
 } from "../schema/render.ts";
-
-/** Written into `out/<time>/` once every theme is: a folder without it is not a finished render. */
-export const RENDER_MANIFEST = "render.json";
 
 /** The size of a file, or undefined when it is not there. */
 const sizeOf = (path: string): Promise<number | undefined> =>
