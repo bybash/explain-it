@@ -105,7 +105,7 @@ export const CheckReportSchema = z.strictObject({
    * A key of the files checked (graph, script, layout, style), so a reader
    * can tell the project has changed since; missing in older reports.
    */
-  files: z.string().optional(),
+  filesKey: z.string().optional(),
   /** The contact sheet beside the report, full size and small; missing when the page could not be drawn. */
   contactSheet: z.strictObject({ full: z.string(), small: z.string() }).optional(),
 });

@@ -14,7 +14,8 @@ mixes the soundtrack as a render does (3.8, decision 026). The checks take
 - **A button starts them, as a server job.** `POST
   /api/projects/:slug/checks` starts a run; `GET` returns the run's state
   and the last report; the contact sheet is served beside it. Progress goes
-  over the event stream as `preview-checks`, beat by beat. A newer run
+  over the event stream as `preview-checks`, beat by beat; the page reads the
+  count from the API, as it does for the sound. A newer run
   stops the older and starts once that one has ended, so two runs never
   write the report at the same time.
 - **They wait for the preview's sound.** Narration fit is then timed by the
@@ -23,8 +24,11 @@ mixes the soundtrack as a render does (3.8, decision 026). The checks take
   mixing a second one. If the voice failed, narration fit and loudness are
   skipped, as `check` skips them. If only the mix failed, loudness is
   skipped with the mix's own words. `explain-it check` and MCP's `check`
-  still mix their own scratch soundtrack.
-- **The report names the files it checked.** `files` in `checks.json` is a
+  still mix their own scratch soundtrack. Running the checks asks for the
+  sound again, so a sound that failed is tried once more first. If a file
+  changes while they wait, they wait for the sound of the new files, so the
+  voice and the files checked always agree.
+- **The report names the files it checked.** `filesKey` in `checks.json` is a
   key of the graph, the script, the layout and the style. The gate compares
   it with the files as they are now, and shows an older report marked as
   out of date rather than hiding it. The voice's measured lengths are left

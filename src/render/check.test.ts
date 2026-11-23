@@ -7,7 +7,8 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { sheetLayout } from "../checks/sheet.ts";
 import { beatOptions, buildBeats } from "../engine/beats/build.ts";
 import { CheckReportSchema } from "../schema/checks.ts";
-import { checkedFilesKey, checkLayout, checkProjectFolder } from "./check.ts";
+import { checkLayout, checkProjectFolder } from "./check.ts";
+import { checkedFilesKey } from "./check-files.ts";
 import { loadProject, type ProjectFiles } from "./load.ts";
 import { buildRenderPage, serveRenderPage } from "./page.ts";
 
@@ -154,10 +155,10 @@ describe("checkProjectFolder, with only the checks that need no tools", () => {
       skip: skipAll,
       now: new Date("2026-11-22T10:00:00.000Z"),
     });
-    expect(report.files).toBe(checkedFilesKey(project));
+    expect(report.filesKey).toBe(checkedFilesKey(project));
     expect(
-      CheckReportSchema.parse(JSON.parse(readFileSync(join(dir, "checks.json"), "utf8"))).files,
-    ).toBe(report.files);
+      CheckReportSchema.parse(JSON.parse(readFileSync(join(dir, "checks.json"), "utf8"))).filesKey,
+    ).toBe(report.filesKey);
   });
 
   it("keys the graph, the script, the layout and the style, and not the measured voice", async () => {

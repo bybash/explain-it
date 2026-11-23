@@ -5,12 +5,11 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { fakeMix } from "../audio/fake-mix.testing.ts";
 import { fakeTts } from "../audio/fake-tts.testing.ts";
-import type { VoiceLine } from "../audio/voice.ts";
-import { type CheckRunOptions, checkedFilesKey } from "../render/check.ts";
+import type { CheckRun } from "../render/check.ts";
+import { checkedFilesKey } from "../render/check-files.ts";
 import type { MissingTool } from "../render/environment.ts";
-import type { ProjectFiles } from "../render/load.ts";
 import type { ChecksRun } from "../schema/api.ts";
-import type { CheckReport, SkippedChecks } from "../schema/checks.ts";
+import type { CheckReport } from "../schema/checks.ts";
 import { createEvents } from "./events.ts";
 import { copyExample } from "./example.testing.ts";
 import { previewChecks } from "./preview-checks.ts";
@@ -25,38 +24,24 @@ beforeEach(() => {
 });
 afterEach(() => rmSync(projectsDir, { recursive: true, force: true }));
 
-type Run = {
-  readonly project: ProjectFiles;
-  readonly lines: readonly VoiceLine[];
-  readonly skip: readonly SkippedChecks[];
-  readonly options: CheckRunOptions | undefined;
-};
-
 /**
  * A stand-in for the checks: it tells progress beat by beat, writes a report
  * with one warning, and, when asked, holds until it is stopped.
  */
 const fakeChecks = ({ holds = false, failWith }: { holds?: boolean; failWith?: string } = {}) => {
-  const runs: Run[] = [];
+  const runs: CheckRun[] = [];
   let running = 0;
   let mostAtOnce = 0;
-  const run = async (
-    dir: string,
-    project: ProjectFiles,
-    lines: readonly VoiceLine[],
-    skip: readonly SkippedChecks[],
-    options?: CheckRunOptions,
-  ): Promise<CheckReport> => {
-    runs.push({ project, lines, skip, options });
+  const run = async (asked: CheckRun): Promise<CheckReport> => {
+    const { dir, project, skip = [], signal, onProgress } = asked;
+    runs.push(asked);
     running++;
     mostAtOnce = Math.max(mostAtOnce, running);
     try {
-      for (let beat = 1; beat <= BEATS; beat++) options?.onProgress?.(beat, BEATS);
+      for (let beat = 1; beat <= BEATS; beat++) onProgress?.(beat, BEATS);
       if (holds && runs.length === 1)
         await new Promise((_, reject) =>
-          options?.signal?.addEventListener("abort", () =>
-            reject(new Error("the checks were stopped")),
-          ),
+          signal?.addEventListener("abort", () => reject(new Error("the checks were stopped"))),
         );
       if (failWith) throw new Error(failWith);
       const report: CheckReport = {
@@ -73,7 +58,7 @@ const fakeChecks = ({ holds = false, failWith }: { holds?: boolean; failWith?: s
           },
         ],
         skipped: [...skip],
-        files: checkedFilesKey(project),
+        filesKey: checkedFilesKey(project),
       };
       await writeFile(join(dir, "checks.json"), JSON.stringify(report));
       return report;
@@ -150,7 +135,7 @@ describe("previewChecks", () => {
     if (!run || ready.state !== "ready") throw new Error("the checks did not run on the sound");
     expect(run.lines).toHaveLength(BEATS);
     expect(run.project.narration).toEqual(ready.narration);
-    expect(run.options?.soundtrack).toBe(sound.file("oauth", ready.key));
+    expect(run.soundtrack).toBe(sound.file("oauth", ready.key));
     expect(run.skip).toEqual([]);
     expect(seen[0]).toBe("waiting");
     expect(seen.filter((s) => s === "checking")).toHaveLength(BEATS + 1);
@@ -174,6 +159,27 @@ describe("previewChecks", () => {
     expect(status.upToDate).toBe(false);
   });
 
+  it("checks the files as they are once the sound is made for them, after an edit while waiting", async () => {
+    const { checks, jobs, sound } = setUp();
+    await jobs.start("oauth");
+    // The sound for the old script is under way; the script changes before it settles.
+    editFile("storyboard.json", (board) => {
+      const scenes = board.scenes as { beats: { say?: string }[] }[];
+      const beat = scenes[0]?.beats[0];
+      if (beat) beat.say = "Someone opens the app.";
+      return board;
+    });
+    for (let i = 0; i < 300 && (await jobs.status("oauth")).run.state !== "done"; i++)
+      await new Promise((r) => setTimeout(r, 10));
+    const [run] = checks.runs;
+    const ready = sound.status("oauth");
+    if (!run || ready.state !== "ready") throw new Error("the checks did not run on the sound");
+    expect(run.project.storyboard.scenes[0]?.beats[0]?.say).toBe("Someone opens the app.");
+    expect(ready.key).toBe(sound.keyOf(run.project));
+    expect(run.soundtrack).toBe(sound.file("oauth", ready.key));
+    expect((await jobs.status("oauth")).upToDate).toBe(true);
+  });
+
   it("stops an older run for a newer one, and runs them one after the other", async () => {
     const checks = fakeChecks({ holds: true });
     const { jobs, settled } = setUp({ checks });
@@ -182,7 +188,7 @@ describe("previewChecks", () => {
       await new Promise((r) => setTimeout(r, 10));
     expect(await settled()).toEqual({ state: "done" });
     expect(checks.runs).toHaveLength(2);
-    expect(checks.runs[0]?.options?.signal?.aborted).toBe(true);
+    expect(checks.runs[0]?.signal?.aborted).toBe(true);
     expect(checks.mostAtOnce()).toBe(1);
     const status = await jobs.status("oauth");
     expect(status.report?.warnings.map((w) => w.message)).toEqual(["run 2"]);
@@ -227,7 +233,7 @@ describe("previewChecks", () => {
     }));
     const { checks, settled } = setUp();
     expect(await settled()).toEqual({ state: "done" });
-    expect(checks.runs[0]?.options?.soundtrack).toBeNull();
+    expect(checks.runs[0]?.soundtrack).toBeNull();
     expect(checks.runs[0]?.lines).toEqual([]);
   });
 

@@ -29,7 +29,7 @@ beforeEach(() => {
     // CI has no ffmpeg; the fake mix needs none.
     missingRenderTools: async () => [],
     // The checks need Chrome; this stand-in writes a report and its contact sheet as they do.
-    runChecks: async (dir) => {
+    runChecks: async ({ dir }) => {
       const report: CheckReport = {
         version: 1,
         checkedAt: "2026-11-23T10:00:00.000Z",

@@ -1,12 +1,10 @@
 import type { TtsProvider } from "../audio/tts.ts";
-import { narrationLengths, readCachedVoice, type VoiceLine } from "../audio/voice.ts";
+import { narrationLengths, readCachedVoice } from "../audio/voice.ts";
 import { graphToMermaid } from "../mermaid/generate.ts";
-import type { CheckRunOptions } from "../render/check.ts";
+import type { RunChecks } from "../render/check.ts";
 import type { MissingTool } from "../render/environment.ts";
-import type { ProjectFiles } from "../render/load.ts";
 import type { RenderQueue } from "../render/queue.ts";
 import type { OpenedProject } from "../schema/api.ts";
-import type { CheckReport, SkippedChecks } from "../schema/checks.ts";
 import { type Config, DEFAULT_CONFIG } from "../schema/config.ts";
 import { parseWith, under, type Validated } from "../schema/errors.ts";
 import { parseGraph } from "../schema/graph.ts";
@@ -47,13 +45,7 @@ export type ToolContext = {
   /** What a render needs from this machine and cannot find (see \`missingRenderTools\`). */
   readonly missingRenderTools: () => Promise<readonly MissingTool[]>;
   /** Runs the checks on a project, but those it is told to skip, and writes its `checks.json` (see `render/check.ts`). */
-  readonly runChecks: (
-    dir: string,
-    project: ProjectFiles,
-    lines: readonly VoiceLine[],
-    skip: readonly SkippedChecks[],
-    options?: CheckRunOptions,
-  ) => Promise<CheckReport>;
+  readonly runChecks: RunChecks;
   /** Speaks the narration; Kokoro in the app, a fake in tests. */
   readonly tts: TtsProvider;
 };

@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { mkdtemp, rename, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -19,6 +18,7 @@ import {
   type SkippedChecks,
 } from "../schema/checks.ts";
 import { formatErrors, parseWith } from "../schema/errors.ts";
+import { CHECK_REPORT, checkedFilesKey } from "./check-files.ts";
 import type { MissingTool } from "./environment.ts";
 import type { ProjectFiles } from "./load.ts";
 import { buildRenderPage, serveRenderPage } from "./page.ts";
@@ -32,6 +32,9 @@ type Checkable = {
 };
 
 const ShapesSchema = z.array(ShapeSchema);
+
+/** Why a run stopped for a newer one throws: its callers check their signal, not the words. */
+const STOPPED = "the checks were stopped";
 
 /**
  * The layout checks (SPEC, Checks): the project's page in Chrome, seeked to
@@ -65,7 +68,7 @@ export const checkLayout = async ({
     const warnings: CheckWarning[] = [];
     const stills: Buffer[] = [];
     for (const beat of beats) {
-      if (signal?.aborted) throw new Error("the checks were stopped");
+      if (signal?.aborted) throw new Error(STOPPED);
       const at = stillAt(beat);
       const drawn = await page.evaluate((t) => {
         const w = window as unknown as Checkable;
@@ -125,11 +128,12 @@ export const checkSoundtrack = async ({
 /**
  * The checks that cannot run this time, and why: the layout checks need
  * Chrome, loudness needs ffmpeg, and narration fit and loudness need the
- * voice. Reading speed always runs.
+ * voice; loudness also needs the soundtrack, when it was mixed beforehand
+ * (the Preview gate's) and that mix failed. Reading speed always runs.
  */
 export const skippedChecks = (
   missing: readonly MissingTool[],
-  voiceFailed: boolean,
+  { voiceFailed = false, mixFailed }: { voiceFailed?: boolean; mixFailed?: string } = {},
 ): SkippedChecks[] => {
   const lacks = (tool: MissingTool["tool"]) => missing.some((m) => m.tool === tool);
   const skipped: SkippedChecks[] = [];
@@ -139,6 +143,8 @@ export const skippedChecks = (
     skipped.push({ checks: ["narration-fit", "loudness"], reason: "the voice did not generate" });
   else if (lacks("ffmpeg"))
     skipped.push({ checks: ["loudness"], reason: "ffmpeg is not available" });
+  else if (mixFailed !== undefined)
+    skipped.push({ checks: ["loudness"], reason: `the soundtrack did not mix: ${mixFailed}` });
   return skipped;
 };
 
@@ -172,39 +178,27 @@ const writeSheets = async (
   }
 };
 
-/** Bumped when the checks change what they find, so reports made before read as out of date. */
-const CHECKS_VERSION = 1;
-
-/**
- * A key of what the checks look at: the graph, the script, the layout and
- * the style. The voice's measured lengths follow from the script and the
- * voice settings, so they are left out, and a reader without the voice can
- * still tell whether a report is about the files as they are.
- */
-export const checkedFilesKey = (
-  project: Pick<ProjectFiles, "graph" | "storyboard" | "layout" | "config">,
-): string =>
-  createHash("sha256")
-    .update(
-      JSON.stringify([
-        CHECKS_VERSION,
-        project.graph,
-        project.storyboard,
-        project.layout,
-        project.config,
-      ]),
-    )
-    .digest("hex")
-    .slice(0, 32);
-
 /** What a caller can add to a run of the checks: the Preview gate's soundtrack, a stop, progress. */
-export type CheckRunOptions = {
+type CheckRunOptions = {
   /** See `checkSoundtrack`: measured instead of mixing one. */
   readonly soundtrack?: string | null | undefined;
   readonly signal?: AbortSignal | undefined;
   /** Beats checked on the page so far, of how many. */
   readonly onProgress?: ((checked: number, total: number) => void) | undefined;
 };
+
+/** A run of the checks on a loaded project in its folder. */
+export type CheckRun = CheckRunOptions & {
+  readonly dir: string;
+  readonly project: ProjectFiles;
+  /** The voice's lines (see `withNarration`), for the soundtrack the loudness check measures. */
+  readonly lines: readonly VoiceLine[];
+  /** Checks that cannot run this time, and why: a program missing, the voice failed. */
+  readonly skip?: readonly SkippedChecks[] | undefined;
+};
+
+/** Runs the checks and writes the report: `checkProjectFolder` in the app, a fake in tests. */
+export type RunChecks = (run: CheckRun) => Promise<CheckReport>;
 
 /** The layout checks on the project's page: the render page built, served for the length of them. */
 const layoutOnPage = async (project: ProjectFiles, options: CheckRunOptions) => {
@@ -242,15 +236,7 @@ export const checkProjectFolder = async ({
   soundtrack,
   signal,
   onProgress,
-}: CheckRunOptions & {
-  readonly dir: string;
-  readonly project: ProjectFiles;
-  /** The voice's lines (see `withNarration`), for the soundtrack the loudness check measures. */
-  readonly lines: readonly VoiceLine[];
-  /** Checks that cannot run this time, and why: a program missing, the voice failed. */
-  readonly skip?: readonly SkippedChecks[];
-  readonly now: Date;
-}): Promise<CheckReport> => {
+}: CheckRun & { readonly now: Date }): Promise<CheckReport> => {
   const skipped = new Set(skip.flatMap((s) => s.checks));
   const plan = buildBeats(
     project.storyboard,
@@ -267,7 +253,7 @@ export const checkProjectFolder = async ({
     ...(skipped.has("loudness") ? [] : await checkSoundtrack({ project, lines, soundtrack })),
   ];
   // A run stopped for a newer one leaves the report and sheet that one writes.
-  if (signal?.aborted) throw new Error("the checks were stopped");
+  if (signal?.aborted) throw new Error(STOPPED);
   const contactSheet =
     layout.stills.length > 0
       ? await writeSheets(dir, { beats: layout.spans, stills: layout.stills, warnings })
@@ -283,10 +269,10 @@ export const checkProjectFolder = async ({
     beats: layout.beats,
     warnings,
     skipped: [...skip],
-    files: checkedFilesKey(project),
+    filesKey: checkedFilesKey(project),
     ...(contactSheet ? { contactSheet } : {}),
   };
-  const file = join(dir, "checks.json");
+  const file = join(dir, CHECK_REPORT);
   await writeFile(`${file}.partial`, `${JSON.stringify(report, null, 2)}\n`);
   await rename(`${file}.partial`, file);
   return report;

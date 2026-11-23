@@ -150,9 +150,11 @@ describe("previewSound", () => {
 
   it("tells when the sound is no longer being made", async () => {
     const { sound } = setUp();
-    expect(await sound.settled("oauth")).toEqual({ state: "idle" });
+    expect(await sound.settled("oauth")).toEqual({ status: { state: "idle" } });
     await sound.start("oauth");
-    expect((await sound.settled("oauth")).state).toBe("ready");
+    const { key, status } = await sound.settled("oauth");
+    expect(status.state).toBe("ready");
+    expect(status.state === "ready" && status.key).toBe(key);
   });
 
   it("names what the preview needs when the script is missing", async () => {

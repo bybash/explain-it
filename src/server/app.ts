@@ -91,8 +91,7 @@ export const createApp = ({
   tts,
   renderRun = renderFromFolder(projectsDir, now, tts),
   missingRenderTools = findMissingRenderTools,
-  runChecks = (dir, project, lines, skip, options) =>
-    checkProjectFolder({ dir, project, lines, skip, now: now(), ...options }),
+  runChecks = (run) => checkProjectFolder({ ...run, now: now() }),
   settings,
   mixSoundtrack = makeSoundtrack,
 }: AppOptions) => {

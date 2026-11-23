@@ -20,6 +20,9 @@ import { openProject, projectDir } from "./projects.ts";
  */
 const SOUND_VERSION = 1;
 
+/** What failed in making the sound: the voice, or the mix. */
+type FailedStep = Extract<PreviewSound, { state: "failed" }>["step"];
+
 /** A project's sound in the making, or made: which files it is for, and how far it is. */
 type Job = {
   readonly key: string;
@@ -106,7 +109,7 @@ export const previewSound = ({
 
   const makeSound = async (slug: string, job: Job, project: SoundtrackProject) => {
     const signal = job.stop.signal;
-    let step: "voice" | "mix" = "voice";
+    let step: FailedStep = "voice";
     try {
       const lines = await generateVoice({
         projectDir: projectDir(projectsDir, slug),
@@ -198,14 +201,19 @@ export const previewSound = ({
      * failed, or idle when nothing was asked for. A newer job that takes the
      * older's place while waiting is waited for in turn.
      */
-    settled: async (slug: string): Promise<PreviewSound> => {
+    settled: async (
+      slug: string,
+    ): Promise<{ readonly key?: string; readonly status: PreviewSound }> => {
       for (;;) {
         const job = jobs.get(slug);
-        if (!job) return { state: "idle" };
+        if (!job) return { status: { state: "idle" } };
         await job.finished;
-        if (jobs.get(slug) === job) return job.status;
+        if (jobs.get(slug) === job) return { key: job.key, status: job.status };
       }
     },
+
+    /** The key the sound for these files has: a sound settled under another is for other files. */
+    keyOf: (project: SoundtrackProject): string => soundKey(tts, project),
 
     /** How far the project's sound is; idle when nothing was asked for yet. */
     status: (slug: string): PreviewSound => jobs.get(slug)?.status ?? { state: "idle" },

@@ -6,6 +6,7 @@
 import { join, resolve } from "node:path";
 import { kokoroProvider } from "../audio/kokoro.ts";
 import { checkProjectFolder, skippedChecks } from "../render/check.ts";
+import { CHECK_REPORT } from "../render/check-files.ts";
 import { missingRenderTools } from "../render/environment.ts";
 import { loadProject } from "../render/load.ts";
 import { renderProjectFolder, withNarration } from "../render/run.ts";
@@ -89,7 +90,7 @@ const check = async (argv: readonly string[]): Promise<void> => {
       return { project: project.value, lines: [], failed: true };
     },
   );
-  const skip = skippedChecks(await missingRenderTools(), voiced.failed);
+  const skip = skippedChecks(await missingRenderTools(), { voiceFailed: voiced.failed });
   const report = await checkProjectFolder({
     dir,
     project: voiced.project,
@@ -100,7 +101,7 @@ const check = async (argv: readonly string[]): Promise<void> => {
     const reason = error instanceof Error ? error.message : String(error);
     return fail([`the checks could not run: ${reason}`], 2);
   });
-  for (const line of checkLines(report, join(dir, "checks.json"))) console.log(line);
+  for (const line of checkLines(report, join(dir, CHECK_REPORT))) console.log(line);
   if (report.warnings.length > 0) process.exit(1);
 };
 
