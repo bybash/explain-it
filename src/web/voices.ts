@@ -1,4 +1,5 @@
 import { VOICE_IDS, type VoiceId } from "../schema/voices.ts";
+import { capitalised } from "./labels.ts";
 
 const ACCENTS = { a: "American English", b: "British English" } as const;
 const GENDERS = { f: "female", m: "male" } as const;
@@ -21,7 +22,7 @@ export const voiceGroups = (): VoiceGroup[] => {
     const label = `${accent}, ${gender}`;
     const name = id.slice(3);
     const voices = groups.get(label) ?? [];
-    voices.push({ id, name: name.charAt(0).toUpperCase() + name.slice(1) });
+    voices.push({ id, name: capitalised(name) });
     groups.set(label, voices);
   }
   return [...groups].map(([label, voices]) => ({ label, voices }));

@@ -227,6 +227,16 @@ describe("speakLine", () => {
     expect(asked).toHaveLength(1);
   });
 
+  it("speaks a line asked for twice at once only once", async () => {
+    const { tts, asked } = fakeTts();
+    const [a, b] = await Promise.all([
+      speakLine({ projectDir, text: "Twice.", voice, tts }),
+      speakLine({ projectDir, text: "Twice.", voice, tts }),
+    ]);
+    expect(asked).toHaveLength(1);
+    expect(a.file).toBe(b.file);
+  });
+
   it("speaks the line again in another voice or at another speed", async () => {
     const { tts, asked } = fakeTts();
     await speakLine({ projectDir, text: "Hi.", voice, tts });

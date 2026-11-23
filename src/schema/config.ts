@@ -165,6 +165,11 @@ export const EndCardSchema = z
     "Closes the video: the headline, the link with its QR code, where to find it, the credit.",
   );
 
+/** How fast the voice may speak, as a multiple of its own pace. */
+export const VOICE_SPEEDS = { min: 0.5, max: 2 } as const;
+/** How loud the music may be under the voice, in dB. */
+export const MUSIC_VOLUMES_DB = { min: -60, max: 0 } as const;
+
 /** How the narration is spoken: whether, with which voice, how fast. */
 export const VoiceSchema = z.strictObject({
   enabled: z.boolean().default(true),
@@ -172,7 +177,7 @@ export const VoiceSchema = z.strictObject({
     .enum(VOICE_IDS)
     .default("af_heart")
     .describe("A Kokoro voice: a = American, b = British English; f = female, m = male."),
-  speed: z.number().min(0.5).max(2).default(1),
+  speed: z.number().min(VOICE_SPEEDS.min).max(VOICE_SPEEDS.max).default(1),
 });
 
 /** The music under the voice: whether, its mood, which take of it, how loud. */
@@ -182,8 +187,8 @@ export const MusicSchema = z.strictObject({
   seed: MusicSeedSchema.default(1),
   volumeDb: z
     .number()
-    .min(-60)
-    .max(0)
+    .min(MUSIC_VOLUMES_DB.min)
+    .max(MUSIC_VOLUMES_DB.max)
     .default(-12)
     .describe(
       `The music's level against the voice while nobody speaks, in dB; it dips ${-MUSIC_DUCK_DB} dB more while the voice speaks. Without a voice the music is the whole mix, brought to the target loudness, so this has no effect.`,

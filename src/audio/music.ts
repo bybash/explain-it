@@ -1,5 +1,5 @@
 import type { MusicMood } from "../schema/config.ts";
-import { AUDIO_RATE } from "./level.ts";
+import { AUDIO_RATE, dbToGain } from "./level.ts";
 import { type Instrument, MOODS } from "./music-moods.ts";
 import { seededRandom } from "./random.ts";
 import type { Audio } from "./wav.ts";
@@ -279,4 +279,27 @@ const atLoudness = (samples: Float32Array, fades: Fades): Float32Array => {
   if (rms === 0) return samples;
   const gain = Math.min(10 ** (MUSIC_RMS_DB / 20) / rms, 10 ** (PEAK_DB / 20) / peak);
   return samples.map((s) => s * gain);
+};
+
+/**
+ * A few seconds of music on their own, to listen to: `volumeDb` below the
+ * loudest the sample can play without clipping, so every step of the
+ * volume is heard. The mix sets the level against the voice; this only
+ * shows how loud one setting is against another.
+ */
+export const musicSample = ({
+  mood,
+  seed,
+  seconds,
+  volumeDb,
+}: {
+  readonly mood: MusicMood;
+  readonly seed: number;
+  readonly seconds: number;
+  readonly volumeDb: number;
+}): Audio => {
+  const music = renderMusic(musicPlan({ mood, seed, seconds }));
+  const peak = music.samples.reduce((top, s) => Math.max(top, Math.abs(s)), 0);
+  const gain = dbToGain(volumeDb) / Math.max(peak, 1e-9);
+  return { samples: music.samples.map((s) => s * gain), sampleRate: music.sampleRate };
 };

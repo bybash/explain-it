@@ -94,18 +94,39 @@ export type SpokenLine = Pick<VoiceLine, "file" | "seconds" | "cached">;
  * and the style gate's sample share this cache, so a sample heard is not
  * spoken again for the render.
  */
-export const speakLine = async ({
-  projectDir,
-  text,
-  voice,
-  tts,
-}: {
+export const speakLine = (options: {
   readonly projectDir: string;
   readonly text: string;
   readonly voice: VoiceConfig;
   readonly tts: TtsProvider;
 }): Promise<SpokenLine> => {
-  const file = lineFile(projectDir, tts, text, voice);
+  // A line asked for again while it is being spoken (two samples, a sample and a render) waits
+  // for the same answer rather than running the model twice.
+  const file = lineFile(options.projectDir, options.tts, options.text, options.voice);
+  const running = speaking.get(file);
+  if (running) return running;
+  const spoken = speak(file, options).finally(() => speaking.delete(file));
+  speaking.set(file, spoken);
+  return spoken;
+};
+
+/** Lines being spoken now, by file. */
+const speaking = new Map<string, Promise<SpokenLine>>();
+
+const speak = async (
+  file: string,
+  {
+    projectDir,
+    text,
+    voice,
+    tts,
+  }: {
+    readonly projectDir: string;
+    readonly text: string;
+    readonly voice: VoiceConfig;
+    readonly tts: TtsProvider;
+  },
+): Promise<SpokenLine> => {
   const seconds = await cachedSeconds(file);
   if (seconds !== undefined) return { file, seconds, cached: true };
   await mkdir(join(projectDir, "cache", "tts"), { recursive: true });

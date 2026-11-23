@@ -2,71 +2,78 @@ import {
   CAPTION_SIZES,
   type Config,
   MUSIC_MOODS,
-  MusicSchema,
+  MUSIC_VOLUMES_DB,
   PACE_TIMINGS,
   PACES,
-  VoiceSchema,
+  VOICE_SPEEDS,
 } from "../schema/config.ts";
+import { musicSample, voiceSample } from "./api.ts";
+import { capitalised } from "./labels.ts";
 import { INPUT_CLASS, LABEL_CLASS, Section } from "./style-fields.tsx";
-import { type SampleState, useSample } from "./useSample.ts";
+import { Pill } from "./ui.tsx";
+import type { SamplePlayer, SampleSource } from "./useSamplePlayer.ts";
 import { voiceGroups } from "./voices.ts";
 
 const NOTE_CLASS = "mt-1 text-muted text-sm";
 const CHECK_CLASS = "mt-2 flex items-center gap-2";
 const RADIOS_CLASS = "mt-1.5 flex flex-wrap gap-x-4 gap-y-1";
-const capitalised = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
-/** The voice's and the music's limits, from the schema. */
-const SPEED = VoiceSchema.shape.speed.unwrap();
-const VOLUME = MusicSchema.shape.volumeDb.unwrap();
+/** The draft and how to change it: what every sound card takes. */
+type Form = { readonly draft: Config; readonly change: (next: Config) => void };
 
-/** Plays a sample, or says why it cannot; the first voice sample may wait for the model. */
+/** Sets part of one setting in the draft, keeping the rest of it. */
+const setter =
+  <K extends "voice" | "captions" | "music">({ draft, change }: Form, key: K) =>
+  (patch: Partial<Config[K]>) =>
+    change({ ...draft, [key]: { ...draft[key], ...patch } });
+
+/** Plays one sample, stops it, or says why it could not play; one plays at a time. */
 const SampleButton = ({
+  source,
   label,
-  state,
-  play,
-  stop,
   waiting,
+  player,
+  fetchSound,
 }: {
+  source: SampleSource;
   label: string;
-  state: SampleState;
-  play: () => void;
-  stop: () => void;
   waiting: string;
-}) => (
-  <div className="mt-3">
-    <button
-      type="button"
-      className="rounded-full border border-line px-3 py-1.5 text-sm hover:border-accent disabled:opacity-60"
-      onClick={state.kind === "playing" ? stop : play}
-      disabled={state.kind === "loading"}
-    >
-      {state.kind === "loading" ? waiting : state.kind === "playing" ? "■ Stop" : `▶ ${label}`}
-    </button>
-    {state.kind === "failed" && (
-      <p className="mt-1 text-error text-sm" role="alert">
-        {state.message}
-      </p>
-    )}
-  </div>
-);
-
-type Change = (next: Config) => void;
+  player: SamplePlayer;
+  fetchSound: Parameters<SamplePlayer["play"]>[1];
+}) => {
+  const { state } = player;
+  const mine = state.kind !== "idle" && state.source === source;
+  return (
+    <div className="mt-3">
+      <Pill
+        onClick={() =>
+          mine && state.kind !== "failed" ? player.stop() : player.play(source, fetchSound)
+        }
+      >
+        {mine && state.kind === "loading"
+          ? `${waiting} · Stop`
+          : mine && state.kind === "playing"
+            ? "■ Stop"
+            : `▶ ${label}`}
+      </Pill>
+      {mine && state.kind === "failed" && (
+        <p className="mt-1 text-error text-sm" role="alert">
+          {state.message}
+        </p>
+      )}
+    </div>
+  );
+};
 
 /** The narration's voice and speed, with a sample of the script's first line. */
 export const VoiceCard = ({
   slug,
-  draft,
-  change,
-}: {
-  slug: string;
-  draft: Config;
-  change: Change;
-}) => {
-  const { voice } = draft;
-  const sample = useSample();
-  const set = (patch: Partial<Config["voice"]>) =>
-    change({ ...draft, voice: { ...voice, ...patch } });
+  player,
+  ...form
+}: Form & { slug: string; player: SamplePlayer }) => {
+  const { voice } = form.draft;
+  const set = setter(form, "voice");
+  const loading = player.state.kind === "loading" && player.state.source === "voice";
   return (
     <Section title="Voice">
       <label className={CHECK_CLASS}>
@@ -105,24 +112,20 @@ export const VoiceCard = ({
             id="style-voice-speed"
             type="range"
             className="mt-1.5 w-full accent-accent"
-            min={SPEED.minValue ?? 0.5}
-            max={SPEED.maxValue ?? 2}
+            min={VOICE_SPEEDS.min}
+            max={VOICE_SPEEDS.max}
             step={0.05}
             value={voice.speed}
             onChange={(e) => set({ speed: Number(e.target.value) })}
           />
           <SampleButton
+            source="voice"
             label="Play a sample"
-            state={sample.state}
-            stop={sample.stop}
-            play={() =>
-              void sample.play(
-                `/api/projects/${encodeURIComponent(slug)}/samples/voice?voice=${voice.id}&speed=${voice.speed}`,
-              )
-            }
             waiting="Getting the voice ready…"
+            player={player}
+            fetchSound={(signal) => voiceSample(slug, voice, signal)}
           />
-          {sample.state.kind === "loading" && (
+          {loading && (
             <p className={NOTE_CLASS}>
               The first time downloads the voice model, which takes a minute or two.
             </p>
@@ -134,7 +137,7 @@ export const VoiceCard = ({
 };
 
 /** How unhurried the video is: the pause after each beat and the shortest beat. */
-export const PacingCard = ({ draft, change }: { draft: Config; change: Change }) => (
+export const PacingCard = ({ draft, change }: Form) => (
   <Section title="Pacing">
     <div className="mt-1.5 grid gap-2" role="radiogroup" aria-label="Pacing">
       {PACES.map((pace) => (
@@ -160,10 +163,9 @@ export const PacingCard = ({ draft, change }: { draft: Config; change: Change })
 );
 
 /** Which captions show, and how large. */
-export const CaptionsCard = ({ draft, change }: { draft: Config; change: Change }) => {
-  const { captions } = draft;
-  const set = (patch: Partial<Config["captions"]>) =>
-    change({ ...draft, captions: { ...captions, ...patch } });
+export const CaptionsCard = (form: Form) => {
+  const { captions } = form.draft;
+  const set = setter(form, "captions");
   return (
     <Section title="Captions">
       <label className={CHECK_CLASS}>
@@ -201,11 +203,9 @@ export const CaptionsCard = ({ draft, change }: { draft: Config; change: Change 
 };
 
 /** The music: its mood, which take of it, how loud under the voice, with a sample. */
-export const MusicCard = ({ draft, change }: { draft: Config; change: Change }) => {
-  const { music } = draft;
-  const sample = useSample();
-  const set = (patch: Partial<Config["music"]>) =>
-    change({ ...draft, music: { ...music, ...patch } });
+export const MusicCard = ({ player, ...form }: Form & { player: SamplePlayer }) => {
+  const { music, voice } = form.draft;
+  const set = setter(form, "music");
   return (
     <Section title="Music">
       <label className={CHECK_CLASS}>
@@ -214,7 +214,7 @@ export const MusicCard = ({ draft, change }: { draft: Config; change: Change }) 
           checked={music.enabled}
           onChange={(e) => set({ enabled: e.target.checked })}
         />
-        Music under the voice
+        Music
       </label>
       {music.enabled && (
         <>
@@ -235,38 +235,38 @@ export const MusicCard = ({ draft, change }: { draft: Config; change: Change }) 
           <span className={LABEL_CLASS}>Take</span>
           <div className="mt-1.5 flex items-center gap-3">
             <span className="tabular-nums">#{music.seed}</span>
-            <button
-              type="button"
-              className="rounded-full border border-line px-3 py-1 text-sm hover:border-accent"
-              onClick={() => set({ seed: music.seed + 1 })}
-            >
-              Another take
-            </button>
+            <Pill onClick={() => set({ seed: music.seed + 1 })}>Another take</Pill>
           </div>
-          <label className={LABEL_CLASS} htmlFor="style-music-volume">
-            Volume under the voice{" "}
-            <span className="font-normal text-muted">· {music.volumeDb} dB</span>
-          </label>
-          <input
-            id="style-music-volume"
-            type="range"
-            className="mt-1.5 w-full accent-accent"
-            min={VOLUME.minValue ?? -60}
-            max={VOLUME.maxValue ?? 0}
-            step={1}
-            value={music.volumeDb}
-            onChange={(e) => set({ volumeDb: Number(e.target.value) })}
-          />
+          {voice.enabled ? (
+            <>
+              <label className={LABEL_CLASS} htmlFor="style-music-volume">
+                Volume under the voice{" "}
+                <span className="font-normal text-muted">· {music.volumeDb} dB</span>
+              </label>
+              <input
+                id="style-music-volume"
+                type="range"
+                className="mt-1.5 w-full accent-accent"
+                min={MUSIC_VOLUMES_DB.min}
+                max={MUSIC_VOLUMES_DB.max}
+                step={1}
+                value={music.volumeDb}
+                onChange={(e) => set({ volumeDb: Number(e.target.value) })}
+              />
+            </>
+          ) : (
+            <p className={NOTE_CLASS}>
+              Without narration the music is the whole soundtrack, at the video's loudness.
+            </p>
+          )}
           <SampleButton
+            source="music"
             label="Listen"
-            state={sample.state}
-            stop={sample.stop}
-            play={() =>
-              void sample.play(
-                `/api/samples/music?mood=${music.mood}&seed=${music.seed}&volumeDb=${music.volumeDb}`,
-              )
-            }
             waiting="Making the music…"
+            player={player}
+            fetchSound={(signal) =>
+              musicSample({ ...music, volumeDb: voice.enabled ? music.volumeDb : 0 }, signal)
+            }
           />
         </>
       )}

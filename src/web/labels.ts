@@ -22,3 +22,6 @@ export const GATE_PANELS: Readonly<Record<Gate, string>> = {
 /** "Updated 20 Nov 2026, 10:00" in the viewer's own time zone. */
 export const updatedLabel = (iso: string): string =>
   `Updated ${new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}`;
+
+/** A name as a label shows it: "ocean" as "Ocean". */
+export const capitalised = (name: string): string => name.charAt(0).toUpperCase() + name.slice(1);

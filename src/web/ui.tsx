@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ButtonHTMLAttributes, ReactNode } from "react";
 
 /** The pieces every page repeats, so their look is said once. */
 
@@ -25,4 +25,13 @@ export const BoxList = ({ label, children }: { label?: string; children: ReactNo
   >
     {children}
   </ul>
+);
+
+/** A small rounded button for a secondary action: a moment in the preview, a sample, another take. */
+export const Pill = ({ className = "", ...button }: ButtonHTMLAttributes<HTMLButtonElement>) => (
+  <button
+    type="button"
+    className={`rounded-full border border-line px-3 py-1 text-sm hover:border-accent disabled:opacity-60 ${className}`}
+    {...button}
+  />
 );

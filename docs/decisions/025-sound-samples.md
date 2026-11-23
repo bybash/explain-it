@@ -15,11 +15,20 @@ guesswork, so both get samples.
   the video's lines use (`cache/tts/`, keyed by model, voice, speed and
   text), so the same sample plays at once the second time, and the render
   does not speak that line again.
-- **The music plays 15 s of the mood and take** at the chosen volume,
-  measured from the mix's default (−12 dB under the voice) and never turned
-  past full scale. It is made on the server in about half a second and is
-  not cached. "Another take" moves to the next seed, which the video then
-  uses.
+- **The music plays 15 s of the mood and take**, made on the server in
+  about half a second and not cached. Its volume is played below the
+  loudest the sample can be without clipping (0 dB is that loudest), so
+  every step of the slider is heard; the mix sets the real level against
+  the voice. Without narration the slider is hidden, since the music is
+  then the whole soundtrack. "Another take" moves to the next seed, which
+  the video then uses.
+- **One sample at a time.** The panel has one player: a new sample stops
+  the last, and Stop also cancels one still being made. A line asked for
+  twice at once (two clicks, two tabs) is spoken once.
+- **Failures say what happened.** A voice model that cannot load answers
+  with its own message (check the network, delete a cut download), and a
+  script that does not read is named rather than covered by the sentence
+  of our own.
 - **Two GET routes, answering WAV:** `GET /api/projects/:slug/samples/voice`
   (the project gives the line) and `GET /api/samples/music` (no project
   needed). Their queries are checked with the schemas the config uses, so a

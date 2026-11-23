@@ -1,4 +1,4 @@
-import { cpSync, mkdtempSync, rmSync } from "node:fs";
+import { cpSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -65,6 +65,30 @@ describe("GET /api/projects/:slug/samples/voice", () => {
     expect(response.status).toBe(400);
     const paths = (await response.json()).errors.map((e: { path: string }) => e.path).sort();
     expect(paths).toEqual(["speed", "voice"]);
+    expect(voices.asked).toEqual([]);
+  });
+
+  it("says why the voice could not speak, in the voice's own words", async () => {
+    const failing = createApp({
+      projectsDir,
+      now: () => new Date("2026-11-23T10:00:00.000Z"),
+      tts: fakeTts({ failWith: "the voice model did not load: offline" }).tts,
+      settings: settingsStore({ envFile: join(projectsDir, ".env"), environment: {} }),
+    });
+    const response = await failing.request(
+      "/api/projects/oauth/samples/voice?voice=af_heart&speed=1",
+    );
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({
+      errors: [{ path: "voice", message: "the voice model did not load: offline" }],
+    });
+  });
+
+  it("names a broken script rather than speaking a sentence of its own", async () => {
+    writeFileSync(join(projectsDir, "oauth", "storyboard.json"), "{ not json");
+    const response = await app.request("/api/projects/oauth/samples/voice?voice=af_heart&speed=1");
+    expect(response.status).toBe(422);
+    expect((await response.json()).errors[0].path).toMatch(/^storyboard\.json/);
     expect(voices.asked).toEqual([]);
   });
 

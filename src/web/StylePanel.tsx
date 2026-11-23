@@ -16,15 +16,17 @@ import {
 import type { ValidationError } from "../schema/errors.ts";
 import { getLogo, saveStyle } from "./api.ts";
 import { Errors } from "./Errors.tsx";
+import { capitalised } from "./labels.ts";
 import { StylePreview } from "./StylePreview.tsx";
 import { CaptionsCard, MusicCard, PacingCard, VoiceCard } from "./sound-fields.tsx";
 import { CardFields, INPUT_CLASS, LABEL_CLASS, LogoFields, Section } from "./style-fields.tsx";
 import { type PendingLogos, previewLogo, styleEdit, withLogoFile } from "./style-form.ts";
+import { useSamplePlayer } from "./useSamplePlayer.ts";
 
 /** A group of cards: the look, then the sound. */
-const GROUP_CLASS = "col-span-full font-semibold text-muted text-sm uppercase tracking-wide";
+const GROUP_HEADING_CLASS =
+  "col-span-full font-semibold text-muted text-sm uppercase tracking-wide";
 const MODE_LABELS = { light: "Light", dark: "Dark", both: "Both (two videos)" } as const;
-const capitalised = (name: string) => name.charAt(0).toUpperCase() + name.slice(1);
 
 /** Whether opening the project found config.json broken, so the defaults stand in for it. */
 const configBroken = (opened: OpenedProject) =>
@@ -58,6 +60,7 @@ export const StylePanel = ({
   /** The style was saved elsewhere (MCP, another tab) while this form had changes. */
   const [elsewhere, setElsewhere] = useState(false);
 
+  const player = useSamplePlayer();
   const broken = configBroken(opened);
   const edit = styleEdit(saved, draft, pending);
   const changed = Object.keys(edit.config ?? {}).length > 0 || edit.logo !== undefined;
@@ -163,7 +166,7 @@ export const StylePanel = ({
           </p>
         )}
         <div className="grid grid-cols-[1fr] items-start gap-4 @2xl:grid-cols-2">
-          <h3 className={GROUP_CLASS}>Look</h3>
+          <h3 className={GROUP_HEADING_CLASS}>Look</h3>
           <Section title="Colours">
             <label className={LABEL_CLASS} htmlFor="style-palette">
               Palette
@@ -266,11 +269,11 @@ export const StylePanel = ({
               ))}
             </select>
           </Section>
-          <h3 className={`${GROUP_CLASS} mt-4`}>Sound</h3>
-          <VoiceCard slug={slug} draft={draft} change={change} />
+          <h3 className={`${GROUP_HEADING_CLASS} mt-4`}>Sound</h3>
+          <VoiceCard slug={slug} draft={draft} change={change} player={player} />
           <PacingCard draft={draft} change={change} />
           <CaptionsCard draft={draft} change={change} />
-          <MusicCard draft={draft} change={change} />
+          <MusicCard draft={draft} change={change} player={player} />
         </div>
         <Errors errors={formErrors} />
         {/* Stays in view while the cards scroll, so Save is always at hand. */}

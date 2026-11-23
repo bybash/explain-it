@@ -16,9 +16,10 @@ import {
   StyleSavedSchema,
 } from "../schema/api.ts";
 import { type Chat, ChatSchema } from "../schema/chat.ts";
-import { parseWith, type Validated } from "../schema/errors.ts";
+import type { Config, VoiceConfig } from "../schema/config.ts";
+import { parseWith, type Validated, type ValidationError } from "../schema/errors.ts";
 import type { Gate } from "../schema/project.ts";
-import { fail } from "../schema/result.ts";
+import { fail, ok } from "../schema/result.ts";
 import { type SettingsUpdate, type SettingsView, SettingsViewSchema } from "../schema/settings.ts";
 
 /**
@@ -47,16 +48,52 @@ const fetchChecked = async <S extends z.ZodType>(
       { path: "(response)", message: `the server sent ${response.status} without JSON` },
     ]);
   }
-  if (!response.ok) {
-    const errors = ErrorsResponseSchema.safeParse(body);
-    return fail(
-      errors.success
-        ? errors.data.errors
-        : [{ path: "(response)", message: `status ${response.status}` }],
-    );
-  }
+  if (!response.ok) return fail(errorsIn(body, response.status));
   return parseWith(schema, body);
 };
+
+/** The errors a failed response names, or its status when it names none. */
+const errorsIn = (body: unknown, status: number): readonly ValidationError[] => {
+  const errors = ErrorsResponseSchema.safeParse(body);
+  return errors.success
+    ? errors.data.errors
+    : [{ path: "(response)", message: `status ${status}` }];
+};
+
+/** A sound from the API, as a WAV to play, or the errors it answered with. */
+const fetchSound = async (url: string, signal: AbortSignal): Promise<Validated<Blob>> => {
+  try {
+    const response = await fetch(url, { signal });
+    if (response.ok) return ok(await response.blob());
+    return fail(errorsIn(await response.json().catch(() => null), response.status));
+  } catch (error) {
+    if (signal.aborted) throw error;
+    return fail([
+      { path: "(network)", message: `could not reach the server: ${(error as Error).message}` },
+    ]);
+  }
+};
+
+/** The project's voice speaking the script's first line. */
+export const voiceSample = (
+  slug: string,
+  { id, speed }: Pick<VoiceConfig, "id" | "speed">,
+  signal: AbortSignal,
+) =>
+  fetchSound(
+    `/api/projects/${encodeURIComponent(slug)}/samples/voice?${new URLSearchParams({ voice: id, speed: String(speed) })}`,
+    signal,
+  );
+
+/** A few seconds of the music. */
+export const musicSample = (
+  { mood, seed, volumeDb }: Pick<Config["music"], "mood" | "seed" | "volumeDb">,
+  signal: AbortSignal,
+) =>
+  fetchSound(
+    `/api/samples/music?${new URLSearchParams({ mood, seed: String(seed), volumeDb: String(volumeDb) })}`,
+    signal,
+  );
 
 export const listProjects = (): Promise<Validated<ProjectList>> =>
   fetchChecked(ProjectListSchema, "/api/projects");
