@@ -135,12 +135,37 @@ export const OpenedProjectSchema = z.object({
   problems: z.array(ValidationErrorSchema),
 });
 
+/**
+ * The preview gate's sound: the voice being spoken (how many lines so far),
+ * the soundtrack being mixed, ready (its key names the file, and the
+ * narration is measured), silent (neither voice nor music), or failed.
+ */
+export const PreviewSoundSchema = z.discriminatedUnion("state", [
+  z.object({ state: z.literal("idle") }),
+  z.object({ state: z.literal("speaking"), spoken: z.int().min(0), total: z.int().min(0) }),
+  z.object({ state: z.literal("mixing") }),
+  z.object({
+    state: z.literal("ready"),
+    key: z.string().regex(/^[0-9a-f]+$/),
+    narration: z.record(z.string(), z.number()),
+  }),
+  z.object({ state: z.literal("silent") }),
+  z.object({ state: z.literal("failed"), message: z.string() }),
+]);
+export type PreviewSound = z.output<typeof PreviewSoundSchema>;
+
 /** `GET /api/events`: what the server tells listeners about, including each render job's changes. */
 export const ServerEventSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("project-created"), slug: SlugSchema }),
   z.object({ type: z.literal("project-updated"), slug: SlugSchema }),
   /** A message was added to the project's chat. */
   z.object({ type: z.literal("chat"), slug: SlugSchema }),
+  /** The preview's sound moved on: a line spoken, the mix started or done. */
+  z.object({
+    type: z.literal("preview-sound"),
+    slug: SlugSchema,
+    state: z.enum(["idle", "speaking", "mixing", "ready", "silent", "failed"]),
+  }),
   RenderEventSchema,
 ]);
 

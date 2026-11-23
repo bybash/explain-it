@@ -70,16 +70,22 @@ const spokenLines = ({ projectDir, storyboard, voice, tts }: VoiceOptions) => {
  * When `signal` aborts, it stops before the next line.
  */
 export const generateVoice = async (
-  options: VoiceOptions & { readonly signal?: AbortSignal },
+  options: VoiceOptions & {
+    readonly signal?: AbortSignal;
+    /** Told how many of the lines are spoken so far, from none to all; cached lines count. */
+    readonly onProgress?: (spoken: number, total: number) => void;
+  },
 ): Promise<VoiceLine[]> => {
-  const { voice, tts, signal } = options;
+  const { voice, tts, signal, onProgress } = options;
   const wanted = spokenLines(options);
   if (wanted.length === 0) return [];
   const lines: VoiceLine[] = [];
+  onProgress?.(0, wanted.length);
   for (const { say, scene, beat } of wanted) {
     signal?.throwIfAborted();
     const spoken = await speakLine({ projectDir: options.projectDir, text: say, voice, tts });
     lines.push({ scene, beat, ...spoken });
+    onProgress?.(lines.length, wanted.length);
   }
   signal?.throwIfAborted();
   return lines;

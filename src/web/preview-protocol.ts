@@ -16,6 +16,8 @@ export const DrawMessageSchema = z.object({
   config: z.unknown(),
   mode: z.enum(["light", "dark"]),
   logo: z.unknown().optional(),
+  /** Measured narration by beat, once the voice is made; lines without it are estimated. */
+  narration: z.unknown().optional(),
   at: z.number().min(0),
 });
 export type DrawMessage = z.output<typeof DrawMessageSchema>;
@@ -31,7 +33,15 @@ export type Mark = z.output<typeof MarkSchema>;
 
 /** The page answers each drawing with the video's length and its marks, or with what was wrong. */
 export const FromPreviewSchema = z.discriminatedUnion("type", [
-  z.object({ type: z.literal("drawn"), duration: z.number(), marks: z.array(MarkSchema) }),
+  z.object({
+    type: z.literal("drawn"),
+    duration: z.number(),
+    marks: z.array(MarkSchema),
+    /** Each beat's place in the video, for a beat list. */
+    beats: z.array(
+      z.object({ id: z.string(), scene: z.string(), start: z.number(), end: z.number() }),
+    ),
+  }),
   z.object({ type: z.literal("failed"), message: z.string() }),
 ]);
 export type FromPreview = z.output<typeof FromPreviewSchema>;

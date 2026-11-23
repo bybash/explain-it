@@ -34,8 +34,8 @@ Slices keep their IDs, but after Milestone 1 they are built in this order:
    (decision 002), silent with captions until audio comes.
 3. **Milestone 2**, audio and checks.
 4. **3.2 to 3.5**, then **3.10** (the app's styles in Tailwind, before the
-   remaining panels add more CSS), then **3.7**, **3.11**, **3.8**, **3.9** and
-   **3.12**: the rest of the web app.
+   remaining panels add more CSS), then **3.7**, **3.11**, **3.8**, **3.13**,
+   **3.9** and **3.12**: the rest of the web app.
 5. **Milestones 5 and 6**, as listed, with **3.6** (the script gate's panel)
    just before **5.4**: until the LLM drafts scripts, a script comes over MCP,
    and nothing blocks on editing it in the app.
@@ -96,9 +96,10 @@ The goal: the CLI renders a hand-written example to an MP4, with no LLM and no v
 | ✅ 3.5 | **Graph gate panel**: a Mermaid editor with the rendered diagram, approve and edit | Editing the Mermaid updates `graph.json` |
 | 3.6 | **Script gate panel**: the scene and beat editor; stale beats after graph edits | Changing a node marks only its beats as stale |
 | ✅ 3.7 | **Style gate panel, the look**: palette and mode, font, title and end cards, logo upload, output, with a live preview drawn by the render player | Changes show in the preview straight away |
-| 3.8 | **Preview gate**: the player with a scrubber and beat list, voice generation with progress, check warnings that jump to the beat, the contact sheet | The example can be previewed with voice |
+| ✅ 3.8 | **Preview gate**: the player with its sound (the voice generated with progress, mixed as the render mixes it), play and pause, a scrubber and the beat list | The example can be previewed with voice |
 | 3.9 | **Render gate**: the job queue, progress over SSE, cancel, downloads | The example renders from the UI |
 | ✅ 3.11 | **Style gate panel, the sound**: voice picker with a sample, voice speed, pacing, captions, music | A voice sample plays from the panel |
+| 3.13 | **Preview gate checks**: run the checks from the panel, warnings that jump to their beat, the contact sheet | A warning in the example jumps to its beat |
 | 3.12 | **Style extras**: a custom palette editor, font upload | A custom palette and an uploaded font show in the preview and the render |
 | ✅ 3.10 | **App styles in Tailwind**: Tailwind v4 through its Vite plugin; the colour tokens and the dark set become `@theme` values; `app.css` moves to utility classes, keeping plain CSS only for CodeMirror's and Mermaid's own classes; the video's styles (`src/engine/`) are untouched; a decision record | Screenshots of each page, light and dark, look the same before and after |
 
@@ -139,7 +140,7 @@ The goal: make a video end to end from an IDE, with no LLM in explAIn-it.
 Work a finished slice left for a later one. Each list is removed by the slice
 that finishes it.
 
-### For 3.8 (preview gate), from 2.6 and 2.7
+### For 3.13 (preview gate checks), from 2.6, 2.7 and 3.8
 
 - The checks write `checks.json` and `contact-sheet.png` (with a small
   `contact-sheet.jpg`) in the project folder; the Preview gate shows both,
@@ -147,14 +148,19 @@ that finishes it.
 - `set_storyboard` could return the quick checks (reading speed and
   narration fit, pure, in `src/checks/timing.ts`); the layout checks need
   Chrome and loudness a mix.
+- The Preview gate's beat list (`src/web/PreviewPanel.tsx`) and its seek are
+  where a warning jumps to; a Checks tab beside the beat list fits the
+  layout. The preview's soundtrack (`cache/preview/<key>.wav`) is the mix
+  the loudness check measures.
 
-### For 3.8 and 3.9 (preview, render gate), from 2.1, 2.2 and 2.4
+### For 3.9 (render gate), from 2.1, 2.2, 2.4 and 3.8
 
-- Lines are generated when `check` runs or a render starts, without
-  progress: the first time that includes the model download and can take
-  a minute or two. A render job shows no progress while it speaks or mixes,
-  and a cancel waits for a model download already under way. 3.8 generates
-  the voice when a project enters the Preview gate, with progress.
+- A render job shows no progress while it speaks or mixes, and a cancel
+  waits for a model download already under way. The Preview gate already
+  speaks every line with progress (`generateVoice`'s `onProgress`), so a
+  render after a preview finds them cached; the render's own soundtrack is
+  mixed again, though the preview's (`cache/preview/<key>.wav`) is the same
+  mix.
 - A render captures every frame twice (captioned and clean), about twice
   the time; the music takes 1.4–2.8 s per 75 s to make. If renders feel slow,
   cache the music keyed by mood, seed and length, as the voice is, or make
@@ -171,17 +177,6 @@ that finishes it.
   from the project's `assets/`.
 - Taking a saved logo out leaves its file in `assets/`; nothing removes
   files the config no longer names, as with old voice lines in `cache/`.
-
-### For 3.8 (preview gate), from 3.7 and 3.11
-
-- The style gate's preview is the player in an iframe (`src/web/preview.html`
-  and `preview.ts`, messages in `preview-protocol.ts`), with a scrubber and
-  marks; 3.8's player can grow from it rather than start again.
-- The style gate's voice sample speaks the script's first line through
-  `speakLine` (`src/audio/voice.ts`), the cache the video's lines use, so
-  3.8's voice generation finds that line done. While the model downloads
-  the first time, the sample button only says it is getting the voice
-  ready; 3.8's progress for whole narrations could cover the download too.
 
 ### For 5.6 (layout repair), from 2.5
 

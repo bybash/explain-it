@@ -203,6 +203,27 @@ describe("narrationLengths", () => {
   });
 });
 
+describe("generateVoice's progress", () => {
+  it("says how many lines are spoken, from none to all, cached ones included", async () => {
+    const { tts } = fakeTts();
+    await speakLine({ projectDir, text: "Two.", voice, tts });
+    const seen: [number, number][] = [];
+    await generateVoice({
+      projectDir,
+      storyboard: storyboard(["One.", "Two.", undefined, "Three."]),
+      voice,
+      tts,
+      onProgress: (spoken, total) => seen.push([spoken, total]),
+    });
+    expect(seen).toEqual([
+      [0, 3],
+      [1, 3],
+      [2, 3],
+      [3, 3],
+    ]);
+  });
+});
+
 describe("speakLine", () => {
   it("speaks a line once into the project's cache, and reads it from there after", async () => {
     const { tts, asked } = fakeTts();
