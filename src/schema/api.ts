@@ -1,6 +1,13 @@
 import { z } from "zod";
 import { SlugSchema } from "./common.ts";
-import { ConfigSchema } from "./config.ts";
+import {
+  BYTES_PER_MB,
+  ConfigSchema,
+  LOGO_CORNERS,
+  LOGO_MAX_BYTES,
+  LOGO_SHOWS,
+  LogoImagesSchema,
+} from "./config.ts";
 import { ValidationErrorSchema } from "./errors.ts";
 import { GraphSchema } from "./graph.ts";
 import { LayoutSchema } from "./layout.ts";
@@ -38,6 +45,39 @@ export const GraphSavedSchema = z.object({
 export type GraphSaved = z.output<typeof GraphSavedSchema>;
 /** What saving a graph did to the rest of the project. */
 export type GraphSaveOutcome = Pick<GraphSaved, "staleBeats" | "storyboardProblems" | "warnings">;
+
+/** A logo file the style gate sends: the image itself, since the page cannot name a file on the server. */
+const LogoUploadSchema = z.strictObject({ dataUrl: z.string() });
+
+/**
+ * `PUT /api/projects/:slug/style`: settings merged into config.json as a JSON
+ * Merge Patch (objects merge, null removes, the rest replaces), and logo files
+ * to copy into assets/, as MCP's `set_style` takes them.
+ */
+export const StyleEditSchema = z.strictObject({
+  config: z.record(z.string(), z.unknown()).optional(),
+  logo: z
+    .strictObject({
+      light: LogoUploadSchema.optional(),
+      dark: LogoUploadSchema.optional(),
+      corner: z.enum(LOGO_CORNERS).optional(),
+      show: z.enum(LOGO_SHOWS).optional(),
+    })
+    .optional(),
+});
+export type StyleEdit = z.output<typeof StyleEditSchema>;
+
+/** The largest style edit: two logos at their largest, as base64, and room for the settings. */
+export const MAX_STYLE_BYTES = Math.ceil((2 * LOGO_MAX_BYTES * 4) / 3) + BYTES_PER_MB / 4;
+
+/** A saved style: the whole config as it now is, and what the save had to repair. */
+export const StyleSavedSchema = z.object({
+  config: ConfigSchema,
+  warnings: z.array(z.string()),
+});
+
+/** `GET /api/projects/:slug/logo`: the saved logo as the preview draws it, or null without one. */
+export const SavedLogoSchema = z.object({ logo: LogoImagesSchema.nullable() });
 
 /** `POST /api/projects`: only the name; everything else starts at its default. */
 export const NewProjectSchema = z.strictObject({ name: ProjectSchema.shape.name });

@@ -11,6 +11,8 @@ import { BoxList, Muted, PageTitle, SectionTitle } from "./ui.tsx";
 
 /** The graph editor, loaded with the graph gate: CodeMirror and Mermaid are large, and only it needs them. */
 const GraphPanel = lazy(() => import("./GraphPanel.tsx").then((m) => ({ default: m.GraphPanel })));
+/** The style form, loaded with the style gate: it carries the palettes and fonts. */
+const StylePanel = lazy(() => import("./StylePanel.tsx").then((m) => ({ default: m.StylePanel })));
 
 /**
  * An opened project: the chat on the left and, on the right, the gate
@@ -173,6 +175,10 @@ const GatePanel = ({
       {gate === "graph" ? (
         <Suspense fallback={<Muted>Opening the graph editor…</Muted>}>
           <GraphPanel opened={opened} blocked={setBlocked} />
+        </Suspense>
+      ) : gate === "style" ? (
+        <Suspense fallback={<Muted>Opening the style…</Muted>}>
+          <StylePanel opened={opened} blocked={setBlocked} />
         </Suspense>
       ) : (
         <Muted>This gate's panel comes in a later version.</Muted>

@@ -33,3 +33,4 @@ later record supersedes an earlier one and says so.
 | [021](021-mermaid-round-trip.md) | Mermaid round-trip |
 | [022](022-graph-gate-panel.md) | Graph gate panel |
 | [023](023-tailwind.md) | The app's styles in Tailwind |
+| [024](024-style-gate.md) | The style gate's panel |

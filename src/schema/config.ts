@@ -89,6 +89,10 @@ export const LOGO_TYPES = {
 export type LogoType = (typeof LOGO_TYPES)[keyof typeof LOGO_TYPES];
 
 const extensions = Object.keys(LOGO_TYPES);
+
+/** The name a logo file is saved under in assets/: `logo-<mode>` and its type's first extension. */
+export const logoFileName = (mode: "light" | "dark", type: LogoType): string =>
+  `logo-${mode}${extensions.find((e) => LOGO_TYPES[e as keyof typeof LOGO_TYPES] === type) ?? ".png"}`;
 const escaped = (text: string) => text.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
 
 const LogoFileSchema = z

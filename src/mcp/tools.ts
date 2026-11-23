@@ -3,12 +3,11 @@ import { narrationLengths, readCachedVoice, type VoiceLine } from "../audio/voic
 import { graphToMermaid } from "../mermaid/generate.ts";
 import type { MissingTool } from "../render/environment.ts";
 import type { ProjectFiles } from "../render/load.ts";
-import { readAssetLogo, readJson } from "../render/load.ts";
 import type { RenderQueue } from "../render/queue.ts";
 import type { OpenedProject } from "../schema/api.ts";
 import type { CheckReport, SkippedChecks } from "../schema/checks.ts";
-import { type Config, DEFAULT_CONFIG, parseConfig } from "../schema/config.ts";
-import { parseWith, type Validated, type ValidationError } from "../schema/errors.ts";
+import { type Config, DEFAULT_CONFIG } from "../schema/config.ts";
+import { parseWith, type Validated } from "../schema/errors.ts";
 import { parseGraph } from "../schema/graph.ts";
 import {
   CreateProjectArgsSchema,
@@ -24,7 +23,6 @@ import { fail, ok } from "../schema/result.ts";
 import { parseStoryboard, type Storyboard } from "../schema/storyboard.ts";
 import type { Events } from "../server/events.ts";
 import { laidOut, saveGraph } from "../server/graphs.ts";
-import { type CheckedLogo, checkLogo, saveLogo } from "../server/logo.ts";
 import {
   listProjects,
   makeProject,
@@ -33,7 +31,8 @@ import {
   withProjectLock,
   writeProjectFile,
 } from "../server/projects.ts";
-import { allOf, asObject, edited, laterGate, merged, timingOf, under } from "./edits.ts";
+import { saveStyle } from "../server/styles.ts";
+import { allOf, edited, laterGate, timingOf, under } from "./edits.ts";
 
 /** What the tools work with: the projects folder, the clock, the event hub and preview links. */
 export type ToolContext = {
@@ -209,62 +208,19 @@ const cachedNarration = async (
 export const setStyleTool = async (context: ToolContext, input: Args) => {
   const args = parseWith(SetStyleArgsSchema, input);
   if (!args.ok) return args;
-  const { slug, config: changes = {}, logo } = args.value;
+  const { slug, config, logo } = args.value;
   return withProjectLock(context.projectsDir, slug, async () => {
     const opened = await open(context, slug);
     if (!opened.ok) return opened;
-    const before = opened.value;
-    const dir = projectDir(context.projectsDir, slug);
-
-    // Check everything before writing anything, so a bad setting or logo changes nothing.
-    const logos: CheckedLogo[] = [];
-    const errors: ValidationError[] = [];
-    const names: Record<string, string> = {};
-    for (const mode of ["light", "dark"] as const) {
-      const source = logo?.[mode];
-      if (!source) continue;
-      const checked = await checkLogo(mode, source);
-      if (checked.ok) {
-        logos.push(checked.value);
-        names[mode] = checked.value.name;
-      } else errors.push(...checked.errors);
-    }
-    const file = await readJson(dir, "config.json");
-    const current = file.ok ? asObject(file.data) : undefined;
-    const warnings =
-      !file.ok && file.missing
-        ? []
-        : current === undefined
-          ? ["config.json was broken, so it was started again from these settings"]
-          : [];
-    const { light: _light, dark: _dark, ...placement } = logo ?? {};
-    const next = merged(
-      merged(current ?? {}, changes),
-      logo ? { logo: { ...placement, ...names } } : {},
+    const saved = await saveStyle(
+      context.projectsDir,
+      slug,
+      opened.value,
+      { ...(config ? { config } : {}), ...(logo ? { logo } : {}) },
+      context.now(),
     );
-    const config = parseConfig(next);
-    if (!config.ok) errors.push(...under("config", config.errors));
-    // A logo named in config.json without being sent must already be in assets/ and pass its checks.
-    else
-      for (const mode of ["light", "dark"] as const) {
-        const name = config.value.logo?.[mode];
-        if (name === undefined || name === names[mode]) continue;
-        const asset = await readAssetLogo(dir, mode, name);
-        if (!asset.ok) errors.push(...under("config", asset.errors));
-      }
-    if (errors.length > 0) return fail(errors);
-
-    for (const checked of logos) await saveLogo(dir, checked);
-    await writeProjectFile(context.projectsDir, slug, "config.json", next);
-    await saveProject(context, slug, {
-      ...before.project,
-      gate: laterGate(before.project.gate, "style"),
-    });
+    if (!saved.ok) return saved;
     context.events.publish({ type: "project-updated", slug });
-    return ok({
-      config: config.ok ? config.value : null,
-      warnings,
-      preview: context.previewUrl(slug),
-    });
+    return ok({ ...saved.value, preview: context.previewUrl(slug) });
   });
 };

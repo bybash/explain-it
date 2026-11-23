@@ -20,7 +20,7 @@ const url = `http://127.0.0.1:${PORT}`;
 /** The time the pages are shown at, so "updated 2 days ago" reads the same on every run. */
 const NOW = new Date("2026-11-21T12:00:00.000Z");
 
-/** The projects every run shows: the example at the script gate, a new one with a chat, and a broken one. */
+/** The projects every run shows: the example at the style gate, a new one with a chat, and a broken one. */
 const seed = (dir: string) => {
   const example = join(dir, "oauth-example");
   cpSync(join(root, "examples", "oauth-login"), example, {
@@ -28,7 +28,7 @@ const seed = (dir: string) => {
     filter: (source) => !source.includes("/out") && !source.includes("/cache"),
   });
   const project = JSON.parse(readFileSync(join(example, "project.json"), "utf8"));
-  writeFileSync(join(example, "project.json"), JSON.stringify({ ...project, gate: "script" }));
+  writeFileSync(join(example, "project.json"), JSON.stringify({ ...project, gate: "style" }));
 
   const draft = join(dir, "photo-upload");
   mkdirSync(draft);
@@ -165,6 +165,25 @@ const SHOTS: readonly {
     name: "script-gate",
     hash: "#/projects/oauth-example/script",
     ready: (p) => p.getByText("comes in a later version").waitFor(),
+  },
+  {
+    name: "style-gate",
+    hash: "#/projects/oauth-example/style",
+    ready: async (p) => {
+      await p.getByRole("button", { name: "Beat 1", exact: true }).waitFor();
+      await p.waitForTimeout(500);
+    },
+  },
+  {
+    name: "style-changed",
+    hash: "#/projects/oauth-example/style",
+    ready: async (p) => {
+      await p.getByRole("button", { name: "Beat 1", exact: true }).waitFor();
+      await p.selectOption("#style-palette", "ocean");
+      await p.getByLabel("Show the dark video").check();
+      await p.getByRole("button", { name: "Beat 3", exact: true }).click();
+      await p.waitForTimeout(1500);
+    },
   },
   {
     name: "broken",

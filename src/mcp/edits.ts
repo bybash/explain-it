@@ -57,25 +57,6 @@ export const edited = (
   }
 };
 
-const isPlainObject = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
-
-export const asObject = (value: unknown): Record<string, unknown> | undefined =>
-  isPlainObject(value) ? value : undefined;
-
-/**
- * `changes` laid over `base`, as a JSON Merge Patch (RFC 7386): objects
- * merge, `null` removes a key, and anything else replaces.
- */
-export const merged = (base: unknown, changes: unknown): unknown => {
-  if (!isPlainObject(changes)) return changes;
-  const result: Record<string, unknown> = isPlainObject(base) ? { ...base } : {};
-  for (const [key, value] of Object.entries(changes))
-    if (value === null) delete result[key];
-    else result[key] = merged(result[key], value);
-  return result;
-};
-
 /**
  * Each scene's and the whole video's length, to a tenth of a second, and how
  * its narration lines were timed: measured from the voice, estimated from

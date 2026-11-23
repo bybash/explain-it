@@ -13,7 +13,7 @@ import {
 } from "../render/environment.ts";
 import { RenderQueue, type RenderRun } from "../render/queue.ts";
 import { renderFromFolder } from "../render/run.ts";
-import { ApproveSchema } from "../schema/api.ts";
+import { ApproveSchema, MAX_STYLE_BYTES } from "../schema/api.ts";
 import { NewChatMessageSchema } from "../schema/chat.ts";
 import { parseWith } from "../schema/errors.ts";
 import { MCP_PATH } from "../schema/mcp.ts";
@@ -25,6 +25,7 @@ import { graphRoutes } from "./graph-routes.ts";
 import { createProject, listProjects, openProject, projectDir, projectExists } from "./projects.ts";
 import { errorResponse, jsonBody, noProject } from "./responses.ts";
 import type { SettingsStore } from "./settings.ts";
+import { styleRoutes } from "./style-routes.ts";
 
 export type AppOptions = {
   /** The folder that holds one folder per project. */
@@ -136,7 +137,12 @@ export const createApp = ({
           { path: "(body)", message: `larger than ${bytes / 1024 / 1024} MB` },
         ]),
     });
-  app.use("/api/*", guard, limit(MAX_API_BYTES));
+  // A style edit carries logo files, so it may be larger than the rest of the API's requests.
+  const apiLimit = limit(MAX_API_BYTES);
+  const styleLimit = limit(MAX_STYLE_BYTES);
+  app.use("/api/*", guard, (c, next) =>
+    (/^\/api\/projects\/[^/]+\/style$/.test(c.req.path) ? styleLimit : apiLimit)(c, next),
+  );
   app.use(MCP_PATH, guard, limit(MAX_MCP_BYTES));
 
   // MCP over Streamable HTTP, without sessions: each request gets a fresh server on the
@@ -227,6 +233,7 @@ export const createApp = ({
   });
 
   graphRoutes(app, { projectsDir, now, events });
+  styleRoutes(app, { projectsDir, now, events });
 
   app.post("/api/projects/:slug/approve", async (c) => {
     const slug = c.req.param("slug");

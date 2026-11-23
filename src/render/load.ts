@@ -181,7 +181,7 @@ export const readAssetLogo = async (
 };
 
 /** Reads the logo's files from `assets/` as data URLs; a single file serves both modes. */
-const readLogo = async (dir: string, logo: Logo): Promise<Validated<LogoImages>> => {
+export const readLogo = async (dir: string, logo: Logo): Promise<Validated<LogoImages>> => {
   const read = async (mode: keyof LogoImages) => {
     const name = logo[mode];
     return name === undefined ? undefined : readAssetLogo(dir, mode, name);

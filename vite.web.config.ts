@@ -16,7 +16,14 @@ if (!listen.ok || !api.ok)
 export default defineConfig({
   root: "src/web",
   plugins: [react(), tailwindcss()],
-  build: { outDir: "../../dist/web", emptyOutDir: true },
+  build: {
+    outDir: "../../dist/web",
+    emptyOutDir: true,
+    // The app, and the preview page its panels show in an iframe (preview.ts).
+    rollupOptions: { input: { index: "src/web/index.html", preview: "src/web/preview.html" } },
+    // The preview page carries every Lucide icon, since any node may use any of them.
+    chunkSizeWarningLimit: 1000,
+  },
   // Bundled when the dev server starts, not when the graph gate first opens: found then, they
   // would make Vite reload the page under the user.
   optimizeDeps: {
