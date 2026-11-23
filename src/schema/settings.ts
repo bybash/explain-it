@@ -39,6 +39,23 @@ const MIN_HINTED_KEY = 12;
 const NO_SPACES = /^\S+$/;
 const SPACES_MESSAGE = "must not contain spaces or line breaks";
 
+/** Names of this machine, as a URL's hostname gives them; a request addressed to any other did not come from its user. */
+export const LOCAL_HOSTS = ["localhost", "127.0.0.1", "[::1]"] as const;
+/** Docker's name for the machine it runs on, where Ollama or LM Studio listen. */
+const DOCKER_HOST = "host.docker.internal";
+
+/** Whether calls to this base URL keep the key off the network: anything but http, or http to this machine. */
+const keepsKeyPrivate = (url: string) => {
+  // zod runs this even after the URL check fails; that failure is already named.
+  if (!URL.canParse(url)) return true;
+  const { protocol, hostname } = new URL(url);
+  return (
+    protocol !== "http:" ||
+    (LOCAL_HOSTS as readonly string[]).includes(hostname) ||
+    hostname === DOCKER_HOST
+  );
+};
+
 export const SettingsUpdateSchema = z.strictObject({
   // Spaces are refused before the URL check, which would quietly drop a line break.
   baseUrl: z
@@ -46,6 +63,10 @@ export const SettingsUpdateSchema = z.strictObject({
     .max(MAX_URL)
     .regex(NO_SPACES, SPACES_MESSAGE)
     .pipe(z.url({ protocol: /^https?$/ }))
+    .refine(keepsKeyPrivate, {
+      message:
+        "http:// would send the key unencrypted: use https://, or http:// only for this machine",
+    })
     .optional(),
   model: z
     .string()
