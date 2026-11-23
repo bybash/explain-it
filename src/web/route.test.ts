@@ -29,7 +29,7 @@ describe("gateSteps", () => {
     ]);
   });
 
-  it("shows the gate reached when none is asked for, or one not reached yet", () => {
+  it("shows the gate reached when none is requested, or one not reached yet", () => {
     expect(gateSteps("script").find((s) => s.viewed)?.gate).toBe("script");
     expect(gateSteps("script", "render").find((s) => s.viewed)?.gate).toBe("script");
   });

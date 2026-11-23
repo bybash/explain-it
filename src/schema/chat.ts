@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { parseWith, type ValidationError } from "./errors.ts";
+import { parseWith, type ValidationError, ValidationErrorSchema } from "./errors.ts";
 import { GATES } from "./project.ts";
 
 /**
@@ -24,13 +24,15 @@ export type ChatMessage = z.output<typeof ChatMessageSchema>;
 /** `POST /api/projects/:slug/chat`: what the user typed. */
 export const NewChatMessageSchema = z.strictObject({
   text: z.string().trim().min(1, "must not be empty").max(MAX_CHAT_MESSAGE),
-  gate: z.enum(GATES).optional(),
+  /** The gate the user is looking at, which the message is saved with. */
+  gate: z.enum(GATES),
 });
+export type NewChatMessage = z.output<typeof NewChatMessageSchema>;
 
 /** `GET /api/projects/:slug/chat`: the messages, and the lines that could not be read. */
 export const ChatSchema = z.object({
   messages: z.array(ChatMessageSchema),
-  problems: z.array(z.object({ path: z.string(), message: z.string() })),
+  problems: z.array(ValidationErrorSchema),
 });
 export type Chat = z.output<typeof ChatSchema>;
 

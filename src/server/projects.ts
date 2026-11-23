@@ -157,7 +157,7 @@ export const openProject = async (
   projectsDir: string,
   slug: string,
 ): Promise<Validated<OpenedProject> | undefined> => {
-  if (!isSlug(slug) || !(await entriesIn(projectsDir)).folders.includes(slug)) return undefined;
+  if (!(await projectExists(projectsDir, slug))) return undefined;
   const dir = join(projectsDir, slug);
   const project = await readProjectFile(dir);
   if (!project.ok) return project;

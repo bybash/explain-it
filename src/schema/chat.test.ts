@@ -3,11 +3,15 @@ import { MAX_CHAT_MESSAGE, NewChatMessageSchema, parseChatLines } from "./chat.t
 
 describe("NewChatMessageSchema", () => {
   it("takes trimmed text up to its limit", () => {
-    expect(NewChatMessageSchema.parse({ text: "  hello " })).toEqual({ text: "hello" });
-    expect(NewChatMessageSchema.safeParse({ text: "   " }).success).toBe(false);
-    expect(NewChatMessageSchema.safeParse({ text: "x".repeat(MAX_CHAT_MESSAGE + 1) }).success).toBe(
-      false,
-    );
+    expect(NewChatMessageSchema.parse({ text: "  hello ", gate: "graph" })).toEqual({
+      text: "hello",
+      gate: "graph",
+    });
+    expect(NewChatMessageSchema.safeParse({ text: "   ", gate: "graph" }).success).toBe(false);
+    expect(
+      NewChatMessageSchema.safeParse({ text: "x".repeat(MAX_CHAT_MESSAGE + 1), gate: "graph" })
+        .success,
+    ).toBe(false);
   });
 });
 

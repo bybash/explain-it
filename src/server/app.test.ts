@@ -389,12 +389,21 @@ describe("/api/projects/:slug/chat", () => {
       messages: [],
       problems: [],
     });
-    const empty = await postJson("/api/projects/quiet/chat", { text: "   " });
+    const noGate = await postJson("/api/projects/quiet/chat", { text: "hi" });
+    expect(noGate.status).toBe(400);
+    expect(await noGate.json()).toEqual({
+      errors: [
+        { path: "gate", message: 'must be one of "graph", "script", "style", "preview", "render"' },
+      ],
+    });
+    const empty = await postJson("/api/projects/quiet/chat", { text: "   ", gate: "graph" });
     expect(empty.status).toBe(400);
     expect(await empty.json()).toEqual({
       errors: [{ path: "text", message: "must not be empty" }],
     });
-    expect((await postJson("/api/projects/nobody/chat", { text: "hi" })).status).toBe(404);
+    expect(
+      (await postJson("/api/projects/nobody/chat", { text: "hi", gate: "graph" })).status,
+    ).toBe(404);
   });
 
   it("reads past a broken line and names it", async () => {

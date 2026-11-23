@@ -6,7 +6,7 @@ import { getChat, onServerEvents, sendChat } from "./api.ts";
 import { Errors } from "./Errors.tsx";
 import { GATE_LABELS } from "./labels.ts";
 
-/** The chat column: the conversation in chat.jsonl, and a box to add to it. */
+/** The chat column: the conversation in chat.jsonl, and a box to add to it. Keyed by project, so one project's chat never shows in another's. */
 export const Chat = ({ slug, gate }: { slug: string; gate: Gate }) => {
   const [messages, setMessages] = useState<readonly ChatMessage[]>([]);
   const [problems, setProblems] = useState<readonly ValidationError[]>([]);
@@ -15,9 +15,21 @@ export const Chat = ({ slug, gate }: { slug: string; gate: Gate }) => {
   const [sending, setSending] = useState(false);
   const end = useRef<HTMLDivElement>(null);
 
+  // An answer that arrives after the column is gone, or after another project opened, is dropped.
+  // Set on every mount, since React's strict mode mounts twice in development.
+  const live = useRef(false);
+  useEffect(() => {
+    live.current = true;
+    return () => {
+      live.current = false;
+    };
+  }, []);
+
   const load = useCallback(async () => {
     const chat = await getChat(slug);
+    if (!live.current) return;
     if (!chat.ok) return setErrors(chat.errors);
+    setErrors([]);
     setMessages(chat.value.messages);
     setProblems(chat.value.problems);
   }, [slug]);
@@ -43,6 +55,7 @@ export const Chat = ({ slug, gate }: { slug: string; gate: Gate }) => {
     event.preventDefault();
     setSending(true);
     const sent = await sendChat(slug, text, gate);
+    if (!live.current) return;
     setSending(false);
     if (!sent.ok) return setErrors(sent.errors);
     setErrors([]);

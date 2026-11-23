@@ -1,13 +1,17 @@
+import type { OpenedProject } from "../schema/api.ts";
 import type { ValidationError } from "../schema/errors.ts";
 import { type Gate, nextGate, type Project } from "../schema/project.ts";
 import { openProject, withProjectLock, writeProjectFile } from "./projects.ts";
 
 /** The file a gate's result is in, which must be there and valid to approve the gate. */
 const NEEDS: Partial<
-  Record<Gate, { readonly file: "graph.json" | "storyboard.json"; readonly what: string }>
+  Record<
+    Gate,
+    { readonly file: string; readonly what: string; readonly has: (o: OpenedProject) => boolean }
+  >
 > = {
-  graph: { file: "graph.json", what: "the graph" },
-  script: { file: "storyboard.json", what: "the script" },
+  graph: { file: "graph.json", what: "the graph", has: (o) => o.graph !== null },
+  script: { file: "storyboard.json", what: "the script", has: (o) => o.storyboard !== null },
 };
 
 /** What approving a gate came to; the API answers each kind with its own status. */
@@ -39,13 +43,13 @@ export const approveGate = (
     const opened = await openProject(projectsDir, slug);
     if (!opened) return { kind: "missing" };
     if (!opened.ok) return { kind: "broken", errors: opened.errors };
-    const { project, graph, storyboard } = opened.value;
+    const { project } = opened.value;
     if (project.gate !== gate)
       return refused("gate", `the project is at the ${project.gate} gate, not ${gate}`);
     const next = nextGate(gate);
     if (!next) return refused("gate", `${gate} is the last gate`);
     const needs = NEEDS[gate];
-    if (needs && !(needs.file === "graph.json" ? graph : storyboard))
+    if (needs && !needs.has(opened.value))
       return refused(needs.file, `missing or broken: make ${needs.what} before approving it`);
     const approved: Project = { ...project, gate: next, updatedAt: now.toISOString() };
     await writeProjectFile(projectsDir, slug, "project.json", approved);

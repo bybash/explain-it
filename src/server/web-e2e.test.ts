@@ -33,12 +33,14 @@ const inUse = (port: number) =>
     socket.once("error", () => done(false));
   });
 
-const portsFree = async (...ports: number[]) =>
-  (await Promise.all(ports.map(inUse))).every((used) => !used);
-const startFree = hasChrome && (await portsFree(START_PORT));
-const devFree = hasChrome && (await portsFree(DEV_PORT, DEV_API));
+/** Fails, rather than skips, when a port the test needs is taken: a silent skip would pass the pre-push hook untested. */
+const needFree = async (...ports: number[]) => {
+  for (const port of ports)
+    if (await inUse(port))
+      throw new Error(`port ${port} is in use; the web app test needs it free`);
+};
 
-const waitUntilUp = async (url: string) => {
+const waitUntilUp = async (url: string, output: () => string) => {
   for (let i = 0; i < 150; i++) {
     try {
       if ((await fetch(url)).ok) return;
@@ -47,13 +49,29 @@ const waitUntilUp = async (url: string) => {
     }
     await new Promise((r) => setTimeout(r, 200));
   }
-  throw new Error(`${url} did not come up`);
+  throw new Error(`${url} did not come up:\n${output()}`);
 };
 
 type Server = { readonly url: string; readonly stop: () => Promise<void> };
 
-const launch = (args: readonly string[], env: Record<string, string>): ChildProcess =>
-  spawn(process.execPath, args, { cwd: root, env: { ...process.env, ...env }, stdio: "ignore" });
+/** Every server the tests started, so each is stopped even when starting it failed. */
+const running = new Set<ChildProcess>();
+
+/** Starts a server; its error output is kept for when it fails to come up. */
+const launch = (args: readonly string[], env: Record<string, string>) => {
+  const child = spawn(process.execPath, args, {
+    cwd: root,
+    env: { ...process.env, ...env },
+    stdio: ["ignore", "ignore", "pipe"],
+  });
+  running.add(child);
+  child.once("exit", () => running.delete(child));
+  let errors = "";
+  child.stderr?.on("data", (chunk: Buffer) => {
+    errors = (errors + chunk.toString()).slice(-4000);
+  });
+  return { child, output: () => errors };
+};
 
 const stopped = (child: ChildProcess) =>
   new Promise<void>((done) => {
@@ -64,27 +82,27 @@ const stopped = (child: ChildProcess) =>
 
 /** `npm start`: the built web app and the API in one process. */
 const startServer = async (projectsDir: string): Promise<Server> => {
-  const child = launch(["src/server/main.ts"], {
+  const { child, output } = launch(["src/server/main.ts"], {
     PORT: String(START_PORT),
     PROJECTS_DIR: projectsDir,
     ENV_FILE: join(projectsDir, ".env"),
   });
   const url = `http://${DEFAULT_HOST}:${START_PORT}`;
-  await waitUntilUp(`${url}/api/projects`);
+  await waitUntilUp(`${url}/api/projects`, output);
   return { url, stop: () => stopped(child) };
 };
 
 /** `npm run dev`: Vite's dev server, passing /api through to the API. */
 const devServer = async (projectsDir: string): Promise<Server> => {
-  const child = launch(["scripts/dev.ts"], {
+  const { child, output } = launch(["scripts/dev.ts"], {
     PORT: String(DEV_PORT),
     DEV_API_PORT: String(DEV_API),
     PROJECTS_DIR: projectsDir,
     ENV_FILE: join(projectsDir, ".env"),
   });
   const url = `http://${DEFAULT_HOST}:${DEV_PORT}`;
-  await waitUntilUp(`${url}/api/projects`);
-  await waitUntilUp(url);
+  await waitUntilUp(`${url}/api/projects`, output);
+  await waitUntilUp(url, output);
   return { url, stop: () => stopped(child) };
 };
 
@@ -99,7 +117,7 @@ const exampleAtGraph = (projectsDir: string, slug: string) => {
 /** The flow 3.1 checked by hand, and 3.3's chat and gates, on one running app. */
 const flow = (
   serve: (projectsDir: string) => Promise<Server>,
-  { restart }: { restart: boolean },
+  { restart, ports }: { restart: boolean; ports: readonly number[] },
 ) => {
   let browser: Browser;
   let page: Page;
@@ -107,6 +125,7 @@ const flow = (
   let server: Server;
 
   beforeAll(async () => {
+    await needFree(...ports);
     projectsDir = mkdtempSync(join(tmpdir(), "explain-it-web-"));
     server = await serve(projectsDir);
     browser = await chromium.launch({ channel: "chrome" });
@@ -114,8 +133,8 @@ const flow = (
   }, 60_000);
   afterAll(async () => {
     await browser?.close();
-    await server?.stop();
-    rmSync(projectsDir, { recursive: true, force: true });
+    await Promise.all([...running].map(stopped));
+    if (projectsDir) rmSync(projectsDir, { recursive: true, force: true });
   });
 
   it("names the error for a name that is too long", async () => {
@@ -132,6 +151,9 @@ const flow = (
     await expect
       .poll(() => page.getAttribute(".gate[data-state=current]", "href"))
       .toBe("#/projects/oauth-login/graph");
+    // An address naming a gate not reached yet is corrected to the gate reached.
+    await page.goto(`${server.url}/#/projects/oauth-login/render`);
+    await page.waitForURL(/#\/projects\/oauth-login\/graph$/);
   });
 
   it("keeps the chat, with its stub reply, across a restart", async () => {
@@ -177,13 +199,14 @@ const flow = (
   });
 };
 
-describe.skipIf(!startFree)("the web app (npm start)", () => {
+describe.skipIf(!hasChrome)("the web app (npm start)", () => {
   beforeAll(async () => {
     await build({ configFile: join(root, "vite.web.config.ts"), logLevel: "silent" });
   }, 120_000);
-  flow(startServer, { restart: true });
+  flow(startServer, { restart: true, ports: [START_PORT] });
 });
 
-describe.skipIf(!devFree)("the web app (npm run dev)", () => {
-  flow(devServer, { restart: false });
+// npm run dev restarts the API itself when files change, so only npm start is restarted here.
+describe.skipIf(!hasChrome)("the web app (npm run dev)", () => {
+  flow(devServer, { restart: false, ports: [DEV_PORT, DEV_API] });
 });

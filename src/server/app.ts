@@ -15,21 +15,14 @@ import {
 import { RenderQueue, type RenderRun } from "../render/queue.ts";
 import { renderFromFolder } from "../render/run.ts";
 import { ApproveSchema } from "../schema/api.ts";
-import { type ChatMessage, NewChatMessageSchema } from "../schema/chat.ts";
+import { NewChatMessageSchema } from "../schema/chat.ts";
 import { parseWith, type Validated, type ValidationError } from "../schema/errors.ts";
 import { MCP_PATH } from "../schema/mcp.ts";
 import { fail, ok } from "../schema/result.ts";
-import { appendChat, readChat, STUB_REPLY } from "./chat.ts";
+import { addChat, readChat } from "./chat.ts";
 import { createEvents } from "./events.ts";
 import { approveGate } from "./gates.ts";
-import {
-  createProject,
-  listProjects,
-  openProject,
-  projectDir,
-  projectExists,
-  withProjectLock,
-} from "./projects.ts";
+import { createProject, listProjects, openProject, projectDir, projectExists } from "./projects.ts";
 import type { SettingsStore } from "./settings.ts";
 
 export type AppOptions = {
@@ -70,6 +63,10 @@ const errorResponse = (
   status: ContentfulStatusCode,
   errors: readonly ValidationError[],
 ) => c.json({ errors }, status);
+
+/** The answer for a slug that names no project. */
+const noProject = (c: Context, slug: string) =>
+  errorResponse(c, 404, [{ path: "slug", message: `no project "${slug}"` }]);
 
 /** A request's JSON body, or the error that names why it is not one. */
 const jsonBody = async (c: Context): Promise<Validated<unknown>> => {
@@ -197,7 +194,7 @@ export const createApp = ({
   app.get("/api/projects/:slug", async (c) => {
     const slug = c.req.param("slug");
     const opened = await openProject(projectsDir, slug);
-    if (!opened) return errorResponse(c, 404, [{ path: "slug", message: `no project "${slug}"` }]);
+    if (!opened) return noProject(c, slug);
     if (!opened.ok) return errorResponse(c, 422, opened.errors);
     return c.json(opened.value);
   });
@@ -215,8 +212,7 @@ export const createApp = ({
 
   app.get("/api/projects/:slug/chat", async (c) => {
     const slug = c.req.param("slug");
-    if (!(await projectExists(projectsDir, slug)))
-      return errorResponse(c, 404, [{ path: "slug", message: `no project "${slug}"` }]);
+    if (!(await projectExists(projectsDir, slug))) return noProject(c, slug);
     return c.json(await readChat(projectDir(projectsDir, slug)));
   });
 
@@ -227,19 +223,8 @@ export const createApp = ({
     if (!body.ok) return errorResponse(c, 400, body.errors);
     const sent = parseWith(NewChatMessageSchema, body.value);
     if (!sent.ok) return errorResponse(c, 400, sent.errors);
-    const added = await withProjectLock(projectsDir, slug, async () => {
-      const opened = await openProject(projectsDir, slug);
-      if (!opened) return undefined;
-      const gate = sent.value.gate ?? (opened.ok ? opened.value.project.gate : "graph");
-      const at = now().toISOString();
-      const messages: ChatMessage[] = [
-        { role: "user", text: sent.value.text, at, gate },
-        { role: "assistant", text: STUB_REPLY, at, gate },
-      ];
-      await appendChat(projectDir(projectsDir, slug), messages);
-      return messages;
-    });
-    if (!added) return errorResponse(c, 404, [{ path: "slug", message: `no project "${slug}"` }]);
+    const added = await addChat(projectsDir, slug, sent.value, now());
+    if (!added) return noProject(c, slug);
     events.publish({ type: "chat", slug });
     return c.json({ messages: added }, 201);
   });
@@ -253,7 +238,7 @@ export const createApp = ({
     const approval = await approveGate(projectsDir, slug, asked.value.gate, now());
     switch (approval.kind) {
       case "missing":
-        return errorResponse(c, 404, [{ path: "slug", message: `no project "${slug}"` }]);
+        return noProject(c, slug);
       case "broken":
         return errorResponse(c, 422, approval.errors);
       case "refused":

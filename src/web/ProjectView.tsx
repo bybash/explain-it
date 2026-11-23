@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { OpenedProject } from "../schema/api.ts";
 import type { ValidationError } from "../schema/errors.ts";
-import { type Gate, nextGate } from "../schema/project.ts";
+import { type Gate, nextGate, type Project } from "../schema/project.ts";
 import { approveGate, onServerEvents, openProject } from "./api.ts";
 import { Chat } from "./Chat.tsx";
 import { Errors } from "./Errors.tsx";
@@ -34,8 +34,9 @@ export const ProjectView = ({ slug, gate }: { slug: string; gate?: Gate | undefi
     // An agent working over MCP changes the project while its user watches this page.
     const stop = onServerEvents({
       connected: load,
+      // Chat messages change only the chat column, which listens for them itself.
       event: (event) => {
-        if (event.slug === slug) load();
+        if (event.slug === slug && event.type !== "chat") load();
       },
     });
     return () => {
@@ -57,18 +58,37 @@ export const ProjectView = ({ slug, gate }: { slug: string; gate?: Gate | undefi
         </>
       )}
       {!opened && errors.length === 0 && <p className="muted">Opening…</p>}
-      {opened && <Opened opened={opened} asked={gate} />}
+      {opened && (
+        <Opened
+          opened={opened}
+          requested={gate}
+          approved={(project) => setOpened({ ...opened, project })}
+        />
+      )}
     </section>
   );
 };
 
-const Opened = ({ opened, asked }: { opened: OpenedProject; asked: Gate | undefined }) => {
+const Opened = ({
+  opened,
+  requested,
+  approved,
+}: {
+  opened: OpenedProject;
+  requested: Gate | undefined;
+  approved: (project: Project) => void;
+}) => {
   const { slug, project } = opened;
-  const steps = gateSteps(project.gate, asked);
+  const steps = gateSteps(project.gate, requested);
   const viewed = steps.find((s) => s.viewed)?.gate ?? project.gate;
+  // An address naming a gate not reached yet shows the gate reached, and then names it.
+  useEffect(() => {
+    if (requested !== undefined && requested !== viewed)
+      location.replace(`#/projects/${slug}/${viewed}`);
+  }, [requested, viewed, slug]);
   return (
     <div className="workspace">
-      <Chat slug={slug} gate={viewed} />
+      <Chat key={slug} slug={slug} gate={viewed} />
       <div className="panel">
         <h1 className="page-title">{project.name}</h1>
         <p className="muted">
@@ -97,14 +117,22 @@ const Opened = ({ opened, asked }: { opened: OpenedProject; asked: Gate | undefi
           ))}
         </ol>
         {/* Keyed by gate, so an error shown at one gate is gone at the next. */}
-        <GatePanel key={viewed} opened={opened} gate={viewed} />
+        <GatePanel key={viewed} opened={opened} gate={viewed} approved={approved} />
       </div>
     </div>
   );
 };
 
 /** A gate's panel: what it shows, the files so far, and Approve at the gate reached. */
-const GatePanel = ({ opened, gate }: { opened: OpenedProject; gate: Gate }) => {
+const GatePanel = ({
+  opened,
+  gate,
+  approved,
+}: {
+  opened: OpenedProject;
+  gate: Gate;
+  approved: (project: Project) => void;
+}) => {
   const { slug, project } = opened;
   const [errors, setErrors] = useState<readonly ValidationError[]>([]);
   const [approving, setApproving] = useState(false);
@@ -116,6 +144,8 @@ const GatePanel = ({ opened, gate }: { opened: OpenedProject; gate: Gate }) => {
     setApproving(false);
     if (!result.ok) return setErrors(result.errors);
     setErrors([]);
+    // The approved project first, so the next gate is open before the address names it.
+    approved(result.value.project);
     location.hash = `#/projects/${slug}/${result.value.project.gate}`;
   };
 

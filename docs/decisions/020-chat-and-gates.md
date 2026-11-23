@@ -21,7 +21,10 @@ LLM exists. SPEC says the user approves a gate "by chat or by button" and
 - **Chat without an LLM.** Messages go to `chat.jsonl`, one a line, with the
   gate they were sent at. Each gets a stub reply that says the assistant is
   not connected yet and how to go on. A broken line is named by its number
-  and the rest still read. Approving by chat waits for the LLM.
+  and the rest still read, and a line a crash left unfinished is ended
+  before the next message, so it stays the only broken one. A message needs
+  only the project's folder, so a broken `project.json` does not stop the
+  conversation about it. Approving by chat waits for the LLM.
 - **The first end-to-end test** drives the app in Chrome as `npm start` and as
   `npm run dev`: a named error, creating and opening a project, chat that
   survives a restart, the list updating over SSE, and approving and going

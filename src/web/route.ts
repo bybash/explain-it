@@ -31,11 +31,11 @@ export type GateStep = {
 
 /**
  * The gate stepper: the project has reached `reached`; the user looks at
- * `asked` when it is open, and otherwise at the gate reached.
+ * `requested` when it is open, and otherwise at the gate reached.
  */
-export const gateSteps = (reached: Gate, asked?: Gate): GateStep[] => {
+export const gateSteps = (reached: Gate, requested?: Gate): GateStep[] => {
   const at = GATES.indexOf(reached);
-  const viewed = asked !== undefined && GATES.indexOf(asked) <= at ? asked : reached;
+  const viewed = requested !== undefined && GATES.indexOf(requested) <= at ? requested : reached;
   return GATES.map((gate, i) => ({
     gate,
     state: i < at ? "done" : i === at ? "current" : "next",
