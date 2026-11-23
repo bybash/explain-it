@@ -21,6 +21,22 @@ describe("SettingsUpdateSchema", () => {
       expect(SettingsUpdateSchema.safeParse(update).success).toBe(false);
   });
 
+  it("takes http:// only for this machine, where the key never crosses a network", () => {
+    for (const baseUrl of [
+      "http://127.0.0.1:11434/v1",
+      "http://localhost:1234/v1",
+      "http://[::1]:8080/v1",
+      "http://host.docker.internal:11434/v1",
+      "https://llm.example.com/v1",
+    ])
+      expect(SettingsUpdateSchema.safeParse({ baseUrl }).success, baseUrl).toBe(true);
+    for (const baseUrl of ["http://192.168.1.20:11434/v1", "http://llm.example.com/v1"]) {
+      const result = SettingsUpdateSchema.safeParse({ baseUrl });
+      expect(result.success, baseUrl).toBe(false);
+      expect(result.error?.issues[0]?.message).toContain("https://");
+    }
+  });
+
   it("names what is wrong", () => {
     const result = SettingsUpdateSchema.safeParse({ baseUrl: "ftp://x", model: "", apiKey: "a b" });
     expect(result.success).toBe(false);

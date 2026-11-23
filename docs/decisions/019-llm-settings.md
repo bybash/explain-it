@@ -32,10 +32,24 @@ passing `-e OPENROUTER_API_KEY=…`.
 - **The key stays on the server.** The API returns only its last four
   characters (none of a key under 12), never logs it, and writes `.env` with
   mode 600 through a temporary file.
+- **The key never crosses a network unencrypted.** The app speaks plain HTTP,
+  which is safe only within one machine. The API takes a new key only from a
+  request addressed to `localhost`, `127.0.0.1` or `[::1]`; opened over the
+  network (with `HOST` set to a LAN address), the page can change the other
+  settings but not the key, and says to set it in `.env`. Docker is not
+  affected, since its port is published on `127.0.0.1`. A base URL may use
+  `http://` only for this machine or `host.docker.internal`, where Ollama and
+  LM Studio listen; any other server needs `https://`. The base URL rule
+  covers what the page saves; a URL set in the environment is the user's own.
 
 ## Alternatives
 
 - **`OPENROUTER_API_KEY` as the only key name:** reads oddly for an OpenAI or
   local endpoint.
+- **A login token, as Jupyter prints at start:** would stop other programs on
+  this machine calling the API, but they can read `.env` anyway, and every
+  page and MCP client would need the token.
+- **Trusting `X-Forwarded-Proto` for an HTTPS proxy in front of the app:**
+  the header can be forged; a user behind such a proxy sets the key in `.env`.
 - **A test-connection button:** useful, but it adds a network path before the
   client that would own it.
