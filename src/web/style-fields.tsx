@@ -15,14 +15,20 @@ import { Errors } from "./Errors.tsx";
 /** The style form's pieces: a section, a field's label, its box, and the line under it. */
 export const LABEL_CLASS = "mt-3 block font-semibold";
 export const INPUT_CLASS = "field mt-1.5 w-full bg-surface";
-const NOTE_CLASS = "mt-1 text-muted text-sm";
+const NOTE_CLASS = "mb-1 text-muted text-sm";
 
-export const Section = ({ title, children }: { title: string; children: ReactNode }) => (
-  <fieldset className="mt-6 border-0 p-0">
-    <legend className="p-0 font-bold">{title}</legend>
-    {children}
-  </fieldset>
-);
+/** One group of settings, as a card with its name at the top. */
+export const Section = ({ title, children }: { title: string; children: ReactNode }) => {
+  const id = `style-${title.toLowerCase().replaceAll(" ", "-")}-heading`;
+  return (
+    <section className="rounded-box border border-line bg-surface p-4" aria-labelledby={id}>
+      <h3 id={id} className="mb-1 font-bold text-base">
+        {title}
+      </h3>
+      {children}
+    </section>
+  );
+};
 
 /** A text box whose empty value means the field is left out. */
 const Text = ({
@@ -205,7 +211,7 @@ export const LogoFields = ({
           id={`style-logo-${mode}`}
           type="file"
           accept=".png,.jpg,.jpeg,.svg,image/png,image/jpeg,image/svg+xml"
-          className="mt-1.5 block text-sm"
+          className="mt-1.5 block w-full text-muted text-sm file:mr-3 file:cursor-pointer file:rounded-box file:border file:border-line file:bg-page file:px-3 file:py-1.5 file:font-semibold file:text-ink hover:file:border-accent"
           onChange={(e) => pick(mode, e.target.files?.[0])}
         />
       </div>
