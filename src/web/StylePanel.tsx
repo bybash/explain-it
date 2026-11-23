@@ -16,12 +16,20 @@ import {
 import type { ValidationError } from "../schema/errors.ts";
 import { getLogo, saveStyle } from "./api.ts";
 import { Errors } from "./Errors.tsx";
+import { capitalised } from "./labels.ts";
 import { StylePreview } from "./StylePreview.tsx";
+import { CaptionsCard, MusicCard, PacingCard, VoiceCard } from "./sound-fields.tsx";
 import { CardFields, INPUT_CLASS, LABEL_CLASS, LogoFields, Section } from "./style-fields.tsx";
 import { type PendingLogos, previewLogo, styleEdit, withLogoFile } from "./style-form.ts";
+import { Tabs } from "./ui.tsx";
+import { useSamplePlayer } from "./useSamplePlayer.ts";
 
+/** The cards in a tab: two to a row when the panel is wide enough. */
+const CARDS_CLASS = "grid grid-cols-[1fr] items-start gap-4 @2xl:grid-cols-2";
+/** The settings each tab changes, to mark the tab that has unsaved changes. */
+const LOOK_SETTINGS = ["theme", "font", "cards", "logo", "output"] as const;
+const SOUND_SETTINGS = ["voice", "pacing", "captions", "music"] as const;
 const MODE_LABELS = { light: "Light", dark: "Dark", both: "Both (two videos)" } as const;
-const capitalised = (name: string) => name.charAt(0).toUpperCase() + name.slice(1);
 
 /** Whether opening the project found config.json broken, so the defaults stand in for it. */
 const configBroken = (opened: OpenedProject) =>
@@ -29,8 +37,9 @@ const configBroken = (opened: OpenedProject) =>
 
 /**
  * The style gate's panel (SPEC, User flow): the look of the video (palette
- * and mode, font, output, the title and end cards, the logo) as a form, the
- * video drawn with it straight away, and Save. `blocked` says why the gate
+ * and mode, font, output, the title and end cards, the logo) and its sound
+ * (voice, pacing, captions, music) as a form, the video drawn with it
+ * straight away, samples of the voice and the music, and Save. `blocked` says why the gate
  * cannot be approved yet: there are unsaved changes, or config.json is
  * broken and Save writes it again.
  */
@@ -54,10 +63,14 @@ export const StylePanel = ({
   /** The style was saved elsewhere (MCP, another tab) while this form had changes. */
   const [elsewhere, setElsewhere] = useState(false);
 
+  const player = useSamplePlayer();
+  const [tab, setTab] = useState<"look" | "sound">("look");
   const broken = configBroken(opened);
   const edit = styleEdit(saved, draft, pending);
   const changed = Object.keys(edit.config ?? {}).length > 0 || edit.logo !== undefined;
   const unsaved = changed || broken;
+  const changedIn = (settings: readonly string[]) =>
+    settings.some((setting) => setting in (edit.config ?? {}));
   const checked = parseConfig(draft);
   const formErrors = checked.ok ? [] : checked.errors;
 
@@ -158,110 +171,143 @@ export const StylePanel = ({
             config.json is broken, so the form shows the defaults. Saving writes it again.
           </p>
         )}
-        <div className="grid grid-cols-[1fr] items-start gap-4 @2xl:grid-cols-2">
-          <Section title="Colours">
-            <label className={LABEL_CLASS} htmlFor="style-palette">
-              Palette
-            </label>
-            <select
-              id="style-palette"
-              className={INPUT_CLASS}
-              value={typeof draft.theme.palette === "string" ? draft.theme.palette : "custom"}
-              onChange={(e) =>
-                change({ ...draft, theme: { ...draft.theme, palette: e.target.value } })
-              }
-            >
-              {Object.keys(PALETTES).map((name) => (
-                <option key={name} value={name}>
-                  {capitalised(name)}
-                </option>
-              ))}
-              {typeof draft.theme.palette !== "string" && (
-                <option value="custom" disabled>
-                  Custom (set over MCP)
-                </option>
-              )}
-            </select>
-            <span className={LABEL_CLASS}>Mode</span>
-            <div className="mt-1.5 flex flex-wrap gap-4" role="radiogroup" aria-label="Mode">
-              {THEME_MODES.map((mode) => (
-                <label key={mode} className="flex items-center gap-2">
-                  <input
-                    type="radio"
-                    name="style-mode"
-                    checked={draft.theme.mode === mode}
-                    onChange={() => change({ ...draft, theme: { ...draft.theme, mode } })}
+        <Tabs
+          label="Style"
+          selected={tab}
+          select={setTab}
+          tabs={[
+            {
+              id: "look",
+              label: "Look",
+              marked: changedIn(LOOK_SETTINGS) || edit.logo !== undefined,
+              content: (
+                <div className={CARDS_CLASS}>
+                  <Section title="Colours">
+                    <label className={LABEL_CLASS} htmlFor="style-palette">
+                      Palette
+                    </label>
+                    <select
+                      id="style-palette"
+                      className={INPUT_CLASS}
+                      value={
+                        typeof draft.theme.palette === "string" ? draft.theme.palette : "custom"
+                      }
+                      onChange={(e) =>
+                        change({ ...draft, theme: { ...draft.theme, palette: e.target.value } })
+                      }
+                    >
+                      {Object.keys(PALETTES).map((name) => (
+                        <option key={name} value={name}>
+                          {capitalised(name)}
+                        </option>
+                      ))}
+                      {typeof draft.theme.palette !== "string" && (
+                        <option value="custom" disabled>
+                          Custom (set over MCP)
+                        </option>
+                      )}
+                    </select>
+                    <span className={LABEL_CLASS}>Mode</span>
+                    <div
+                      className="mt-1.5 flex flex-wrap gap-4"
+                      role="radiogroup"
+                      aria-label="Mode"
+                    >
+                      {THEME_MODES.map((mode) => (
+                        <label key={mode} className="flex items-center gap-2">
+                          <input
+                            type="radio"
+                            name="style-mode"
+                            checked={draft.theme.mode === mode}
+                            onChange={() => change({ ...draft, theme: { ...draft.theme, mode } })}
+                          />
+                          {MODE_LABELS[mode]}
+                        </label>
+                      ))}
+                    </div>
+                  </Section>
+
+                  <Section title="Text">
+                    <label className={LABEL_CLASS} htmlFor="style-font">
+                      Font
+                    </label>
+                    <select
+                      id="style-font"
+                      className={INPUT_CLASS}
+                      value={draft.font}
+                      onChange={(e) => change({ ...draft, font: e.target.value })}
+                    >
+                      {FONTS.map((font) => (
+                        <option key={font.id} value={font.id}>
+                          {font.family}
+                        </option>
+                      ))}
+                    </select>
+                  </Section>
+
+                  <CardFields
+                    cards={draft.cards ?? {}}
+                    name={opened.project.name}
+                    change={(cards) => {
+                      const { cards: _cards, ...rest } = draft;
+                      // A card that is left out is no key at all, so it compares equal to one never set.
+                      const kept = Object.fromEntries(Object.entries(cards).filter(([, c]) => c));
+                      change(Object.keys(kept).length === 0 ? rest : { ...rest, cards: kept });
+                    }}
                   />
-                  {MODE_LABELS[mode]}
-                </label>
-              ))}
-            </div>
-          </Section>
 
-          <Section title="Text">
-            <label className={LABEL_CLASS} htmlFor="style-font">
-              Font
-            </label>
-            <select
-              id="style-font"
-              className={INPUT_CLASS}
-              value={draft.font}
-              onChange={(e) => change({ ...draft, font: e.target.value })}
-            >
-              {FONTS.map((font) => (
-                <option key={font.id} value={font.id}>
-                  {font.family}
-                </option>
-              ))}
-            </select>
-          </Section>
+                  <LogoFields
+                    logo={draft.logo}
+                    errors={fileErrors}
+                    pick={pickLogo}
+                    place={(logo) => change({ ...draft, logo })}
+                    remove={() => {
+                      const { logo: _logo, ...rest } = draft;
+                      setPending({});
+                      change(rest);
+                    }}
+                  />
 
-          <CardFields
-            cards={draft.cards ?? {}}
-            name={opened.project.name}
-            change={(cards) => {
-              const { cards: _cards, ...rest } = draft;
-              // A card that is left out is no key at all, so it compares equal to one never set.
-              const kept = Object.fromEntries(Object.entries(cards).filter(([, c]) => c));
-              change(Object.keys(kept).length === 0 ? rest : { ...rest, cards: kept });
-            }}
-          />
-
-          <LogoFields
-            logo={draft.logo}
-            errors={fileErrors}
-            pick={pickLogo}
-            place={(logo) => change({ ...draft, logo })}
-            remove={() => {
-              const { logo: _logo, ...rest } = draft;
-              setPending({});
-              change(rest);
-            }}
-          />
-
-          <Section title="Output">
-            <label className={LABEL_CLASS} htmlFor="style-resolution">
-              Resolution
-            </label>
-            <select
-              id="style-resolution"
-              className={INPUT_CLASS}
-              value={draft.output.resolution}
-              onChange={(e) =>
-                change({
-                  ...draft,
-                  output: { resolution: e.target.value as (typeof RESOLUTIONS)[number] },
-                })
-              }
-            >
-              {RESOLUTIONS.map((resolution) => (
-                <option key={resolution} value={resolution}>
-                  {resolution}
-                </option>
-              ))}
-            </select>
-          </Section>
-        </div>
+                  <Section title="Output">
+                    <label className={LABEL_CLASS} htmlFor="style-resolution">
+                      Resolution
+                    </label>
+                    <select
+                      id="style-resolution"
+                      className={INPUT_CLASS}
+                      value={draft.output.resolution}
+                      onChange={(e) =>
+                        change({
+                          ...draft,
+                          output: { resolution: e.target.value as (typeof RESOLUTIONS)[number] },
+                        })
+                      }
+                    >
+                      {RESOLUTIONS.map((resolution) => (
+                        <option key={resolution} value={resolution}>
+                          {resolution}
+                        </option>
+                      ))}
+                    </select>
+                  </Section>
+                </div>
+              ),
+            },
+            {
+              id: "sound",
+              label: "Sound",
+              marked: changedIn(SOUND_SETTINGS),
+              content: (
+                <div className={CARDS_CLASS}>
+                  <VoiceCard slug={slug} draft={draft} change={change} player={player} />
+                  <PacingCard draft={draft} change={change} />
+                  <CaptionsCard draft={draft} change={change} />
+                  <MusicCard draft={draft} change={change} player={player} />
+                </div>
+              ),
+            },
+          ]}
+        />
         <Errors errors={formErrors} />
         {/* Stays in view while the cards scroll, so Save is always at hand. */}
         <div className="sticky bottom-4 mt-4 flex flex-wrap items-center gap-3 rounded-box border border-line bg-surface p-3 shadow-sm">

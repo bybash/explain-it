@@ -7,6 +7,8 @@ import {
   LOGO_MAX_BYTES,
   LOGO_SHOWS,
   LogoImagesSchema,
+  MusicSchema,
+  VoiceSchema,
 } from "./config.ts";
 import { ValidationErrorSchema } from "./errors.ts";
 import { GraphSchema } from "./graph.ts";
@@ -48,6 +50,24 @@ export type GraphSaveOutcome = Pick<GraphSaved, "staleBeats" | "storyboardProble
 
 /** Where the API serves the bundled fonts, which the preview loads as the renderer does. */
 export const FONTS_PATH = "/api/fonts/";
+
+/** What a voice sample says when the script has no narration yet. */
+export const SAMPLE_LINE = "This is how the narration of your video will sound.";
+/** How long a music sample lasts, in seconds: enough to hear the mood. */
+export const MUSIC_SAMPLE_SECONDS = 15;
+
+/** `GET /api/projects/:slug/samples/voice`: the voice and speed to speak the sample in. */
+export const VoiceSampleQuerySchema = z.strictObject({
+  voice: VoiceSchema.shape.id.unwrap(),
+  speed: z.coerce.number().pipe(VoiceSchema.shape.speed.unwrap()),
+});
+
+/** `GET /api/samples/music`: the music to play a few seconds of. */
+export const MusicSampleQuerySchema = z.strictObject({
+  mood: MusicSchema.shape.mood.unwrap(),
+  seed: z.coerce.number().pipe(MusicSchema.shape.seed.unwrap()),
+  volumeDb: z.coerce.number().pipe(MusicSchema.shape.volumeDb.unwrap()),
+});
 
 /** A logo file the style gate sends: the image itself, since the page cannot name a file on the server. */
 const LogoUploadSchema = z.strictObject({ dataUrl: z.string() });

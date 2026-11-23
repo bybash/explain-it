@@ -22,9 +22,9 @@ export const Section = ({ title, children }: { title: string; children: ReactNod
   const id = `style-${title.toLowerCase().replaceAll(" ", "-")}-heading`;
   return (
     <section className="rounded-box border border-line bg-surface p-4" aria-labelledby={id}>
-      <h3 id={id} className="mb-1 font-bold text-base">
+      <h4 id={id} className="mb-1 font-bold text-base">
         {title}
-      </h3>
+      </h4>
       {children}
     </section>
   );

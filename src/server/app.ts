@@ -24,6 +24,7 @@ import { approveGate } from "./gates.ts";
 import { graphRoutes } from "./graph-routes.ts";
 import { createProject, listProjects, openProject, projectDir, projectExists } from "./projects.ts";
 import { errorResponse, jsonBody, noProject } from "./responses.ts";
+import { sampleRoutes } from "./sample-routes.ts";
 import type { SettingsStore } from "./settings.ts";
 import { isStyleSave, styleRoutes } from "./style-routes.ts";
 
@@ -232,6 +233,7 @@ export const createApp = ({
 
   graphRoutes(app, { projectsDir, now, events });
   styleRoutes(app, { projectsDir, now, events });
+  sampleRoutes(app, { projectsDir, tts });
 
   app.post("/api/projects/:slug/approve", async (c) => {
     const slug = c.req.param("slug");

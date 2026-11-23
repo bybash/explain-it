@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { OpenedProject } from "../schema/api.ts";
 import type { Config, LogoImages } from "../schema/config.ts";
 import { FromPreviewSchema, type Mark, type ToPreview } from "./preview-protocol.ts";
+import { Pill } from "./ui.tsx";
 
 /** How long the form pauses before the preview draws it again. */
 const PAUSE_MS = 150;
@@ -110,14 +111,9 @@ export const StylePreview = ({
       </div>
       <div className="mt-2 flex flex-wrap items-center gap-2">
         {marks.map((mark) => (
-          <button
-            key={mark.label}
-            type="button"
-            className="rounded-full border border-line px-3 py-1 text-sm hover:border-accent"
-            onClick={() => seek(mark.at)}
-          >
+          <Pill key={mark.label} onClick={() => seek(mark.at)}>
             {mark.label}
-          </button>
+          </Pill>
         ))}
         {config.theme.mode === "both" && (
           <label className="ml-auto flex items-center gap-2 text-muted text-sm">

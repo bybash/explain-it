@@ -165,6 +165,36 @@ export const EndCardSchema = z
     "Closes the video: the headline, the link with its QR code, where to find it, the credit.",
   );
 
+/** How fast the voice may speak, as a multiple of its own pace. */
+export const VOICE_SPEEDS = { min: 0.5, max: 2 } as const;
+/** How loud the music may be under the voice, in dB. */
+export const MUSIC_VOLUMES_DB = { min: -60, max: 0 } as const;
+
+/** How the narration is spoken: whether, with which voice, how fast. */
+export const VoiceSchema = z.strictObject({
+  enabled: z.boolean().default(true),
+  id: z
+    .enum(VOICE_IDS)
+    .default("af_heart")
+    .describe("A Kokoro voice: a = American, b = British English; f = female, m = male."),
+  speed: z.number().min(VOICE_SPEEDS.min).max(VOICE_SPEEDS.max).default(1),
+});
+
+/** The music under the voice: whether, its mood, which take of it, how loud. */
+export const MusicSchema = z.strictObject({
+  enabled: z.boolean().default(true),
+  mood: z.enum(MUSIC_MOODS).default("calm"),
+  seed: MusicSeedSchema.default(1),
+  volumeDb: z
+    .number()
+    .min(MUSIC_VOLUMES_DB.min)
+    .max(MUSIC_VOLUMES_DB.max)
+    .default(-12)
+    .describe(
+      `The music's level against the voice while nobody speaks, in dB; it dips ${-MUSIC_DUCK_DB} dB more while the voice speaks. Without a voice the music is the whole mix, brought to the target loudness, so this has no effect.`,
+    ),
+});
+
 const PaletteNameSchema = z
   .string()
   .regex(/^[a-z][a-z0-9-]*$/, { error: "must be a palette name like default or ocean" });
@@ -185,16 +215,7 @@ export const ConfigSchema = z
       .describe(
         `How unhurried the video is: the pause after each beat and the shortest a beat can be (${PACES.map((pace) => `${pace}: ${PACE_TIMINGS[pace].pauseAfter} s, ${PACE_TIMINGS[pace].minBeat} s`).join("; ")}). Animations keep their speed at every pace.`,
       ),
-    voice: z
-      .strictObject({
-        enabled: z.boolean().default(true),
-        id: z
-          .enum(VOICE_IDS)
-          .default("af_heart")
-          .describe("A Kokoro voice: a = American, b = British English; f = female, m = male."),
-        speed: z.number().min(0.5).max(2).default(1),
-      })
-      .prefault({}),
+    voice: VoiceSchema.prefault({}),
     captions: z
       .strictObject({
         narration: z.boolean().default(true),
@@ -202,21 +223,7 @@ export const ConfigSchema = z
         size: z.enum(CAPTION_SIZES).default("M"),
       })
       .prefault({}),
-    music: z
-      .strictObject({
-        enabled: z.boolean().default(true),
-        mood: z.enum(MUSIC_MOODS).default("calm"),
-        seed: MusicSeedSchema.default(1),
-        volumeDb: z
-          .number()
-          .min(-60)
-          .max(0)
-          .default(-12)
-          .describe(
-            `The music's level against the voice while nobody speaks, in dB; it dips ${-MUSIC_DUCK_DB} dB more while the voice speaks. Without a voice the music is the whole mix, brought to the target loudness, so this has no effect.`,
-          ),
-      })
-      .prefault({}),
+    music: MusicSchema.prefault({}),
     output: z
       .strictObject({
         resolution: z.enum(RESOLUTIONS).default("1080p"),
