@@ -39,6 +39,8 @@ Slices keep their IDs, but after Milestone 1 they are built in this order:
 5. **Milestones 5 and 6**, as listed, with **3.6** (the script gate's panel)
    just before **5.4**: until the LLM drafts scripts, a script comes over MCP,
    and nothing blocks on editing it in the app.
+6. **Milestone 7**, share outputs: not placed in the order yet. Its open
+   questions (below the table) are settled first, in a decision record.
 
 Audio waits because the engine already renders a complete silent video.
 MCP needs only the server to reach a finished video from the IDE, whereas
@@ -134,6 +136,34 @@ The goal: make a video end to end from an IDE, with no LLM in explAIn-it.
 | 6.3 | **Golden stills in CI**: stills of each example compared against stored images | CI fails on a visual regression |
 | 6.4 | **Docs**: README with a demo video, `docs/ARCHITECTURE.md`, final `CONTRIBUTING.md`, tested models list | A new contributor can run the app from the README alone |
 | 6.5 | **Release v0.1.0**: changelog, tag, image | The release is published |
+
+## Milestone 7: share outputs
+
+The goal: explain a code change, a new feature or an idea where people
+already read (Slack, Jira, Notion, a PR), to readers who skip long PRs and
+documents. Each output is made from the same project (graph, script,
+renderer), so the outputs and the video always agree.
+
+| ID | Slice | Done when |
+|---|---|---|
+| 7.1 | **Storyboard strip**: 4 to 8 stills, each with its caption, as one image, built on the contact sheet's page (2.7); exported from MCP and the render gate | The example's strip reads without sound and posts to Slack under 1 MB |
+| 7.2 | **GIF clip**: one scene, at most 15 s, captions burned in, no sound, from the renderer and ffmpeg | A scene of the example plays inline in Slack and in a GitHub comment, under 5 MB |
+| 7.3 | **Diagram export**: the graph as SVG and PNG, plus its Mermaid text (3.4) | The example's diagram pastes into Notion, and its Mermaid draws on GitHub |
+| 7.4 | **TL;DR card and summary**: a title, at most three bullets (what changed, why, what to look at) and a still, as one image; and a short Markdown summary from the script's captions | The example gives a card that reads at a glance and a summary for a PR body |
+| 7.5 | **Change explainer over MCP**: an `explain_change` prompt and tool. The agent, which already has the diff, drafts the components a change touches as the graph, then before, after and what to review as the script, and gets the GIF, the card and the summary back | A pull request in this repository gets its explainer posted by the agent |
+| 7.6 | **Interactive page**: one self-contained HTML file with the player and the beat list, clicking a beat to go to it | The file opens offline in a browser and plays the example |
+
+Open questions, settled before the milestone starts:
+
+- **Sharing beyond the machine.** The SPEC keeps everything local, with no
+  login. Files (image, GIF, Markdown, an HTML file) fit that. Hosted links,
+  link unfurls and Slack or Jira apps would change the SPEC.
+- **Trust.** An explainer of a change should say what it covered. Checking
+  a video against the source code is a v1 non-goal; `sources` is recorded
+  but not checked yet, and that check would back the change explainer.
+- **Limits per format** (GIF length, card bullets, strip stills) live in
+  the zod schemas, as every other limit does, so the LLM's drafts keep to
+  them.
 
 ## Carried over
 
@@ -295,5 +325,8 @@ that finishes it.
 - MCP: exporting a project into the user's repository, a stdio shim that
   starts the app, elicitation for approvals, a check that lists `sources`
   changed since the video was made.
-- More voices and languages, 9:16 vertical, GIF output, camera moves within a
-  scene.
+- More voices and languages, 9:16 vertical, camera moves within a scene.
+- More inputs for Milestone 7's outputs: a ticket or epic as a short idea
+  pitch, a release as one card or clip per feature, a module as an
+  onboarding walkthrough (as 4.4's walkthrough of this repository).
+- The narration alone as audio, to listen to away from the screen.
