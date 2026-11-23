@@ -86,7 +86,7 @@ The goal: the CLI renders a hand-written example to an MP4, with no LLM and no v
 | ID | Slice | Done when |
 |---|---|---|
 | ✅ 3.1 | **Server and shell**: Hono, the projects API over folders, SSE, `127.0.0.1` by default, a Vite and React shell listing projects, `npm run dev` and `npm start` | Projects can be created, listed and opened |
-| 3.2 | **Settings**: base URL, key and model read from and written to `.env`; keys are never logged or sent to the browser in full | Settings round-trip; the key is masked in the UI |
+| ✅ 3.2 | **Settings**: base URL, key and model read from and written to `.env`; keys are never logged or sent to the browser in full | Settings round-trip; the key is masked in the UI |
 | 3.3 | **Chat and gates**: the chat column, the gate stepper, the split layout, `chat.jsonl`; no LLM yet (a stub reply) | Messages persist across restarts |
 | 3.4 | **Mermaid round-trip**: Mermaid to graph (jsdom, pinned version) and graph to Mermaid, keeping kind, icon and category by id | Round-trip tests on all examples and a set of Mermaid fixtures |
 | 3.5 | **Graph gate panel**: a Mermaid editor with the rendered diagram, approve and edit | Editing the Mermaid updates `graph.json` |
@@ -192,6 +192,16 @@ that finishes it.
 - The page count defaults to 4 (`PAGES` in `src/render/render.ts`; only
   tests pass `pages`). On a machine with many more cores, choosing it from
   the CPU count would help more than running jobs side by side.
+
+### For 5.1 (LLM client), from 3.2
+
+- `settingsStore(...).current()` in `src/server/settings.ts` gives the base
+  URL, model and full key, read fresh from `.env` on each call; the client
+  takes them from there. The page checks nothing against the provider: a
+  wrong key or model shows up only on the first call, so 5.1 should name it
+  plainly ("the key was refused by openrouter.ai"). The suggested model
+  `anthropic/claude-sonnet-5.5` (`SUGGESTED_MODEL`) is unchecked; confirm
+  the id when recording the first fixtures.
 
 ### For 3.3 (chat and gates), from 3.1
 

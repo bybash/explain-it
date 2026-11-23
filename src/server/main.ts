@@ -5,6 +5,7 @@
 //   PROJECTS_DIR   the projects folder; ./projects by default
 //   CACHE_DIR      the cache folder, for the voice model; ./cache by default
 //   PUBLIC_URL     where users open the app, for preview links; the request's own address by default
+//   ENV_FILE       the .env file the settings page reads and writes; ./.env by default
 import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -14,6 +15,7 @@ import { kokoroProvider } from "../audio/kokoro.ts";
 import { formatErrors } from "../schema/errors.ts";
 import { createApp } from "./app.ts";
 import { listenOptions } from "./listen.ts";
+import { settingsStore } from "./settings.ts";
 
 const listen = listenOptions(process.env);
 if (!listen.ok) {
@@ -30,6 +32,11 @@ const app = createApp({
   now: () => new Date(),
   hosts: wildcard ? [] : [hostname],
   ...(process.env.PUBLIC_URL ? { publicUrl: process.env.PUBLIC_URL } : {}),
+  // `.env` is never loaded into the process, so what the environment sets is the user's own.
+  settings: settingsStore({
+    envFile: resolve(process.env.ENV_FILE ?? ".env"),
+    environment: process.env,
+  }),
 });
 
 if (process.env.API_ONLY !== "1") {

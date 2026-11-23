@@ -18,6 +18,7 @@ import type { ValidationError } from "../schema/errors.ts";
 import { MCP_PATH } from "../schema/mcp.ts";
 import { createEvents } from "./events.ts";
 import { createProject, listProjects, openProject } from "./projects.ts";
+import type { SettingsStore } from "./settings.ts";
 
 export type AppOptions = {
   /** The folder that holds one folder per project. */
@@ -39,6 +40,8 @@ export type AppOptions = {
   readonly missingRenderTools?: () => Promise<readonly MissingTool[]>;
   /** Runs the layout checks and writes the report; the real ones by default, a fake in tests. */
   readonly runChecks?: ToolContext["runChecks"];
+  /** The LLM settings in `.env` (see `main.ts`); tests give each its own file. */
+  readonly settings: SettingsStore;
 };
 
 /** How often an idle event stream sends a comment, so proxies and browsers keep it open. */
@@ -76,6 +79,7 @@ export const createApp = ({
   missingRenderTools = findMissingRenderTools,
   runChecks = (dir, project, lines, skip) =>
     checkProjectFolder({ dir, project, lines, skip, now: now() }),
+  settings,
 }: AppOptions) => {
   const app = new Hono();
   const events = createEvents();
@@ -179,6 +183,21 @@ export const createApp = ({
     if (!opened) return errorResponse(c, 404, [{ path: "slug", message: `no project "${slug}"` }]);
     if (!opened.ok) return errorResponse(c, 422, opened.errors);
     return c.json(opened.value);
+  });
+
+  // The key goes in and never comes back out: the page sees only its last characters.
+  app.get("/api/settings", async (c) => c.json(await settings.view()));
+
+  app.put("/api/settings", async (c) => {
+    let body: unknown;
+    try {
+      body = await c.req.json();
+    } catch {
+      return errorResponse(c, 400, [{ path: "(body)", message: "not valid JSON" }]);
+    }
+    const saved = await settings.update(body);
+    if (!saved.ok) return errorResponse(c, 400, saved.errors);
+    return c.json(saved.value);
   });
 
   app.get("/api/events", (c) =>
