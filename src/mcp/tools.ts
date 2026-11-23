@@ -1,6 +1,7 @@
 import type { TtsProvider } from "../audio/tts.ts";
 import { narrationLengths, readCachedVoice, type VoiceLine } from "../audio/voice.ts";
 import { graphToMermaid } from "../mermaid/generate.ts";
+import type { CheckRunOptions } from "../render/check.ts";
 import type { MissingTool } from "../render/environment.ts";
 import type { ProjectFiles } from "../render/load.ts";
 import type { RenderQueue } from "../render/queue.ts";
@@ -51,6 +52,7 @@ export type ToolContext = {
     project: ProjectFiles,
     lines: readonly VoiceLine[],
     skip: readonly SkippedChecks[],
+    options?: CheckRunOptions,
   ) => Promise<CheckReport>;
   /** Speaks the narration; Kokoro in the app, a fake in tests. */
   readonly tts: TtsProvider;

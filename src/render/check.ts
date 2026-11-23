@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { mkdtemp, rename, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -41,9 +42,15 @@ const ShapesSchema = z.array(ShapeSchema);
 export const checkLayout = async ({
   project,
   pageUrl,
+  signal,
+  onProgress,
 }: {
   readonly project: ProjectFiles;
   readonly pageUrl: string;
+  /** Stops the checks between beats; they then throw. */
+  readonly signal?: AbortSignal | undefined;
+  /** Called after each beat, with how many are checked of how many. */
+  readonly onProgress?: ((checked: number, total: number) => void) | undefined;
 }): Promise<{
   readonly beats: number;
   readonly warnings: CheckWarning[];
@@ -58,6 +65,7 @@ export const checkLayout = async ({
     const warnings: CheckWarning[] = [];
     const stills: Buffer[] = [];
     for (const beat of beats) {
+      if (signal?.aborted) throw new Error("the checks were stopped");
       const at = stillAt(beat);
       const drawn = await page.evaluate((t) => {
         const w = window as unknown as Checkable;
@@ -72,6 +80,7 @@ export const checkLayout = async ({
         );
       warnings.push(...layoutWarnings(shapes.value, { scene: beat.scene, beat: beat.id, at }));
       stills.push(await page.screenshot({ type: "png" }));
+      onProgress?.(stills.length, beats.length);
     }
     return { beats: beats.length, warnings, spans: beats, stills };
   } finally {
@@ -90,12 +99,20 @@ type Meter = (file: string) => Promise<{ readonly integrated: number; readonly t
 export const checkSoundtrack = async ({
   project,
   lines,
+  soundtrack,
   measure = measureLoudness,
 }: {
   readonly project: ProjectFiles;
   readonly lines: readonly VoiceLine[];
+  /**
+   * The soundtrack already mixed as a render mixes it (the Preview gate's),
+   * to measure instead of mixing one; null when the video is silent.
+   */
+  readonly soundtrack?: string | null | undefined;
   readonly measure?: Meter | undefined;
 }): Promise<CheckWarning[]> => {
+  if (soundtrack !== undefined)
+    return soundtrack === null ? [] : loudnessWarnings(await measure(soundtrack));
   const scratch = await mkdtemp(join(tmpdir(), "explain-it-check-"));
   try {
     const file = await makeSoundtrack({ project, lines, out: join(scratch, "audio.wav") });
@@ -155,13 +172,52 @@ const writeSheets = async (
   }
 };
 
+/** Bumped when the checks change what they find, so reports made before read as out of date. */
+const CHECKS_VERSION = 1;
+
+/**
+ * A key of what the checks look at: the graph, the script, the layout and
+ * the style. The voice's measured lengths follow from the script and the
+ * voice settings, so they are left out, and a reader without the voice can
+ * still tell whether a report is about the files as they are.
+ */
+export const checkedFilesKey = (
+  project: Pick<ProjectFiles, "graph" | "storyboard" | "layout" | "config">,
+): string =>
+  createHash("sha256")
+    .update(
+      JSON.stringify([
+        CHECKS_VERSION,
+        project.graph,
+        project.storyboard,
+        project.layout,
+        project.config,
+      ]),
+    )
+    .digest("hex")
+    .slice(0, 32);
+
+/** What a caller can add to a run of the checks: the Preview gate's soundtrack, a stop, progress. */
+export type CheckRunOptions = {
+  /** See `checkSoundtrack`: measured instead of mixing one. */
+  readonly soundtrack?: string | null | undefined;
+  readonly signal?: AbortSignal | undefined;
+  /** Beats checked on the page so far, of how many. */
+  readonly onProgress?: ((checked: number, total: number) => void) | undefined;
+};
+
 /** The layout checks on the project's page: the render page built, served for the length of them. */
-const layoutOnPage = async (project: ProjectFiles) => {
+const layoutOnPage = async (project: ProjectFiles, options: CheckRunOptions) => {
   const page = await buildRenderPage();
   try {
     const server = await serveRenderPage(page.dir);
     try {
-      return await checkLayout({ project, pageUrl: server.url });
+      return await checkLayout({
+        project,
+        pageUrl: server.url,
+        signal: options.signal,
+        onProgress: options.onProgress,
+      });
     } finally {
       await server.close();
     }
@@ -183,7 +239,10 @@ export const checkProjectFolder = async ({
   lines,
   skip = [],
   now,
-}: {
+  soundtrack,
+  signal,
+  onProgress,
+}: CheckRunOptions & {
   readonly dir: string;
   readonly project: ProjectFiles;
   /** The voice's lines (see `withNarration`), for the soundtrack the loudness check measures. */
@@ -200,13 +259,15 @@ export const checkProjectFolder = async ({
   );
   const layout = skipped.has("overlap")
     ? { beats: plan.beats.length, warnings: [], spans: [], stills: [] }
-    : await layoutOnPage(project);
+    : await layoutOnPage(project, { signal, onProgress });
   const warnings = [
     ...layout.warnings,
     ...readingWarnings(plan),
     ...(skipped.has("narration-fit") ? [] : narrationFitWarnings(plan, project.narration ?? {})),
-    ...(skipped.has("loudness") ? [] : await checkSoundtrack({ project, lines })),
+    ...(skipped.has("loudness") ? [] : await checkSoundtrack({ project, lines, soundtrack })),
   ];
+  // A run stopped for a newer one leaves the report and sheet that one writes.
+  if (signal?.aborted) throw new Error("the checks were stopped");
   const contactSheet =
     layout.stills.length > 0
       ? await writeSheets(dir, { beats: layout.spans, stills: layout.stills, warnings })
@@ -222,6 +283,7 @@ export const checkProjectFolder = async ({
     beats: layout.beats,
     warnings,
     skipped: [...skip],
+    files: checkedFilesKey(project),
     ...(contactSheet ? { contactSheet } : {}),
   };
   const file = join(dir, "checks.json");

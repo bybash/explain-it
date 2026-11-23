@@ -21,7 +21,13 @@ import { openProject, projectDir } from "./projects.ts";
 const SOUND_VERSION = 1;
 
 /** A project's sound in the making, or made: which files it is for, and how far it is. */
-type Job = { readonly key: string; status: PreviewSound; readonly stop: AbortController };
+type Job = {
+  readonly key: string;
+  status: PreviewSound;
+  readonly stop: AbortController;
+  /** Settles when the job stops making the sound: made, failed or stopped. */
+  finished: Promise<void>;
+};
 
 /** The files the preview needs that the project lacks, each named with why. */
 const missingFiles = (opened: OpenedProject): ValidationError[] =>
@@ -100,6 +106,7 @@ export const previewSound = ({
 
   const makeSound = async (slug: string, job: Job, project: SoundtrackProject) => {
     const signal = job.stop.signal;
+    let step: "voice" | "mix" = "voice";
     try {
       const lines = await generateVoice({
         projectDir: projectDir(projectsDir, slug),
@@ -110,7 +117,8 @@ export const previewSound = ({
         onProgress: (spoken, total) => report(slug, job, { state: "speaking", spoken, total }),
       });
       const ffmpeg = (await missingTools()).find((m) => m.tool === "ffmpeg");
-      if (ffmpeg) return report(slug, job, { state: "failed", message: ffmpeg.message });
+      step = "mix";
+      if (ffmpeg) return report(slug, job, { state: "failed", step, message: ffmpeg.message });
       report(slug, job, { state: "mixing" });
       const narration = narrationLengths(lines);
       await mkdir(soundDir(slug), { recursive: true });
@@ -136,7 +144,7 @@ export const previewSound = ({
     } catch (error) {
       if (signal.aborted) return;
       const message = error instanceof Error ? error.message : String(error);
-      report(slug, job, { state: "failed", message });
+      report(slug, job, { state: "failed", step, message });
     }
   };
 
@@ -163,7 +171,12 @@ export const previewSound = ({
       if (current?.key === key && current.status.state !== "failed") return ok(current.status);
       current?.stop.abort();
 
-      const job: Job = { key, status: { state: "idle" }, stop: new AbortController() };
+      const job: Job = {
+        key,
+        status: { state: "idle" },
+        stop: new AbortController(),
+        finished: Promise.resolve(),
+      };
       jobs.set(slug, job);
       if (existsSync(soundFile(slug, key))) {
         const lines = await readCachedVoice({
@@ -176,8 +189,22 @@ export const previewSound = ({
         return ok(job.status);
       }
       job.status = { state: "speaking", spoken: 0, total: 0 };
-      void makeSound(slug, job, project);
+      job.finished = makeSound(slug, job, project);
       return ok(job.status);
+    },
+
+    /**
+     * The project's sound once it is no longer being made: ready, silent or
+     * failed, or idle when nothing was asked for. A newer job that takes the
+     * older's place while waiting is waited for in turn.
+     */
+    settled: async (slug: string): Promise<PreviewSound> => {
+      for (;;) {
+        const job = jobs.get(slug);
+        if (!job) return { state: "idle" };
+        await job.finished;
+        if (jobs.get(slug) === job) return job.status;
+      }
     },
 
     /** How far the project's sound is; idle when nothing was asked for yet. */

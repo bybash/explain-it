@@ -7,7 +7,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { sheetLayout } from "../checks/sheet.ts";
 import { beatOptions, buildBeats } from "../engine/beats/build.ts";
 import { CheckReportSchema } from "../schema/checks.ts";
-import { checkLayout, checkProjectFolder } from "./check.ts";
+import { checkedFilesKey, checkLayout, checkProjectFolder } from "./check.ts";
 import { loadProject, type ProjectFiles } from "./load.ts";
 import { buildRenderPage, serveRenderPage } from "./page.ts";
 
@@ -57,12 +57,29 @@ describe.skipIf(!hasChrome)("the layout checks on the render page (Chrome)", () 
     await page?.remove();
   });
 
-  it("looks at every beat, at its midpoint", async () => {
+  it("looks at every beat, at its midpoint, telling how far it is", async () => {
     const project = await example();
-    const { beats } = await checkLayout({ project, pageUrl: server.url });
+    const told: [number, number][] = [];
+    const { beats } = await checkLayout({
+      project,
+      pageUrl: server.url,
+      onProgress: (checked, total) => told.push([checked, total]),
+    });
     expect(beats).toBe(
       buildBeats(project.storyboard, project.graph, beatOptions(project.config)).beats.length,
     );
+    expect(told).toEqual(Array.from({ length: beats }, (_, i) => [i + 1, beats]));
+  }, 60_000);
+
+  it("stops when asked to", async () => {
+    const stop = new AbortController();
+    const checking = checkLayout({
+      project: await example(),
+      pageUrl: server.url,
+      signal: stop.signal,
+      onProgress: () => stop.abort(),
+    });
+    await expect(checking).rejects.toThrow(/stopped/);
   }, 60_000);
 
   it("reports a box an override moved onto another, at the beats it shows in", async () => {
@@ -114,4 +131,52 @@ describe.skipIf(!hasChrome || !hasFfmpeg)("checkProjectFolder (Chrome and ffmpeg
     expect(jpeg.subarray(0, 2).toString("hex")).toBe("ffd8");
     expect(jpeg.length).toBeLessThan(png.length);
   }, 120_000);
+});
+
+describe("checkProjectFolder, with only the checks that need no tools", () => {
+  let dir: string;
+  beforeAll(() => {
+    dir = mkdtempSync(join(tmpdir(), "explain-it-check-key-"));
+  });
+  afterAll(() => rmSync(dir, { recursive: true, force: true }));
+
+  const skipAll = [
+    { checks: ["overlap", "off-frame"] as const, reason: "Chrome is not available" },
+    { checks: ["narration-fit", "loudness"] as const, reason: "the voice did not generate" },
+  ].map((s) => ({ ...s, checks: [...s.checks] }));
+
+  it("names the files it checked, so a reader can tell when they have changed", async () => {
+    const project = await example();
+    const report = await checkProjectFolder({
+      dir,
+      project,
+      lines: [],
+      skip: skipAll,
+      now: new Date("2026-11-22T10:00:00.000Z"),
+    });
+    expect(report.files).toBe(checkedFilesKey(project));
+    expect(
+      CheckReportSchema.parse(JSON.parse(readFileSync(join(dir, "checks.json"), "utf8"))).files,
+    ).toBe(report.files);
+  });
+
+  it("keys the graph, the script, the layout and the style, and not the measured voice", async () => {
+    const project = await example();
+    const key = checkedFilesKey(project);
+    const voiced: ProjectFiles = { ...project, narration: { start: 3 } };
+    expect(checkedFilesKey(voiced)).toBe(key);
+    const [scene, ...rest] = project.storyboard.scenes;
+    if (!scene) throw new Error("the example has no scene");
+    const retitled = { ...project.storyboard, scenes: [{ ...scene, title: "Another" }, ...rest] };
+    expect(checkedFilesKey({ ...project, storyboard: retitled })).not.toBe(key);
+    expect(
+      checkedFilesKey({
+        ...project,
+        layout: { ...project.layout, overrides: { user: { x: 1, y: 1 } } },
+      }),
+    ).not.toBe(key);
+    expect(
+      checkedFilesKey({ ...project, config: { ...project.config, font: "manrope" } }),
+    ).not.toBe(key);
+  });
 });
