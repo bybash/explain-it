@@ -1,6 +1,12 @@
 import { type FormEvent, useCallback, useEffect, useState } from "react";
 import type { ValidationError } from "../schema/errors.ts";
-import { PROVIDERS, providerOf, type SettingsView, SUGGESTED_MODEL } from "../schema/settings.ts";
+import {
+  ENV_NAMES,
+  PROVIDERS,
+  providerOf,
+  type SettingsView,
+  SUGGESTED_MODEL,
+} from "../schema/settings.ts";
 import { getSettings, saveSettings } from "./api.ts";
 import { Errors } from "./Errors.tsx";
 import { formOf, type SettingsForm, settingsChanges } from "./settings-form.ts";
@@ -76,7 +82,9 @@ export const Settings = () => {
           disabled={locked("baseUrl")}
           onChange={(e) => {
             const preset = PROVIDERS.find((p) => p.id === e.target.value);
-            if (preset) change({ baseUrl: preset.baseUrl });
+            // Custom clears the URL for the user to type their endpoint's.
+            change({ baseUrl: preset ? preset.baseUrl : "" });
+            if (!preset) document.getElementById("settings-base-url")?.focus();
           }}
         >
           {PROVIDERS.map((p) => (
@@ -84,9 +92,7 @@ export const Settings = () => {
               {p.label}
             </option>
           ))}
-          <option value="custom" disabled>
-            Custom endpoint
-          </option>
+          <option value="custom">Custom endpoint</option>
         </select>
 
         <label htmlFor="settings-base-url">Base URL</label>
@@ -97,7 +103,7 @@ export const Settings = () => {
           spellCheck={false}
           onChange={(e) => change({ baseUrl: e.target.value })}
         />
-        {locked("baseUrl") && <FromEnvironment variable="LLM_BASE_URL" />}
+        {locked("baseUrl") && <FromEnvironment variable={ENV_NAMES.baseUrl} />}
 
         <label htmlFor="settings-model">Model</label>
         <input
@@ -109,7 +115,7 @@ export const Settings = () => {
           onChange={(e) => change({ model: e.target.value })}
         />
         {locked("model") ? (
-          <FromEnvironment variable="LLM_MODEL" />
+          <FromEnvironment variable={ENV_NAMES.model} />
         ) : (
           view.modelIsSuggested && (
             <p className="field-note">Suggested; saving keeps it, or type another.</p>

@@ -21,7 +21,8 @@ export const PROVIDERS = [
   { id: "lmstudio", label: "LM Studio", baseUrl: "http://127.0.0.1:1234/v1" },
 ] as const;
 
-export type ProviderId = (typeof PROVIDERS)[number]["id"] | "custom";
+export const ProviderSchema = z.enum([...PROVIDERS.map((p) => p.id), "custom"]);
+export type ProviderId = z.output<typeof ProviderSchema>;
 
 /** OpenRouter, the default provider (SPEC, LLM). */
 export const DEFAULT_BASE_URL = PROVIDERS[0].baseUrl;
@@ -34,31 +35,47 @@ const MAX_KEY = 500;
 /** Only this much of a key is ever shown, and only of a key long enough to hide the rest. */
 const KEY_HINT = 4;
 const MIN_HINTED_KEY = 12;
+/** Model ids, URLs and keys have no spaces; a line break would also write a second line into `.env`. */
+const NO_SPACES = /^\S+$/;
+const SPACES_MESSAGE = "must not contain spaces or line breaks";
 
 export const SettingsUpdateSchema = z.strictObject({
+  // Spaces are refused before the URL check, which would quietly drop a line break.
   baseUrl: z
-    .url({ protocol: /^https?$/ })
+    .string()
     .max(MAX_URL)
+    .regex(NO_SPACES, SPACES_MESSAGE)
+    .pipe(z.url({ protocol: /^https?$/ }))
     .optional(),
-  model: z.string().trim().min(1, "must not be empty").max(MAX_MODEL).optional(),
+  model: z
+    .string()
+    .trim()
+    .min(1, "must not be empty")
+    .max(MAX_MODEL)
+    .regex(NO_SPACES, SPACES_MESSAGE)
+    .optional(),
   /** A new key, or null to remove the one in `.env`; left out, the key stays. */
   apiKey: z
     .string()
     .min(1, "must not be empty")
     .max(MAX_KEY)
-    .regex(/^\S+$/, "must not contain spaces or line breaks")
+    .regex(NO_SPACES, SPACES_MESSAGE)
     .nullable()
     .optional(),
 });
 export type SettingsUpdate = z.output<typeof SettingsUpdateSchema>;
 
-const SETTING_FIELDS = ["baseUrl", "model", "apiKey"] as const;
+/** The settings the page can change, in the order it shows them. */
+export const SETTING_FIELDS = SettingsUpdateSchema.keyof().options;
 export type SettingField = (typeof SETTING_FIELDS)[number];
+/** The variables a key can come from, LLM_API_KEY first. */
+export const KEY_VARIABLES = [ENV_NAMES.apiKey, ENV_NAMES.openRouterKey] as const;
+export type KeyVariable = (typeof KEY_VARIABLES)[number];
 
 /** What the page is shown: everything but the key, of which only a hint. */
 export const SettingsViewSchema = z.strictObject({
   baseUrl: z.string(),
-  provider: z.enum([...PROVIDERS.map((p) => p.id), "custom"]),
+  provider: ProviderSchema,
   model: z.string(),
   /** Whether the model is the suggested one because none is set. */
   modelIsSuggested: z.boolean(),
@@ -67,7 +84,7 @@ export const SettingsViewSchema = z.strictObject({
     z.strictObject({
       state: z.literal("set"),
       hint: z.string(),
-      variable: z.enum([ENV_NAMES.apiKey, ENV_NAMES.openRouterKey]),
+      variable: z.enum(KEY_VARIABLES),
     }),
   ]),
   /** Settings the environment sets, as Docker's `-e` does; they win over `.env`, so the page cannot change them. */

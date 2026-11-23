@@ -81,6 +81,15 @@ describe("settingsStore", () => {
     expect((await store.current()).apiKey).toBe(KEY);
   });
 
+  it("takes the key from the environment before .env, and LLM_API_KEY before OPENROUTER_API_KEY", async () => {
+    writeFileSync(envFile, `LLM_API_KEY=${KEY}-file\nOPENROUTER_API_KEY=${KEY}-router\n`);
+    expect((await settingsStore({ envFile, environment: {} }).current()).apiKey).toBe(
+      `${KEY}-file`,
+    );
+    const docker = settingsStore({ envFile, environment: { OPENROUTER_API_KEY: `${KEY}-docker` } });
+    expect((await docker.current()).apiKey).toBe(`${KEY}-docker`);
+  });
+
   it("lets the environment win, and refuses to change what it sets", async () => {
     writeFileSync(envFile, "LLM_MODEL=from-file\n");
     const store = settingsStore({

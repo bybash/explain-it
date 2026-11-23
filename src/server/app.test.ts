@@ -324,7 +324,7 @@ describe("/api/settings", () => {
   });
 
   it("names what is wrong", async () => {
-    const response = await put({ baseUrl: "not a url" });
+    const response = await put({ baseUrl: "ftp://files.example.com" });
     expect(response.status).toBe(400);
     expect(await response.json()).toEqual({
       errors: [{ path: "baseUrl", message: "must be a valid url" }],

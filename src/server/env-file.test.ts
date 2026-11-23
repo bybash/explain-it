@@ -11,6 +11,8 @@ describe("parseEnvFile", () => {
       'LLM_API_KEY="sk-or-v1 with spaces"',
       "SINGLE='a#b'",
       "TRAILING=value # a comment",
+      'QUOTED="abc" # say "hi"',
+      "EMPTY=#only a comment",
       "",
       "not a line",
     ].join("\n");
@@ -20,6 +22,8 @@ describe("parseEnvFile", () => {
       LLM_API_KEY: "sk-or-v1 with spaces",
       SINGLE: "a#b",
       TRAILING: "value",
+      QUOTED: "abc",
+      EMPTY: "",
     });
   });
 });
@@ -37,15 +41,28 @@ describe("updateEnvFile", () => {
     );
   });
 
-  it("writes any value so that it reads back the same", () => {
+  it("writes any value, line breaks included, as one line that reads back the same", () => {
     fc.assert(
-      fc.property(
-        fc.string({ maxLength: 60 }).filter((s) => !/[\n\r]/.test(s)),
-        (value) => {
-          const written = updateEnvFile("", { LLM_API_KEY: value });
-          expect(parseEnvFile(written).get("LLM_API_KEY")).toBe(value);
-        },
-      ),
+      fc.property(fc.string({ maxLength: 60, unit: "binary" }), (value) => {
+        const written = updateEnvFile("OTHER=1\n", { LLM_API_KEY: value });
+        expect(written.split("\n").filter(Boolean)).toHaveLength(2);
+        expect(parseEnvFile(written)).toEqual(
+          new Map([
+            ["OTHER", "1"],
+            ["LLM_API_KEY", value],
+          ]),
+        );
+      }),
     );
+  });
+
+  it("changes every line of a variable set twice, so the change is the one read", () => {
+    const text = "LLM_MODEL=a\nOTHER=1\nLLM_MODEL=b\n";
+    expect(updateEnvFile(text, { LLM_MODEL: "c" })).toBe("LLM_MODEL=c\nOTHER=1\n");
+    expect(updateEnvFile(text, { LLM_MODEL: null })).toBe("OTHER=1\n");
+  });
+
+  it("keeps Windows line endings", () => {
+    expect(updateEnvFile("A=1\r\nB=2\r\n", { B: "3" })).toBe("A=1\r\nB=3\r\n");
   });
 });

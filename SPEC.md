@@ -550,8 +550,10 @@ comes later.
 - Keys: read from `.env`; the settings page writes to it. Docker users pass
   `-e OPENROUTER_API_KEY=…`. The variables are `LLM_BASE_URL` (OpenRouter by
   default), `LLM_MODEL` and `LLM_API_KEY`, with `OPENROUTER_API_KEY` read as
-  the key when `LLM_API_KEY` is not set. A variable the environment sets wins
-  over `.env`, and the page shows it but cannot change it. Only its owner
+  the key when `LLM_API_KEY` is not set. Each setting is looked up in the
+  environment first, then in `.env`, so a variable the environment sets wins
+  (even `OPENROUTER_API_KEY` over an `LLM_API_KEY` in `.env`), and the page
+  shows it but cannot change it. Only its owner
   can read the `.env` the page writes, and the page sees the key only as its
   last four characters. `ENV_FILE` moves the file (decision 019).
 - Visuals: Lucide icons (ISC); about 8 bundled OFL fonts; about 6 palettes,
