@@ -1,6 +1,7 @@
 import type { ValidationError } from "../schema/errors.ts";
 import { type Graph, type GraphEdge, type NodeKind, parseGraph } from "../schema/graph.ts";
 import { fail, ok, type Result } from "../schema/result.ts";
+import { KIND_SHAPES } from "./generate.ts";
 
 /**
  * A Mermaid diagram as plain data: what `src/server/mermaid.ts` reads from
@@ -13,7 +14,8 @@ export type Diagram = {
   readonly nodes: readonly {
     readonly id: string;
     readonly label: string;
-    readonly shape: string;
+    /** Mermaid's name for the node's shape; null when the diagram names it without brackets. */
+    readonly shape: string | null;
   }[];
   readonly edges: readonly DiagramEdge[];
   readonly subgraphs: readonly {
@@ -25,17 +27,15 @@ export type Diagram = {
 };
 
 /** How an edge is drawn; the graph has one kind of edge, a plain arrow. */
-export const ARROWS = [
-  "plain",
-  "dotted",
-  "thick",
-  "open",
-  "cross",
-  "circle",
-  "both",
-  "invisible",
-] as const;
-export type Arrow = (typeof ARROWS)[number];
+export type Arrow =
+  | "plain"
+  | "dotted"
+  | "thick"
+  | "open"
+  | "cross"
+  | "circle"
+  | "both"
+  | "invisible";
 
 export type DiagramEdge = {
   /** Set when the diagram names the edge (`from id@--> to`). */
@@ -57,16 +57,12 @@ const ARROW_NOTES: Readonly<Record<Exclude<Arrow, "plain">, string>> = {
   invisible: "an invisible link is drawn as an arrow",
 };
 
-/** Each kind's shape, as Mermaid names it: the generator's brackets, read back. */
-const KIND_OF_SHAPE: Readonly<Record<string, NodeKind>> = {
-  stadium: "actor",
-  square: "service",
-  cylinder: "database",
-  subroutine: "queue",
-  odd: "document",
-  diamond: "decision",
-  hexagon: "external",
-};
+/** The kind each Mermaid shape reads back as: the generator's table, turned round. */
+const KIND_OF_SHAPE: ReadonlyMap<string, NodeKind> = new Map(
+  (Object.entries(KIND_SHAPES) as [NodeKind, (typeof KIND_SHAPES)[NodeKind]][]).map(
+    ([kind, shape]) => [shape.mermaid, kind],
+  ),
+);
 
 const SHAPE_NAMES: Readonly<Record<string, string>> = {
   round: "a round box",
@@ -95,12 +91,19 @@ const numbered = (base: string, n: number) => (n === 1 ? base : `${base}_${n}`);
  */
 export const diagramToGraph = (
   diagram: Diagram,
-  { previous }: { readonly previous?: Graph } = {},
+  {
+    previous,
+    declaredAt,
+  }: {
+    readonly previous?: Graph | undefined;
+    /** The line that says what kind of diagram it is, to name in an error. */
+    readonly declaredAt?: number | undefined;
+  } = {},
 ): Result<{ readonly graph: Graph; readonly notes: readonly string[] }, ValidationError> => {
   if (diagram.type !== "flowchart")
     return fail([
       {
-        path: "(diagram)",
+        path: declaredAt === undefined ? "(diagram)" : `line ${declaredAt}`,
         message: `a ${diagram.type} diagram: only a flowchart (or graph) becomes the graph`,
       },
     ]);
@@ -114,14 +117,16 @@ export const diagramToGraph = (
 
   const nodes = diagram.nodes.map((node) => {
     const old = before.get(node.id);
-    let kind = KIND_OF_SHAPE[node.shape];
-    if (kind === undefined) {
-      kind = old?.kind ?? DEFAULT_KIND;
+    // A node named without brackets keeps the kind it had; a new one is a service.
+    const kept = old?.kind ?? DEFAULT_KIND;
+    const fromShape = node.shape === null ? kept : KIND_OF_SHAPE.get(node.shape);
+    if (fromShape === undefined && node.shape !== null) {
       const shape = SHAPE_NAMES[node.shape] ?? `a ${node.shape} shape`;
       notes.push(
-        `node "${node.id}": ${shape} has no kind, so it ${old ? "stays" : "is"} a ${kind}`,
+        `node "${node.id}": ${shape} has no kind, so it ${old ? "stays" : "is"} a ${kept}`,
       );
     }
+    const kind = fromShape ?? kept;
     const zone = zoneOf.get(node.id);
     return {
       id: node.id,
@@ -222,6 +227,34 @@ export const frontMatterTitle = (text: string): string | undefined => {
   return quoted ? quoted[2] : title;
 };
 
+/** A `%%{ … }%%` directive on a line of its own, which Mermaid takes out before it counts lines. */
+const DIRECTIVE = /^\s*%%\{.*\}%%\s*$/;
+
+/**
+ * The source lines Mermaid counts: without the front matter and directives
+ * it takes out before parsing, each with its line number in the source.
+ */
+const countedLines = (text: string): { readonly line: number; readonly text: string }[] => {
+  const lines = text.split(/\r?\n/);
+  let start = 0;
+  if (lines[0]?.trim() === "---") {
+    const end = lines.findIndex((l, i) => i > 0 && l.trim() === "---");
+    if (end > 0) start = end + 1;
+  }
+  return lines
+    .map((l, i) => ({ line: i + 1, text: l }))
+    .slice(start)
+    .filter((l) => !DIRECTIVE.test(l.text));
+};
+
+/** The source line of the line Mermaid's parser calls `counted`. */
+export const sourceLine = (text: string, counted: number): number =>
+  countedLines(text)[counted - 1]?.line ?? counted;
+
+/** The line that says what kind of diagram it is: the first that is not blank or a comment. */
+export const declarationLine = (text: string): number | undefined =>
+  countedLines(text).find((l) => l.text.trim() !== "" && !l.text.trim().startsWith("%%"))?.line;
+
 /** Statements the graph does not keep, matched at the start of a line. */
 const IGNORED: readonly {
   readonly pattern: RegExp;
@@ -239,6 +272,8 @@ const IGNORED: readonly {
 /** The lines of Mermaid text whose styling or links the graph leaves out, each named. */
 export const ignoredLines = (text: string): string[] =>
   text.split(/\r?\n/).flatMap((line, i) => {
-    const ignored = IGNORED.find((rule) => rule.pattern.test(line));
+    // Quoted labels can hold anything, ::: included, so they are left out of the match.
+    const unquoted = line.replace(/"[^"]*"/g, '""');
+    const ignored = IGNORED.find((rule) => rule.pattern.test(unquoted));
     return ignored ? [`line ${i + 1}: ${ignored.name} is not kept; ${ignored.why}`] : [];
   });

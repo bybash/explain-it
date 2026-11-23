@@ -13,15 +13,22 @@ and kind, icon and category kept by id.
   Set on the server's own thread, they would make transformers.js (the voice)
   take the server for a browser when it loads. So Mermaid runs in a worker
   with jsdom's globals (`src/server/mermaid-worker.ts`), started on first use
-  and never holding the process open. The worker only reads Mermaid's
+  and never holding the process open. What it sends is checked against one
+  schema (`MermaidDbSchema`) with no defaults filled in, so a change in
+  Mermaid's internal API fails loudly; if the worker stops, every waiting
+  parse is told so at once. The worker only reads Mermaid's
   database; pure code (`src/mermaid/mermaid-db.ts`, `src/mermaid/parse.ts`)
   turns it into the graph.
 - **Keep what fits, name the rest.** Styling and `click` lines, shapes with no
   kind, line kinds other than a plain arrow and nested subgraphs are kept as
   near as they can be (a service, a plain arrow, a zone of its own) and each
   is named in a note. A diagram that is not a flowchart, or that Mermaid
-  cannot read, is an error naming its line (Mermaid's own `loc.first_line`).
-- **Matched by id, and by ends.** Kind comes from the shape. Icons,
+  cannot read, is an error naming its line. Mermaid counts lines without the
+  front matter and `%%{init}%%` directives it takes out, so its
+  `loc.first_line` is mapped back to the line as written.
+- **Matched by id, and by ends.** Kind comes from the shape; a node named
+  without brackets (`a --> db`) keeps its kind, since an edit often names a
+  node bare. Icons,
   categories and the node order come from the graph before the edit. An edge
   without an id in the diagram takes the id of the previous edge between the
   same two nodes, so its category and the storyboard's references to it

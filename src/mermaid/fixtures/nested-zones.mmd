@@ -1,0 +1,11 @@
+graph TB
+  %% Zones inside zones, as an architecture diagram draws them.
+  subgraph cloud[Cloud]
+    subgraph vpc[Private network]
+      api[API] --> db[(Postgres)]
+    end
+    cdn{{CDN}}
+  end
+  browser([Browser]) --> cdn
+  cdn --> api
+  api -- reads --> cache[(Redis)]

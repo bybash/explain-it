@@ -1,7 +1,7 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import graphJson from "../../examples/oauth-login/graph.json" with { type: "json" };
 import { graphToMermaid } from "../mermaid/generate.ts";
 import {
   type Graph,
@@ -13,15 +13,47 @@ import {
 } from "../schema/graph.ts";
 import { mermaidToGraph } from "./mermaid.ts";
 
-const parsed = parseGraph(graphJson);
-if (!parsed.ok) throw new Error("the example graph is invalid");
-const example = parsed.value;
-const { $schema: _schema, ...exampleWithoutSchema } = example;
+const examples = new URL("../../examples/", import.meta.url).pathname;
+const fixtures = new URL("../mermaid/fixtures/", import.meta.url).pathname;
 
 describe("mermaidToGraph, with the pinned mermaid", () => {
-  it("reads the example's Mermaid back to the same graph", async () => {
-    const result = await mermaidToGraph(graphToMermaid(example), example);
-    expect(result).toEqual({ ok: true, value: { graph: exampleWithoutSchema, notes: [] } });
+  it("reads every example's Mermaid back to the same graph", async () => {
+    for (const name of readdirSync(examples)) {
+      const read = parseGraph(JSON.parse(readFileSync(join(examples, name, "graph.json"), "utf8")));
+      if (!read.ok) throw new Error(`examples/${name}/graph.json is invalid`);
+      const { $schema: _, ...graph } = read.value;
+      expect(await mermaidToGraph(graphToMermaid(read.value), read.value), name).toEqual({
+        ok: true,
+        value: { graph, notes: [] },
+      });
+    }
+  });
+
+  it("reads each fixture, and what it reads writes back and reads the same", async () => {
+    const files = readdirSync(fixtures).filter((f) => f.endsWith(".mmd"));
+    expect(files.length).toBeGreaterThanOrEqual(3);
+    for (const file of files) {
+      const first = await mermaidToGraph(readFileSync(join(fixtures, file), "utf8"));
+      if (!first.ok) throw new Error(`${file}: ${JSON.stringify(first.errors)}`);
+      const again = await mermaidToGraph(graphToMermaid(first.value.graph), first.value.graph);
+      expect(again, file).toEqual({ ok: true, value: { graph: first.value.graph, notes: [] } });
+    }
+  });
+
+  it("reads zones inside zones as zones of their own, and names it", async () => {
+    const result = await mermaidToGraph(readFileSync(join(fixtures, "nested-zones.mmd"), "utf8"));
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.graph.nodes.map((n) => [n.id, n.zone ?? null])).toEqual([
+      ["api", "vpc"],
+      ["db", "vpc"],
+      ["cdn", "cloud"],
+      ["browser", null],
+      ["cache", null],
+    ]);
+    expect(result.value.notes).toEqual([
+      'subgraph "cloud": zones cannot nest, so "vpc" is a zone of its own',
+    ]);
   });
 
   it("reads back every graph the generator writes, labels with Mermaid's own syntax included", async () => {
@@ -152,6 +184,27 @@ describe("mermaidToGraph, with the pinned mermaid", () => {
     ]);
   });
 
+  it("names the line Mermaid cannot read, after front matter and directives too", async () => {
+    const after = await mermaidToGraph(
+      "---\ntitle: X\n---\n%%{init: {}}%%\nflowchart LR\n  a --> b\n  b -->\n",
+    );
+    expect(after.ok === false && after.errors[0]?.path).toBe("line 7");
+  });
+
+  it("keeps a node's kind when an edit names it without brackets", async () => {
+    const result = await mermaidToGraph("flowchart LR\n  user --> app", {
+      version: 1,
+      title: "T",
+      nodes: [
+        { id: "user", label: "User", kind: "actor" },
+        { id: "app", label: "App", kind: "database" },
+      ],
+      edges: [],
+      zones: [],
+    });
+    expect(result.ok && result.value.graph.nodes.map((n) => n.kind)).toEqual(["actor", "database"]);
+  });
+
   it("names the line Mermaid cannot read", async () => {
     const result = await mermaidToGraph("flowchart LR\n  a --> b\n  b -->\n");
     expect(result.ok).toBe(false);
@@ -165,7 +218,7 @@ describe("mermaidToGraph, with the pinned mermaid", () => {
       ok: false,
       errors: [
         {
-          path: "(diagram)",
+          path: "line 1",
           message: "a sequence diagram: only a flowchart (or graph) becomes the graph",
         },
       ],

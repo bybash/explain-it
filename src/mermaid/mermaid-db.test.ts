@@ -14,6 +14,7 @@ describe("fromMermaidDb", () => {
             type: "stadium",
           },
           { id: "b", text: "B", type: "square" },
+          { id: "c", text: "c", type: null },
         ],
         edges: [
           {
@@ -42,6 +43,7 @@ describe("fromMermaidDb", () => {
       nodes: [
         { id: "a", label: 'x "y" <b> | ` # & z\nw', shape: "stadium" },
         { id: "b", label: "B", shape: "square" },
+        { id: "c", label: "c", shape: null },
       ],
       edges: [
         { id: "e1", from: "a", to: "b", label: "go", arrow: "plain" },

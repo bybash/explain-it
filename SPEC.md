@@ -542,7 +542,7 @@ comes later.
   browser globals Mermaid needs never reach the server's thread, where other
   libraries (transformers.js) would take them for a browser.
 - Reading back: each node's kind comes from its shape (the shapes the
-  generator writes); icons and categories, and the order of nodes, come from
+  generator writes); a node named without brackets keeps the kind it had; icons and categories, and the order of nodes, come from
   the graph before the edit, matched by id. An edge keeps the id the diagram
   names (`from id@--> to`); an edge without one takes the id of the previous
   edge between the same nodes, or `<from>_to_<to>`. The title comes from the
@@ -552,7 +552,8 @@ comes later.
   lines, shapes with no kind (a service, or the node's kind before), line
   kinds other than a plain arrow, nested subgraphs (each its own zone). A
   diagram that is not a flowchart, or that Mermaid cannot read, is an error
-  naming its line; a graph the schema refuses names the node or edge
+  naming its line in the text as written (Mermaid counts without the front
+  matter and `%%{init}%%` directives, so its count is mapped back); a graph the schema refuses names the node or edge
   (decision 021).
 - The web UI renders Mermaid on the client.
 

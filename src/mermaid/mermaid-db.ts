@@ -1,33 +1,33 @@
+import { z } from "zod";
 import type { Arrow, Diagram } from "./parse.ts";
 
 /**
  * What Mermaid's flowchart database holds, as `src/server/mermaid-worker.ts`
  * reads it. This is Mermaid's internal API, not a public one (SPEC, Mermaid),
- * so it is read in this one place and checked by the round-trip tests.
+ * so it is read in this one place, checked by this schema as it comes from
+ * the worker, and by the round-trip tests: a change to it fails loudly.
  */
-export type MermaidDb = {
-  readonly type: string;
-  readonly title?: string | undefined;
-  readonly vertices: readonly {
-    readonly id: string;
-    readonly text: string;
-    readonly type: string;
-  }[];
-  readonly edges: readonly {
-    readonly id: string;
-    readonly start: string;
-    readonly end: string;
-    readonly text: string;
-    readonly type: string;
-    readonly stroke: string;
-    readonly isUserDefinedId: boolean;
-  }[];
-  readonly subgraphs: readonly {
-    readonly id: string;
-    readonly title: string;
-    readonly nodes: readonly string[];
-  }[];
-};
+export const MermaidDbSchema = z.object({
+  type: z.string(),
+  title: z.string().optional(),
+  vertices: z.array(
+    // A node named without brackets has no type.
+    z.object({ id: z.string(), text: z.string(), type: z.string().nullable() }),
+  ),
+  edges: z.array(
+    z.object({
+      id: z.string(),
+      start: z.string(),
+      end: z.string(),
+      text: z.string(),
+      type: z.string(),
+      stroke: z.string(),
+      isUserDefinedId: z.boolean(),
+    }),
+  ),
+  subgraphs: z.array(z.object({ id: z.string(), title: z.string(), nodes: z.array(z.string()) })),
+});
+export type MermaidDb = z.output<typeof MermaidDbSchema>;
 
 /** Mermaid keeps entity codes as placeholders while it parses: ﬂ°°35¶ß for #35; and ﬂ°quot¶ß for #quot;. */
 const NAMED: Readonly<Record<string, string>> = {

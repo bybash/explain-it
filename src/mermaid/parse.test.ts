@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import type { Graph } from "../schema/graph.ts";
-import { type Diagram, diagramToGraph, frontMatterTitle, ignoredLines } from "./parse.ts";
+import {
+  type Diagram,
+  declarationLine,
+  diagramToGraph,
+  frontMatterTitle,
+  ignoredLines,
+  sourceLine,
+} from "./parse.ts";
 
 const diagram = (part: Partial<Diagram>): Diagram => ({
   type: "flowchart",
@@ -75,6 +82,23 @@ describe("diagramToGraph", () => {
       edges: [{ id: "sign_in", from: "user", to: "app", label: "Log in", category: "c2" }],
       zones: [{ id: "backend", label: "Backend", category: "c3" }],
     });
+  });
+
+  it("keeps a node's kind when the diagram names it without brackets", () => {
+    const result = diagramToGraph(
+      diagram({
+        nodes: [
+          { id: "user", label: "user", shape: null },
+          { id: "fresh", label: "fresh", shape: null },
+        ],
+      }),
+      { previous },
+    );
+    expect(result.ok && result.value.graph.nodes.map((n) => [n.id, n.kind])).toEqual([
+      ["user", "actor"],
+      ["fresh", "service"],
+    ]);
+    expect(result.ok && result.value.notes).toEqual([]);
   });
 
   it("keeps the previous graph's order, with new nodes after it", () => {
@@ -167,12 +191,12 @@ describe("diagramToGraph", () => {
     ]);
   });
 
-  it("refuses a diagram that is not a flowchart", () => {
-    expect(diagramToGraph(diagram({ type: "sequence" }))).toEqual({
+  it("refuses a diagram that is not a flowchart, naming the line that says what it is", () => {
+    expect(diagramToGraph(diagram({ type: "sequence" }), { declaredAt: 4 })).toEqual({
       ok: false,
       errors: [
         {
-          path: "(diagram)",
+          path: "line 4",
           message: "a sequence diagram: only a flowchart (or graph) becomes the graph",
         },
       ],
@@ -180,7 +204,35 @@ describe("diagramToGraph", () => {
   });
 });
 
+describe("sourceLine", () => {
+  it("counts back the front matter and directives Mermaid takes out before it counts lines", () => {
+    const text = [
+      "---",
+      "title: X",
+      "---",
+      "%%{init: {}}%%",
+      "flowchart LR",
+      "  a --> b",
+      "  b -->",
+    ].join("\n");
+    // Mermaid reads "flowchart LR" as its line 1 and "  b -->" as its line 3.
+    expect(sourceLine(text, 1)).toBe(5);
+    expect(sourceLine(text, 3)).toBe(7);
+    expect(sourceLine("flowchart LR\n  a --> b", 2)).toBe(2);
+  });
+
+  it("finds the line that declares the diagram", () => {
+    expect(
+      declarationLine("---\ntitle: X\n---\n\n%% a comment\nsequenceDiagram\n  a->>b: hi"),
+    ).toBe(6);
+  });
+});
+
 describe("ignoredLines", () => {
+  it("does not take ::: inside a quoted label for a class", () => {
+    expect(ignoredLines('flowchart LR\n  a["x:::y"] --> b')).toEqual([]);
+  });
+
   it("names the styling and links the graph does not keep, by line", () => {
     const text = [
       "flowchart LR",

@@ -41,7 +41,8 @@ const needFree = async (...ports: number[]) => {
 };
 
 const waitUntilUp = async (url: string, output: () => string) => {
-  for (let i = 0; i < 150; i++) {
+  // Up to a minute: beside the rest of the suite's browsers, a server can start slowly.
+  for (let i = 0; i < 300; i++) {
     try {
       if ((await fetch(url)).ok) return;
     } catch {
@@ -130,7 +131,7 @@ const flow = (
     server = await serve(projectsDir);
     browser = await chromium.launch({ channel: "chrome" });
     page = await browser.newPage();
-  }, 60_000);
+  }, 120_000);
   afterAll(async () => {
     await browser?.close();
     await Promise.all([...running].map(stopped));

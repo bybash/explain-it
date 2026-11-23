@@ -1,0 +1,12 @@
+%%{init: {"theme": "dark"}}%%
+flowchart LR
+  classDef warm fill:#fd8,stroke:#a60
+  client([Client]):::warm --> gateway[Gateway]
+  gateway --> auth[Auth service]
+  gateway --> orders[Orders]
+  orders --> bus[[Event bus]]
+  bus --o mailer>Email]
+  auth x--x users[(Users)]
+  gateway <--> orders
+  linkStyle 0 stroke:#f00
+  style gateway stroke-width:4px
