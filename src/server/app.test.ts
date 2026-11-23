@@ -11,6 +11,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { fakeTts } from "../audio/fake-tts.testing.ts";
+import { graphToMermaid } from "../mermaid/generate.ts";
+import { parseGraph } from "../schema/graph.ts";
 import { parseProject } from "../schema/project.ts";
 import { createApp } from "./app.ts";
 import { settingsStore } from "./settings.ts";
@@ -464,5 +466,83 @@ describe("POST /api/projects/:slug/approve", () => {
       errors: [{ path: "gate", message: "render is the last gate" }],
     });
     expect((await postJson("/api/projects/nobody/approve", { gate: "graph" })).status).toBe(404);
+  });
+});
+
+describe("/api/projects/:slug/graph", () => {
+  const put = (slug: string, body: unknown) =>
+    app.request(`/api/projects/${slug}/graph`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+  it("reads Mermaid without saving it: the graph, and notes on what it leaves out", async () => {
+    await create({ name: "Drafting" });
+    const read = await postJson("/api/projects/drafting/graph/read", {
+      mermaid: "flowchart LR\n  user([User]) --> app[App]\n  style app fill:#f00",
+    });
+    expect(read.status).toBe(200);
+    const body = await read.json();
+    expect(body.graph.nodes.map((n: { id: string; kind: string }) => [n.id, n.kind])).toEqual([
+      ["user", "actor"],
+      ["app", "service"],
+    ]);
+    expect(body.notes).toEqual(["line 3: style is not kept; colours come from the palette"]);
+    expect(existsSync(join(projectsDir, "drafting", "graph.json"))).toBe(false);
+  });
+
+  it("names the line Mermaid cannot read", async () => {
+    await create({ name: "Broken mermaid" });
+    const read = await postJson("/api/projects/broken-mermaid/graph/read", {
+      mermaid: "flowchart LR\n  a -->\n",
+    });
+    expect(read.status).toBe(400);
+    expect((await read.json()).errors[0].path).toBe("line 2");
+  });
+
+  it("saves a first graph, named after the project, and lays it out", async () => {
+    await create({ name: "First graph" });
+    const saved = await put("first-graph", {
+      mermaid: "flowchart LR\n  user([User]) --> app[App]",
+    });
+    expect(saved.status).toBe(200);
+    const body = await saved.json();
+    expect(body.graph.title).toBe("First graph");
+    expect(body.mermaid).toContain('user(["User"])');
+    const dir = join(projectsDir, "first-graph");
+    const graph = parseGraph(JSON.parse(readFileSync(join(dir, "graph.json"), "utf8")));
+    expect(graph.ok && graph.value.nodes.map((n) => n.id)).toEqual(["user", "app"]);
+    expect(existsSync(join(dir, "layout.json"))).toBe(true);
+  });
+
+  it("keeps what Mermaid cannot say, and marks the beats an edit touches as stale", async () => {
+    copyExample("oauth-example");
+    const opened = await (await app.request("/api/projects/oauth-example")).json();
+    // The example's Mermaid, with the browser renamed.
+    const mermaid = graphToMermaid(opened.graph).replace(
+      'browser["Browser"]',
+      'browser["Web browser"]',
+    );
+    const saved = await put("oauth-example", { mermaid });
+    expect(saved.status).toBe(200);
+    const body = await saved.json();
+    expect(body.graph.nodes.find((n: { id: string }) => n.id === "browser")).toMatchObject({
+      label: "Web browser",
+      icon: opened.graph.nodes.find((n: { id: string }) => n.id === "browser").icon,
+    });
+    expect(body.staleBeats.length).toBeGreaterThan(0);
+    const project = JSON.parse(
+      readFileSync(join(projectsDir, "oauth-example", "project.json"), "utf8"),
+    );
+    expect(project.staleBeats).toEqual(body.staleBeats);
+  });
+
+  it("saves nothing when the Mermaid cannot be read", async () => {
+    await create({ name: "Nothing saved" });
+    const saved = await put("nothing-saved", { mermaid: "sequenceDiagram\n  a->>b: hi" });
+    expect(saved.status).toBe(400);
+    expect(existsSync(join(projectsDir, "nothing-saved", "graph.json"))).toBe(false);
+    expect((await put("nobody", { mermaid: "flowchart LR\n a-->b" })).status).toBe(404);
   });
 });

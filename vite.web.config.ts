@@ -16,6 +16,11 @@ export default defineConfig({
   root: "src/web",
   plugins: [react()],
   build: { outDir: "../../dist/web", emptyOutDir: true },
+  // Bundled when the dev server starts, not when the graph gate first opens: found then, they
+  // would make Vite reload the page under the user.
+  optimizeDeps: {
+    include: ["mermaid", "@codemirror/state", "@codemirror/view", "@codemirror/commands"],
+  },
   server: {
     host: DEFAULT_HOST,
     port: listen.value.port,

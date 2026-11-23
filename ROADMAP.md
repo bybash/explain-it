@@ -89,7 +89,7 @@ The goal: the CLI renders a hand-written example to an MP4, with no LLM and no v
 | ✅ 3.2 | **Settings**: base URL, key and model read from and written to `.env`; keys are never logged or sent to the browser in full | Settings round-trip; the key is masked in the UI |
 | ✅ 3.3 | **Chat and gates**: the chat column, the gate stepper, the split layout, `chat.jsonl`; no LLM yet (a stub reply) | Messages persist across restarts |
 | ✅ 3.4 | **Mermaid round-trip**: Mermaid to graph (jsdom, pinned version) and graph to Mermaid, keeping kind, icon and category by id | Round-trip tests on all examples and a set of Mermaid fixtures |
-| 3.5 | **Graph gate panel**: a Mermaid editor with the rendered diagram, approve and edit | Editing the Mermaid updates `graph.json` |
+| ✅ 3.5 | **Graph gate panel**: a Mermaid editor with the rendered diagram, approve and edit | Editing the Mermaid updates `graph.json` |
 | 3.6 | **Script gate panel**: the scene and beat editor; stale beats after graph edits | Changing a node marks only its beats as stale |
 | 3.7 | **Style gate panel**: palettes, custom palette, fonts and font upload, voice picker with a sample, captions, music, output, title and end cards, logo upload | Changes show in the preview straight away |
 | 3.8 | **Preview gate**: the player with a scrubber and beat list, voice generation with progress, check warnings that jump to the beat, the contact sheet | The example can be previewed with voice |
@@ -203,16 +203,21 @@ that finishes it.
   `anthropic/claude-sonnet-5.5` (`SUGGESTED_MODEL`) is unchecked; confirm
   the id when recording the first fixtures.
 
-### For 3.5 to 3.9 (gate panels), from 3.3
+### For 3.6 to 3.9 (gate panels), from 3.3 and 3.5
 
 - Each gate's panel replaces the placeholder in `GatePanel`
-  (`src/web/ProjectView.tsx`), which says what the panel will show, lists the
-  files and approves the gate. Approving the graph and script gates needs
-  `graph.json` and `storyboard.json`, valid (`src/server/gates.ts`); the
-  other gates need nothing yet.
+  (`src/web/ProjectView.tsx`), as `GraphPanel` does for the graph gate;
+  a panel tells `GatePanel` through `blocked` when the gate cannot be
+  approved yet (unsaved edits). Approving the script gate needs
+  `storyboard.json`, valid (`src/server/gates.ts`); the other gates need
+  nothing yet. A panel that needs a large library loads it with the panel
+  (`lazy`), as the graph editor does.
 - The end-to-end test (`src/server/web-e2e.test.ts`) runs the app as
   `npm start` and as `npm run dev` on ports of its own; each panel slice
-  should add its gate's steps to its flow. It needs Chrome, so CI skips it.
+  adds its gate's steps to its flow. It needs Chrome, so CI skips it.
+- 3.6's stale beats come from saving the graph: `saveGraph`
+  (`src/server/graphs.ts`) marks them in `project.json`, as MCP's
+  `update_graph` does.
 
 ### For 5.5 (edits through chat), from 3.3
 
@@ -220,15 +225,6 @@ that finishes it.
   `STUB_REPLY` (`src/server/chat.ts`). The LLM replaces the stub; approving
   by chat ("looks good") waits for it too, since only the LLM can tell what
   the user means.
-
-### For 3.5 (graph gate panel), from 3.4
-
-- `mermaidToGraph(text, previous)` in `src/server/mermaid.ts` reads edited
-  Mermaid back into the graph, with `notes` naming what it left out and
-  errors naming the Mermaid line or the node. It runs Mermaid in a worker
-  thread; the first parse starts it (about 200 ms). The panel shows the notes
-  beside the editor and the errors on their lines. The web app renders the
-  diagram itself with the same pinned `mermaid`.
 
 ### For 5.3 (graph drafting), from 4.2
 

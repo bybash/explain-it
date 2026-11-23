@@ -83,5 +83,6 @@ describe.skipIf(!hasFfmpeg)("masterAudio (ffmpeg)", () => {
     const controller = new AbortController();
     controller.abort(new Error("cancelled"));
     await expect(masterAudio(mix, join(dir, "cancelled.wav"), controller.signal)).rejects.toThrow();
-  });
+    // Mixing the five seconds is the slow part: beside the suite's browsers it can pass five seconds.
+  }, 60_000);
 });

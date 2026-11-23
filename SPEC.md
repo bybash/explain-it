@@ -556,6 +556,14 @@ comes later.
   matter and `%%{init}%%` directives, so its count is mapped back); a graph the schema refuses names the node or edge
   (decision 021).
 - The web UI renders Mermaid on the client.
+- The graph gate's panel is the code, in CodeMirror, beside the diagram it
+  draws. The code is read on the server as it is typed (after a short
+  pause), so the notes on what the graph leaves out, and an error marked on
+  its line, show before saving. Save writes `graph.json` the way MCP's
+  `update_graph` does: the layout again, keeping manual positions, and the
+  beats an edit touches marked stale. A project with no graph starts from a
+  small diagram, and the gate cannot be approved while edits are unsaved
+  (decision 022).
 
 ## App and stack
 
@@ -663,6 +671,7 @@ The pull requests that make up each milestone are listed in [`ROADMAP.md`](ROADM
 
 - explAIn-it is MIT. The videos people make are theirs.
 - Dependencies: Mermaid (MIT) with jsdom (MIT) to parse it on the server,
+  CodeMirror (MIT, the graph editor),
   Playwright (Apache-2.0), Kokoro-82M and
   kokoro-js (Apache-2.0), transformers.js (Apache-2.0), onnxruntime-node
   (MIT), AI SDK (Apache-2.0), MCP TypeScript SDK (MIT),

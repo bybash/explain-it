@@ -17,6 +17,9 @@ const hasChrome = await chromium
 
 const root = new URL("../../", import.meta.url).pathname;
 const example = join(root, "examples", "oauth-login");
+/** How long a step waits for the page: beside the rest of the suite, the first Mermaid parse is slow. */
+const SOON = { timeout: 15_000 };
+
 /** Ports away from the defaults, so a developer's own app on 3000 and 3001 is left alone. */
 const START_PORT = 3457;
 const DEV_PORT = 3458;
@@ -74,10 +77,15 @@ const launch = (args: readonly string[], env: Record<string, string>) => {
   return { child, output: () => errors };
 };
 
+/** Stops a server, and kills it if it has not stopped within five seconds. */
 const stopped = (child: ChildProcess) =>
   new Promise<void>((done) => {
-    if (child.exitCode !== null) return done();
-    child.once("exit", () => done());
+    if (child.exitCode !== null || child.signalCode !== null) return done();
+    const kill = setTimeout(() => child.kill("SIGKILL"), 5_000);
+    child.once("exit", () => {
+      clearTimeout(kill);
+      done();
+    });
     child.kill("SIGTERM");
   });
 
@@ -136,13 +144,13 @@ const flow = (
     await browser?.close();
     await Promise.all([...running].map(stopped));
     if (projectsDir) rmSync(projectsDir, { recursive: true, force: true });
-  });
+  }, 30_000);
 
   it("names the error for a name that is too long", async () => {
     await page.goto(`${server.url}/`);
     await page.fill("#new-project-name", "x".repeat(MAX_PROJECT_NAME + 1));
     await page.click("text=Create");
-    await expect.poll(() => page.textContent("#new-project-errors")).toContain("name");
+    await expect.poll(() => page.textContent("#new-project-errors"), SOON).toContain("name");
   });
 
   it("creates a project and opens it at the graph gate", async () => {
@@ -150,7 +158,7 @@ const flow = (
     await page.click("text=Create");
     await page.waitForURL(/#\/projects\/oauth-login$/);
     await expect
-      .poll(() => page.getAttribute(".gate[data-state=current]", "href"))
+      .poll(() => page.getAttribute(".gate[data-state=current]", "href"), SOON)
       .toBe("#/projects/oauth-login/graph");
     // An address naming a gate not reached yet is corrected to the gate reached.
     await page.goto(`${server.url}/#/projects/oauth-login/render`);
@@ -160,18 +168,59 @@ const flow = (
   it("keeps the chat, with its stub reply, across a restart", async () => {
     await page.fill("#chat-text", "Explain how OAuth login works");
     await page.press("#chat-text", "Enter");
-    await expect.poll(() => page.locator(".message").count()).toBe(2);
+    await expect.poll(() => page.locator(".message").count(), SOON).toBe(2);
     await expect
-      .poll(() => page.textContent(".message[data-role=assistant]"))
+      .poll(() => page.textContent(".message[data-role=assistant]"), SOON)
       .toContain("not connected yet");
     if (restart) {
       await server.stop();
       server = await serve(projectsDir);
     }
     await page.reload();
-    await expect.poll(() => page.locator(".message").count()).toBe(2);
+    await expect.poll(() => page.locator(".message").count(), SOON).toBe(2);
     expect(await page.textContent(".message[data-role=user]")).toContain("Explain how OAuth");
   });
+
+  it("edits the graph as Mermaid: drawn as it is typed, saved, and approved", async () => {
+    await page.goto(`${server.url}/#/projects/oauth-login/graph`);
+    await page.waitForSelector(".cm-content");
+    // A new project starts from a small diagram, which must be saved before the gate is approved.
+    // Mermaid loads with the first drawing, so it gets longer than the default wait.
+    await expect
+      .poll(() => page.textContent(".mermaid-diagram"), { timeout: 30_000 })
+      .toContain("Web app");
+    await expect.poll(() => page.isDisabled("text=Approve and go to Script"), SOON).toBe(true);
+
+    await page.click(".cm-content");
+    await page.keyboard.press("ControlOrMeta+A");
+    await page.keyboard.insertText(
+      "flowchart LR\n  user([User]) -->|signs in| app[Photo app]\n  app --> photos[(Photos)]",
+    );
+    await expect.poll(() => page.textContent(".mermaid-diagram"), SOON).toContain("Photo app");
+    await expect.poll(() => page.isEnabled("text=Save the graph"), SOON).toBe(true);
+    await page.click("text=Save the graph");
+    await expect
+      .poll(() => page.textContent(".graph-actions [role=status]"), SOON)
+      .toContain("Saved");
+    const graph = JSON.parse(readFileSync(join(projectsDir, "oauth-login", "graph.json"), "utf8"));
+    expect(graph.nodes.map((n: { id: string; kind: string }) => [n.id, n.kind])).toEqual([
+      ["user", "actor"],
+      ["app", "service"],
+      ["photos", "database"],
+    ]);
+
+    // A line Mermaid cannot read is marked, and nothing can be saved until it reads.
+    await page.click(".cm-content");
+    await page.keyboard.press("ControlOrMeta+End");
+    await page.keyboard.insertText("\n  photos -->");
+    await page.waitForSelector(".cm-error-line");
+    expect(await page.isDisabled("text=Save the graph")).toBe(true);
+    await page.keyboard.press("ControlOrMeta+Z");
+    await expect.poll(() => page.locator(".cm-error-line").count(), SOON).toBe(0);
+
+    await page.click("text=Approve and go to Script");
+    await page.waitForURL(/#\/projects\/oauth-login\/script$/);
+  }, 60_000);
 
   it("shows a project made elsewhere without a reload", async () => {
     await page.goto(`${server.url}/#/`);
@@ -182,7 +231,7 @@ const flow = (
       body: JSON.stringify({ name: "Made over MCP" }),
     });
     expect(made.status).toBe(201);
-    await expect.poll(() => page.locator(".project-row").count()).toBe(2);
+    await expect.poll(() => page.locator(".project-row").count(), SOON).toBe(2);
   });
 
   it("approves a gate, moves on, and can go back to it", async () => {
@@ -191,10 +240,10 @@ const flow = (
     await page.click("text=Approve and go to Script");
     await page.waitForURL(/#\/projects\/oauth-example\/script$/);
     await expect
-      .poll(() => page.getAttribute(".gate[data-state=current]", "href"))
+      .poll(() => page.getAttribute(".gate[data-state=current]", "href"), SOON)
       .toBe("#/projects/oauth-example/script");
     await page.click(".gate[href$='/graph']");
-    await expect.poll(() => page.textContent(".approved")).toContain("Approved");
+    await expect.poll(() => page.textContent(".approved"), SOON).toContain("Approved");
     // Later gates stay closed until the ones before them are approved.
     expect(await page.locator("span.gate[aria-disabled=true]").count()).toBe(3);
   });

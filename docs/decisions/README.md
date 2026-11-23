@@ -31,3 +31,4 @@ later record supersedes an earlier one and says so.
 | [019](019-llm-settings.md) | LLM settings |
 | [020](020-chat-and-gates.md) | Chat and gates |
 | [021](021-mermaid-round-trip.md) | Mermaid round-trip |
+| [022](022-graph-gate-panel.md) | Graph gate panel |

@@ -3,6 +3,8 @@ import {
   ApprovedSchema,
   CreatedProjectSchema,
   ErrorsResponseSchema,
+  GraphReadSchema,
+  GraphSavedSchema,
   type OpenedProject,
   OpenedProjectSchema,
   type ProjectList,
@@ -80,6 +82,18 @@ export const sendChat = (slug: string, text: string, gate: Gate) =>
   postJson(ChatSchema.pick({ messages: true }), `/api/projects/${encodeURIComponent(slug)}/chat`, {
     text,
     gate,
+  });
+
+/** Reads edited Mermaid as the graph, without saving it. */
+export const readGraph = (slug: string, mermaid: string) =>
+  postJson(GraphReadSchema, `/api/projects/${encodeURIComponent(slug)}/graph/read`, { mermaid });
+
+/** Saves edited Mermaid as the project's graph. */
+export const saveGraph = (slug: string, mermaid: string) =>
+  fetchChecked(GraphSavedSchema, `/api/projects/${encodeURIComponent(slug)}/graph`, {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ mermaid }),
   });
 
 export const approveGate = (slug: string, gate: Gate) =>

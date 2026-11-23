@@ -15,9 +15,9 @@ import { fail, ok } from "../schema/result.ts";
 /** The longest a parse may take; Mermaid reads a 36-node diagram in milliseconds. */
 const PARSE_TIMEOUT_MS = 15_000;
 
-/** What the worker sends: that it is ready, Mermaid's database, or where Mermaid stopped reading. */
-const MessageSchema = z.union([
-  z.object({ ready: z.literal(true) }),
+/** What the worker sends: that it is ready, then for each parse Mermaid's database or where it stopped. */
+const ReadySchema = z.object({ ready: z.literal(true) });
+const ReplySchema = z.discriminatedUnion("ok", [
   z.object({ id: z.number(), ok: z.literal(true), value: MermaidDbSchema }),
   z.object({
     id: z.number(),
@@ -51,13 +51,16 @@ const mermaidWorker = () => {
   thread.unref();
   const ready = new Promise<void>((resolve, reject) => {
     thread.on("message", (data: unknown) => {
-      const message = parseWith(MessageSchema, data);
+      if (ReadySchema.safeParse(data).success) return resolve();
+      // Only a parse's reply carries its id. Node posts messages of its own too: under
+      // --watch (npm run dev), each worker reports the files it imports ("watch:import").
+      if (typeof data !== "object" || data === null || !("id" in data)) return;
+      const message = parseWith(ReplySchema, data);
       // The worker is ours, so a message it should not send is a bug: every waiting parse hears of it.
       if (!message.ok)
         return failWaiting(
           `the Mermaid worker sent what it should not:\n${formatErrors(message.errors).join("\n")}`,
         );
-      if ("ready" in message.value) return resolve();
       const { id, ...read } = message.value;
       waiting.get(id)?.(read);
       waiting.delete(id);
@@ -111,6 +114,8 @@ const readDiagram = async (text: string): Promise<Read> => {
 export const mermaidToGraph = async (
   text: string,
   previous?: Graph,
+  /** The title when neither the diagram nor `previous` has one, such as the project's name. */
+  title?: string,
 ): Promise<Validated<{ readonly graph: Graph; readonly notes: readonly string[] }>> => {
   const read = await readDiagram(text);
   if (!read.ok) {
@@ -122,8 +127,8 @@ export const mermaidToGraph = async (
     return fail([error]);
   }
   const diagram = fromMermaidDb(read.value);
-  const title = diagram.title ?? frontMatterTitle(text);
-  const graph = diagramToGraph(title ? { ...diagram, title } : diagram, {
+  const named = diagram.title ?? frontMatterTitle(text) ?? (previous ? undefined : title);
+  const graph = diagramToGraph(named ? { ...diagram, title: named } : diagram, {
     previous,
     declaredAt: declarationLine(text),
   });

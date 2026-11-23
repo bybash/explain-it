@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import type { OpenedProject } from "../schema/api.ts";
 import type { ValidationError } from "../schema/errors.ts";
 import { type Gate, nextGate, type Project } from "../schema/project.ts";
@@ -7,6 +7,9 @@ import { Chat } from "./Chat.tsx";
 import { Errors } from "./Errors.tsx";
 import { GATE_LABELS, GATE_PANELS, updatedLabel } from "./labels.ts";
 import { gateSteps } from "./route.ts";
+
+/** The graph editor, loaded with the graph gate: CodeMirror and Mermaid are large, and only it needs them. */
+const GraphPanel = lazy(() => import("./GraphPanel.tsx").then((m) => ({ default: m.GraphPanel })));
 
 /**
  * An opened project: the chat on the left and, on the right, the gate
@@ -136,6 +139,8 @@ const GatePanel = ({
   const { slug, project } = opened;
   const [errors, setErrors] = useState<readonly ValidationError[]>([]);
   const [approving, setApproving] = useState(false);
+  /** Why the gate cannot be approved yet, as its panel says: unsaved edits. */
+  const [blocked, setBlocked] = useState<string | undefined>();
   const next = nextGate(gate);
 
   const approve = async () => {
@@ -153,13 +158,20 @@ const GatePanel = ({
     <section className="gate-panel" aria-label={`${GATE_LABELS[gate]} gate`}>
       <h2 className="section-title">{GATE_LABELS[gate]}</h2>
       <p>{GATE_PANELS[gate]}</p>
-      <p className="muted">This gate's panel comes in a later version.</p>
+      {gate === "graph" ? (
+        <Suspense fallback={<p className="muted">Opening the graph editor…</p>}>
+          <GraphPanel opened={opened} blocked={setBlocked} />
+        </Suspense>
+      ) : (
+        <p className="muted">This gate's panel comes in a later version.</p>
+      )}
       {gate === project.gate ? (
         next && (
           <div className="approve">
-            <button type="button" onClick={approve} disabled={approving}>
+            <button type="button" onClick={approve} disabled={approving || blocked !== undefined}>
               Approve and go to {GATE_LABELS[next]}
             </button>
+            {blocked && <span className="muted"> {blocked}</span>}
             <Errors errors={errors} />
           </div>
         )
