@@ -3,12 +3,12 @@ import { narrationLengths, readCachedVoice, type VoiceLine } from "../audio/voic
 import { graphToMermaid } from "../mermaid/generate.ts";
 import type { MissingTool } from "../render/environment.ts";
 import type { ProjectFiles } from "../render/load.ts";
-import { inFile, readAssetLogo, readJson } from "../render/load.ts";
+import { readAssetLogo, readJson } from "../render/load.ts";
 import type { RenderQueue } from "../render/queue.ts";
 import type { OpenedProject } from "../schema/api.ts";
 import type { CheckReport, SkippedChecks } from "../schema/checks.ts";
 import { type Config, DEFAULT_CONFIG, parseConfig } from "../schema/config.ts";
-import { formatErrors, parseWith, type Validated, type ValidationError } from "../schema/errors.ts";
+import { parseWith, type Validated, type ValidationError } from "../schema/errors.ts";
 import { parseGraph } from "../schema/graph.ts";
 import {
   CreateProjectArgsSchema,
@@ -21,9 +21,9 @@ import {
 import type { Narration } from "../schema/narration.ts";
 import type { Project } from "../schema/project.ts";
 import { fail, ok } from "../schema/result.ts";
-import { staleBeats } from "../schema/stale.ts";
 import { parseStoryboard, type Storyboard } from "../schema/storyboard.ts";
 import type { Events } from "../server/events.ts";
+import { laidOut, saveGraph } from "../server/graphs.ts";
 import { type CheckedLogo, checkLogo, saveLogo } from "../server/logo.ts";
 import {
   listProjects,
@@ -33,7 +33,7 @@ import {
   withProjectLock,
   writeProjectFile,
 } from "../server/projects.ts";
-import { allOf, asObject, edited, laidOut, laterGate, merged, timingOf, under } from "./edits.ts";
+import { allOf, asObject, edited, laterGate, merged, timingOf, under } from "./edits.ts";
 
 /** What the tools work with: the projects folder, the clock, the event hub and preview links. */
 export type ToolContext = {
@@ -68,10 +68,6 @@ const saveProject = (context: ToolContext, slug: string, project: Project) =>
     ...project,
     updatedAt: context.now().toISOString(),
   });
-
-/** Whether opening the project found `file` broken. */
-const broken = (opened: OpenedProject, file: string) =>
-  opened.problems.some((p) => p.path === file || p.path.startsWith(`${file}:`));
 
 export const listProjectsTool = async (context: ToolContext, input: Args) => {
   const args = parseWith(ListProjectsArgsSchema, input);
@@ -129,26 +125,9 @@ export const updateGraphTool = async (context: ToolContext, input: Args) => {
     if (!next.ok) return next;
     const graph = parseGraph(next.value);
     if (!graph.ok) return fail(under("graph", graph.errors));
-    const layout = await laidOut(graph.value, before.layout);
-    if (!layout.ok) return layout;
-
-    const stale =
-      before.graph && before.storyboard
-        ? staleBeats(before.graph, graph.value, before.storyboard)
-        : [];
-    const staleNow = [...new Set([...before.project.staleBeats, ...stale])];
-    const recheck = before.storyboard ? parseStoryboard(before.storyboard, graph.value) : undefined;
-    const storyboardProblems =
-      recheck && !recheck.ok ? formatErrors(inFile("storyboard.json", recheck.errors)) : [];
-    const warnings = broken(before, "layout.json")
-      ? [
-          "layout.json was broken, so the graph was laid out from scratch and any manual positions in it were dropped",
-        ]
-      : [];
-
-    await writeProjectFile(context.projectsDir, slug, "graph.json", graph.value);
-    await writeProjectFile(context.projectsDir, slug, "layout.json", layout.value);
-    await saveProject(context, slug, { ...before.project, staleBeats: staleNow });
+    const saved = await saveGraph(context.projectsDir, slug, before, graph.value, context.now());
+    if (!saved.ok) return saved;
+    const { staleBeats: staleNow, storyboardProblems, warnings } = saved.value;
     context.events.publish({ type: "project-updated", slug });
     return ok({
       mermaid: graphToMermaid(graph.value),

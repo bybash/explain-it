@@ -1,9 +1,8 @@
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import type { MiddlewareHandler } from "hono";
-import { type Context, Hono } from "hono";
+import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { streamSSE } from "hono/streaming";
-import type { ContentfulStatusCode } from "hono/utils/http-status";
 import type { TtsProvider } from "../audio/tts.ts";
 import { createMcpServer } from "../mcp/server.ts";
 import type { ToolContext } from "../mcp/tools.ts";
@@ -16,14 +15,15 @@ import { RenderQueue, type RenderRun } from "../render/queue.ts";
 import { renderFromFolder } from "../render/run.ts";
 import { ApproveSchema } from "../schema/api.ts";
 import { NewChatMessageSchema } from "../schema/chat.ts";
-import { parseWith, type Validated, type ValidationError } from "../schema/errors.ts";
+import { parseWith } from "../schema/errors.ts";
 import { MCP_PATH } from "../schema/mcp.ts";
-import { fail, ok } from "../schema/result.ts";
 import { LOCAL_HOSTS } from "../schema/settings.ts";
 import { addChat, readChat } from "./chat.ts";
 import { createEvents } from "./events.ts";
 import { approveGate } from "./gates.ts";
+import { graphRoutes } from "./graph-routes.ts";
 import { createProject, listProjects, openProject, projectDir, projectExists } from "./projects.ts";
+import { errorResponse, jsonBody, noProject } from "./responses.ts";
 import type { SettingsStore } from "./settings.ts";
 
 export type AppOptions = {
@@ -64,26 +64,6 @@ const sendsKey = (body: unknown) =>
   typeof body === "object" &&
   body !== null &&
   typeof (body as { apiKey?: unknown }).apiKey === "string";
-
-/** Every error response has this shape: what is wrong, each naming its place. */
-const errorResponse = (
-  c: Context,
-  status: ContentfulStatusCode,
-  errors: readonly ValidationError[],
-) => c.json({ errors }, status);
-
-/** The answer for a slug that names no project. */
-const noProject = (c: Context, slug: string) =>
-  errorResponse(c, 404, [{ path: "slug", message: `no project "${slug}"` }]);
-
-/** A request's JSON body, or the error that names why it is not one. */
-const jsonBody = async (c: Context): Promise<Validated<unknown>> => {
-  try {
-    return ok(await c.req.json());
-  } catch {
-    return fail([{ path: "(body)", message: "not valid JSON" }]);
-  }
-};
 
 /**
  * The API: projects over the folders in `projectsDir`, and server-sent events.
@@ -245,6 +225,8 @@ export const createApp = ({
     events.publish({ type: "chat", slug });
     return c.json({ messages: added }, 201);
   });
+
+  graphRoutes(app, { projectsDir, now, events });
 
   app.post("/api/projects/:slug/approve", async (c) => {
     const slug = c.req.param("slug");
