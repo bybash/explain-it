@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { DEFAULT_CONFIG } from "../schema/config.ts";
 import type { Storyboard } from "../schema/storyboard.ts";
 import { fakeTts } from "./fake-tts.testing.ts";
-import { generateVoice, narrationLengths, readCachedVoice } from "./voice.ts";
+import { generateVoice, narrationLengths, readCachedVoice, speakLine } from "./voice.ts";
 
 const storyboard = (lines: readonly (string | undefined)[]): Storyboard => ({
   version: 1,
@@ -200,5 +200,42 @@ describe("narrationLengths", () => {
       tts: fakeTts().tts,
     });
     expect(narrationLengths(lines)).toEqual({ beat_1: 0.2, beat_3: 0.4 });
+  });
+});
+
+describe("speakLine", () => {
+  it("speaks a line once into the project's cache, and reads it from there after", async () => {
+    const { tts, asked } = fakeTts();
+    const first = await speakLine({ projectDir, text: "Hello there.", voice, tts });
+    expect(first).toMatchObject({ seconds: 0.2, cached: false });
+    expect(existsSync(first.file)).toBe(true);
+    const again = await speakLine({ projectDir, text: "Hello there.", voice, tts });
+    expect(again).toEqual({ ...first, cached: true });
+    expect(asked).toHaveLength(1);
+  });
+
+  it("is the line the video speaks: a sample heard first is not spoken again", async () => {
+    const { tts, asked } = fakeTts();
+    await speakLine({ projectDir, text: "The user signs in.", voice, tts });
+    const lines = await generateVoice({
+      projectDir,
+      storyboard: storyboard(["The user signs in."]),
+      voice,
+      tts,
+    });
+    expect(lines.map((l) => l.cached)).toEqual([true]);
+    expect(asked).toHaveLength(1);
+  });
+
+  it("speaks the line again in another voice or at another speed", async () => {
+    const { tts, asked } = fakeTts();
+    await speakLine({ projectDir, text: "Hi.", voice, tts });
+    await speakLine({ projectDir, text: "Hi.", voice: { ...voice, id: "bm_george" }, tts });
+    await speakLine({ projectDir, text: "Hi.", voice: { ...voice, speed: 1.2 }, tts });
+    expect(asked.map((a) => [a.voice, a.speed])).toEqual([
+      ["af_heart", 1],
+      ["bm_george", 1],
+      ["af_heart", 1.2],
+    ]);
   });
 });

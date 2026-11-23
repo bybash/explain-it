@@ -40,10 +40,13 @@ const cachedSeconds = async (file: string): Promise<number | undefined> => {
   return wav.ok ? wav.value.seconds : undefined;
 };
 
+/** Where a line's audio is kept in a project's cache. */
+const lineFile = (projectDir: string, tts: TtsProvider, text: string, voice: VoiceConfig) =>
+  join(projectDir, "cache", "tts", `${lineKey(tts, text, voice)}.wav`);
+
 /** Every spoken line in storyboard order, with the file its audio has, or would have. */
 const spokenLines = ({ projectDir, storyboard, voice, tts }: VoiceOptions) => {
   if (!voice.enabled) return [];
-  const dir = join(projectDir, "cache", "tts");
   return storyboard.scenes.flatMap((scene) =>
     scene.beats.flatMap((beat) =>
       beat.say
@@ -52,7 +55,7 @@ const spokenLines = ({ projectDir, storyboard, voice, tts }: VoiceOptions) => {
               scene: scene.id,
               beat: beat.id,
               say: beat.say,
-              file: join(dir, `${lineKey(tts, beat.say, voice)}.wav`),
+              file: lineFile(projectDir, tts, beat.say, voice),
             },
           ]
         : [],
@@ -72,25 +75,47 @@ export const generateVoice = async (
   const { voice, tts, signal } = options;
   const wanted = spokenLines(options);
   if (wanted.length === 0) return [];
-  await mkdir(join(options.projectDir, "cache", "tts"), { recursive: true });
   const lines: VoiceLine[] = [];
-  for (const { say, ...where } of wanted) {
+  for (const { say, scene, beat } of wanted) {
     signal?.throwIfAborted();
-    const seconds = await cachedSeconds(where.file);
-    if (seconds !== undefined) {
-      lines.push({ ...where, seconds, cached: true });
-      continue;
-    }
-    const audio = await tts.generate(say, { voice: voice.id, speed: voice.speed });
-    // Written whole, then renamed: a line half written by a crash never reads as cached,
-    // and two runs at once each write their own file.
-    const partial = `${where.file}.${randomUUID()}.partial`;
-    await writeFile(partial, encodeWav(audio));
-    await rename(partial, where.file);
-    lines.push({ ...where, seconds: audio.samples.length / audio.sampleRate, cached: false });
+    const spoken = await speakLine({ projectDir: options.projectDir, text: say, voice, tts });
+    lines.push({ scene, beat, ...spoken });
   }
   signal?.throwIfAborted();
   return lines;
+};
+
+/** One spoken line: its file in the cache, its length, and whether it was there already. */
+export type SpokenLine = Pick<VoiceLine, "file" | "seconds" | "cached">;
+
+/**
+ * Speaks one line into the project's `cache/tts/`, or reads it from there
+ * when it was spoken before in the same voice and speed. The video's lines
+ * and the style gate's sample share this cache, so a sample heard is not
+ * spoken again for the render.
+ */
+export const speakLine = async ({
+  projectDir,
+  text,
+  voice,
+  tts,
+}: {
+  readonly projectDir: string;
+  readonly text: string;
+  readonly voice: VoiceConfig;
+  readonly tts: TtsProvider;
+}): Promise<SpokenLine> => {
+  const file = lineFile(projectDir, tts, text, voice);
+  const seconds = await cachedSeconds(file);
+  if (seconds !== undefined) return { file, seconds, cached: true };
+  await mkdir(join(projectDir, "cache", "tts"), { recursive: true });
+  const audio = await tts.generate(text, { voice: voice.id, speed: voice.speed });
+  // Written whole, then renamed: a line half written by a crash never reads as cached,
+  // and two runs at once each write their own file.
+  const partial = `${file}.${randomUUID()}.partial`;
+  await writeFile(partial, encodeWav(audio));
+  await rename(partial, file);
+  return { file, seconds: audio.samples.length / audio.sampleRate, cached: false };
 };
 
 /** The spoken lines already in the cache, in storyboard order; generates and creates nothing. */

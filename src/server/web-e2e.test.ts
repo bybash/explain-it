@@ -298,6 +298,15 @@ const flow = (
       )
       .toBeGreaterThan(0);
 
+    // The sound: a brisker pace shortens the video in the preview straight away, and the music plays.
+    const length = () => page.getByText(/^\d+:\d\d \/ \d+:\d\d$/).textContent();
+    const relaxed = await length();
+    await page.getByLabel("Brisk").check();
+    await expect.poll(length, SOON).not.toBe(relaxed);
+    const music = page.waitForResponse((r) => r.url().includes("/api/samples/music"));
+    await page.getByRole("button", { name: "▶ Listen" }).click();
+    expect((await music).headers()["content-type"]).toBe("audio/wav");
+
     await page.click("text=Save the style");
     await expect
       .poll(() => page.textContent(`${STYLE_GATE} [role=status]`), SOON)
@@ -306,6 +315,7 @@ const flow = (
       readFileSync(join(projectsDir, "oauth-style", "config.json"), "utf8"),
     );
     expect(config.theme.palette).toBe("ocean");
+    expect(config.pacing).toBe("brisk");
     expect(config.logo).toMatchObject({ light: "logo-light.png", show: "all" });
     expect(readFileSync(join(projectsDir, "oauth-style", "assets", "logo-light.png"))).toEqual(
       TINY_PNG,

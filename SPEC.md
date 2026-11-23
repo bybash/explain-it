@@ -571,6 +571,10 @@ comes later.
   beat and the end. Save sends what changed as a JSON Merge Patch with any
   new logo files and writes `config.json` the way MCP's `set_style` does;
   the gate cannot be approved while changes are unsaved (decision 024).
+  Its sound has samples: the voice speaks the script's first line (a
+  sentence of its own when there is no narration yet) in the chosen voice
+  and speed, cached with the video's lines, and the music plays 15 s of the
+  chosen mood and take at the chosen volume (decision 025).
 
 ## App and stack
 

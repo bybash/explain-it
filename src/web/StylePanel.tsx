@@ -17,9 +17,12 @@ import type { ValidationError } from "../schema/errors.ts";
 import { getLogo, saveStyle } from "./api.ts";
 import { Errors } from "./Errors.tsx";
 import { StylePreview } from "./StylePreview.tsx";
+import { CaptionsCard, MusicCard, PacingCard, VoiceCard } from "./sound-fields.tsx";
 import { CardFields, INPUT_CLASS, LABEL_CLASS, LogoFields, Section } from "./style-fields.tsx";
 import { type PendingLogos, previewLogo, styleEdit, withLogoFile } from "./style-form.ts";
 
+/** A group of cards: the look, then the sound. */
+const GROUP_CLASS = "col-span-full font-semibold text-muted text-sm uppercase tracking-wide";
 const MODE_LABELS = { light: "Light", dark: "Dark", both: "Both (two videos)" } as const;
 const capitalised = (name: string) => name.charAt(0).toUpperCase() + name.slice(1);
 
@@ -29,8 +32,9 @@ const configBroken = (opened: OpenedProject) =>
 
 /**
  * The style gate's panel (SPEC, User flow): the look of the video (palette
- * and mode, font, output, the title and end cards, the logo) as a form, the
- * video drawn with it straight away, and Save. `blocked` says why the gate
+ * and mode, font, output, the title and end cards, the logo) and its sound
+ * (voice, pacing, captions, music) as a form, the video drawn with it
+ * straight away, samples of the voice and the music, and Save. `blocked` says why the gate
  * cannot be approved yet: there are unsaved changes, or config.json is
  * broken and Save writes it again.
  */
@@ -159,6 +163,7 @@ export const StylePanel = ({
           </p>
         )}
         <div className="grid grid-cols-[1fr] items-start gap-4 @2xl:grid-cols-2">
+          <h3 className={GROUP_CLASS}>Look</h3>
           <Section title="Colours">
             <label className={LABEL_CLASS} htmlFor="style-palette">
               Palette
@@ -261,6 +266,11 @@ export const StylePanel = ({
               ))}
             </select>
           </Section>
+          <h3 className={`${GROUP_CLASS} mt-4`}>Sound</h3>
+          <VoiceCard slug={slug} draft={draft} change={change} />
+          <PacingCard draft={draft} change={change} />
+          <CaptionsCard draft={draft} change={change} />
+          <MusicCard draft={draft} change={change} />
         </div>
         <Errors errors={formErrors} />
         {/* Stays in view while the cards scroll, so Save is always at hand. */}
