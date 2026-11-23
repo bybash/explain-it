@@ -26,6 +26,7 @@ const CURRENT_GATE = `${GATES} [data-state=current]`;
 const MESSAGES = "[aria-label=Messages] > li";
 const DIAGRAM = "[aria-label='The graph as a diagram']";
 const PROJECTS = "[aria-label=Projects] > li";
+const GRAPH_GATE = "[aria-label='Graph gate']";
 
 /** Ports away from the defaults, so a developer's own app on 3000 and 3001 is left alone. */
 const START_PORT = 3457;
@@ -204,7 +205,9 @@ const flow = (
     await expect.poll(() => page.textContent(DIAGRAM), SOON).toContain("Photo app");
     await expect.poll(() => page.isEnabled("text=Save the graph"), SOON).toBe(true);
     await page.click("text=Save the graph");
-    await expect.poll(() => page.textContent("[role=status]"), SOON).toContain("Saved");
+    await expect
+      .poll(() => page.textContent(`${GRAPH_GATE} [role=status]`), SOON)
+      .toContain("Saved");
     // The code stays as written, the comment included: it is what was saved.
     expect(await page.textContent(".cm-content")).toContain("%% the user's own note");
     const graph = JSON.parse(readFileSync(join(projectsDir, "oauth-login", "graph.json"), "utf8"));
@@ -251,7 +254,7 @@ const flow = (
       .toBe("#/projects/oauth-example/script");
     await page.click(`${GATES} a[href$="/graph"]`);
     await expect
-      .poll(() => page.textContent("[aria-label='Graph gate']"), SOON)
+      .poll(() => page.textContent(`${GRAPH_GATE} p:has(> a[href$="/script"])`), SOON)
       .toContain("Approved");
     // Later gates stay closed until the ones before them are approved.
     expect(await page.locator(`${GATES} [aria-disabled=true]`).count()).toBe(3);

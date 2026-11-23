@@ -7,6 +7,7 @@ import { Chat } from "./Chat.tsx";
 import { Errors } from "./Errors.tsx";
 import { GATE_LABELS, GATE_PANELS, updatedLabel } from "./labels.ts";
 import { gateSteps } from "./route.ts";
+import { BoxList, Muted, PageTitle, SectionTitle } from "./ui.tsx";
 
 /** The graph editor, loaded with the graph gate: CodeMirror and Mermaid are large, and only it needs them. */
 const GraphPanel = lazy(() => import("./GraphPanel.tsx").then((m) => ({ default: m.GraphPanel })));
@@ -55,12 +56,12 @@ export const ProjectView = ({ slug, gate }: { slug: string; gate?: Gate | undefi
       </a>
       {errors.length > 0 && (
         <>
-          <h1 className="mb-2 font-bold text-2xl">{slug}</h1>
+          <PageTitle>{slug}</PageTitle>
           <p className="my-4">This project could not be opened:</p>
           <Errors errors={errors} />
         </>
       )}
-      {!opened && errors.length === 0 && <p className="my-4 text-muted">Opening…</p>}
+      {!opened && errors.length === 0 && <Muted>Opening…</Muted>}
       {opened && (
         <Opened
           opened={opened}
@@ -73,7 +74,7 @@ export const ProjectView = ({ slug, gate }: { slug: string; gate?: Gate | undefi
 };
 
 /** A gate in the stepper: done, the one reached, or not reached yet. */
-const PILL =
+const GATE_PILL_CLASS =
   "rounded-full border border-line px-3 py-1.5 text-muted text-sm data-[state=current]:border-accent data-[state=current]:bg-accent-soft data-[state=current]:font-semibold data-[state=current]:text-accent data-[state=done]:text-ink";
 
 const Opened = ({
@@ -97,17 +98,17 @@ const Opened = ({
     <div className="grid grid-cols-[1fr] items-start gap-6 min-[861px]:grid-cols-[minmax(280px,380px)_1fr]">
       <Chat key={slug} slug={slug} gate={viewed} />
       <div>
-        <h1 className="mb-2 font-bold text-2xl">{project.name}</h1>
-        <p className="my-4 text-muted">
+        <PageTitle>{project.name}</PageTitle>
+        <Muted>
           {slug} · {project.origin === "mcp" ? "made over MCP" : "made in the app"} ·{" "}
           {updatedLabel(project.updatedAt)}
-        </p>
+        </Muted>
         <ol className="mt-6 flex flex-wrap gap-2" aria-label="Gates">
           {steps.map((step, i) => (
             <li key={step.gate}>
               {step.open ? (
                 <a
-                  className={`${PILL} inline-block hover:border-accent data-[viewed=true]:outline-2 data-[viewed=true]:outline-accent data-[viewed=true]:outline-offset-1`}
+                  className={`${GATE_PILL_CLASS} inline-block hover:border-accent data-[viewed=true]:outline-2 data-[viewed=true]:outline-accent data-[viewed=true]:outline-offset-1`}
                   href={`#/projects/${slug}/${step.gate}`}
                   data-state={step.state}
                   data-viewed={step.viewed}
@@ -116,7 +117,11 @@ const Opened = ({
                   <span className="tabular-nums">{i + 1}</span> {GATE_LABELS[step.gate]}
                 </a>
               ) : (
-                <span className={`${PILL} opacity-60`} data-state={step.state} aria-disabled="true">
+                <span
+                  className={`${GATE_PILL_CLASS} opacity-60`}
+                  data-state={step.state}
+                  aria-disabled="true"
+                >
                   <span className="tabular-nums">{i + 1}</span> {GATE_LABELS[step.gate]}
                 </span>
               )}
@@ -160,14 +165,14 @@ const GatePanel = ({
 
   return (
     <section className="mt-2" aria-label={`${GATE_LABELS[gate]} gate`}>
-      <h2 className="mt-8 mb-3 font-bold text-base">{GATE_LABELS[gate]}</h2>
+      <SectionTitle level={2}>{GATE_LABELS[gate]}</SectionTitle>
       <p className="my-4">{GATE_PANELS[gate]}</p>
       {gate === "graph" ? (
-        <Suspense fallback={<p className="my-4 text-muted">Opening the graph editor…</p>}>
+        <Suspense fallback={<Muted>Opening the graph editor…</Muted>}>
           <GraphPanel opened={opened} blocked={setBlocked} />
         </Suspense>
       ) : (
-        <p className="my-4 text-muted">This gate's panel comes in a later version.</p>
+        <Muted>This gate's panel comes in a later version.</Muted>
       )}
       {gate === project.gate ? (
         next && (
@@ -216,14 +221,14 @@ const Files = ({ opened }: { opened: OpenedProject }) => {
   ];
   return (
     <>
-      <h3 className="mt-8 mb-3 font-bold text-base">Files</h3>
+      <SectionTitle level={3}>Files</SectionTitle>
       {problems.length > 0 && (
         <>
           <p className="my-4">Some files are broken:</p>
           <Errors errors={problems} />
         </>
       )}
-      <ul className="divide-y divide-line overflow-hidden rounded-box border border-line bg-surface">
+      <BoxList>
         {files.map(({ file, summary }) => (
           <li key={file} className="flex justify-between gap-3 px-4 py-3">
             <code className={summary === null ? "text-muted" : undefined}>{file}</code>
@@ -233,7 +238,7 @@ const Files = ({ opened }: { opened: OpenedProject }) => {
             </span>
           </li>
         ))}
-      </ul>
+      </BoxList>
     </>
   );
 };

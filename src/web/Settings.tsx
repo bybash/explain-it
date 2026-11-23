@@ -10,17 +10,18 @@ import {
 import { getSettings, saveSettings } from "./api.ts";
 import { Errors } from "./Errors.tsx";
 import { formOf, type SettingsForm, settingsChanges } from "./settings-form.ts";
+import { Muted, PageTitle } from "./ui.tsx";
 
 /** A line under a field. */
-const NOTE = "text-muted text-sm";
+const NOTE_CLASS = "text-muted text-sm";
 /** A field's label. */
-const LABEL = "mt-3.5 font-semibold";
+const LABEL_CLASS = "mt-3.5 font-semibold";
 /** A text box or the provider select. */
-const INPUT = "field bg-surface disabled:opacity-60";
+const INPUT_CLASS = "field bg-surface disabled:opacity-60";
 
 /** Says that the environment sets a field, which then cannot be changed here. */
 const FromEnvironment = ({ variable }: { variable: string }) => (
-  <p className={NOTE}>
+  <p className={NOTE_CLASS}>
     Set by <code>{variable}</code> in the environment, which wins over <code>.env</code>.
   </p>
 );
@@ -50,12 +51,8 @@ export const Settings = () => {
   if (!view || !form)
     return (
       <section>
-        <h1 className="mb-2 font-bold text-2xl">Settings</h1>
-        {errors.length === 0 ? (
-          <p className="my-4 text-muted">Loading…</p>
-        ) : (
-          <Errors errors={errors} />
-        )}
+        <PageTitle>Settings</PageTitle>
+        {errors.length === 0 ? <Muted>Loading…</Muted> : <Errors errors={errors} />}
       </section>
     );
 
@@ -80,17 +77,17 @@ export const Settings = () => {
 
   return (
     <section>
-      <h1 className="mb-2 font-bold text-2xl">Settings</h1>
-      <p className="my-4 text-muted">
+      <PageTitle>Settings</PageTitle>
+      <Muted>
         The LLM that drafts the graph and the script: OpenRouter by default, or any
         OpenAI-compatible endpoint. Saved to <code>.env</code> on this machine.
-      </p>
+      </Muted>
       <form className="mt-6 grid max-w-[560px] gap-1.5" onSubmit={submit}>
-        <label className={LABEL} htmlFor="settings-provider">
+        <label className={LABEL_CLASS} htmlFor="settings-provider">
           Provider
         </label>
         <select
-          className={INPUT}
+          className={INPUT_CLASS}
           id="settings-provider"
           value={provider}
           disabled={locked("baseUrl")}
@@ -109,11 +106,11 @@ export const Settings = () => {
           <option value="custom">Custom endpoint</option>
         </select>
 
-        <label className={LABEL} htmlFor="settings-base-url">
+        <label className={LABEL_CLASS} htmlFor="settings-base-url">
           Base URL
         </label>
         <input
-          className={INPUT}
+          className={INPUT_CLASS}
           id="settings-base-url"
           value={form.baseUrl}
           disabled={locked("baseUrl")}
@@ -122,11 +119,11 @@ export const Settings = () => {
         />
         {locked("baseUrl") && <FromEnvironment variable={ENV_NAMES.baseUrl} />}
 
-        <label className={LABEL} htmlFor="settings-model">
+        <label className={LABEL_CLASS} htmlFor="settings-model">
           Model
         </label>
         <input
-          className={INPUT}
+          className={INPUT_CLASS}
           id="settings-model"
           value={form.model}
           disabled={locked("model")}
@@ -138,15 +135,15 @@ export const Settings = () => {
           <FromEnvironment variable={ENV_NAMES.model} />
         ) : (
           view.modelIsSuggested && (
-            <p className={NOTE}>Suggested; saving keeps it, or type another.</p>
+            <p className={NOTE_CLASS}>Suggested; saving keeps it, or type another.</p>
           )
         )}
 
-        <label className={LABEL} htmlFor="settings-key">
+        <label className={LABEL_CLASS} htmlFor="settings-key">
           API key
         </label>
         <input
-          className={INPUT}
+          className={INPUT_CLASS}
           id="settings-key"
           type="password"
           autoComplete="off"
@@ -170,7 +167,7 @@ export const Settings = () => {
           </label>
         ) : (
           (provider === "ollama" || provider === "lmstudio") && (
-            <p className={NOTE}>A local model needs no key.</p>
+            <p className={NOTE_CLASS}>A local model needs no key.</p>
           )
         )}
 

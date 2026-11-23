@@ -1,6 +1,7 @@
 // Screenshots of every page of the web app, light and dark, from a fixed set of projects:
 // run before and after a change to its look, then compare with scripts/compare-shots.ts.
-// Usage: node scripts/app-shots.ts <out-dir>   (needs Chrome; builds the web app first)
+// Usage: node scripts/app-shots.ts <out-dir>
+// Needs Chrome. It builds the web app into dist/web first, as `npm run build` does.
 import { type ChildProcess, spawn } from "node:child_process";
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -60,9 +61,12 @@ const seed = (dir: string) => {
       },
     ]
       .map((m) => JSON.stringify(m))
+      .concat("not a message")
       .join("\n")
       .concat("\n"),
   );
+  // A saved key, so the settings show its hint and the box to remove it.
+  writeFileSync(join(dir, ".env"), "LLM_API_KEY=sk-or-v1-0123456789abcdef\n");
 
   const broken = join(dir, "broken-file");
   mkdirSync(broken);
@@ -82,7 +86,22 @@ const waitUntilUp = async (child: ChildProcess) => {
   throw new Error(`${url} did not come up`);
 };
 
-/** Each shot: a name, the address, and what to do before it is taken. */
+/** The graph editor is open and Mermaid has drawn its diagram. */
+const graphReady = async (page: Page) => {
+  await page.locator(".cm-content").waitFor();
+  await diagramDrawn(page);
+};
+
+/** Types at the end of the Mermaid code, then leaves the editor so no caret or active line shows. */
+const typeInGraph = async (page: Page, text: string) => {
+  await graphReady(page);
+  await page.click(".cm-content");
+  await page.keyboard.press("ControlOrMeta+End");
+  await page.keyboard.insertText(text);
+  await page.locator(".cm-content").blur();
+};
+
+/** Each shot: a name, the address, the width, and what to do before it is taken. */
 const SHOTS: readonly {
   readonly name: string;
   readonly hash: string;
@@ -100,38 +119,47 @@ const SHOTS: readonly {
       await p.locator("#new-project-errors").getByText("name").waitFor();
     },
   },
-  { name: "settings", hash: "#/settings", ready: (p) => p.getByText("API key").waitFor() },
   {
-    name: "graph-gate",
-    hash: "#/projects/photo-upload/graph",
-    ready: (p) =>
-      p
-        .locator(".cm-content")
-        .waitFor()
-        .then(() => diagramDrawn(p)),
+    name: "list-hover-focus",
+    hash: "#/",
+    ready: async (p) => {
+      await p.getByText("Photo upload").waitFor();
+      await p.getByText("could not be read").click();
+      await p.getByRole("link", { name: /OAuth login/ }).hover();
+      await p.focus("#new-project-name");
+      await p.keyboard.press("Tab");
+    },
   },
+  {
+    name: "settings",
+    hash: "#/settings",
+    ready: (p) => p.getByText("Remove the saved key").waitFor(),
+  },
+  { name: "graph-gate", hash: "#/projects/photo-upload/graph", ready: graphReady },
   {
     name: "graph-error",
     hash: "#/projects/photo-upload/graph",
     ready: async (p) => {
-      await p.locator(".cm-content").waitFor();
-      await diagramDrawn(p);
-      await p.click(".cm-content");
-      await p.keyboard.press("ControlOrMeta+End");
-      await p.keyboard.insertText("\n  web -->");
+      await typeInGraph(p, "\n  web -->");
       await p.locator(".cm-error-line").waitFor();
-      await p.locator(".cm-content").blur();
+    },
+  },
+  {
+    name: "graph-notes",
+    hash: "#/projects/photo-upload/graph",
+    ready: async (p) => {
+      await typeInGraph(p, "\n  style web fill:#f00");
+      await p.getByLabel("Left out of the graph").waitFor();
+      await diagramDrawn(p);
     },
   },
   {
     name: "graph-approved",
     hash: "#/projects/oauth-example/graph",
-    ready: (p) =>
-      p
-        .getByText("Approved")
-        .first()
-        .waitFor()
-        .then(() => diagramDrawn(p)),
+    ready: async (p) => {
+      await p.getByText("Approved").first().waitFor();
+      await diagramDrawn(p);
+    },
   },
   {
     name: "script-gate",
@@ -143,15 +171,15 @@ const SHOTS: readonly {
     hash: "#/projects/broken-file",
     ready: (p) => p.getByText("project.json").first().waitFor(),
   },
+  // Between the two breakpoints: the chat beside the panel, the editor over the diagram.
+  { name: "graph-mid", hash: "#/projects/photo-upload/graph", width: 1000, ready: graphReady },
+  { name: "graph-narrow", hash: "#/projects/photo-upload/graph", width: 760, ready: graphReady },
+  { name: "graph-phone", hash: "#/projects/photo-upload/graph", width: 390, ready: graphReady },
   {
-    name: "graph-narrow",
-    hash: "#/projects/photo-upload/graph",
-    width: 760,
-    ready: (p) =>
-      p
-        .locator(".cm-content")
-        .waitFor()
-        .then(() => diagramDrawn(p)),
+    name: "settings-phone",
+    hash: "#/settings",
+    width: 390,
+    ready: (p) => p.getByText("API key").waitFor(),
   },
 ];
 

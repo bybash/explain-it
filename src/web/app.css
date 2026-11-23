@@ -52,7 +52,8 @@
 }
 
 @layer base {
-  /* Where Preflight's defaults differ from the look the app already had, the app's stay. */
+  /* Where Preflight's defaults differ from the look the app already had, the app's stay:
+     the line height, code, placeholders and checkboxes. */
   html {
     line-height: normal;
   }
@@ -70,6 +71,10 @@
   ::placeholder {
     color: revert;
     opacity: revert;
+  }
+
+  input[type="checkbox"] {
+    margin: revert;
   }
 }
 

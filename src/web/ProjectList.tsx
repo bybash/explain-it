@@ -4,6 +4,7 @@ import type { ValidationError } from "../schema/errors.ts";
 import { createProject, listProjects, onServerEvents } from "./api.ts";
 import { Errors } from "./Errors.tsx";
 import { GATE_LABELS, updatedLabel } from "./labels.ts";
+import { BoxList, Muted, PageTitle } from "./ui.tsx";
 
 /** The projects, newest first, with a form to start a new one. */
 export const ProjectList = () => {
@@ -41,7 +42,7 @@ export const ProjectList = () => {
 
   return (
     <section>
-      <h1 className="mb-2 font-bold text-2xl">Projects</h1>
+      <PageTitle>Projects</PageTitle>
       <form className="mt-6 mb-8" onSubmit={create}>
         <label className="mb-2 block font-semibold" htmlFor="new-project-name">
           New project
@@ -65,14 +66,11 @@ export const ProjectList = () => {
 
       <Errors errors={loadErrors} />
       {list === undefined ? (
-        loadErrors.length === 0 && <p className="my-4 text-muted">Loading…</p>
+        loadErrors.length === 0 && <Muted>Loading…</Muted>
       ) : list.projects.length === 0 ? (
-        <p className="my-4 text-muted">No projects yet. Name one above to start.</p>
+        <Muted>No projects yet. Name one above to start.</Muted>
       ) : (
-        <ul
-          className="divide-y divide-line overflow-hidden rounded-box border border-line bg-surface"
-          aria-label="Projects"
-        >
+        <BoxList label="Projects">
           {list.projects.map((project) => (
             <li key={project.slug}>
               <a
@@ -92,7 +90,7 @@ export const ProjectList = () => {
               </a>
             </li>
           ))}
-        </ul>
+        </BoxList>
       )}
 
       {list && list.broken.length > 0 && (

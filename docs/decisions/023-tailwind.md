@@ -15,7 +15,10 @@ build-time only, and the panels to come are where it saves the most.
   scans only `src/web/`.
 - **Utility classes in the markup.** The pages style themselves; there are
   no per-component class names left. Two `@utility` rules, `btn` and
-  `field`, hold the one button and the text box, used in five places each.
+  `field`, hold the one button and the text box, used in five and six
+  places. Pieces every page repeats (the page title, a section title, a
+  muted paragraph, a bordered list) are small components in
+  `src/web/ui.tsx`.
 - **Tokens as the theme.** The colours are `@theme` values (`bg-surface`,
   `text-muted`, `border-line` and so on) and the default palette is
   removed, so a page cannot reach for a colour outside the app's own. Under
@@ -24,16 +27,22 @@ build-time only, and the panels to come are where it saves the most.
   five the app uses, without Tailwind's line heights.
 - **Preflight, with the app's own defaults kept.** Tailwind's reset is on;
   where it differs from the look the app already had (line height,
-  `code`, placeholders), a base rule keeps the old one.
+  `code`, placeholders, checkbox margins), a base rule keeps the old one.
 - **Plain CSS only for CodeMirror's own elements**, styled by its class
   names under the editor's one remaining class, `mermaid-editor`.
 - **Tests find the page's parts by role, label and data attribute**
   (`[aria-label=Gates] [data-state=current]`), not by class names, which
   are now about looks only. Chat messages became a list for this.
 - **The same look, checked.** `npm run shots` takes every page in light
-  and dark from fixed projects, and `npm run shots:compare` compares two
-  sets pixel by pixel. Before and after this change they match (two shots
-  differ by one pixel, as two runs of the old styles do).
+  and dark from fixed projects (14 states, including hover and focus, an
+  error line, graph notes, the opened broken lists, a saved key, and four
+  widths), and `npm run shots:compare` compares two sets pixel by pixel.
+  Before and after this change all 28 match, apart from single pixels that
+  also differ between two runs of the old styles.
+- **Two small changes, kept on purpose.** The chat box now has the app's
+  accent focus ring like every other field, not the browser's. Tailwind's
+  `hover:` applies only where a pointer can hover, so a tap on a phone no
+  longer leaves a project row or gate highlighted.
 
 ## Alternatives
 
