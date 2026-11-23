@@ -1,7 +1,13 @@
 import { mkdir, readdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import { extname, isAbsolute, join } from "node:path";
 import { imageProblem, sizeProblem } from "../render/load.ts";
-import { LOGO_TYPES, LogoDataUrlSchema, type LogoType } from "../schema/config.ts";
+import {
+  LOGO_TYPES,
+  LogoDataUrlSchema,
+  type LogoMode,
+  type LogoType,
+  logoFileName,
+} from "../schema/config.ts";
 import type { Validated } from "../schema/errors.ts";
 import { fail, ok } from "../schema/result.ts";
 
@@ -9,7 +15,6 @@ import { fail, ok } from "../schema/result.ts";
 export type LogoSource = { readonly path: string } | { readonly dataUrl: string };
 
 const extensions = Object.keys(LOGO_TYPES) as (keyof typeof LOGO_TYPES)[];
-const extensionOf = (type: LogoType) => extensions.find((e) => LOGO_TYPES[e] === type) ?? ".png";
 
 /** The image's bytes and type from its source, or what is wrong with it, named by `place`. */
 const readSource = async (
@@ -56,13 +61,13 @@ export type CheckedLogo = { readonly name: string; readonly data: Buffer };
  * size) without writing anything; its file name is `logo-<mode>.<ext>`.
  */
 export const checkLogo = async (
-  mode: "light" | "dark",
+  mode: LogoMode,
   source: LogoSource,
 ): Promise<Validated<CheckedLogo>> => {
   const place = `logo.${mode}.${"dataUrl" in source ? "dataUrl" : "path"}`;
   const read = await readSource(source, place);
   if (!read.ok) return read;
-  return ok({ name: `logo-${mode}${extensionOf(read.value.type)}`, data: read.value.data });
+  return ok({ name: logoFileName(mode, read.value.type), data: read.value.data });
 };
 
 /** Writes a checked logo into the project's assets/, and removes the one it replaces if that had another type. */

@@ -34,8 +34,11 @@ Slices keep their IDs, but after Milestone 1 they are built in this order:
    (decision 002), silent with captions until audio comes.
 3. **Milestone 2**, audio and checks.
 4. **3.2 to 3.5**, then **3.10** (the app's styles in Tailwind, before the
-   remaining panels add more CSS), then **3.6 to 3.9**: the rest of the web app.
-5. **Milestones 5 and 6**, as listed.
+   remaining panels add more CSS), then **3.7**, **3.11**, **3.8**, **3.9** and
+   **3.12**: the rest of the web app.
+5. **Milestones 5 and 6**, as listed, with **3.6** (the script gate's panel)
+   just before **5.4**: until the LLM drafts scripts, a script comes over MCP,
+   and nothing blocks on editing it in the app.
 
 Audio waits because the engine already renders a complete silent video.
 MCP needs only the server to reach a finished video from the IDE, whereas
@@ -92,9 +95,11 @@ The goal: the CLI renders a hand-written example to an MP4, with no LLM and no v
 | ✅ 3.4 | **Mermaid round-trip**: Mermaid to graph (jsdom, pinned version) and graph to Mermaid, keeping kind, icon and category by id | Round-trip tests on all examples and a set of Mermaid fixtures |
 | ✅ 3.5 | **Graph gate panel**: a Mermaid editor with the rendered diagram, approve and edit | Editing the Mermaid updates `graph.json` |
 | 3.6 | **Script gate panel**: the scene and beat editor; stale beats after graph edits | Changing a node marks only its beats as stale |
-| 3.7 | **Style gate panel**: palettes, custom palette, fonts and font upload, voice picker with a sample, captions, music, output, title and end cards, logo upload | Changes show in the preview straight away |
+| ✅ 3.7 | **Style gate panel, the look**: palette and mode, font, title and end cards, logo upload, output, with a live preview drawn by the render player | Changes show in the preview straight away |
 | 3.8 | **Preview gate**: the player with a scrubber and beat list, voice generation with progress, check warnings that jump to the beat, the contact sheet | The example can be previewed with voice |
 | 3.9 | **Render gate**: the job queue, progress over SSE, cancel, downloads | The example renders from the UI |
+| 3.11 | **Style gate panel, the sound**: voice picker with a sample, voice speed, pacing, captions, music | A voice sample plays from the panel |
+| 3.12 | **Style extras**: a custom palette editor, font upload | A custom palette and an uploaded font show in the preview and the render |
 | ✅ 3.10 | **App styles in Tailwind**: Tailwind v4 through its Vite plugin; the colour tokens and the dark set become `@theme` values; `app.css` moves to utility classes, keeping plain CSS only for CodeMirror's and Mermaid's own classes; the video's styles (`src/engine/`) are untouched; a decision record | Screenshots of each page, light and dark, look the same before and after |
 
 ## Milestone 4: MCP
@@ -157,10 +162,32 @@ that finishes it.
 - Old lines stay in `cache/tts/` when a line is edited; nothing prunes
   them yet.
 
-### For 3.7 (style gate), from 2.2
+### For 3.11 (style gate, the sound), from 2.2 and 3.7
 
 - `config.pacing` (relaxed, normal, brisk) needs a picker in the style
   panel; MCP already sets it through `set_style`.
+- The voice, captions and music go in the same form as 3.7's look
+  (`src/web/StylePanel.tsx`), saved through `PUT /api/projects/:slug/style`
+  as a merge patch; the preview (`StylePreview.tsx`) already draws the
+  draft's captions and pacing.
+- The voice sample is new: a short line spoken by Kokoro on the server,
+  cached; the first one may download the model.
+
+### For 3.12 (style extras), from 3.7
+
+- The palette select shows a custom palette set over MCP as "Custom" but
+  cannot edit it.
+- `fontFor` (`src/engine/theme/fonts.ts`) knows only bundled fonts; an
+  uploaded one needs the renderer, the checks and the preview to load it
+  from the project's `assets/`.
+- Taking a saved logo out leaves its file in `assets/`; nothing removes
+  files the config no longer names, as with old voice lines in `cache/`.
+
+### For 3.8 (preview gate), from 3.7
+
+- The style gate's preview is the player in an iframe (`src/web/preview.html`
+  and `preview.ts`, messages in `preview-protocol.ts`), with a scrubber and
+  marks; 3.8's player can grow from it rather than start again.
 
 ### For 5.6 (layout repair), from 2.5
 

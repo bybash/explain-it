@@ -40,7 +40,7 @@ export const FONTS: readonly BundledFont[] = [
   variable("space-grotesk", "Space Grotesk"),
 ];
 
-/** Looks up a bundled font by the id in `config.font`. Uploaded fonts arrive with slice 3.7. */
+/** Looks up a bundled font by the id in `config.font`. Uploaded fonts arrive with slice 3.12. */
 export const fontFor = (id: string): Validated<BundledFont> => {
   const font = FONTS.find((f) => f.id === id);
   if (font) return ok(font);

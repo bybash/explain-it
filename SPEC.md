@@ -565,6 +565,12 @@ comes later.
   beats an edit touches marked stale. A project with no graph starts from a
   small diagram, and the gate cannot be approved while edits are unsaved
   (decision 022).
+- The style gate's panel is a form beside a live preview. The preview is
+  the render page's player, in an iframe of its own, drawing the unsaved
+  form straight away, with a scrubber and buttons for the title card, each
+  beat and the end. Save sends what changed as a JSON Merge Patch with any
+  new logo files and writes `config.json` the way MCP's `set_style` does;
+  the gate cannot be approved while changes are unsaved (decision 024).
 
 ## App and stack
 
@@ -581,8 +587,10 @@ comes later.
   under `npm run dev`. With no login, the API
   answers only its own pages: it refuses requests addressed to another host
   name (DNS rebinding) or sent from another site's page, takes request bodies
-  only as JSON (which a cross-site form cannot send), and caps them at 1 MB.
-  Uploaded files are checked by type and size.
+  only as JSON (which a cross-site form cannot send), and caps them at 1 MB,
+  except a style edit, which may carry two logos (about 6 MB). Uploaded
+  files are checked by type and size; a logo comes from the page as data,
+  never as a path on the server.
 - Keys: read from `.env`; the settings page writes to it. Docker users pass
   `-e OPENROUTER_API_KEY=…`. The variables are `LLM_BASE_URL` (OpenRouter by
   default), `LLM_MODEL` and `LLM_API_KEY`, with `OPENROUTER_API_KEY` read as

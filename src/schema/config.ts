@@ -89,6 +89,21 @@ export const LOGO_TYPES = {
 export type LogoType = (typeof LOGO_TYPES)[keyof typeof LOGO_TYPES];
 
 const extensions = Object.keys(LOGO_TYPES);
+
+/** The video's two modes, each of which may have its own logo file. */
+export const LOGO_MODES = ["light", "dark"] as const;
+export type LogoMode = (typeof LOGO_MODES)[number];
+
+/** The extension a logo of each type is saved with: the first LOGO_TYPES gives for it. */
+const EXTENSION_OF = Object.fromEntries(
+  Object.entries(LOGO_TYPES)
+    .reverse()
+    .map(([extension, type]) => [type, extension]),
+) as Readonly<Record<LogoType, string>>;
+
+/** The name a logo file is saved under in assets/: `logo-<mode>` and its type's extension. */
+export const logoFileName = (mode: LogoMode, type: LogoType): string =>
+  `logo-${mode}${EXTENSION_OF[type]}`;
 const escaped = (text: string) => text.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
 
 const LogoFileSchema = z

@@ -11,6 +11,8 @@ import { BoxList, Muted, PageTitle, SectionTitle } from "./ui.tsx";
 
 /** The graph editor, loaded with the graph gate: CodeMirror and Mermaid are large, and only it needs them. */
 const GraphPanel = lazy(() => import("./GraphPanel.tsx").then((m) => ({ default: m.GraphPanel })));
+/** The style form, loaded with the style gate: it carries the palettes and fonts. */
+const StylePanel = lazy(() => import("./StylePanel.tsx").then((m) => ({ default: m.StylePanel })));
 
 /**
  * An opened project: the chat on the left and, on the right, the gate
@@ -49,6 +51,9 @@ export const ProjectView = ({ slug, gate }: { slug: string; gate?: Gate | undefi
     };
   }, [slug]);
 
+  // Until the project the address names has opened, the one before it is not shown: its gates
+  // would be checked against the new address, and the address corrected back to it.
+  const addressed = opened?.slug === slug ? opened : undefined;
   return (
     <section>
       <a className="mb-4 inline-block text-muted" href="#/">
@@ -61,12 +66,12 @@ export const ProjectView = ({ slug, gate }: { slug: string; gate?: Gate | undefi
           <Errors errors={errors} />
         </>
       )}
-      {!opened && errors.length === 0 && <Muted>Opening…</Muted>}
-      {opened && (
+      {!addressed && errors.length === 0 && <Muted>Opening…</Muted>}
+      {addressed && (
         <Opened
-          opened={opened}
+          opened={addressed}
           requested={gate}
-          approved={(project) => setOpened({ ...opened, project })}
+          approved={(project) => setOpened({ ...addressed, project })}
         />
       )}
     </section>
@@ -170,6 +175,10 @@ const GatePanel = ({
       {gate === "graph" ? (
         <Suspense fallback={<Muted>Opening the graph editor…</Muted>}>
           <GraphPanel opened={opened} blocked={setBlocked} />
+        </Suspense>
+      ) : gate === "style" ? (
+        <Suspense fallback={<Muted>Opening the style…</Muted>}>
+          <StylePanel opened={opened} blocked={setBlocked} />
         </Suspense>
       ) : (
         <Muted>This gate's panel comes in a later version.</Muted>

@@ -9,8 +9,11 @@ import {
   OpenedProjectSchema,
   type ProjectList,
   ProjectListSchema,
+  SavedLogoSchema,
   type ServerEvent,
   ServerEventSchema,
+  type StyleEdit,
+  StyleSavedSchema,
 } from "../schema/api.ts";
 import { type Chat, ChatSchema } from "../schema/chat.ts";
 import { parseWith, type Validated } from "../schema/errors.ts";
@@ -95,6 +98,18 @@ export const saveGraph = (slug: string, mermaid: string) =>
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ mermaid }),
   });
+
+/** Saves the style gate's changes, logo files and all, as MCP's set_style does. */
+export const saveStyle = (slug: string, edit: StyleEdit) =>
+  fetchChecked(StyleSavedSchema, `/api/projects/${encodeURIComponent(slug)}/style`, {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(edit),
+  });
+
+/** The saved logo as data URLs, for the preview, or null without one. */
+export const getLogo = (slug: string) =>
+  fetchChecked(SavedLogoSchema, `/api/projects/${encodeURIComponent(slug)}/logo`);
 
 export const approveGate = (slug: string, gate: Gate) =>
   postJson(ApprovedSchema, `/api/projects/${encodeURIComponent(slug)}/approve`, { gate });

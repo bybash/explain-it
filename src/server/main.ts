@@ -44,7 +44,9 @@ if (process.env.API_ONLY !== "1") {
   const index = join(webDir, "index.html");
   if (existsSync(index)) {
     const page = readFileSync(index, "utf8");
+    const preview = readFileSync(join(webDir, "preview.html"), "utf8");
     app.use("/assets/*", serveStatic({ root: webDir }));
+    app.get("/preview.html", (c) => c.html(preview));
     app.get("/assets/*", (c) => c.text("not found", 404));
     // The web app routes in the browser, so every other page that is not the API is its index.
     app.get("*", (c) =>

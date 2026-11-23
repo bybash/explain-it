@@ -27,6 +27,7 @@ const MESSAGES = "[aria-label=Messages] > li";
 const DIAGRAM = "[aria-label='The graph as a diagram']";
 const PROJECTS = "[aria-label=Projects] > li";
 const GRAPH_GATE = "[aria-label='Graph gate']";
+const STYLE_GATE = "[aria-label='Style gate']";
 
 /** Ports away from the defaults, so a developer's own app on 3000 and 3001 is left alone. */
 const START_PORT = 3457;
@@ -123,13 +124,19 @@ const devServer = async (projectsDir: string): Promise<Server> => {
   return { url, stop: () => stopped(child) };
 };
 
-/** The example, moved back to the graph gate under `slug`. */
-const exampleAtGraph = (projectsDir: string, slug: string) => {
+/** The example under `slug`, moved back to `gate`. */
+const exampleAt = (projectsDir: string, slug: string, gate: string) => {
   const dir = join(projectsDir, slug);
   cpSync(example, dir, { recursive: true, filter: (source) => !source.includes("/out") });
   const file = join(dir, "project.json");
-  writeFileSync(file, JSON.stringify({ ...JSON.parse(readFileSync(file, "utf8")), gate: "graph" }));
+  writeFileSync(file, JSON.stringify({ ...JSON.parse(readFileSync(file, "utf8")), gate }));
 };
+
+/** A 1 × 1 PNG: small, and an image the preview can draw. */
+const TINY_PNG = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
+  "base64",
+);
 
 /** The flow 3.1 checked by hand, and 3.3's chat and gates, on one running app. */
 const flow = (
@@ -245,7 +252,7 @@ const flow = (
   });
 
   it("approves a gate, moves on, and can go back to it", async () => {
-    exampleAtGraph(projectsDir, "oauth-example");
+    exampleAt(projectsDir, "oauth-example", "graph");
     await page.goto(`${server.url}/#/projects/oauth-example`);
     await page.click("text=Approve and go to Script");
     await page.waitForURL(/#\/projects\/oauth-example\/script$/);
@@ -259,6 +266,54 @@ const flow = (
     // Later gates stay closed until the ones before them are approved.
     expect(await page.locator(`${GATES} [aria-disabled=true]`).count()).toBe(3);
   });
+
+  it("styles the video: the preview follows the form, then it is saved and approved", async () => {
+    exampleAt(projectsDir, "oauth-style", "style");
+    await page.goto(`${server.url}/#/projects/oauth-style/style`);
+    const preview = page.frameLocator("iframe[title='The video with this style']");
+    // The player has drawn the video and offers its moments to jump to.
+    await page.getByRole("button", { name: "Beat 1", exact: true }).waitFor(SOON);
+    // The stage's own styles are on the page: the frame is the video's size, scaled to fit.
+    const stage = preview.getByRole("img", { name: "The video at this moment" });
+    expect(await stage.evaluate((frame) => getComputedStyle(frame).width)).toBe("1920px");
+    const background = () =>
+      preview.locator("html").evaluate((html) => getComputedStyle(html).getPropertyValue("--bg"));
+    const before = await background();
+
+    await page.getByLabel("Palette").selectOption("ocean");
+    await expect.poll(background, SOON).not.toBe(before);
+    expect(await page.isDisabled("text=Approve and go to Preview")).toBe(true);
+
+    await page.getByLabel("Logo for the light video").setInputFiles({
+      name: "logo.png",
+      mimeType: "image/png",
+      buffer: TINY_PNG,
+    });
+    await page.getByLabel("Shown").selectOption("all");
+    // A logo on every frame is drawn in the preview before it is saved.
+    await expect
+      .poll(
+        () => preview.getByRole("img", { name: "The video at this moment" }).locator("img").count(),
+        SOON,
+      )
+      .toBeGreaterThan(0);
+
+    await page.click("text=Save the style");
+    await expect
+      .poll(() => page.textContent(`${STYLE_GATE} [role=status]`), SOON)
+      .toContain("Saved");
+    const config = JSON.parse(
+      readFileSync(join(projectsDir, "oauth-style", "config.json"), "utf8"),
+    );
+    expect(config.theme.palette).toBe("ocean");
+    expect(config.logo).toMatchObject({ light: "logo-light.png", show: "all" });
+    expect(readFileSync(join(projectsDir, "oauth-style", "assets", "logo-light.png"))).toEqual(
+      TINY_PNG,
+    );
+
+    await page.click("text=Approve and go to Preview");
+    await page.waitForURL(/#\/projects\/oauth-style\/preview$/);
+  }, 60_000);
 };
 
 describe.skipIf(!hasChrome)("the web app (npm start)", () => {
