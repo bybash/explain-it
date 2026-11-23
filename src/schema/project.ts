@@ -37,4 +37,7 @@ export const ProjectSchema = z
 export type Project = z.output<typeof ProjectSchema>;
 export type Gate = (typeof GATES)[number];
 
+/** The gate after `gate`, which approving `gate` moves to; none after render. */
+export const nextGate = (gate: Gate): Gate | undefined => GATES[GATES.indexOf(gate) + 1];
+
 export const parseProject = (data: unknown): Validated<Project> => parseWith(ProjectSchema, data);

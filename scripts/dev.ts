@@ -2,8 +2,20 @@
 // for the web app on http://127.0.0.1:3000, which passes /api through to it.
 import { spawn } from "node:child_process";
 import { createServer } from "vite";
-import { DEFAULT_HOST, DEFAULT_PORT } from "../src/server/listen.ts";
-import { DEV_API_PORT } from "../vite.web.config.ts";
+import { formatErrors } from "../src/schema/errors.ts";
+import { DEFAULT_HOST, devApiPort, listenOptions } from "../src/server/listen.ts";
+
+// PORT is where the pages are (3000 by default); DEV_API_PORT is the API behind them (3001).
+const listen = listenOptions(process.env);
+const apiPort = devApiPort(process.env);
+if (!listen.ok || !apiPort.ok) {
+  for (const line of formatErrors([
+    ...(listen.ok ? [] : listen.errors),
+    ...(apiPort.ok ? [] : apiPort.errors),
+  ]))
+    console.error(line);
+  process.exit(2);
+}
 
 const api = spawn(process.execPath, ["--watch-path=src", "src/server/main.ts"], {
   stdio: "inherit",
@@ -12,9 +24,9 @@ const api = spawn(process.execPath, ["--watch-path=src", "src/server/main.ts"], 
   env: {
     ...process.env,
     HOST: DEFAULT_HOST,
-    PORT: String(DEV_API_PORT),
+    PORT: String(apiPort.value),
     API_ONLY: "1",
-    PUBLIC_URL: `http://${DEFAULT_HOST}:${DEFAULT_PORT}`,
+    PUBLIC_URL: `http://${DEFAULT_HOST}:${listen.value.port}`,
   },
 });
 

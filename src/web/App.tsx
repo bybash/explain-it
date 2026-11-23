@@ -1,16 +1,8 @@
 import { useEffect, useState } from "react";
 import { ProjectList } from "./ProjectList.tsx";
 import { ProjectView } from "./ProjectView.tsx";
+import { route } from "./route.ts";
 import { Settings } from "./Settings.tsx";
-
-/** The page the address names: `#/projects/<slug>` opens a project, `#/settings` the settings; anything else lists them. */
-const route = (
-  hash: string,
-): { page: "list" } | { page: "settings" } | { page: "project"; slug: string } => {
-  if (hash === "#/settings") return { page: "settings" };
-  const match = /^#\/projects\/([^/]+)$/.exec(hash);
-  return match?.[1] ? { page: "project", slug: decodeURIComponent(match[1]) } : { page: "list" };
-};
 
 /** The app shell: a header and the page for the current address. */
 export const App = () => {
@@ -33,9 +25,9 @@ export const App = () => {
           </a>
         </nav>
       </header>
-      <main className="shell-main">
+      <main className={current.page === "project" ? "shell-main wide" : "shell-main"}>
         {current.page === "project" ? (
-          <ProjectView slug={current.slug} />
+          <ProjectView slug={current.slug} gate={current.gate} />
         ) : current.page === "settings" ? (
           <Settings />
         ) : (

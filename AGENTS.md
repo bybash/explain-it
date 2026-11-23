@@ -47,7 +47,7 @@ before opening a PR; CI runs the same four.
 
 ```sh
 npm install
-npm run dev         # the app on http://127.0.0.1:3000: Vite for the web app, the API on 3001 behind it
+npm run dev         # the app on http://127.0.0.1:3000 (PORT): Vite for the web app, the API on 3001 (DEV_API_PORT) behind it
 npm run build       # build the web app into dist/web
 npm start           # the built web app and the API in one process (run `npm run build` first)
 npm run lint        # Biome: lint and format check (code and JSON, not Markdown)

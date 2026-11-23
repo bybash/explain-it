@@ -14,10 +14,22 @@ import {
 } from "../render/environment.ts";
 import { RenderQueue, type RenderRun } from "../render/queue.ts";
 import { renderFromFolder } from "../render/run.ts";
-import type { ValidationError } from "../schema/errors.ts";
+import { ApproveSchema } from "../schema/api.ts";
+import { type ChatMessage, NewChatMessageSchema } from "../schema/chat.ts";
+import { parseWith, type Validated, type ValidationError } from "../schema/errors.ts";
 import { MCP_PATH } from "../schema/mcp.ts";
+import { fail, ok } from "../schema/result.ts";
+import { appendChat, readChat, STUB_REPLY } from "./chat.ts";
 import { createEvents } from "./events.ts";
-import { createProject, listProjects, openProject } from "./projects.ts";
+import { approveGate } from "./gates.ts";
+import {
+  createProject,
+  listProjects,
+  openProject,
+  projectDir,
+  projectExists,
+  withProjectLock,
+} from "./projects.ts";
 import type { SettingsStore } from "./settings.ts";
 
 export type AppOptions = {
@@ -58,6 +70,15 @@ const errorResponse = (
   status: ContentfulStatusCode,
   errors: readonly ValidationError[],
 ) => c.json({ errors }, status);
+
+/** A request's JSON body, or the error that names why it is not one. */
+const jsonBody = async (c: Context): Promise<Validated<unknown>> => {
+  try {
+    return ok(await c.req.json());
+  } catch {
+    return fail([{ path: "(body)", message: "not valid JSON" }]);
+  }
+};
 
 /**
  * The API: projects over the folders in `projectsDir`, and server-sent events.
@@ -165,13 +186,9 @@ export const createApp = ({
   app.get("/api/projects", async (c) => c.json(await listProjects(projectsDir)));
 
   app.post("/api/projects", async (c) => {
-    let body: unknown;
-    try {
-      body = await c.req.json();
-    } catch {
-      return errorResponse(c, 400, [{ path: "(body)", message: "not valid JSON" }]);
-    }
-    const created = await createProject(projectsDir, body, now());
+    const body = await jsonBody(c);
+    if (!body.ok) return errorResponse(c, 400, body.errors);
+    const created = await createProject(projectsDir, body.value, now());
     if (!created.ok) return errorResponse(c, 400, created.errors);
     events.publish({ type: "project-created", slug: created.value.slug });
     return c.json(created.value, 201);
@@ -189,15 +206,62 @@ export const createApp = ({
   app.get("/api/settings", async (c) => c.json(await settings.view()));
 
   app.put("/api/settings", async (c) => {
-    let body: unknown;
-    try {
-      body = await c.req.json();
-    } catch {
-      return errorResponse(c, 400, [{ path: "(body)", message: "not valid JSON" }]);
-    }
-    const saved = await settings.update(body);
+    const body = await jsonBody(c);
+    if (!body.ok) return errorResponse(c, 400, body.errors);
+    const saved = await settings.update(body.value);
     if (!saved.ok) return errorResponse(c, 400, saved.errors);
     return c.json(saved.value);
+  });
+
+  app.get("/api/projects/:slug/chat", async (c) => {
+    const slug = c.req.param("slug");
+    if (!(await projectExists(projectsDir, slug)))
+      return errorResponse(c, 404, [{ path: "slug", message: `no project "${slug}"` }]);
+    return c.json(await readChat(projectDir(projectsDir, slug)));
+  });
+
+  // Until the LLM arrives, every message gets the same stub reply (SPEC, User flow; Milestone 5).
+  app.post("/api/projects/:slug/chat", async (c) => {
+    const slug = c.req.param("slug");
+    const body = await jsonBody(c);
+    if (!body.ok) return errorResponse(c, 400, body.errors);
+    const sent = parseWith(NewChatMessageSchema, body.value);
+    if (!sent.ok) return errorResponse(c, 400, sent.errors);
+    const added = await withProjectLock(projectsDir, slug, async () => {
+      const opened = await openProject(projectsDir, slug);
+      if (!opened) return undefined;
+      const gate = sent.value.gate ?? (opened.ok ? opened.value.project.gate : "graph");
+      const at = now().toISOString();
+      const messages: ChatMessage[] = [
+        { role: "user", text: sent.value.text, at, gate },
+        { role: "assistant", text: STUB_REPLY, at, gate },
+      ];
+      await appendChat(projectDir(projectsDir, slug), messages);
+      return messages;
+    });
+    if (!added) return errorResponse(c, 404, [{ path: "slug", message: `no project "${slug}"` }]);
+    events.publish({ type: "chat", slug });
+    return c.json({ messages: added }, 201);
+  });
+
+  app.post("/api/projects/:slug/approve", async (c) => {
+    const slug = c.req.param("slug");
+    const body = await jsonBody(c);
+    if (!body.ok) return errorResponse(c, 400, body.errors);
+    const asked = parseWith(ApproveSchema, body.value);
+    if (!asked.ok) return errorResponse(c, 400, asked.errors);
+    const approval = await approveGate(projectsDir, slug, asked.value.gate, now());
+    switch (approval.kind) {
+      case "missing":
+        return errorResponse(c, 404, [{ path: "slug", message: `no project "${slug}"` }]);
+      case "broken":
+        return errorResponse(c, 422, approval.errors);
+      case "refused":
+        return errorResponse(c, 409, approval.errors);
+      case "approved":
+        events.publish({ type: "project-updated", slug });
+        return c.json({ project: approval.project });
+    }
   });
 
   app.get("/api/events", (c) =>

@@ -4,7 +4,7 @@ import { ConfigSchema } from "./config.ts";
 import { ValidationErrorSchema } from "./errors.ts";
 import { GraphSchema } from "./graph.ts";
 import { LayoutSchema } from "./layout.ts";
-import { ProjectSchema } from "./project.ts";
+import { GATES, ProjectSchema } from "./project.ts";
 import { RenderEventSchema } from "./render.ts";
 import { StoryboardSchema } from "./storyboard.ts";
 
@@ -12,6 +12,10 @@ import { StoryboardSchema } from "./storyboard.ts";
 
 /** Every error response: what is wrong, each naming its place. */
 export const ErrorsResponseSchema = z.object({ errors: z.array(ValidationErrorSchema) });
+
+/** `POST /api/projects/:slug/approve`: the gate the user approves, which must be the one reached. */
+export const ApproveSchema = z.strictObject({ gate: z.enum(GATES) });
+export const ApprovedSchema = z.object({ project: ProjectSchema });
 
 /** `POST /api/projects`: only the name; everything else starts at its default. */
 export const NewProjectSchema = z.strictObject({ name: ProjectSchema.shape.name });
@@ -50,6 +54,8 @@ export const OpenedProjectSchema = z.object({
 export const ServerEventSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("project-created"), slug: SlugSchema }),
   z.object({ type: z.literal("project-updated"), slug: SlugSchema }),
+  /** A message was added to the project's chat. */
+  z.object({ type: z.literal("chat"), slug: SlugSchema }),
   RenderEventSchema,
 ]);
 

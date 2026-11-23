@@ -1,16 +1,20 @@
 import { useEffect, useState } from "react";
 import type { OpenedProject } from "../schema/api.ts";
 import type { ValidationError } from "../schema/errors.ts";
-import { GATES } from "../schema/project.ts";
-import { onServerEvents, openProject } from "./api.ts";
+import { type Gate, nextGate } from "../schema/project.ts";
+import { approveGate, onServerEvents, openProject } from "./api.ts";
+import { Chat } from "./Chat.tsx";
 import { Errors } from "./Errors.tsx";
-import { GATE_LABELS, updatedLabel } from "./labels.ts";
+import { GATE_LABELS, GATE_PANELS, updatedLabel } from "./labels.ts";
+import { gateSteps } from "./route.ts";
 
 /**
- * An opened project: its name, the gate it is at, and which of its files
- * exist so far. The gate panels come in the next slices.
+ * An opened project: the chat on the left and, on the right, the gate
+ * stepper and the panel of the gate viewed (SPEC, User flow). The gates'
+ * own panels come in the next slices; until then a panel says what it will
+ * show, lists the project's files and approves the gate.
  */
-export const ProjectView = ({ slug }: { slug: string }) => {
+export const ProjectView = ({ slug, gate }: { slug: string; gate?: Gate | undefined }) => {
   const [opened, setOpened] = useState<OpenedProject | undefined>();
   const [errors, setErrors] = useState<readonly ValidationError[]>([]);
 
@@ -53,13 +57,95 @@ export const ProjectView = ({ slug }: { slug: string }) => {
         </>
       )}
       {!opened && errors.length === 0 && <p className="muted">Opening…</p>}
-      {opened && <Opened opened={opened} />}
+      {opened && <Opened opened={opened} asked={gate} />}
     </section>
   );
 };
 
-const Opened = ({ opened }: { opened: OpenedProject }) => {
-  const { project, graph, storyboard, layout, config, problems } = opened;
+const Opened = ({ opened, asked }: { opened: OpenedProject; asked: Gate | undefined }) => {
+  const { slug, project } = opened;
+  const steps = gateSteps(project.gate, asked);
+  const viewed = steps.find((s) => s.viewed)?.gate ?? project.gate;
+  return (
+    <div className="workspace">
+      <Chat slug={slug} gate={viewed} />
+      <div className="panel">
+        <h1 className="page-title">{project.name}</h1>
+        <p className="muted">
+          {slug} · {project.origin === "mcp" ? "made over MCP" : "made in the app"} ·{" "}
+          {updatedLabel(project.updatedAt)}
+        </p>
+        <ol className="gates" aria-label="Gates">
+          {steps.map((step, i) => (
+            <li key={step.gate}>
+              {step.open ? (
+                <a
+                  className="gate"
+                  href={`#/projects/${slug}/${step.gate}`}
+                  data-state={step.state}
+                  data-viewed={step.viewed}
+                  aria-current={step.viewed ? "step" : undefined}
+                >
+                  <span className="gate-number">{i + 1}</span> {GATE_LABELS[step.gate]}
+                </a>
+              ) : (
+                <span className="gate" data-state={step.state} aria-disabled="true">
+                  <span className="gate-number">{i + 1}</span> {GATE_LABELS[step.gate]}
+                </span>
+              )}
+            </li>
+          ))}
+        </ol>
+        {/* Keyed by gate, so an error shown at one gate is gone at the next. */}
+        <GatePanel key={viewed} opened={opened} gate={viewed} />
+      </div>
+    </div>
+  );
+};
+
+/** A gate's panel: what it shows, the files so far, and Approve at the gate reached. */
+const GatePanel = ({ opened, gate }: { opened: OpenedProject; gate: Gate }) => {
+  const { slug, project } = opened;
+  const [errors, setErrors] = useState<readonly ValidationError[]>([]);
+  const [approving, setApproving] = useState(false);
+  const next = nextGate(gate);
+
+  const approve = async () => {
+    setApproving(true);
+    const result = await approveGate(slug, gate);
+    setApproving(false);
+    if (!result.ok) return setErrors(result.errors);
+    setErrors([]);
+    location.hash = `#/projects/${slug}/${result.value.project.gate}`;
+  };
+
+  return (
+    <section className="gate-panel" aria-label={`${GATE_LABELS[gate]} gate`}>
+      <h2 className="section-title">{GATE_LABELS[gate]}</h2>
+      <p>{GATE_PANELS[gate]}</p>
+      <p className="muted">This gate's panel comes in a later version.</p>
+      {gate === project.gate ? (
+        next && (
+          <div className="approve">
+            <button type="button" onClick={approve} disabled={approving}>
+              Approve and go to {GATE_LABELS[next]}
+            </button>
+            <Errors errors={errors} />
+          </div>
+        )
+      ) : (
+        <p className="approved">
+          Approved. The project is at the{" "}
+          <a href={`#/projects/${slug}/${project.gate}`}>{GATE_LABELS[project.gate]}</a> gate.
+        </p>
+      )}
+      <Files opened={opened} />
+    </section>
+  );
+};
+
+const Files = ({ opened }: { opened: OpenedProject }) => {
+  const { graph, storyboard, layout, config, problems } = opened;
   const files = [
     {
       file: "graph.json",
@@ -74,27 +160,9 @@ const Opened = ({ opened }: { opened: OpenedProject }) => {
     { file: "layout.json", summary: layout && `${Object.keys(layout.positions).length} positions` },
     { file: "config.json", summary: config && "style and output set" },
   ];
-  const at = GATES.indexOf(project.gate);
   return (
     <>
-      <h1 className="page-title">{project.name}</h1>
-      <p className="muted">
-        {opened.slug} · {project.origin === "mcp" ? "made over MCP" : "made in the app"} ·{" "}
-        {updatedLabel(project.updatedAt)}
-      </p>
-      <ol className="gates" aria-label="Gates">
-        {GATES.map((gate, i) => (
-          <li
-            key={gate}
-            className="gate"
-            data-state={i < at ? "done" : i === at ? "current" : "next"}
-            aria-current={i === at ? "step" : undefined}
-          >
-            <span className="gate-number">{i + 1}</span> {GATE_LABELS[gate]}
-          </li>
-        ))}
-      </ol>
-      <h2 className="section-title">Files</h2>
+      <h3 className="section-title">Files</h3>
       {problems.length > 0 && (
         <>
           <p>Some files are broken:</p>
