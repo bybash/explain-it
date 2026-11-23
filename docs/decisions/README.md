@@ -29,3 +29,4 @@ later record supersedes an earlier one and says so.
 | [017](017-timing-and-audio-checks.md) | Timing and audio checks |
 | [018](018-contact-sheet.md) | Contact sheet |
 | [019](019-llm-settings.md) | LLM settings |
+| [020](020-chat-and-gates.md) | Chat and gates |

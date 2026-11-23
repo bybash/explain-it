@@ -1,9 +1,15 @@
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
-import { DEFAULT_HOST, DEFAULT_PORT } from "./src/server/listen.ts";
+import { formatErrors } from "./src/schema/errors.ts";
+import { DEFAULT_HOST, devApiPort, listenOptions } from "./src/server/listen.ts";
 
-/** Where `npm run dev` runs the API, behind this dev server's /api proxy. */
-export const DEV_API_PORT = 3001;
+/** The dev server listens on PORT (3000 by default) and passes the API through to DEV_API_PORT (3001). */
+const listen = listenOptions(process.env);
+const api = devApiPort(process.env);
+if (!listen.ok || !api.ok)
+  throw new Error(
+    formatErrors([...(listen.ok ? [] : listen.errors), ...(api.ok ? [] : api.errors)]).join("\n"),
+  );
 
 // The web app: built into dist/web, which `npm start` serves with the API.
 export default defineConfig({
@@ -12,10 +18,10 @@ export default defineConfig({
   build: { outDir: "../../dist/web", emptyOutDir: true },
   server: {
     host: DEFAULT_HOST,
-    port: DEFAULT_PORT,
+    port: listen.value.port,
     strictPort: true,
     // Patterns, not prefixes: "/api" alone would also send the app's own module /api.ts to the API.
     // /mcp goes through too, so an IDE uses the same address as the browser and its preview links open.
-    proxy: { "^/(api|mcp)(/|$)": `http://${DEFAULT_HOST}:${DEV_API_PORT}` },
+    proxy: { "^/(api|mcp)(/|$)": `http://${DEFAULT_HOST}:${api.value}` },
   },
 });

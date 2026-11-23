@@ -370,3 +370,123 @@ describe("/api/settings", () => {
     expect(elsewhere.status).toBe(403);
   });
 });
+
+const postJson = (url: string, body: unknown) =>
+  app.request(url, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+describe("/api/projects/:slug/chat", () => {
+  it("saves the user's message with a stub reply, and keeps them across a restart", async () => {
+    await create({ name: "Chatty" });
+    const sent = await postJson("/api/projects/chatty/chat", {
+      text: "  Explain OAuth  ",
+      gate: "graph",
+    });
+    expect(sent.status).toBe(201);
+    const { messages } = await sent.json();
+    expect(messages.map((m: { role: string }) => m.role)).toEqual(["user", "assistant"]);
+    expect(messages[0]).toEqual({ role: "user", text: "Explain OAuth", at: NOW, gate: "graph" });
+    expect(messages[1].text).toMatch(/not connected yet/);
+
+    const lines = readFileSync(join(projectsDir, "chatty", "chat.jsonl"), "utf8")
+      .trim()
+      .split("\n");
+    expect(lines).toHaveLength(2);
+
+    // A restarted server reads the same folder.
+    const restarted = createApp({
+      projectsDir,
+      now: () => new Date(NOW),
+      tts: fakeTts().tts,
+      settings: settingsStore({ envFile: join(projectsDir, ".env"), environment: {} }),
+    });
+    const read = await (await restarted.request("/api/projects/chatty/chat")).json();
+    expect(read).toEqual({ messages, problems: [] });
+  });
+
+  it("starts empty, names a bad message, and refuses an unknown project", async () => {
+    await create({ name: "Quiet" });
+    expect(await (await app.request("/api/projects/quiet/chat")).json()).toEqual({
+      messages: [],
+      problems: [],
+    });
+    const noGate = await postJson("/api/projects/quiet/chat", { text: "hi" });
+    expect(noGate.status).toBe(400);
+    expect(await noGate.json()).toEqual({
+      errors: [
+        { path: "gate", message: 'must be one of "graph", "script", "style", "preview", "render"' },
+      ],
+    });
+    const empty = await postJson("/api/projects/quiet/chat", { text: "   ", gate: "graph" });
+    expect(empty.status).toBe(400);
+    expect(await empty.json()).toEqual({
+      errors: [{ path: "text", message: "must not be empty" }],
+    });
+    expect(
+      (await postJson("/api/projects/nobody/chat", { text: "hi", gate: "graph" })).status,
+    ).toBe(404);
+  });
+
+  it("reads past a broken line and names it", async () => {
+    await create({ name: "Broken chat" });
+    writeFileSync(join(projectsDir, "broken-chat", "chat.jsonl"), "{oops\n");
+    expect(await (await app.request("/api/projects/broken-chat/chat")).json()).toEqual({
+      messages: [],
+      problems: [{ path: "chat.jsonl line 1", message: "not valid JSON" }],
+    });
+  });
+});
+
+describe("POST /api/projects/:slug/approve", () => {
+  /** The example, moved back to the graph gate. */
+  const atGraph = () => {
+    copyExample("oauth-example");
+    const file = join(projectsDir, "oauth-example", "project.json");
+    writeFileSync(
+      file,
+      JSON.stringify({ ...JSON.parse(readFileSync(file, "utf8")), gate: "graph" }),
+    );
+  };
+
+  it("moves the project on from the gate it has reached", async () => {
+    atGraph();
+    const approved = await postJson("/api/projects/oauth-example/approve", { gate: "graph" });
+    expect(approved.status).toBe(200);
+    expect((await approved.json()).project).toMatchObject({ gate: "script", updatedAt: NOW });
+    const saved = parseProject(
+      JSON.parse(readFileSync(join(projectsDir, "oauth-example", "project.json"), "utf8")),
+    );
+    expect(saved.ok && saved.value.gate).toBe("script");
+  });
+
+  it("approves only the gate reached, so a second click or an old tab changes nothing", async () => {
+    atGraph();
+    await postJson("/api/projects/oauth-example/approve", { gate: "graph" });
+    const again = await postJson("/api/projects/oauth-example/approve", { gate: "graph" });
+    expect(again.status).toBe(409);
+    expect(await again.json()).toEqual({
+      errors: [{ path: "gate", message: "the project is at the script gate, not graph" }],
+    });
+  });
+
+  it("needs the gate's file, and there is nothing after render", async () => {
+    await create({ name: "Empty" });
+    const empty = await postJson("/api/projects/empty/approve", { gate: "graph" });
+    expect(empty.status).toBe(409);
+    expect(await empty.json()).toEqual({
+      errors: [
+        { path: "graph.json", message: "missing or broken: make the graph before approving it" },
+      ],
+    });
+    copyExample("finished");
+    const last = await postJson("/api/projects/finished/approve", { gate: "render" });
+    expect(last.status).toBe(409);
+    expect(await last.json()).toEqual({
+      errors: [{ path: "gate", message: "render is the last gate" }],
+    });
+    expect((await postJson("/api/projects/nobody/approve", { gate: "graph" })).status).toBe(404);
+  });
+});

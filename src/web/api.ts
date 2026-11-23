@@ -1,5 +1,6 @@
 import type { z } from "zod";
 import {
+  ApprovedSchema,
   CreatedProjectSchema,
   ErrorsResponseSchema,
   type OpenedProject,
@@ -9,7 +10,9 @@ import {
   type ServerEvent,
   ServerEventSchema,
 } from "../schema/api.ts";
+import { type Chat, ChatSchema } from "../schema/chat.ts";
 import { parseWith, type Validated } from "../schema/errors.ts";
+import type { Gate } from "../schema/project.ts";
 import { fail } from "../schema/result.ts";
 import { type SettingsUpdate, type SettingsView, SettingsViewSchema } from "../schema/settings.ts";
 
@@ -62,6 +65,25 @@ export const createProject = (name: string) =>
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ name }),
   });
+
+export const getChat = (slug: string): Promise<Validated<Chat>> =>
+  fetchChecked(ChatSchema, `/api/projects/${encodeURIComponent(slug)}/chat`);
+
+const postJson = <S extends z.ZodType>(schema: S, url: string, body: unknown) =>
+  fetchChecked(schema, url, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+export const sendChat = (slug: string, text: string, gate: Gate) =>
+  postJson(ChatSchema.pick({ messages: true }), `/api/projects/${encodeURIComponent(slug)}/chat`, {
+    text,
+    gate,
+  });
+
+export const approveGate = (slug: string, gate: Gate) =>
+  postJson(ApprovedSchema, `/api/projects/${encodeURIComponent(slug)}/approve`, { gate });
 
 export const getSettings = (): Promise<Validated<SettingsView>> =>
   fetchChecked(SettingsViewSchema, "/api/settings");

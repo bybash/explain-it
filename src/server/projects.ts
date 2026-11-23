@@ -139,6 +139,10 @@ export const writeProjectFile = async (
   await rename(temporary, target);
 };
 
+/** Whether `slug` names a project folder. */
+export const projectExists = async (projectsDir: string, slug: string): Promise<boolean> =>
+  isSlug(slug) && (await entriesIn(projectsDir)).folders.includes(slug);
+
 /** The folder of the project named `slug`, when there is one. */
 export const projectDir = (projectsDir: string, slug: string): string => join(projectsDir, slug);
 
@@ -153,7 +157,7 @@ export const openProject = async (
   projectsDir: string,
   slug: string,
 ): Promise<Validated<OpenedProject> | undefined> => {
-  if (!isSlug(slug) || !(await entriesIn(projectsDir)).folders.includes(slug)) return undefined;
+  if (!(await projectExists(projectsDir, slug))) return undefined;
   const dir = join(projectsDir, slug);
   const project = await readProjectFile(dir);
   if (!project.ok) return project;

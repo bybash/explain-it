@@ -62,6 +62,13 @@ Rules:
   keeps); a scene's node list does not make its beats stale. A stale beat
   stops being stale once it is rewritten.
 - Style can be changed at any later gate without going back.
+- `project.json` keeps the furthest gate reached. Approving moves on from that
+  gate only, so a second click or an old tab changes nothing; the graph and
+  script gates need their file, valid. Going back to an earlier gate shows it
+  (the address names it, `#/projects/<slug>/<gate>`) and keeps it approved.
+- Chat messages are saved to `chat.jsonl`, each with the gate it was sent at.
+  Until the LLM arrives (Milestone 5), every message gets a stub reply that
+  says so, and gates are approved with their button (decision 020).
 - Checks warn and never block. The user can always render.
 
 ## Data model
@@ -185,7 +192,7 @@ type CustomPalette = {
 
 ```text
 projects/<slug>/
-  project.json        name, current gate, stale beat ids, timestamps
+  project.json        name, furthest gate reached, stale beat ids, timestamps
   chat.jsonl          the conversation, one message per line
   context/            uploaded text files
   graph.json
@@ -539,7 +546,8 @@ comes later.
 - `npm run dev` for development. `npm start` runs one Node process that
   serves the built UI and the API.
 - The server listens on `127.0.0.1:3000` by default. No login, no telemetry.
-  `HOST` and `PORT` change where it listens, `PROJECTS_DIR` where the
+  `HOST` and `PORT` change where it listens (under `npm run dev`, `PORT` is
+  Vite's dev server and `DEV_API_PORT`, 3001 by default, the API behind it), `PROJECTS_DIR` where the
   projects folder is (`./projects` by default), and `PUBLIC_URL` the
   address preview links use when the app sits behind a proxy, as it does
   under `npm run dev`. With no login, the API

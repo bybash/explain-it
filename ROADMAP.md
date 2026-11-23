@@ -87,7 +87,7 @@ The goal: the CLI renders a hand-written example to an MP4, with no LLM and no v
 |---|---|---|
 | ✅ 3.1 | **Server and shell**: Hono, the projects API over folders, SSE, `127.0.0.1` by default, a Vite and React shell listing projects, `npm run dev` and `npm start` | Projects can be created, listed and opened |
 | ✅ 3.2 | **Settings**: base URL, key and model read from and written to `.env`; keys are never logged or sent to the browser in full | Settings round-trip; the key is masked in the UI |
-| 3.3 | **Chat and gates**: the chat column, the gate stepper, the split layout, `chat.jsonl`; no LLM yet (a stub reply) | Messages persist across restarts |
+| ✅ 3.3 | **Chat and gates**: the chat column, the gate stepper, the split layout, `chat.jsonl`; no LLM yet (a stub reply) | Messages persist across restarts |
 | 3.4 | **Mermaid round-trip**: Mermaid to graph (jsdom, pinned version) and graph to Mermaid, keeping kind, icon and category by id | Round-trip tests on all examples and a set of Mermaid fixtures |
 | 3.5 | **Graph gate panel**: a Mermaid editor with the rendered diagram, approve and edit | Editing the Mermaid updates `graph.json` |
 | 3.6 | **Script gate panel**: the scene and beat editor; stale beats after graph edits | Changing a node marks only its beats as stale |
@@ -203,18 +203,23 @@ that finishes it.
   `anthropic/claude-sonnet-5.5` (`SUGGESTED_MODEL`) is unchecked; confirm
   the id when recording the first fixtures.
 
-### For 3.3 (chat and gates), from 3.1
+### For 3.5 to 3.9 (gate panels), from 3.3
 
-- The web app has no automated browser test yet. 3.1's flow was checked by
-  driving Chrome with Playwright from a one-off script: create a project,
-  open it, see a project made elsewhere appear on the list over SSE, and
-  get a named error for a long name. The first gate slice should turn
-  that flow into the first end-to-end test (AGENTS.md, Tests, layer 5),
-  run against both `npm start` and `npm run dev`: the dev server's `/api`
-  proxy once sent the app's own `/api.ts` module to the API, which only a
-  browser on `npm run dev` showed.
-- The opened project shows its name, gate and files. The gate stepper
-  there is only a display; 3.3 makes it the real one.
+- Each gate's panel replaces the placeholder in `GatePanel`
+  (`src/web/ProjectView.tsx`), which says what the panel will show, lists the
+  files and approves the gate. Approving the graph and script gates needs
+  `graph.json` and `storyboard.json`, valid (`src/server/gates.ts`); the
+  other gates need nothing yet.
+- The end-to-end test (`src/server/web-e2e.test.ts`) runs the app as
+  `npm start` and as `npm run dev` on ports of its own; each panel slice
+  should add its gate's steps to its flow. It needs Chrome, so CI skips it.
+
+### For 5.5 (edits through chat), from 3.3
+
+- Chat messages are saved with the gate they were sent at, and each gets
+  `STUB_REPLY` (`src/server/chat.ts`). The LLM replaces the stub; approving
+  by chat ("looks good") waits for it too, since only the LLM can tell what
+  the user means.
 
 ### For 3.4 (Mermaid round-trip), from 4.1
 
