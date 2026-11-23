@@ -27,6 +27,8 @@
     "build:engine": "vite build --config vite.render.config.ts",
     "screenshot": "node scripts/dev-screenshot.ts",
     "clip": "node scripts/dev-clip.ts",
+    "shots": "node scripts/app-shots.ts",
+    "shots:compare": "node scripts/compare-shots.ts",
     "layout": "node scripts/layout.ts",
     "music": "node scripts/music.ts",
     "explain-it": "node src/cli/main.ts"
@@ -34,6 +36,7 @@
   "devDependencies": {
     "@biomejs/biome": "2.6.8",
     "@swc/core": "1.16.22",
+    "@tailwindcss/vite": "4.3.5",
     "@types/jsdom": "30.0.0",
     "@types/node": "24.19.2",
     "@types/react": "19.3.0",
@@ -42,6 +45,7 @@
     "dependency-cruiser": "18.8.0",
     "fast-check": "4.10.3",
     "jsqr": "1.4.0",
+    "tailwindcss": "4.3.5",
     "typescript": "7.0.2",
     "vite": "8.3.8",
     "vitest": "5.1.1"

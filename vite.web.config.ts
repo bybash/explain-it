@@ -1,3 +1,4 @@
+import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 import { formatErrors } from "./src/schema/errors.ts";
@@ -14,7 +15,7 @@ if (!listen.ok || !api.ok)
 // The web app: built into dist/web, which `npm start` serves with the API.
 export default defineConfig({
   root: "src/web",
-  plugins: [react()],
+  plugins: [react(), tailwindcss()],
   build: { outDir: "../../dist/web", emptyOutDir: true },
   // Bundled when the dev server starts, not when the graph gate first opens: found then, they
   // would make Vite reload the page under the user.

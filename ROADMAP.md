@@ -95,7 +95,7 @@ The goal: the CLI renders a hand-written example to an MP4, with no LLM and no v
 | 3.7 | **Style gate panel**: palettes, custom palette, fonts and font upload, voice picker with a sample, captions, music, output, title and end cards, logo upload | Changes show in the preview straight away |
 | 3.8 | **Preview gate**: the player with a scrubber and beat list, voice generation with progress, check warnings that jump to the beat, the contact sheet | The example can be previewed with voice |
 | 3.9 | **Render gate**: the job queue, progress over SSE, cancel, downloads | The example renders from the UI |
-| 3.10 | **App styles in Tailwind**: Tailwind v4 through its Vite plugin; the colour tokens and the dark set become `@theme` values; `app.css` moves to utility classes, keeping plain CSS only for CodeMirror's and Mermaid's own classes; the video's styles (`src/engine/`) are untouched; a decision record | Screenshots of each page, light and dark, look the same before and after |
+| ✅ 3.10 | **App styles in Tailwind**: Tailwind v4 through its Vite plugin; the colour tokens and the dark set become `@theme` values; `app.css` moves to utility classes, keeping plain CSS only for CodeMirror's and Mermaid's own classes; the video's styles (`src/engine/`) are untouched; a decision record | Screenshots of each page, light and dark, look the same before and after |
 
 ## Milestone 4: MCP
 

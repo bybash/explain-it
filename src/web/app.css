@@ -1,544 +1,142 @@
 /*
- * The app's look. Colours are tokens, with a dark set for a dark system
- * theme; the videos' own themes live in src/engine/theme.
+ * The app's look, in Tailwind (decision 023): the pages style themselves with
+ * utility classes made from the tokens below. The colours swap to a dark set
+ * under a dark system theme, so a class names a colour once. The videos' own
+ * themes live in src/engine/theme. Only this folder is scanned for classes.
  */
+@import "tailwindcss" source(".");
+
+@theme {
+  --font-sans: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  /* Only the app's own colours, so no page reaches for one outside the palette. */
+  --color-*: initial;
+  --color-page: #f7f7fa;
+  --color-surface: #ffffff;
+  --color-ink: #18181b;
+  --color-muted: #6b6b76;
+  --color-line: #e4e4ea;
+  --color-accent: #6d28d9;
+  --color-accent-soft: #ede9fe;
+  --color-on-accent: #ffffff;
+  --color-error: #b91c1c;
+
+  --radius-box: 10px;
+
+  /* The sizes the app uses; each keeps the text's own line height. */
+  --text-*: initial;
+  --text-xs: 13px;
+  --text-sm: 14px;
+  --text-base: 16px;
+  --text-lg: 18px;
+  --text-2xl: 28px;
+}
+
 :root {
-  --bg: #f7f7fa;
-  --surface: #ffffff;
-  --text: #18181b;
-  --muted: #6b6b76;
-  --line: #e4e4ea;
-  --accent: #6d28d9;
-  --accent-soft: #ede9fe;
-  --error: #b91c1c;
-  --radius: 10px;
   color-scheme: light;
-  font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #0f1220;
-    --surface: #171a2b;
-    --text: #f1f1f5;
-    --muted: #9a9cb0;
-    --line: #2a2e45;
-    --accent: #a78bfa;
-    --accent-soft: #2a2350;
-    --error: #f87171;
+    --color-page: #0f1220;
+    --color-surface: #171a2b;
+    --color-ink: #f1f1f5;
+    --color-muted: #9a9cb0;
+    --color-line: #2a2e45;
+    --color-accent: #a78bfa;
+    --color-accent-soft: #2a2350;
+    --color-on-accent: #0f1220;
+    --color-error: #f87171;
     color-scheme: dark;
   }
 }
 
-* {
-  box-sizing: border-box;
+@layer base {
+  /* Where Preflight's defaults differ from the look the app already had, the app's stay:
+     the line height, code, placeholders and checkboxes. */
+  html {
+    line-height: normal;
+  }
+
+  body {
+    background-color: var(--color-page);
+    color: var(--color-ink);
+  }
+
+  code {
+    font-family: revert;
+    font-size: revert;
+  }
+
+  ::placeholder {
+    color: revert;
+    opacity: revert;
+  }
+
+  input[type="checkbox"] {
+    margin: revert;
+  }
 }
 
-body {
-  margin: 0;
-  background: var(--bg);
-  color: var(--text);
-}
-
-a {
-  color: inherit;
-}
-
-.shell-header {
-  display: flex;
-  align-items: center;
-  height: 56px;
-  padding: 0 24px;
-  border-bottom: 1px solid var(--line);
-  background: var(--surface);
-}
-
-.brand {
-  font-weight: 700;
-  font-size: 18px;
-  text-decoration: none;
-}
-
-.brand-ai {
-  color: var(--accent);
-}
-
-.shell-main {
-  max-width: 880px;
-  margin: 0 auto;
-  padding: 32px 24px 64px;
-}
-
-.page-title {
-  margin: 0 0 8px;
-  font-size: 28px;
-}
-
-.section-title {
-  margin: 32px 0 12px;
-  font-size: 16px;
-}
-
-.muted {
-  color: var(--muted);
-}
-
-.new-project {
-  margin: 24px 0 32px;
-}
-
-.new-project label {
-  display: block;
-  margin-bottom: 8px;
-  font-weight: 600;
-}
-
-.new-project-row {
-  display: flex;
-  gap: 8px;
-}
-
-.new-project input {
-  flex: 1;
-  min-width: 0;
-  padding: 10px 12px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--surface);
-  color: var(--text);
-  font: inherit;
-}
-
-.new-project input:focus-visible,
-button:focus-visible,
-.project-row:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-
-button {
+/* The app's one kind of button. */
+@utility btn {
+  border-radius: var(--radius-box);
+  background-color: var(--color-accent);
   padding: 10px 18px;
-  border: 0;
-  border-radius: var(--radius);
-  background: var(--accent);
-  color: #fff;
-  font: inherit;
+  color: var(--color-on-accent);
   font-weight: 600;
   cursor: pointer;
-}
 
-@media (prefers-color-scheme: dark) {
-  button {
-    color: #0f1220;
+  &:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
   }
 }
 
-button:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-
-.errors {
-  margin: 8px 0 0;
-  padding: 0;
-  list-style: none;
-  color: var(--error);
-}
-
-.project-list,
-.files {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--surface);
-  overflow: hidden;
-}
-
-.project-list li + li,
-.files li + li {
-  border-top: 1px solid var(--line);
-}
-
-.project-row {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 4px 12px;
-  padding: 14px 16px;
-  text-decoration: none;
-}
-
-.project-row:hover {
-  background: var(--accent-soft);
-}
-
-.project-name {
-  font-weight: 600;
-}
-
-.project-updated {
-  grid-column: 1 / -1;
-  font-size: 14px;
-}
-
-.gate-badge {
-  align-self: start;
-  padding: 2px 10px;
-  border-radius: 999px;
-  background: var(--accent-soft);
-  color: var(--accent);
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.broken {
-  margin-top: 24px;
-  color: var(--muted);
-}
-
-.back {
-  display: inline-block;
-  margin-bottom: 16px;
-  color: var(--muted);
-  text-decoration: none;
-}
-
-.gates {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 24px 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.gate {
-  padding: 6px 12px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  color: var(--muted);
-  font-size: 14px;
-}
-
-.gate[data-state="current"] {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-  color: var(--accent);
-  font-weight: 600;
-}
-
-.gate[data-state="done"] {
-  color: var(--text);
-}
-
-.gate-number {
-  font-variant-numeric: tabular-nums;
-}
-
-.file {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 12px 16px;
-}
-
-.file[data-present="false"] code {
-  color: var(--muted);
-}
-
-.shell-header {
-  justify-content: space-between;
-}
-
-.shell-nav a {
-  color: var(--muted);
-  text-decoration: none;
-  font-weight: 600;
-}
-
-.shell-nav a[aria-current="page"] {
-  color: var(--accent);
-}
-
-.settings {
-  display: grid;
-  gap: 6px;
-  max-width: 560px;
-  margin-top: 24px;
-}
-
-.settings > label:not(.check) {
-  margin-top: 14px;
-  font-weight: 600;
-}
-
-.settings input:not([type="checkbox"]),
-.settings select {
+/* A text box or a select; its background is the page's or the surface's, set where it is used. */
+@utility field {
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-box);
   padding: 10px 12px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--surface);
-  color: var(--text);
-  font: inherit;
-}
+  color: var(--color-ink);
 
-.settings input:disabled,
-.settings select:disabled {
-  opacity: 0.6;
-}
-
-.settings input:focus-visible,
-.settings select:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-
-.field-note {
-  margin: 0;
-  color: var(--muted);
-  font-size: 14px;
-}
-
-.check {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--muted);
-  font-size: 14px;
-}
-
-.settings-actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-top: 20px;
-}
-
-.shell-main.wide {
-  max-width: 1320px;
-}
-
-.workspace {
-  display: grid;
-  grid-template-columns: minmax(280px, 380px) 1fr;
-  gap: 24px;
-  align-items: start;
-}
-
-@media (max-width: 860px) {
-  .workspace {
-    grid-template-columns: 1fr;
+  &:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
   }
 }
 
-.chat {
-  position: sticky;
-  top: 16px;
-  display: flex;
-  flex-direction: column;
-  height: calc(100vh - 56px - 64px);
-  min-height: 420px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--surface);
-}
-
-.chat-messages {
-  flex: 1;
-  overflow-y: auto;
-  padding: 16px;
-}
-
-.chat-empty {
-  margin: 0;
-}
-
-.message {
-  margin-bottom: 12px;
-  padding: 10px 12px;
-  border-radius: var(--radius);
-  background: var(--bg);
-}
-
-.message[data-role="user"] {
-  background: var(--accent-soft);
-}
-
-.message p {
-  margin: 4px 0 0;
-  white-space: pre-wrap;
-}
-
-.message-meta {
-  color: var(--muted);
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.chat-form {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 8px;
-  padding: 12px;
-  border-top: 1px solid var(--line);
-}
-
-.chat-form textarea {
-  resize: none;
-  padding: 10px 12px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--bg);
-  color: var(--text);
-  font: inherit;
-}
-
-.chat-form button {
-  align-self: end;
-}
-
-.chat-form .errors {
-  grid-column: 1 / -1;
-}
-
-.visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
-
-a.gate {
-  display: inline-block;
-  text-decoration: none;
-}
-
-a.gate:hover {
-  border-color: var(--accent);
-}
-
-.gate[data-viewed="true"] {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
-}
-
-span.gate[aria-disabled="true"] {
-  opacity: 0.6;
-}
-
-.gate-panel {
-  margin-top: 8px;
-}
-
-.approve {
-  margin: 16px 0;
-}
-
-.approved {
-  margin: 16px 0;
-}
-
-.graph-panel {
-  margin: 12px 0 8px;
-}
-
-.graph-columns {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 16px;
-  align-items: start;
-}
-
-@media (max-width: 1100px) {
-  .graph-columns {
-    grid-template-columns: 1fr;
-  }
-}
-
-.mermaid-editor {
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--surface);
-  overflow: hidden;
-}
-
+/* CodeMirror draws its own elements, so they are styled by its class names. */
 .mermaid-editor .cm-editor {
   height: 360px;
   font-size: 14px;
 }
 
 .mermaid-editor .cm-editor.cm-focused {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--color-accent);
   outline-offset: -1px;
 }
 
 .mermaid-editor .cm-gutters {
-  border-right: 1px solid var(--line);
-  background: var(--bg);
-  color: var(--muted);
+  border-right: 1px solid var(--color-line);
+  background: var(--color-page);
+  color: var(--color-muted);
 }
 
 .mermaid-editor .cm-content {
-  caret-color: var(--text);
-  color: var(--text);
+  caret-color: var(--color-ink);
+  color: var(--color-ink);
 }
 
 .mermaid-editor .cm-activeLine {
-  background: color-mix(in srgb, var(--accent-soft) 45%, transparent);
+  background: color-mix(in srgb, var(--color-accent-soft) 45%, transparent);
 }
 
 .mermaid-editor .cm-error-line {
-  background: color-mix(in srgb, var(--error) 18%, transparent);
-}
-
-.mermaid-diagram {
-  margin: 0;
-  height: 360px;
-  padding: 12px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--surface);
-  overflow: auto;
-}
-
-.mermaid-diagram [data-stale="true"] {
-  opacity: 0.4;
-}
-
-/* At its own size, so labels stay readable; the box scrolls a wide graph. */
-.mermaid-diagram svg {
-  max-width: none;
-}
-
-.notes {
-  margin: 8px 0 0;
-  padding-left: 20px;
-  color: var(--muted);
-  font-size: 14px;
-}
-
-.graph-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px;
-  margin-top: 12px;
-}
-
-.unsaved {
-  color: var(--accent);
-  font-weight: 600;
-}
-
-/* Stays in view while a wide diagram scrolls under it. */
-.diagram-problem {
-  position: sticky;
-  top: 0;
-  left: 0;
-  margin-bottom: 8px;
-  color: var(--muted);
-  font-size: 14px;
+  background: color-mix(in srgb, var(--color-error) 18%, transparent);
 }

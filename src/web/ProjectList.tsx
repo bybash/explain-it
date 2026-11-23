@@ -4,6 +4,7 @@ import type { ValidationError } from "../schema/errors.ts";
 import { createProject, listProjects, onServerEvents } from "./api.ts";
 import { Errors } from "./Errors.tsx";
 import { GATE_LABELS, updatedLabel } from "./labels.ts";
+import { BoxList, Muted, PageTitle } from "./ui.tsx";
 
 /** The projects, newest first, with a form to start a new one. */
 export const ProjectList = () => {
@@ -40,12 +41,15 @@ export const ProjectList = () => {
   };
 
   return (
-    <section className="page">
-      <h1 className="page-title">Projects</h1>
-      <form className="new-project" onSubmit={create}>
-        <label htmlFor="new-project-name">New project</label>
-        <div className="new-project-row">
+    <section>
+      <PageTitle>Projects</PageTitle>
+      <form className="mt-6 mb-8" onSubmit={create}>
+        <label className="mb-2 block font-semibold" htmlFor="new-project-name">
+          New project
+        </label>
+        <div className="flex gap-2">
           <input
+            className="field min-w-0 flex-1 bg-surface"
             id="new-project-name"
             value={name}
             placeholder="What does the video explain? For example: OAuth login"
@@ -53,7 +57,7 @@ export const ProjectList = () => {
             aria-invalid={formErrors.length > 0}
             aria-describedby="new-project-errors"
           />
-          <button type="submit" disabled={creating || name.trim() === ""}>
+          <button className="btn" type="submit" disabled={creating || name.trim() === ""}>
             Create
           </button>
         </div>
@@ -62,32 +66,40 @@ export const ProjectList = () => {
 
       <Errors errors={loadErrors} />
       {list === undefined ? (
-        loadErrors.length === 0 && <p className="muted">Loading…</p>
+        loadErrors.length === 0 && <Muted>Loading…</Muted>
       ) : list.projects.length === 0 ? (
-        <p className="muted">No projects yet. Name one above to start.</p>
+        <Muted>No projects yet. Name one above to start.</Muted>
       ) : (
-        <ul className="project-list">
+        <BoxList label="Projects">
           {list.projects.map((project) => (
             <li key={project.slug}>
-              <a className="project-row" href={`#/projects/${project.slug}`}>
-                <span className="project-name">{project.name}</span>
-                <span className="gate-badge" data-gate={project.gate}>
+              <a
+                className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-1 px-4 py-3.5 hover:bg-accent-soft focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
+                href={`#/projects/${project.slug}`}
+              >
+                <span className="font-semibold">{project.name}</span>
+                <span
+                  className="self-start rounded-full bg-accent-soft px-2.5 py-0.5 font-semibold text-accent text-xs"
+                  data-gate={project.gate}
+                >
                   {GATE_LABELS[project.gate]}
                 </span>
-                <span className="muted project-updated">{updatedLabel(project.updatedAt)}</span>
+                <span className="col-span-full text-muted text-sm">
+                  {updatedLabel(project.updatedAt)}
+                </span>
               </a>
             </li>
           ))}
-        </ul>
+        </BoxList>
       )}
 
       {list && list.broken.length > 0 && (
-        <details className="broken">
+        <details className="mt-6 text-muted">
           <summary>
             {list.broken.length} {list.broken.length === 1 ? "folder" : "folders"} in projects/
             could not be read
           </summary>
-          <ul>
+          <ul className="my-4 list-disc pl-10">
             {list.broken.map((broken) => (
               <li key={broken.slug}>
                 <code>{broken.slug}</code>

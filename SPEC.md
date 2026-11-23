@@ -569,7 +569,8 @@ comes later.
 ## App and stack
 
 - Node 24 LTS, TypeScript (strict), one npm package.
-- Web: Vite and React. Server: Hono. Progress: Server-Sent Events.
+- Web: Vite and React, styled with Tailwind (decision 023). Server: Hono.
+  Progress: Server-Sent Events.
 - `npm run dev` for development. `npm start` runs one Node process that
   serves the built UI and the API.
 - The server listens on `127.0.0.1:3000` by default. No login, no telemetry.
@@ -678,7 +679,7 @@ The pull requests that make up each milestone are listed in [`ROADMAP.md`](ROADM
 
 - explAIn-it is MIT. The videos people make are theirs.
 - Dependencies: Mermaid (MIT) with jsdom (MIT) to parse it on the server,
-  CodeMirror (MIT, the graph editor),
+  CodeMirror (MIT, the graph editor), Tailwind CSS (MIT, the app's styles),
   Playwright (Apache-2.0), Kokoro-82M and
   kokoro-js (Apache-2.0), transformers.js (Apache-2.0), onnxruntime-node
   (MIT), AI SDK (Apache-2.0), MCP TypeScript SDK (MIT),

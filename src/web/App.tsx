@@ -14,18 +14,24 @@ export const App = () => {
   }, []);
   const current = route(hash);
   return (
-    <div className="shell">
-      <header className="shell-header">
-        <a className="brand" href="#/">
-          expl<span className="brand-ai">AI</span>n-it
+    <div>
+      <header className="flex h-14 items-center justify-between border-b border-line bg-surface px-6">
+        <a className="font-bold text-lg" href="#/">
+          expl<span className="text-accent">AI</span>n-it
         </a>
-        <nav className="shell-nav">
-          <a href="#/settings" aria-current={current.page === "settings" ? "page" : undefined}>
+        <nav>
+          <a
+            className="font-semibold text-muted aria-[current=page]:text-accent"
+            href="#/settings"
+            aria-current={current.page === "settings" ? "page" : undefined}
+          >
             Settings
           </a>
         </nav>
       </header>
-      <main className={current.page === "project" ? "shell-main wide" : "shell-main"}>
+      <main
+        className={`mx-auto px-6 pt-8 pb-16 ${current.page === "project" ? "max-w-[1320px]" : "max-w-[880px]"}`}
+      >
         {current.page === "project" ? (
           <ProjectView slug={current.slug} gate={current.gate} />
         ) : current.page === "settings" ? (
