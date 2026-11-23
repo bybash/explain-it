@@ -8,6 +8,17 @@ export const SAFE_MARGIN = 0.05;
 /** SPEC, Checks: two shapes may overlap by this much (how far they must move apart) before it counts. */
 export const OVERLAP_PX = 4;
 
+/**
+ * SPEC, Checks: how many characters a second a caption may ask of a viewer.
+ * Step captions are read alone; narration captions are subtitles of speech
+ * also heard, so they use the common subtitle limit (decision 017).
+ */
+export const READING_SPEED = { step: 15, narration: 17 } as const;
+/** SPEC, Checks: the most a line may need speeding up to fit its beat. */
+export const NARRATION_FIT = 1.05;
+/** SPEC, Mix and Checks: the mix's integrated loudness and its tolerance, in LUFS, and its highest true peak, in dBTP. */
+export const LOUDNESS = { target: -16, tolerance: 1, maxTruePeak: -1 } as const;
+
 /** A point on the stage, in pixels (1920 × 1080). */
 export const PointSchema = z.object({ x: z.number(), y: z.number() });
 const Polygon = z.array(PointSchema).min(2);
@@ -56,18 +67,31 @@ export const ShapeSchema = z.discriminatedUnion("kind", [
   }),
 ]);
 
-export const CHECKS = ["overlap", "off-frame"] as const;
+/** The checks that find a problem at a beat. */
+export const BEAT_CHECKS = ["overlap", "off-frame", "reading-speed", "narration-fit"] as const;
+/** The checks that judge the whole video. */
+export const VIDEO_CHECKS = ["loudness"] as const;
+export const CHECKS = [...BEAT_CHECKS, ...VIDEO_CHECKS] as const;
 
-/** One problem the checks found, at the beat it shows in. */
-export const CheckWarningSchema = z.object({
-  check: z.enum(CHECKS),
-  scene: IdSchema,
-  beat: IdSchema,
-  /** Seconds into the video: the beat's midpoint. */
-  at: z.number(),
-  /** By how many pixels: overlap depth, line inside a box, or distance past the safe area. */
-  px: z.number(),
-  message: z.string(),
+/** One problem the checks found: at the beat it shows in, or (loudness) for the whole video. */
+export const CheckWarningSchema = z.union([
+  z.strictObject({
+    check: z.enum(BEAT_CHECKS),
+    scene: IdSchema,
+    beat: IdSchema,
+    /** Seconds into the video where it shows. */
+    at: z.number(),
+    /** For a layout problem, by how many pixels: overlap depth, line inside a box, or distance past the safe area. */
+    px: z.number().optional(),
+    message: z.string(),
+  }),
+  z.strictObject({ check: z.enum(VIDEO_CHECKS), message: z.string() }),
+]);
+
+/** Checks that could not run this time, and why (a program missing, the voice failed). */
+export const SkippedChecksSchema = z.strictObject({
+  checks: z.array(z.enum(CHECKS)).min(1),
+  reason: z.string(),
 });
 
 /** The checks' report, `checks.json` in the project's folder (SPEC, Checks). */
@@ -76,11 +100,15 @@ export const CheckReportSchema = z.strictObject({
   checkedAt: z.iso.datetime(),
   beats: z.int().nonnegative(),
   warnings: z.array(CheckWarningSchema),
+  skipped: z.array(SkippedChecksSchema).default([]),
 });
 
 export type Shape = z.output<typeof ShapeSchema>;
 export type CheckWarning = z.output<typeof CheckWarningSchema>;
 export type CheckReport = z.output<typeof CheckReportSchema>;
+export type SkippedChecks = z.output<typeof SkippedChecksSchema>;
+/** A warning at a beat: everything but loudness. */
+export type BeatWarning = Extract<CheckWarning, { readonly beat: string }>;
 
 /** A beat's place in the video, as the render page reports it (`__beats`). */
 export const BeatSpanSchema = z.object({

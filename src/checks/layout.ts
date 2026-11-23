@@ -1,5 +1,5 @@
 import { safeArea } from "../engine/overlays/regions.ts";
-import { type CheckWarning, OVERLAP_PX, type Shape } from "../schema/checks.ts";
+import { type BeatWarning, OVERLAP_PX, type Shape } from "../schema/checks.ts";
 import {
   convexHull,
   insideLength,
@@ -12,7 +12,7 @@ import {
 /** SPEC, Checks: the stage less its margin, which nothing should leave. */
 export const SAFE_AREA: Rect = safeArea();
 
-type Where = Pick<CheckWarning, "scene" | "beat" | "at">;
+type Where = Pick<BeatWarning, "scene" | "beat" | "at">;
 type Of<K extends Shape["kind"]> = Extract<Shape, { kind: K }>;
 
 /** How an overlay is named in a message, by its role. */
@@ -67,7 +67,7 @@ const round = (px: number) => Math.round(px * 10) / 10;
  * - two overlays.
  * And anything that leaves the safe area.
  */
-export const layoutWarnings = (shapes: readonly Shape[], where: Where): CheckWarning[] => {
+export const layoutWarnings = (shapes: readonly Shape[], where: Where): BeatWarning[] => {
   const of = <K extends Shape["kind"]>(kind: K) =>
     shapes.filter((s): s is Of<K> => s.kind === kind);
   const nodes = of("node");
@@ -75,8 +75,8 @@ export const layoutWarnings = (shapes: readonly Shape[], where: Where): CheckWar
   const labels = of("zone-label");
   const edges = of("edge");
   const overlays = of("overlay");
-  const warnings: CheckWarning[] = [];
-  const warn = (check: CheckWarning["check"], px: number, message: string) =>
+  const warnings: BeatWarning[] = [];
+  const warn = (check: BeatWarning["check"], px: number, message: string) =>
     warnings.push({ check, ...where, px: round(px), message });
   const overlap = (a: Shape, b: Shape, say: (px: number) => string) => {
     const depth = overlapDepth(outline(a), outline(b));

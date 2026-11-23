@@ -1,4 +1,8 @@
-import type { CheckReport } from "../schema/checks.ts";
+import type { CheckReport, CheckWarning } from "../schema/checks.ts";
+
+/** Where a problem shows: its beat and time, or the whole video. */
+const whereIn = (w: CheckWarning): string =>
+  "beat" in w ? `${w.scene}/${w.beat} (${w.at.toFixed(1)} s)` : "the whole video";
 
 /**
  * What the check command prints: each problem once, with the beats it shows
@@ -9,12 +13,11 @@ export const checkLines = (report: CheckReport, file: string): string[] => {
   const where = `in ${report.beats} beats; the report is in ${file}`;
   const beats = new Map<string, string[]>();
   for (const w of report.warnings)
-    beats.set(w.message, [
-      ...(beats.get(w.message) ?? []),
-      `${w.scene}/${w.beat} (${w.at.toFixed(1)} s)`,
-    ]);
-  if (beats.size === 0) return [`no layout problems ${where}`];
+    beats.set(w.message, [...(beats.get(w.message) ?? []), whereIn(w)]);
+  const notRun = report.skipped.map((s) => `not checked: ${s.checks.join(", ")} (${s.reason})`);
+  if (beats.size === 0) return [...notRun, `no problems ${where}`];
   return [
+    ...notRun,
     ...[...beats].map(([message, at]) => `${message}: ${at.join(", ")}`),
     `${beats.size} problem${beats.size === 1 ? "" : "s"} ${where}`,
   ];

@@ -137,7 +137,7 @@ const TOOLS = [
     schema: CheckArgsSchema,
     run: checkTool,
     description:
-      "Checks whether a project can render: every file it needs, read the way the renderer reads it, and Chrome and ffmpeg on this machine. Generates the narration voice for lines not cached yet; the first time, the voice model downloads, so it can take a minute or two. Returns whether it is ready to render, what is missing or broken, the voice (off, ready with its lines, how many were generated or cached and their total seconds, or failed with the reason), the layout checks (overlaps and anything off the safe area, by beat, also written to checks.json in the project folder; they do not stop a render), the stale beats, the timing measured from the voice, what cannot be checked yet, and a preview link.",
+      "Checks whether a project can render: every file it needs, read the way the renderer reads it, and Chrome and ffmpeg on this machine. Generates the narration voice for lines not cached yet; the first time, the voice model downloads, so it can take a minute or two. Returns whether it is ready to render, what is missing or broken, the voice (off, ready with its lines, how many were generated or cached and their total seconds, or failed with the reason), the checks (overlaps and anything off the safe area, reading speed and narration fit, by beat, and the loudness of the mix; also written to checks.json in the project folder; they do not stop a render), the stale beats, the timing measured from the voice, what cannot be checked yet, and a preview link.",
   },
   {
     name: TOOL_NAMES.render,

@@ -85,6 +85,14 @@ describe("beatTiming", () => {
     expect(timing.duration).toBeCloseTo(2);
   });
 
+  it("gives every beat time to read its step caption, spoken or read", () => {
+    const caption = "x".repeat(60);
+    const spoken = beatTiming(beat({ caption, say: "Go." }), { pace: "brisk", narration: 0.4 });
+    expect(spoken.duration).toBeCloseTo(4);
+    const read = beatTiming(beat({ caption, say: "Go." }), { pace: "brisk", mode: "read" });
+    expect(read.duration).toBeCloseTo(4);
+  });
+
   it("without narration, lasts at least its caption at 15 characters per second", () => {
     const caption = "x".repeat(90);
     const timing = beatTiming(beat({ caption, actions: [{ type: "appear", node: "n" }] }), {

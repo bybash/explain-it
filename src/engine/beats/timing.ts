@@ -1,3 +1,4 @@
+import { READING_SPEED } from "../../schema/checks.ts";
 import { type Config, DEFAULT_CONFIG, PACE_TIMINGS, type Pace } from "../../schema/config.ts";
 import type { ACTION_TYPES, Beat } from "../../schema/storyboard.ts";
 import { EDGE_TIMING } from "../edges/flow.ts";
@@ -16,8 +17,8 @@ export const ACTION_DURATIONS: Readonly<Record<(typeof ACTION_TYPES)[number], nu
 
 /** Narration estimated before the voice exists (SPEC, Timing). */
 export const WORDS_PER_SECOND = 2.5;
-/** How fast a caption or an unspoken line can be read; also the reading-speed check's limit. */
-export const CAPTION_CHARS_PER_SECOND = 15;
+/** How fast a caption or an unspoken line can be read: the reading-speed check's limit for captions read alone. */
+export const CAPTION_CHARS_PER_SECOND = READING_SPEED.step;
 /** Seconds into a beat before its narration and actions start. */
 export const LEAD_IN = 0.3;
 
@@ -59,8 +60,7 @@ export type BeatTimingOptions = {
 /**
  * Times one beat. Its narration and actions start after a lead-in; it lasts
  * until the longer of them ends, plus the pace's pause, and at least the
- * pace's shortest beat. Without narration it also lasts its caption's
- * reading time. Actions run in order at their default length, with any spare
+ * pace's shortest beat, and its step caption's reading time. Actions run in order at their default length, with any spare
  * time shared out after each. A spoken line uses its measured length, else
  * an estimate from its words; an unspoken one its reading time.
  */
@@ -82,10 +82,12 @@ export const beatTiming = (
       : mode === "spoken"
         ? (narration ?? estimateNarration(beat.say))
         : readingTime(beat.say);
+  // Every beat leaves time to read its step caption, spoken or not (decision 017).
   const duration = Math.max(
     minBeat,
     padded(busy),
-    narrationLength === undefined ? readingTime(beat.caption) : padded(narrationLength),
+    readingTime(beat.caption),
+    narrationLength === undefined ? 0 : padded(narrationLength),
   );
 
   const spare = durations.length === 0 ? 0 : (duration - padded(busy)) / durations.length;

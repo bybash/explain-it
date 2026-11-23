@@ -78,7 +78,7 @@ The goal: the CLI renders a hand-written example to an MP4, with no LLM and no v
 | ✅ 2.3 | **Music**: three procedural moods, seeded, ported from the prototype | Three short samples attached to the PR |
 | ✅ 2.4 | **Mix and outputs**: ducking, −16 LUFS normalisation, muxing; the captioned and clean MP4s, `audio.wav`, light, dark and both | The example renders with voice and music |
 | ✅ 2.5 | **Layout checks**: overlap (polygons) and off-frame at each beat's midpoint, including boxes moved onto each other or onto another zone by manual overrides; a JSON report; `explain-it check` | A broken fixture is caught; an overlapping override is reported; the example passes |
-| 2.6 | **Timing and audio checks**: reading speed, narration fit, loudness | Same as 2.5 |
+| ✅ 2.6 | **Timing and audio checks**: reading speed, narration fit, loudness | Same as 2.5 |
 | 2.7 | **Contact sheet**: one still per beat on one image | A contact sheet of the example in the PR |
 
 ## Milestone 3: web app
@@ -137,12 +137,6 @@ that finishes it.
 - Renders do not write `contact-sheet.png` yet; it belongs in the same
   `out/<timestamp>/<theme>/` folder as the poster.
 
-### For 2.6 (loudness check), from 2.4
-
-- `measureLoudness` in `src/audio/master.ts` reads ffmpeg's EBU R128 meter
-  (integrated LUFS and true peak); the loudness check can run it on the
-  render's `audio.wav`.
-
 ### For 3.8 and 3.9 (preview, render gate), from 2.1, 2.2 and 2.4
 
 - Lines are generated when `check` runs or a render starts, without
@@ -157,28 +151,22 @@ that finishes it.
 - Old lines stay in `cache/tts/` when a line is edited; nothing prunes
   them yet.
 
-### For 2.6 (timing checks), from 2.2
-
-- With the voice off, lines are timed at 15 characters per second, the
-  reading-speed limit, so a silent video should not fail its own check;
-  test that.
-
 ### For 3.7 (style gate), from 2.2
 
 - `config.pacing` (relaxed, normal, brisk) needs a picker in the style
   panel; MCP already sets it through `set_style`.
 
-### For 2.6 and 2.7 (checks, contact sheet), from 4.3 and 2.5
+### For 2.7 (contact sheet), from 4.3, 2.5 and 2.6
 
-- The MCP `check` tool returns a readiness report, the voice and the layout
-  checks (`layout`: warnings by beat, and where `checks.json` is), with a
-  `notChecked` list naming what is not checked yet: reading speed, narration
-  fit and loudness, and the contact sheet (`src/mcp/render-tools.ts`). Each
-  slice adds its part to `check` and to `checks.json` (`CheckReportSchema`
-  in `src/schema/checks.ts`; `CHECKS` lists the kinds), removes its line from
-  `notChecked`, and the contact sheet comes back as an image (SPEC, MCP).
-- `set_storyboard` could return the check warnings too, but the layout
-  checks need Chrome and take seconds; it may return only the cheap ones.
+- The MCP `check` tool returns a readiness report, the voice and every
+  check (`checks`: warnings by beat, loudness for the whole video, and
+  where `checks.json` is), with `notChecked` naming only the contact sheet
+  (`src/mcp/render-tools.ts`). 2.7 adds the sheet, removes that line, and
+  returns the sheet as an image (SPEC, MCP).
+- `set_storyboard` could return the check warnings too. Reading speed and
+  narration fit are pure and quick (`src/checks/timing.ts`); the layout
+  checks need Chrome and the loudness check a mix, so it may return only
+  the quick ones.
 
 ### For 5.6 (layout repair), from 2.5
 

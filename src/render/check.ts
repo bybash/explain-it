@@ -1,14 +1,22 @@
-import { rename, writeFile } from "node:fs/promises";
+import { mkdtemp, rename, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { z } from "zod";
+import { measureLoudness } from "../audio/master.ts";
+import { makeSoundtrack } from "../audio/soundtrack.ts";
+import type { VoiceLine } from "../audio/voice.ts";
 import { layoutWarnings } from "../checks/layout.ts";
+import { loudnessWarnings, narrationFitWarnings, readingWarnings } from "../checks/timing.ts";
+import { beatOptions, buildBeats } from "../engine/beats/build.ts";
 import {
   BeatSpanSchema,
   type CheckReport,
   type CheckWarning,
   ShapeSchema,
+  type SkippedChecks,
 } from "../schema/checks.ts";
 import { formatErrors, parseWith } from "../schema/errors.ts";
+import type { MissingTool } from "./environment.ts";
 import type { ProjectFiles } from "./load.ts";
 import { buildRenderPage, serveRenderPage } from "./page.ts";
 import { launchBrowser, openPage } from "./render.ts";
@@ -69,34 +77,113 @@ export const checkLayout = async ({
   }
 };
 
+/** A loudness meter: the real one is ffmpeg's EBU R128 (`measureLoudness`). */
+type Meter = (file: string) => Promise<{ readonly integrated: number; readonly truePeak: number }>;
+
 /**
- * Checks a loaded project and writes the report as `checks.json` in its
- * folder, written whole and then renamed, for the Preview gate and the
- * tools to read. Builds and serves the render page for the length of it.
+ * The loudness check (SPEC, Checks): the soundtrack a render would make,
+ * mixed and mastered into a scratch file, measured, then removed. Without a
+ * voice or music there is nothing to measure.
  */
-export const checkProjectFolder = async ({
-  dir,
+export const checkSoundtrack = async ({
   project,
-  now,
+  lines,
+  measure = measureLoudness,
 }: {
-  readonly dir: string;
   readonly project: ProjectFiles;
-  readonly now: Date;
-}): Promise<CheckReport> => {
+  readonly lines: readonly VoiceLine[];
+  readonly measure?: Meter | undefined;
+}): Promise<CheckWarning[]> => {
+  const scratch = await mkdtemp(join(tmpdir(), "explain-it-check-"));
+  try {
+    const file = await makeSoundtrack({ project, lines, out: join(scratch, "audio.wav") });
+    return file ? loudnessWarnings(await measure(file)) : [];
+  } finally {
+    await rm(scratch, { recursive: true, force: true });
+  }
+};
+
+/**
+ * The checks that cannot run this time, and why: the layout checks need
+ * Chrome, loudness needs ffmpeg, and narration fit and loudness need the
+ * voice. Reading speed always runs.
+ */
+export const skippedChecks = (
+  missing: readonly MissingTool[],
+  voiceFailed: boolean,
+): SkippedChecks[] => {
+  const lacks = (tool: MissingTool["tool"]) => missing.some((m) => m.tool === tool);
+  const skipped: SkippedChecks[] = [];
+  if (lacks("chrome"))
+    skipped.push({ checks: ["overlap", "off-frame"], reason: "Chrome is not available" });
+  if (voiceFailed)
+    skipped.push({ checks: ["narration-fit", "loudness"], reason: "the voice did not generate" });
+  else if (lacks("ffmpeg"))
+    skipped.push({ checks: ["loudness"], reason: "ffmpeg is not available" });
+  return skipped;
+};
+
+/** The layout checks on the project's page: the render page built, served for the length of them. */
+const layoutOnPage = async (project: ProjectFiles) => {
   const page = await buildRenderPage();
   try {
     const server = await serveRenderPage(page.dir);
     try {
-      const { beats, warnings } = await checkLayout({ project, pageUrl: server.url });
-      const report: CheckReport = { version: 1, checkedAt: now.toISOString(), beats, warnings };
-      const file = join(dir, "checks.json");
-      await writeFile(`${file}.partial`, `${JSON.stringify(report, null, 2)}\n`);
-      await rename(`${file}.partial`, file);
-      return report;
+      return await checkLayout({ project, pageUrl: server.url });
     } finally {
       await server.close();
     }
   } finally {
     await page.remove();
   }
+};
+
+/**
+ * Runs every check on a loaded project (layout on its page, reading speed
+ * and narration fit from its beat plan, loudness on its soundtrack), except
+ * those `skip` names with a reason, and writes the report as `checks.json`
+ * in its folder, written whole and then renamed, for the Preview gate and
+ * the tools to read.
+ */
+export const checkProjectFolder = async ({
+  dir,
+  project,
+  lines,
+  skip = [],
+  now,
+}: {
+  readonly dir: string;
+  readonly project: ProjectFiles;
+  /** The voice's lines (see `withNarration`), for the soundtrack the loudness check measures. */
+  readonly lines: readonly VoiceLine[];
+  /** Checks that cannot run this time, and why: a program missing, the voice failed. */
+  readonly skip?: readonly SkippedChecks[];
+  readonly now: Date;
+}): Promise<CheckReport> => {
+  const skipped = new Set(skip.flatMap((s) => s.checks));
+  const plan = buildBeats(
+    project.storyboard,
+    project.graph,
+    beatOptions(project.config, project.narration),
+  );
+  const layout = skipped.has("overlap")
+    ? { beats: plan.beats.length, warnings: [] }
+    : await layoutOnPage(project);
+  const warnings = [
+    ...layout.warnings,
+    ...readingWarnings(plan),
+    ...(skipped.has("narration-fit") ? [] : narrationFitWarnings(plan, project.narration ?? {})),
+    ...(skipped.has("loudness") ? [] : await checkSoundtrack({ project, lines })),
+  ];
+  const report: CheckReport = {
+    version: 1,
+    checkedAt: now.toISOString(),
+    beats: layout.beats,
+    warnings,
+    skipped: [...skip],
+  };
+  const file = join(dir, "checks.json");
+  await writeFile(`${file}.partial`, `${JSON.stringify(report, null, 2)}\n`);
+  await rename(`${file}.partial`, file);
+  return report;
 };

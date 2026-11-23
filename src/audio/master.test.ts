@@ -3,14 +3,9 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { LOUDNESS } from "../schema/checks.ts";
 import { AUDIO_RATE } from "./level.ts";
-import {
-  LOUDNESS_TOLERANCE,
-  MAX_TRUE_PEAK,
-  masterAudio,
-  measureLoudness,
-  TARGET_LUFS,
-} from "./master.ts";
+import { masterAudio, measureLoudness } from "./master.ts";
 import { mixAudio } from "./mix.ts";
 import { musicPlan, renderMusic } from "./music.ts";
 import type { Audio } from "./wav.ts";
@@ -59,8 +54,10 @@ describe.skipIf(!hasFfmpeg)("masterAudio (ffmpeg)", () => {
       const out = join(dir, `${name.replaceAll(" ", "-")}.wav`);
       await masterAudio(mix, out);
       const loudness = await measureLoudness(out);
-      expect(Math.abs(loudness.integrated - TARGET_LUFS)).toBeLessThanOrEqual(LOUDNESS_TOLERANCE);
-      expect(loudness.truePeak).toBeLessThanOrEqual(MAX_TRUE_PEAK);
+      expect(Math.abs(loudness.integrated - LOUDNESS.target)).toBeLessThanOrEqual(
+        LOUDNESS.tolerance,
+      );
+      expect(loudness.truePeak).toBeLessThanOrEqual(LOUDNESS.maxTruePeak);
       expect(loudness.seconds).toBeCloseTo(seconds, 1);
       expect(loudness.sampleRate).toBe(AUDIO_RATE);
     }, 60_000);
@@ -76,7 +73,7 @@ describe.skipIf(!hasFfmpeg)("masterAudio (ffmpeg)", () => {
       if (!mix) throw new Error("no mix");
       const out = join(dir, `music-${-volumeDb}.wav`);
       await masterAudio(mix, out);
-      expect((await measureLoudness(out)).integrated).toBeCloseTo(TARGET_LUFS, 0);
+      expect((await measureLoudness(out)).integrated).toBeCloseTo(LOUDNESS.target, 0);
     }
   }, 60_000);
 
