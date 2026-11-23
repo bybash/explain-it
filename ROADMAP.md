@@ -99,7 +99,7 @@ The goal: the CLI renders a hand-written example to an MP4, with no LLM and no v
 | ✅ 3.8 | **Preview gate**: the player with its sound (the voice generated with progress, mixed as the render mixes it), play and pause, a scrubber and the beat list | The example can be previewed with voice |
 | 3.9 | **Render gate**: the job queue, progress over SSE, cancel, downloads | The example renders from the UI |
 | ✅ 3.11 | **Style gate panel, the sound**: voice picker with a sample, voice speed, pacing, captions, music | A voice sample plays from the panel |
-| 3.13 | **Preview gate checks**: run the checks from the panel, warnings that jump to their beat, the contact sheet | A warning in the example jumps to its beat |
+| ✅ 3.13 | **Preview gate checks**: run the checks from the panel, warnings that jump to their beat, the contact sheet | A warning in the example jumps to its beat |
 | 3.12 | **Style extras**: a custom palette editor, font upload | A custom palette and an uploaded font show in the preview and the render |
 | ✅ 3.10 | **App styles in Tailwind**: Tailwind v4 through its Vite plugin; the colour tokens and the dark set become `@theme` values; `app.css` moves to utility classes, keeping plain CSS only for CodeMirror's and Mermaid's own classes; the video's styles (`src/engine/`) are untouched; a decision record | Screenshots of each page, light and dark, look the same before and after |
 
@@ -140,18 +140,12 @@ The goal: make a video end to end from an IDE, with no LLM in explAIn-it.
 Work a finished slice left for a later one. Each list is removed by the slice
 that finishes it.
 
-### For 3.13 (preview gate checks), from 2.6, 2.7 and 3.8
+### For 5.4 (script drafting), from 2.6 and 3.13
 
-- The checks write `checks.json` and `contact-sheet.png` (with a small
-  `contact-sheet.jpg`) in the project folder; the Preview gate shows both,
-  with each warning jumping to its beat. Loudness warnings name no beat.
-- `set_storyboard` could return the quick checks (reading speed and
-  narration fit, pure, in `src/checks/timing.ts`); the layout checks need
-  Chrome and loudness a mix.
-- The Preview gate's beat list (`src/web/PreviewPanel.tsx`) and its seek are
-  where a warning jumps to; a Checks tab beside the beat list fits the
-  layout. The preview's soundtrack (`cache/preview/<key>.wav`) is the mix
-  the loudness check measures.
+- `set_storyboard`, and the script drafting's repair loop, could use the
+  quick checks (reading speed and narration fit, pure, in
+  `src/checks/timing.ts`) without Chrome; the layout checks need Chrome and
+  loudness a mix. The Preview gate runs them all from its Checks tab.
 
 ### For 3.9 (render gate), from 2.1, 2.2, 2.4 and 3.8
 
@@ -177,6 +171,10 @@ that finishes it.
   from the project's `assets/`.
 - Taking a saved logo out leaves its file in `assets/`; nothing removes
   files the config no longer names, as with old voice lines in `cache/`.
+- The checks' `filesKey` (`src/render/check-files.ts`) covers the config,
+  not the files in `assets/`: an uploaded font, or a logo file replaced
+  under the same name, leaves an older report marked up to date. Hash the
+  files the config names once fonts can be uploaded.
 
 ### For 5.6 (layout repair), from 2.5
 
@@ -234,8 +232,9 @@ that finishes it.
   `npm start` and as `npm run dev` on ports of its own; each panel slice
   adds its gate's steps to its flow. It needs Chrome, so CI skips it.
 - SPEC's preview gate says "jump to a beat and edit it": 3.8's beat list
-  (`src/web/PreviewPanel.tsx`) jumps; editing a beat there can reuse 3.6's
-  beat editor once it exists.
+  (`src/web/PreviewBeats.tsx`) jumps, and so does a warning in the Checks
+  tab (3.13); editing a beat there can reuse 3.6's beat editor once it
+  exists.
 - 3.6's stale beats come from saving the graph: `saveGraph`
   (`src/server/graphs.ts`) marks them in `project.json`, as MCP's
   `update_graph` does.

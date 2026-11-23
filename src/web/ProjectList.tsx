@@ -3,7 +3,7 @@ import type { ProjectList as List } from "../schema/api.ts";
 import type { ValidationError } from "../schema/errors.ts";
 import { createProject, listProjects, onServerEvents } from "./api.ts";
 import { Errors } from "./Errors.tsx";
-import { GATE_LABELS, updatedLabel } from "./labels.ts";
+import { counted, GATE_LABELS, updatedLabel } from "./labels.ts";
 import { BoxList, Muted, PageTitle } from "./ui.tsx";
 
 /** The projects, newest first, with a form to start a new one. */
@@ -95,10 +95,7 @@ export const ProjectList = () => {
 
       {list && list.broken.length > 0 && (
         <details className="mt-6 text-muted">
-          <summary>
-            {list.broken.length} {list.broken.length === 1 ? "folder" : "folders"} in projects/
-            could not be read
-          </summary>
+          <summary>{counted(list.broken.length, "folder")} in projects/ could not be read</summary>
           <ul className="my-4 list-disc pl-10">
             {list.broken.map((broken) => (
               <li key={broken.slug}>

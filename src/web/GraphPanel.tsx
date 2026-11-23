@@ -5,6 +5,7 @@ import type { ValidationError } from "../schema/errors.ts";
 import { readGraph, saveGraph } from "./api.ts";
 import { Errors } from "./Errors.tsx";
 import { editorState, errorLine, STARTER_MERMAID } from "./graph-editor.ts";
+import { counted } from "./labels.ts";
 import { MermaidDiagram } from "./MermaidDiagram.tsx";
 import { MermaidEditor } from "./MermaidEditor.tsx";
 
@@ -136,7 +137,7 @@ export const GraphPanel = ({
           <span className="text-muted" role="status">
             Saved.
             {outcome.staleBeats.length > 0 &&
-              ` ${outcome.staleBeats.length} beat${outcome.staleBeats.length === 1 ? "" : "s"} to rewrite at the script gate.`}
+              ` ${counted(outcome.staleBeats.length, "beat")} to rewrite at the script gate.`}
           </span>
         )}
       </div>
