@@ -20,7 +20,7 @@ const url = `http://127.0.0.1:${PORT}`;
 /** The time the pages are shown at, so "updated 2 days ago" reads the same on every run. */
 const NOW = new Date("2026-11-21T12:00:00.000Z");
 
-/** The projects every run shows: the example at the style gate, a new one with a chat, and a broken one. */
+/** The projects every run shows: the example at the preview gate, a new one with a chat, and a broken one. */
 const seed = (dir: string) => {
   const example = join(dir, "oauth-example");
   cpSync(join(root, "examples", "oauth-login"), example, {
@@ -28,7 +28,7 @@ const seed = (dir: string) => {
     filter: (source) => !source.includes("/out") && !source.includes("/cache"),
   });
   const project = JSON.parse(readFileSync(join(example, "project.json"), "utf8"));
-  writeFileSync(join(example, "project.json"), JSON.stringify({ ...project, gate: "style" }));
+  writeFileSync(join(example, "project.json"), JSON.stringify({ ...project, gate: "preview" }));
 
   const draft = join(dir, "photo-upload");
   mkdirSync(draft);
@@ -196,6 +196,20 @@ const SHOTS: readonly {
     },
   },
   {
+    name: "preview-gate",
+    hash: "#/projects/oauth-example/preview",
+    ready: async (p) => {
+      await p.getByText("The voice and the music are ready").waitFor({ timeout: 60_000 });
+      await p
+        .getByRole("list", { name: /^Beats of / })
+        .first()
+        .getByRole("button")
+        .nth(2)
+        .click();
+      await p.waitForTimeout(800);
+    },
+  },
+  {
     name: "broken",
     hash: "#/projects/broken-file",
     ready: (p) => p.getByText("project.json").first().waitFor(),
@@ -227,6 +241,8 @@ const server = spawn(process.execPath, ["src/server/main.ts"], {
     ...process.env,
     PORT: String(PORT),
     PROJECTS_DIR: projects,
+    // A tone for each word instead of Kokoro, so the preview's sound needs no model.
+    VOICE: "tone",
     ENV_FILE: join(projects, ".env"),
   },
   stdio: "ignore",

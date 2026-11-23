@@ -7,6 +7,7 @@ import {
   GraphSavedSchema,
   type OpenedProject,
   OpenedProjectSchema,
+  PreviewSoundSchema,
   type ProjectList,
   ProjectListSchema,
   SavedLogoSchema,
@@ -147,6 +148,18 @@ export const saveStyle = (slug: string, edit: StyleEdit) =>
 /** The saved logo as data URLs, for the preview, or null without one. */
 export const getLogo = (slug: string) =>
   fetchChecked(SavedLogoSchema, `/api/projects/${encodeURIComponent(slug)}/logo`);
+
+/** Starts making the preview's sound (the voice, then the mix), or says how far it is. */
+export const startPreviewSound = (slug: string) =>
+  postJson(PreviewSoundSchema, `/api/projects/${encodeURIComponent(slug)}/preview-sound`, {});
+
+/** How far the preview's sound is. */
+export const getPreviewSound = (slug: string) =>
+  fetchChecked(PreviewSoundSchema, `/api/projects/${encodeURIComponent(slug)}/preview-sound`);
+
+/** Where the ready soundtrack is served; its key changes whenever the sound does. */
+export const previewSoundUrl = (slug: string, key: string) =>
+  `/api/projects/${encodeURIComponent(slug)}/preview-sound/${key}.wav`;
 
 export const approveGate = (slug: string, gate: Gate) =>
   postJson(ApprovedSchema, `/api/projects/${encodeURIComponent(slug)}/approve`, { gate });

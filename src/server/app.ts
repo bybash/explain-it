@@ -3,6 +3,7 @@ import type { MiddlewareHandler } from "hono";
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { streamSSE } from "hono/streaming";
+import { makeSoundtrack } from "../audio/soundtrack.ts";
 import type { TtsProvider } from "../audio/tts.ts";
 import { createMcpServer } from "../mcp/server.ts";
 import type { ToolContext } from "../mcp/tools.ts";
@@ -22,6 +23,8 @@ import { addChat, readChat } from "./chat.ts";
 import { createEvents } from "./events.ts";
 import { approveGate } from "./gates.ts";
 import { graphRoutes } from "./graph-routes.ts";
+import { previewRoutes } from "./preview-routes.ts";
+import { previewSound } from "./preview-sound.ts";
 import { createProject, listProjects, openProject, projectDir, projectExists } from "./projects.ts";
 import { errorResponse, jsonBody, noProject } from "./responses.ts";
 import { sampleRoutes } from "./sample-routes.ts";
@@ -48,6 +51,8 @@ export type AppOptions = {
   readonly missingRenderTools?: () => Promise<readonly MissingTool[]>;
   /** Runs the layout checks and writes the report; the real ones by default, a fake in tests. */
   readonly runChecks?: ToolContext["runChecks"];
+  /** Mixes the preview's soundtrack as the render does; the real one by default (it needs ffmpeg), a fake in tests. */
+  readonly mixSoundtrack?: typeof makeSoundtrack;
   /** The LLM settings in `.env` (see `main.ts`); tests give each its own file. */
   readonly settings: SettingsStore;
 };
@@ -88,6 +93,7 @@ export const createApp = ({
   runChecks = (dir, project, lines, skip) =>
     checkProjectFolder({ dir, project, lines, skip, now: now() }),
   settings,
+  mixSoundtrack = makeSoundtrack,
 }: AppOptions) => {
   const app = new Hono();
   const events = createEvents();
@@ -234,6 +240,16 @@ export const createApp = ({
   graphRoutes(app, { projectsDir, now, events });
   styleRoutes(app, { projectsDir, now, events });
   sampleRoutes(app, { projectsDir, tts });
+  previewRoutes(app, {
+    projectsDir,
+    sound: previewSound({
+      projectsDir,
+      tts,
+      mix: mixSoundtrack,
+      missingTools: missingRenderTools,
+      events,
+    }),
+  });
 
   app.post("/api/projects/:slug/approve", async (c) => {
     const slug = c.req.param("slug");

@@ -575,6 +575,15 @@ comes later.
   sentence of its own when there is no narration yet) in the chosen voice
   and speed, cached with the video's lines, and the music plays 15 s of the
   chosen mood and take at the chosen volume (decision 025).
+- The preview gate's panel plays the video with its sound. Opening it
+  speaks every line not cached yet, with progress ("line 4 of 10") over the
+  event stream, then mixes the soundtrack as the render does, into
+  `cache/preview/<key>.wav`, the key a hash of the voice model and the
+  files the sound follows; a change to them makes it again, speaking only
+  the lines that changed. Until it is ready the video plays silently with
+  estimated timing; then the picture follows the soundtrack's clock, timed
+  by the measured narration. Below the player, the beats by scene: the one
+  playing is marked, and a click goes to it (decision 026).
 
 ## App and stack
 
@@ -584,7 +593,8 @@ comes later.
 - `npm run dev` for development. `npm start` runs one Node process that
   serves the built UI and the API.
 - The server listens on `127.0.0.1:3000` by default. No login, no telemetry.
-  `HOST` and `PORT` change where it listens (under `npm run dev`, `PORT` is
+  `VOICE=tone` swaps Kokoro for a tone a word, with no model, for the
+  browser test. `HOST` and `PORT` change where it listens (under `npm run dev`, `PORT` is
   Vite's dev server and `DEV_API_PORT`, 3001 by default, the API behind it), `PROJECTS_DIR` where the
   projects folder is (`./projects` by default), and `PUBLIC_URL` the
   address preview links use when the app sits behind a proxy, as it does

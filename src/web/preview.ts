@@ -12,6 +12,7 @@ import { parseConfig, parseLogoImages } from "../schema/config.ts";
 import { orThrow } from "../schema/errors.ts";
 import { parseGraph } from "../schema/graph.ts";
 import { parseLayout } from "../schema/layout.ts";
+import { parseNarration } from "../schema/narration.ts";
 import { parseStoryboard } from "../schema/storyboard.ts";
 import {
   type DrawMessage,
@@ -61,11 +62,19 @@ const draw = async (message: DrawMessage) => {
     mode: message.mode,
     fonts: new URL(FONTS_PATH, location.href),
     ...(message.logo === undefined ? {} : { logo: orThrow(parseLogoImages(message.logo), "logo") }),
+    ...(message.narration === undefined
+      ? {}
+      : { narration: orThrow(parseNarration(message.narration), "narration") }),
   });
   if (asked !== drawing) return;
   player = drawn;
   drawn.seek(Math.min(message.at, drawn.duration));
-  answer({ type: "drawn", duration: drawn.duration, marks: marksOf(drawn) });
+  answer({
+    type: "drawn",
+    duration: drawn.duration,
+    marks: marksOf(drawn),
+    beats: drawn.plan.beats.map(({ id, scene, start, end }) => ({ id, scene, start, end })),
+  });
 };
 
 addEventListener("message", (event: MessageEvent<unknown>) => {

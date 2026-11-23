@@ -16,6 +16,8 @@ export const DrawMessageSchema = z.object({
   config: z.unknown(),
   mode: z.enum(["light", "dark"]),
   logo: z.unknown().optional(),
+  /** Measured narration by beat, once the voice is made; lines without it are estimated. */
+  narration: z.unknown().optional(),
   at: z.number().min(0),
 });
 export type DrawMessage = z.output<typeof DrawMessageSchema>;
@@ -25,13 +27,28 @@ export const SeekMessageSchema = z.object({ type: z.literal("seek"), at: z.numbe
 export const ToPreviewSchema = z.discriminatedUnion("type", [DrawMessageSchema, SeekMessageSchema]);
 export type ToPreview = z.output<typeof ToPreviewSchema>;
 
+/** A beat's place in the video, as the player plans it. */
+export const BeatSpanSchema = z.object({
+  id: z.string(),
+  scene: z.string(),
+  start: z.number(),
+  end: z.number(),
+});
+export type BeatSpan = z.output<typeof BeatSpanSchema>;
+
 /** A moment worth jumping to: the title card, a beat, the end. */
 export const MarkSchema = z.object({ label: z.string(), at: z.number().min(0) });
 export type Mark = z.output<typeof MarkSchema>;
 
 /** The page answers each drawing with the video's length and its marks, or with what was wrong. */
 export const FromPreviewSchema = z.discriminatedUnion("type", [
-  z.object({ type: z.literal("drawn"), duration: z.number(), marks: z.array(MarkSchema) }),
+  z.object({
+    type: z.literal("drawn"),
+    duration: z.number(),
+    marks: z.array(MarkSchema),
+    /** Each beat's place in the video, for a beat list. */
+    beats: z.array(BeatSpanSchema),
+  }),
   z.object({ type: z.literal("failed"), message: z.string() }),
 ]);
 export type FromPreview = z.output<typeof FromPreviewSchema>;

@@ -13,6 +13,7 @@ import {
 import { ValidationErrorSchema } from "./errors.ts";
 import { GraphSchema } from "./graph.ts";
 import { LayoutSchema } from "./layout.ts";
+import { NarrationSchema } from "./narration.ts";
 import { GATES, ProjectSchema } from "./project.ts";
 import { RenderEventSchema } from "./render.ts";
 import { StoryboardSchema } from "./storyboard.ts";
@@ -135,12 +136,43 @@ export const OpenedProjectSchema = z.object({
   problems: z.array(ValidationErrorSchema),
 });
 
+/**
+ * The preview gate's sound: the voice being spoken (how many lines so far),
+ * the soundtrack being mixed, ready (its key names the file, and the
+ * narration is measured), silent (neither voice nor music), or failed.
+ */
+/** How long a preview soundtrack's key is: hex digits of a hash of what the sound follows. */
+export const PREVIEW_KEY_LENGTH = 32;
+export const PreviewKeySchema = z.string().regex(new RegExp(`^[0-9a-f]{${PREVIEW_KEY_LENGTH}}$`));
+
+export const PreviewSoundSchema = z.discriminatedUnion("state", [
+  z.object({ state: z.literal("idle") }),
+  z.object({ state: z.literal("speaking"), spoken: z.int().min(0), total: z.int().min(0) }),
+  z.object({ state: z.literal("mixing") }),
+  z.object({
+    state: z.literal("ready"),
+    key: PreviewKeySchema,
+    narration: NarrationSchema,
+  }),
+  z.object({ state: z.literal("silent") }),
+  z.object({ state: z.literal("failed"), message: z.string() }),
+]);
+export type PreviewSound = z.output<typeof PreviewSoundSchema>;
+/** Each state the preview's sound can be in. */
+const PREVIEW_SOUND_STATES = PreviewSoundSchema.options.map((option) => option.shape.state.value);
+
 /** `GET /api/events`: what the server tells listeners about, including each render job's changes. */
 export const ServerEventSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("project-created"), slug: SlugSchema }),
   z.object({ type: z.literal("project-updated"), slug: SlugSchema }),
   /** A message was added to the project's chat. */
   z.object({ type: z.literal("chat"), slug: SlugSchema }),
+  /** The preview's sound moved on: a line spoken, the mix started or done. */
+  z.object({
+    type: z.literal("preview-sound"),
+    slug: SlugSchema,
+    state: z.enum(PREVIEW_SOUND_STATES),
+  }),
   RenderEventSchema,
 ]);
 

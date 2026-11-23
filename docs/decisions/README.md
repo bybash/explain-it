@@ -35,3 +35,4 @@ later record supersedes an earlier one and says so.
 | [023](023-tailwind.md) | The app's styles in Tailwind |
 | [024](024-style-gate.md) | The style gate's panel |
 | [025](025-sound-samples.md) | Samples of the voice and the music |
+| [026](026-preview-gate.md) | The preview gate's player and its sound |

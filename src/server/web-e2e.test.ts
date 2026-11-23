@@ -7,6 +7,7 @@ import { type Browser, chromium, type Page } from "playwright-core";
 import { build } from "vite";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { MAX_PROJECT_NAME } from "../schema/project.ts";
+import { clockTime } from "../web/preview-time.ts";
 import { DEFAULT_HOST } from "./listen.ts";
 
 // The web app in a real browser (AGENTS.md, Tests, layer 5): skipped without Chrome, as on CI.
@@ -14,6 +15,13 @@ const hasChrome = await chromium
   .launch({ channel: "chrome" })
   .then((browser) => browser.close().then(() => true))
   .catch(() => false);
+
+/** The preview's soundtrack is mastered with ffmpeg, as the render's is. */
+const hasFfmpeg = await new Promise<boolean>((done) =>
+  spawn("ffmpeg", ["-version"], { stdio: "ignore" })
+    .once("exit", (code) => done(code === 0))
+    .once("error", () => done(false)),
+);
 
 const root = new URL("../../", import.meta.url).pathname;
 const example = join(root, "examples", "oauth-login");
@@ -103,6 +111,7 @@ const startServer = async (projectsDir: string): Promise<Server> => {
   const { child, output } = launch(["src/server/main.ts"], {
     PORT: String(START_PORT),
     PROJECTS_DIR: projectsDir,
+    VOICE: "tone",
     ENV_FILE: join(projectsDir, ".env"),
   });
   const url = `http://${DEFAULT_HOST}:${START_PORT}`;
@@ -116,6 +125,7 @@ const devServer = async (projectsDir: string): Promise<Server> => {
     PORT: String(DEV_PORT),
     DEV_API_PORT: String(DEV_API),
     PROJECTS_DIR: projectsDir,
+    VOICE: "tone",
     ENV_FILE: join(projectsDir, ".env"),
   });
   const url = `http://${DEFAULT_HOST}:${DEV_PORT}`;
@@ -328,6 +338,39 @@ const flow = (
     await page.click("text=Approve and go to Preview");
     await page.waitForURL(/#\/projects\/oauth-style\/preview$/);
   }, 60_000);
+
+  it.skipIf(!hasFfmpeg)(
+    "previews the video with its voice: the sound is made, a beat is jumped to, and it plays",
+    async () => {
+      // The tone voice (VOICE=tone) stands in for Kokoro, so no model is downloaded.
+      exampleAt(projectsDir, "oauth-preview", "preview");
+      await page.goto(`${server.url}/#/projects/oauth-preview/preview`);
+      const status = page.locator("[aria-labelledby=preview-player-heading] [role=status]");
+      await expect
+        .poll(() => status.textContent(), { timeout: 60_000 })
+        .toContain("The voice and the music are ready");
+
+      const time = () => page.getByText(/^\d+:\d\d \/ \d+:\d\d$/).textContent();
+      const third = page
+        .getByRole("list", { name: /^Beats of / })
+        .first()
+        .getByRole("button")
+        .nth(2);
+      const startsAt = Number(await third.getAttribute("data-starts-at"));
+      const shown = clockTime(startsAt);
+      await third.click();
+      await expect.poll(time, SOON).toMatch(new RegExp(`^${shown} /`));
+      await expect.poll(() => third.getAttribute("aria-current"), SOON).toBe("step");
+
+      await page.getByRole("button", { name: "Play" }).click();
+      await expect
+        .poll(() => page.locator("audio").evaluate((a: HTMLAudioElement) => a.paused), SOON)
+        .toBe(false);
+      await expect.poll(time, SOON).not.toMatch(new RegExp(`^${shown} /`));
+      await page.getByRole("button", { name: "Pause" }).click();
+    },
+    90_000,
+  );
 };
 
 describe.skipIf(!hasChrome)("the web app (npm start)", () => {

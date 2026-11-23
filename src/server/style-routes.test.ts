@@ -1,13 +1,13 @@
-import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { fakeTts } from "../audio/fake-tts.testing.ts";
 import { LOGO_MAX_BYTES } from "../schema/config.ts";
 import { createApp } from "./app.ts";
+import { copyExample } from "./example.testing.ts";
 import { settingsStore } from "./settings.ts";
 
-const example = new URL("../../examples/oauth-login/", import.meta.url).pathname;
 const NOW = "2026-11-23T10:00:00.000Z";
 /** The start of a PNG: enough for the logo's content check. */
 const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
@@ -17,10 +17,7 @@ let projectsDir: string;
 let app: ReturnType<typeof createApp>;
 beforeEach(() => {
   projectsDir = mkdtempSync(join(tmpdir(), "explain-it-style-"));
-  cpSync(example, join(projectsDir, "oauth"), {
-    recursive: true,
-    filter: (source) => !source.includes("/out") && !source.includes("/cache"),
-  });
+  copyExample(projectsDir, "oauth");
   // Without the example's own logo, so each test starts from none.
   const { logo: _logo, ...config } = JSON.parse(readFileSync(configFile(), "utf8"));
   writeFileSync(configFile(), JSON.stringify(config));

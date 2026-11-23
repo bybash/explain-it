@@ -15,7 +15,8 @@ export const GATE_PANELS: Readonly<Record<Gate, string>> = {
   script: "The scenes and beats: captions, narration and actions.",
   style:
     "How the video looks and sounds. Changes show in the preview straight away; the voice and the music have samples to listen to.",
-  preview: "The player with a scrubber, the beat list, check warnings and the contact sheet.",
+  preview:
+    "The video with its voice and music, as the render will make it. The voice is made when the gate opens; until then the video plays silently.",
   render: "Render progress, then the downloads.",
 };
 
