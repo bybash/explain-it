@@ -20,8 +20,10 @@ sound, 3.12 the custom palette editor and font upload.
   Messages are checked with zod and taken only from the app's own origin.
 - **The preview first, then the settings in cards.** The preview spans the
   panel's width above the form, as large as the panel allows; the settings
-  are cards (colours, text, the two cards, logo, output), two to a row when
-  the panel is wide enough, with Save in a bar that stays in view.
+  are cards, two to a row when the panel is wide enough, in two tabs: Look
+  (colours, text, the two cards, logo, output) and Sound (voice, pacing,
+  captions, music, from 3.11). A tab with unsaved changes is marked; both
+  share the preview and Save, which sits in a bar that stays in view.
 - **Fonts and the saved logo come from the API** (`/api/fonts/…`,
   `GET /api/projects/:slug/logo`), so the preview works the same under
   `npm start` and `npm run dev`. The fonts route serves only `.woff2` files

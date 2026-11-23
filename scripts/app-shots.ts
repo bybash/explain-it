@@ -186,6 +186,16 @@ const SHOTS: readonly {
     },
   },
   {
+    name: "style-sound",
+    hash: "#/projects/oauth-example/style",
+    ready: async (p) => {
+      await p.getByRole("button", { name: "Beat 1", exact: true }).waitFor();
+      await p.getByRole("tab", { name: /Sound/ }).click();
+      await p.getByLabel("Brisk").check();
+      await p.waitForTimeout(500);
+    },
+  },
+  {
     name: "broken",
     hash: "#/projects/broken-file",
     ready: (p) => p.getByText("project.json").first().waitFor(),

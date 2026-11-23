@@ -282,6 +282,9 @@ const flow = (
 
     await page.getByLabel("Palette").selectOption("ocean");
     await expect.poll(background, SOON).not.toBe(before);
+    // The tab whose settings changed is marked; the other is not.
+    expect(await page.getByRole("tab", { name: /Look/ }).textContent()).toContain("•");
+    expect(await page.getByRole("tab", { name: /Sound/ }).textContent()).not.toContain("•");
     expect(await page.isDisabled("text=Approve and go to Preview")).toBe(true);
 
     await page.getByLabel("Logo for the light video").setInputFiles({
@@ -299,6 +302,7 @@ const flow = (
       .toBeGreaterThan(0);
 
     // The sound: a brisker pace shortens the video in the preview straight away, and the music plays.
+    await page.getByRole("tab", { name: /Sound/ }).click();
     const length = () => page.getByText(/^\d+:\d\d \/ \d+:\d\d$/).textContent();
     const relaxed = await length();
     await page.getByLabel("Brisk").check();
