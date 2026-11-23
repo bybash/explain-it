@@ -4,8 +4,10 @@ import { fail, ok } from "../schema/result.ts";
 import {
   DEFAULT_BASE_URL,
   ENV_NAMES,
+  KEY_VARIABLES,
   maskKey,
   providerOf,
+  SETTING_FIELDS,
   type SettingField,
   SettingsUpdateSchema,
   type SettingsView,
@@ -28,13 +30,18 @@ export type SettingsStore = {
   readonly update: (body: unknown) => Promise<Validated<SettingsView>>;
 };
 
-type Source = "environment" | "file";
-type Found = { readonly value: string; readonly from: Source; readonly variable: string };
+type Found<V extends string = string> = {
+  readonly value: string;
+  readonly from: "environment" | "file";
+  readonly variable: V;
+};
 
 /**
- * The LLM settings, read fresh from `.env` on every call. A variable the
- * environment sets (Docker's `-e`) wins over `.env`, so the page shows it but
- * cannot change it. The file is written whole and only its owner can read it.
+ * The LLM settings, read fresh from `.env` on every call. Each setting is
+ * looked up in the environment first, then in `.env`: a variable the
+ * environment sets (Docker's `-e`) wins, so the page shows it but cannot
+ * change it. Within one place, LLM_API_KEY wins over OPENROUTER_API_KEY.
+ * The file is written whole and only its owner can read it.
  */
 export const settingsStore = ({
   envFile,
@@ -56,21 +63,24 @@ export const settingsStore = ({
 
   const resolve = async () => {
     const file = parseEnvFile(await readFileText());
-    const find = (...variables: string[]): Found | undefined => {
-      for (const [from, values] of [
-        ["environment", (name: string) => environment[name]],
-        ["file", (name: string) => file.get(name)],
-      ] as const)
-        for (const variable of variables) {
-          const value = values(variable);
-          if (value !== undefined && value !== "") return { value, from, variable };
-        }
+    /** The first of `variables` set in the environment, or else the first set in `.env`. */
+    const find = <V extends string>(variables: readonly V[]): Found<V> | undefined => {
+      const set = (value: string | undefined): value is string =>
+        value !== undefined && value !== "";
+      for (const variable of variables) {
+        const value = environment[variable];
+        if (set(value)) return { value, from: "environment", variable };
+      }
+      for (const variable of variables) {
+        const value = file.get(variable);
+        if (set(value)) return { value, from: "file", variable };
+      }
       return undefined;
     };
     return {
-      baseUrl: find(ENV_NAMES.baseUrl),
-      model: find(ENV_NAMES.model),
-      apiKey: find(ENV_NAMES.apiKey, ENV_NAMES.openRouterKey),
+      baseUrl: find([ENV_NAMES.baseUrl]),
+      model: find([ENV_NAMES.model]),
+      apiKey: find(KEY_VARIABLES),
     } satisfies Record<SettingField, Found | undefined>;
   };
 
@@ -86,15 +96,10 @@ export const settingsStore = ({
         ? {
             state: "set",
             hint: maskKey(found.apiKey.value),
-            variable:
-              found.apiKey.variable === ENV_NAMES.apiKey
-                ? ENV_NAMES.apiKey
-                : ENV_NAMES.openRouterKey,
+            variable: found.apiKey.variable,
           }
         : { state: "none" },
-      fromEnvironment: (["baseUrl", "model", "apiKey"] as const).filter(
-        (field) => found[field]?.from === "environment",
-      ),
+      fromEnvironment: SETTING_FIELDS.filter((field) => found[field]?.from === "environment"),
     };
   };
 
@@ -112,9 +117,7 @@ export const settingsStore = ({
       const parsed = parseWith(SettingsUpdateSchema, body);
       if (!parsed.ok) return parsed;
       const found = await resolve();
-      const asked = (["baseUrl", "model", "apiKey"] as const).filter(
-        (field) => parsed.value[field] !== undefined,
-      );
+      const asked = SETTING_FIELDS.filter((field) => parsed.value[field] !== undefined);
       const locked = asked.filter((field) => found[field]?.from === "environment");
       if (locked.length > 0)
         return fail(

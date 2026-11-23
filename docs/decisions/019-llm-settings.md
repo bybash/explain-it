@@ -14,7 +14,15 @@ passing `-e OPENROUTER_API_KEY=…`.
   Saving a new key writes `LLM_API_KEY` and removes `OPENROUTER_API_KEY` from
   `.env`, so the key written is the key read.
 - **The environment wins.** `.env` is never loaded into the process; a
-  variable the environment sets is the user's own and wins over the file. The
+  variable the environment sets is the user's own and wins over the file.
+  Each setting is looked up in the environment first, then in `.env`, and
+  within one place `LLM_API_KEY` comes before `OPENROUTER_API_KEY`; so
+  `-e OPENROUTER_API_KEY` wins over an `LLM_API_KEY` saved in `.env`, as a
+  Docker user would expect.
+- **One line per value.** The base URL, model and key may not contain spaces
+  or line breaks, and the writer escapes line breaks anyway, so no value can
+  add a second variable to `.env`. A variable set twice is changed on its
+  first line and its later lines are dropped, since the last one is read. The
   page shows it as set by the environment and cannot change it, and the API
   refuses such a change by name.
 - **Presets, no live call.** The page offers OpenRouter, OpenAI, Ollama and
