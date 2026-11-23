@@ -42,6 +42,8 @@ export const RenderedThemeSchema = z.object({
   clean: z.string(),
   captions: z.string(),
   poster: z.string(),
+  /** One still per beat on one image. */
+  contactSheet: z.string(),
   /** The soundtrack, when the video has voice or music. */
   audio: z.string().optional(),
 });

@@ -27,3 +27,4 @@ later record supersedes an earlier one and says so.
 | [015](015-mix-and-outputs.md) | Mix and outputs |
 | [016](016-layout-checks.md) | Layout checks |
 | [017](017-timing-and-audio-checks.md) | Timing and audio checks |
+| [018](018-contact-sheet.md) | Contact sheet |

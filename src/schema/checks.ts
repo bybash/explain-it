@@ -101,6 +101,8 @@ export const CheckReportSchema = z.strictObject({
   beats: z.int().nonnegative(),
   warnings: z.array(CheckWarningSchema),
   skipped: z.array(SkippedChecksSchema).default([]),
+  /** The contact sheet beside the report, full size and small; missing when the page could not be drawn. */
+  contactSheet: z.strictObject({ full: z.string(), small: z.string() }).optional(),
 });
 
 export type Shape = z.output<typeof ShapeSchema>;
@@ -117,3 +119,4 @@ export const BeatSpanSchema = z.object({
   start: z.number(),
   end: z.number(),
 });
+export type BeatSpan = z.output<typeof BeatSpanSchema>;

@@ -9,6 +9,8 @@ cache/
 out/
 # The checks' report, made again by every check.
 checks.json
+contact-sheet.png
+contact-sheet.jpg
 *.log
 .DS_Store
 .vitest/

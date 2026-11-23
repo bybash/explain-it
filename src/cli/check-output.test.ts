@@ -59,4 +59,15 @@ describe("checkLines", () => {
       "no problems in 10 beats; the report is in /p/checks.json",
     ]);
   });
+
+  it("says where the contact sheet is", () => {
+    const sheet = {
+      ...report([]),
+      contactSheet: { full: "contact-sheet.png", small: "contact-sheet.jpg" },
+    };
+    expect(checkLines(sheet, "/p/checks.json")).toEqual([
+      "no problems in 10 beats; the report is in /p/checks.json",
+      "contact sheet: /p/contact-sheet.png",
+    ]);
+  });
 });

@@ -31,6 +31,7 @@ const steppedRenderer = () => {
               clean: `/out/${request.slug}/video-clean.mp4`,
               captions: `/out/${request.slug}/captions.srt`,
               poster: `/out/${request.slug}/poster.png`,
+              contactSheet: `/out/${request.slug}/contact-sheet.png`,
             },
           ]),
         fail: (message) => reject(new Error(message)),

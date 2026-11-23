@@ -1,17 +1,21 @@
 import { copyFile, mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { type Browser, chromium, type Page } from "playwright-core";
+import { z } from "zod";
+import { stillAt } from "../checks/sheet.ts";
 import { beatOptions, buildBeats } from "../engine/beats/build.ts";
 import type { InjectedProject } from "../engine/page/render.ts";
 import type { ThemeMode } from "../engine/theme/palettes.ts";
-import { STAGE } from "../schema/checks.ts";
+import { type BeatSpan, BeatSpanSchema, STAGE } from "../schema/checks.ts";
 import type { Resolution } from "../schema/config.ts";
+import { formatErrors, parseWith } from "../schema/errors.ts";
 import type { RenderedTheme, RenderProgress } from "../schema/render.ts";
 import { encodeArgs, posterArgs } from "./encode.ts";
 import { pipeFrames } from "./ffmpeg.ts";
 import { FPS, frameTimes, posterTime } from "./frames.ts";
 import type { ProjectFiles } from "./load.ts";
 import { captureInOrder } from "./parallel.ts";
+import { CONTACT_SHEET, drawSheet } from "./sheet.ts";
 import { type SrtCue, toSrt } from "./srt.ts";
 
 /** What to render: one video per theme, at one resolution. */
@@ -131,6 +135,7 @@ const renderTheme = async (
     clean: join(dir, "video-clean.mp4"),
     captions: join(dir, "captions.srt"),
     poster: join(dir, "poster.png"),
+    contactSheet: join(dir, CONTACT_SHEET.full),
     ...(audio ? { audio: join(dir, "audio.wav") } : {}),
   };
   const narrationShown = project.config.captions.narration;
@@ -196,6 +201,7 @@ const renderTheme = async (
     const poster = await frameAt(first, Math.min(posterTime(plan), duration));
     await pipeFrames(posterArgs({ resolution, out: files.poster }), (write) => write(poster));
     await writeFile(files.captions, toSrt(cues));
+    await writeFile(files.contactSheet, await contactSheetOf(browsers[0] as Browser, first));
     return files;
   } finally {
     await closeAll(pages, (page) => page.close());
@@ -243,4 +249,25 @@ const framesAt = async (
   const bare = await page.screenshot({ type: "png" });
   await page.evaluate(() => (window as unknown as Seekable).__captions(true));
   return { captioned, clean: bare };
+};
+
+/** The beats the render page reports (`__beats`), checked: the page is ours, so a bad one is a bug. */
+export const beatsOnPage = async (page: Page): Promise<BeatSpan[]> => {
+  const reported = parseWith(
+    z.array(BeatSpanSchema),
+    await page.evaluate(() => (window as unknown as { __beats: unknown }).__beats),
+  );
+  if (!reported.ok)
+    throw new Error(
+      `the render page reported beats it should not:\n${formatErrors(reported.errors).join("\n")}`,
+    );
+  return reported.value;
+};
+
+/** One still per beat, at the moment the checks look at, on one image (SPEC, Rendering); a render runs no checks, so none is marked. */
+const contactSheetOf = async (browser: Browser, page: Page): Promise<Buffer> => {
+  const beats = await beatsOnPage(page);
+  const stills: Buffer[] = [];
+  for (const beat of beats) stills.push(await frameAt(page, stillAt(beat)));
+  return drawSheet(browser, { beats, stills, warnings: [], size: "full" });
 };

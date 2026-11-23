@@ -63,7 +63,7 @@ npm run screenshot -- "dev/iso.html?t=4" out.png   # a still of a dev page
 npm run clip -- dev/iso.html out.mp4               # a clip of a dev page (needs ffmpeg)
 npm run build:engine                               # build the render page into dist/render
 npx explain-it render examples/oauth-login         # render a project to out/ (needs Chrome and ffmpeg)
-npx explain-it check examples/oauth-login          # layout checks into checks.json (needs Chrome)
+npx explain-it check examples/oauth-login          # all checks into checks.json, and contact-sheet.png (needs Chrome and ffmpeg)
 ```
 
 After changing anything in `src/schema/`, run `npm run schemas` and commit

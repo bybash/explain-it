@@ -1,3 +1,4 @@
+import { dirname, join } from "node:path";
 import type { CheckReport, CheckWarning } from "../schema/checks.ts";
 
 /** Where a problem shows: its beat and time, or the whole video. */
@@ -15,10 +16,14 @@ export const checkLines = (report: CheckReport, file: string): string[] => {
   for (const w of report.warnings)
     beats.set(w.message, [...(beats.get(w.message) ?? []), whereIn(w)]);
   const notRun = report.skipped.map((s) => `not checked: ${s.checks.join(", ")} (${s.reason})`);
-  if (beats.size === 0) return [...notRun, `no problems ${where}`];
+  const sheet = report.contactSheet
+    ? [`contact sheet: ${join(dirname(file), report.contactSheet.full)}`]
+    : [];
+  if (beats.size === 0) return [...notRun, `no problems ${where}`, ...sheet];
   return [
     ...notRun,
     ...[...beats].map(([message, at]) => `${message}: ${at.join(", ")}`),
     `${beats.size} problem${beats.size === 1 ? "" : "s"} ${where}`,
+    ...sheet,
   ];
 };

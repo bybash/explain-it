@@ -6,6 +6,7 @@ import { chromium } from "playwright-core";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { AUDIO_RATE } from "../audio/level.ts";
 import { encodeWav } from "../audio/wav.ts";
+import { sheetLayout } from "../checks/sheet.ts";
 import { beatOptions, buildBeats } from "../engine/beats/build.ts";
 import { formatErrors } from "../schema/errors.ts";
 import { parseStoryboard } from "../schema/storyboard.ts";
@@ -118,6 +119,13 @@ describe.skipIf(!hasFfmpeg || !hasChrome)("renderProject (Chrome and ffmpeg)", (
     // The example's title card holds 8 s (120 characters) and fades over 0.8 s before the first scene.
     expect(readFileSync(light.captions, "utf8")).toBe("1\n00:00:09,100 --> 00:00:09,500\nGo.\n");
 
+    // The contact sheet: the short project's three beats, one tile each, on one row.
+    const sheet = readFileSync(light.contactSheet);
+    expect(sheet.subarray(1, 4).toString()).toBe("PNG");
+    const layout = sheetLayout({ beats: plan.beats, warnings: [], tileWidth: 480 });
+    expect(layout.tiles).toHaveLength(3);
+    expect([sheet.readUInt32BE(16), sheet.readUInt32BE(20)]).toEqual([layout.width, layout.height]);
+
     const poster = readFileSync(light.poster);
     expect(poster.subarray(1, 4).toString()).toBe("PNG");
     expect([poster.readUInt32BE(16), poster.readUInt32BE(20)]).toEqual([1280, 720]);
@@ -207,7 +215,13 @@ describe.skipIf(!hasFfmpeg || !hasChrome)("renderProject (Chrome and ffmpeg)", (
   }, 180_000);
 
   it("writes the same video with four pages capturing in parallel as with one", async () => {
-    const project = await shortProject();
+    // Narration captions off: one capture a frame instead of two (captioned and clean), as the
+    // order frames come back in is what is tested, not what is on them.
+    const short = await shortProject();
+    const project = {
+      ...short,
+      config: { ...short.config, captions: { ...short.config.captions, narration: false } },
+    };
     const render = (pages: number) =>
       renderProject({
         project,
@@ -220,5 +234,8 @@ describe.skipIf(!hasFfmpeg || !hasChrome)("renderProject (Chrome and ffmpeg)", (
     if (!one || !four) throw new Error("no result");
     expect(readFileSync(four.video).equals(readFileSync(one.video))).toBe(true);
     expect(readFileSync(four.poster).equals(readFileSync(one.poster))).toBe(true);
+    // Each theme gets its own contact sheet; this one is the dark theme's.
+    expect(four.contactSheet).toBe(join(out, "pages-4", "dark", "contact-sheet.png"));
+    expect(readFileSync(four.contactSheet).subarray(1, 4).toString()).toBe("PNG");
   }, 240_000);
 });

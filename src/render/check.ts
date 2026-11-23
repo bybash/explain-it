@@ -6,10 +6,12 @@ import { measureLoudness } from "../audio/master.ts";
 import { makeSoundtrack } from "../audio/soundtrack.ts";
 import type { VoiceLine } from "../audio/voice.ts";
 import { layoutWarnings } from "../checks/layout.ts";
+import { stillAt } from "../checks/sheet.ts";
 import { loudnessWarnings, narrationFitWarnings, readingWarnings } from "../checks/timing.ts";
 import { beatOptions, buildBeats } from "../engine/beats/build.ts";
 import {
-  BeatSpanSchema,
+  type BeatSpan,
+  type BeatWarning,
   type CheckReport,
   type CheckWarning,
   ShapeSchema,
@@ -19,12 +21,12 @@ import { formatErrors, parseWith } from "../schema/errors.ts";
 import type { MissingTool } from "./environment.ts";
 import type { ProjectFiles } from "./load.ts";
 import { buildRenderPage, serveRenderPage } from "./page.ts";
-import { launchBrowser, openPage } from "./render.ts";
+import { beatsOnPage, launchBrowser, openPage } from "./render.ts";
+import { CONTACT_SHEET, drawSheet } from "./sheet.ts";
 
 /** What the render page exposes for the checks (see `expose` in the engine's player). */
 type Checkable = {
   __seek: (t: number) => void;
-  __beats: unknown;
   __shapes: () => unknown;
 };
 
@@ -42,22 +44,21 @@ export const checkLayout = async ({
 }: {
   readonly project: ProjectFiles;
   readonly pageUrl: string;
-}): Promise<{ readonly beats: number; readonly warnings: CheckWarning[] }> => {
+}): Promise<{
+  readonly beats: number;
+  readonly warnings: CheckWarning[];
+  /** Each beat's span and its still at the midpoint, for the contact sheet. */
+  readonly spans: readonly BeatSpan[];
+  readonly stills: readonly Buffer[];
+}> => {
   const browser = await launchBrowser();
   try {
     const page = await openPage(browser, pageUrl, { ...project, mode: "light" });
-    const reported = parseWith(
-      z.array(BeatSpanSchema),
-      await page.evaluate(() => (window as unknown as Checkable).__beats),
-    );
-    if (!reported.ok)
-      throw new Error(
-        `the render page reported beats it should not:\n${formatErrors(reported.errors).join("\n")}`,
-      );
-    const beats = reported.value;
+    const beats = await beatsOnPage(page);
     const warnings: CheckWarning[] = [];
+    const stills: Buffer[] = [];
     for (const beat of beats) {
-      const at = Math.round(((beat.start + beat.end) / 2) * 1000) / 1000;
+      const at = stillAt(beat);
       const drawn = await page.evaluate((t) => {
         const w = window as unknown as Checkable;
         w.__seek(t);
@@ -70,8 +71,9 @@ export const checkLayout = async ({
           `the render page reported shapes it should not:\n${formatErrors(shapes.errors).join("\n")}`,
         );
       warnings.push(...layoutWarnings(shapes.value, { scene: beat.scene, beat: beat.id, at }));
+      stills.push(await page.screenshot({ type: "png" }));
     }
-    return { beats: beats.length, warnings };
+    return { beats: beats.length, warnings, spans: beats, stills };
   } finally {
     await browser.close();
   }
@@ -123,6 +125,36 @@ export const skippedChecks = (
   return skipped;
 };
 
+/**
+ * The contact sheets beside the report: full size (PNG) and small (JPEG,
+ * for an agent), each still marked with the warnings at its beat.
+ */
+const writeSheets = async (
+  dir: string,
+  {
+    beats,
+    stills,
+    warnings,
+  }: {
+    readonly beats: readonly BeatSpan[];
+    readonly stills: readonly Buffer[];
+    readonly warnings: readonly CheckWarning[];
+  },
+) => {
+  const atBeats = warnings.filter((w): w is BeatWarning => "beat" in w);
+  const browser = await launchBrowser();
+  try {
+    for (const size of ["full", "small"] as const) {
+      const image = await drawSheet(browser, { beats, stills, warnings: atBeats, size });
+      await writeFile(join(dir, `${CONTACT_SHEET[size]}.partial`), image);
+      await rename(join(dir, `${CONTACT_SHEET[size]}.partial`), join(dir, CONTACT_SHEET[size]));
+    }
+    return CONTACT_SHEET;
+  } finally {
+    await browser.close();
+  }
+};
+
 /** The layout checks on the project's page: the render page built, served for the length of them. */
 const layoutOnPage = async (project: ProjectFiles) => {
   const page = await buildRenderPage();
@@ -167,7 +199,7 @@ export const checkProjectFolder = async ({
     beatOptions(project.config, project.narration),
   );
   const layout = skipped.has("overlap")
-    ? { beats: plan.beats.length, warnings: [] }
+    ? { beats: plan.beats.length, warnings: [], spans: [], stills: [] }
     : await layoutOnPage(project);
   const warnings = [
     ...layout.warnings,
@@ -175,12 +207,22 @@ export const checkProjectFolder = async ({
     ...(skipped.has("narration-fit") ? [] : narrationFitWarnings(plan, project.narration ?? {})),
     ...(skipped.has("loudness") ? [] : await checkSoundtrack({ project, lines })),
   ];
+  const contactSheet =
+    layout.stills.length > 0
+      ? await writeSheets(dir, { beats: layout.spans, stills: layout.stills, warnings })
+      : undefined;
+  // Without stills there is no sheet, and an older one would show a project that has changed.
+  if (!contactSheet)
+    await Promise.all(
+      Object.values(CONTACT_SHEET).map((name) => rm(join(dir, name), { force: true })),
+    );
   const report: CheckReport = {
     version: 1,
     checkedAt: now.toISOString(),
     beats: layout.beats,
     warnings,
     skipped: [...skip],
+    ...(contactSheet ? { contactSheet } : {}),
   };
   const file = join(dir, "checks.json");
   await writeFile(`${file}.partial`, `${JSON.stringify(report, null, 2)}\n`);

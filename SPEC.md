@@ -391,7 +391,13 @@ of each other. Decision 016 says why.
 
 Layout problems go back to the layout engine first and to the LLM second.
 
-The **contact sheet** is one still per beat on a single image.
+The **contact sheet** is one still per beat on a single image: each beat at
+its midpoint, four to a row, labelled with its number, scene, beat and time,
+and outlined in red with a count when the checks found warnings there. Chrome
+lays it out from a page, so the labels need no font tools. `check` writes
+`contact-sheet.png` beside `checks.json`, and a small JPEG (up to 1280 px wide)
+that the MCP tool returns as an image; every render writes one per theme.
+Decision 018 says why.
 
 ## Rendering
 
@@ -466,7 +472,7 @@ server validates, lays out, checks, previews and renders.
 | `update_graph` | Replaces the graph or applies a JSON Patch | Errors or the Mermaid; stale beats |
 | `set_storyboard` | Replaces the storyboard or applies a JSON Patch | Errors, timing (measured for lines already voiced, else estimated, with a count of each), check warnings |
 | `set_style` | Updates `config.json` | The config, a preview link |
-| `check` | Generates the voice if needed and runs the checks | The report and the contact sheet as an image; until the voice and the checks exist (milestone 2), whether the project can render (its files, Chrome and ffmpeg), its problems, stale beats and timing, and what it could not check |
+| `check` | Generates the voice if needed and runs the checks | The report (readiness, the voice, every check by beat, the timing) and the contact sheet as an image |
 | `render` | Queues a render | A job id |
 | `render_status` | Reads a render job | Progress, then the output paths |
 | `cancel_render` | Cancels a queued or running render | The job; no partial files are left |
