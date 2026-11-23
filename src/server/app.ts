@@ -16,8 +16,10 @@ import { RenderQueue, type RenderRun } from "../render/queue.ts";
 import { renderFromFolder } from "../render/run.ts";
 import type { ValidationError } from "../schema/errors.ts";
 import { MCP_PATH } from "../schema/mcp.ts";
+import { LOCAL_HOSTS } from "../schema/settings.ts";
 import { createEvents } from "./events.ts";
 import { createProject, listProjects, openProject } from "./projects.ts";
+import type { SettingsStore } from "./settings.ts";
 
 export type AppOptions = {
   /** The folder that holds one folder per project. */
@@ -39,6 +41,8 @@ export type AppOptions = {
   readonly missingRenderTools?: () => Promise<readonly MissingTool[]>;
   /** Runs the layout checks and writes the report; the real ones by default, a fake in tests. */
   readonly runChecks?: ToolContext["runChecks"];
+  /** The LLM settings in `.env` (see `main.ts`); tests give each its own file. */
+  readonly settings: SettingsStore;
 };
 
 /** How often an idle event stream sends a comment, so proxies and browsers keep it open. */
@@ -46,8 +50,15 @@ const KEEP_ALIVE_MS = 15_000;
 /** The largest request bodies: projects' own files are far smaller; MCP can carry a 2 MB logo as base64. */
 const MAX_API_BYTES = 1024 * 1024;
 const MAX_MCP_BYTES = 4 * 1024 * 1024;
-/** Names this machine answers to; a request addressed to any other name did not come from its user. */
-const LOCAL_HOSTS = ["localhost", "127.0.0.1", "[::1]"];
+/** Whether a request was addressed to this machine's own name, so it never left it. */
+const fromThisMachine = (url: string) =>
+  (LOCAL_HOSTS as readonly string[]).includes(new URL(url).hostname);
+
+/** Whether a settings update carries a new key. */
+const sendsKey = (body: unknown) =>
+  typeof body === "object" &&
+  body !== null &&
+  typeof (body as { apiKey?: unknown }).apiKey === "string";
 
 /** Every error response has this shape: what is wrong, each naming its place. */
 const errorResponse = (
@@ -76,6 +87,7 @@ export const createApp = ({
   missingRenderTools = findMissingRenderTools,
   runChecks = (dir, project, lines, skip) =>
     checkProjectFolder({ dir, project, lines, skip, now: now() }),
+  settings,
 }: AppOptions) => {
   const app = new Hono();
   const events = createEvents();
@@ -179,6 +191,30 @@ export const createApp = ({
     if (!opened) return errorResponse(c, 404, [{ path: "slug", message: `no project "${slug}"` }]);
     if (!opened.ok) return errorResponse(c, 422, opened.errors);
     return c.json(opened.value);
+  });
+
+  // The key goes in and never comes back out: the page sees only its last characters.
+  app.get("/api/settings", async (c) => c.json(await settings.view()));
+
+  app.put("/api/settings", async (c) => {
+    let body: unknown;
+    try {
+      body = await c.req.json();
+    } catch {
+      return errorResponse(c, 400, [{ path: "(body)", message: "not valid JSON" }]);
+    }
+    // Plain HTTP to another machine's address crosses a network unencrypted: a key may not.
+    if (sendsKey(body) && !fromThisMachine(c.req.url))
+      return errorResponse(c, 403, [
+        {
+          path: "apiKey",
+          message:
+            "this page is reached over the network, which would send the key unencrypted: open it on this machine, or set the key in .env",
+        },
+      ]);
+    const saved = await settings.update(body);
+    if (!saved.ok) return errorResponse(c, 400, saved.errors);
+    return c.json(saved.value);
   });
 
   app.get("/api/events", (c) =>

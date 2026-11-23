@@ -1,9 +1,13 @@
 import { useEffect, useState } from "react";
 import { ProjectList } from "./ProjectList.tsx";
 import { ProjectView } from "./ProjectView.tsx";
+import { Settings } from "./Settings.tsx";
 
-/** The page the address names: `#/projects/<slug>` opens a project; anything else lists them. */
-const route = (hash: string): { page: "list" } | { page: "project"; slug: string } => {
+/** The page the address names: `#/projects/<slug>` opens a project, `#/settings` the settings; anything else lists them. */
+const route = (
+  hash: string,
+): { page: "list" } | { page: "settings" } | { page: "project"; slug: string } => {
+  if (hash === "#/settings") return { page: "settings" };
   const match = /^#\/projects\/([^/]+)$/.exec(hash);
   return match?.[1] ? { page: "project", slug: decodeURIComponent(match[1]) } : { page: "list" };
 };
@@ -23,9 +27,20 @@ export const App = () => {
         <a className="brand" href="#/">
           expl<span className="brand-ai">AI</span>n-it
         </a>
+        <nav className="shell-nav">
+          <a href="#/settings" aria-current={current.page === "settings" ? "page" : undefined}>
+            Settings
+          </a>
+        </nav>
       </header>
       <main className="shell-main">
-        {current.page === "project" ? <ProjectView slug={current.slug} /> : <ProjectList />}
+        {current.page === "project" ? (
+          <ProjectView slug={current.slug} />
+        ) : current.page === "settings" ? (
+          <Settings />
+        ) : (
+          <ProjectList />
+        )}
       </main>
     </div>
   );

@@ -7,6 +7,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import graphJson from "../../examples/oauth-login/graph.json" with { type: "json" };
 import { fakeTts } from "../audio/fake-tts.testing.ts";
 import { createApp } from "./app.ts";
+import { settingsStore } from "./settings.ts";
 
 // A real render needs Chrome and ffmpeg; without them the test is skipped, not failed.
 const hasFfmpeg = ["ffmpeg", "ffprobe"].every((tool) => spawnSync(tool, ["-version"]).status === 0);
@@ -44,7 +45,12 @@ describe.skipIf(!hasFfmpeg || !hasChrome)(
 
     beforeAll(() => {
       projectsDir = mkdtempSync(join(tmpdir(), "explain-it-e2e-"));
-      app = createApp({ projectsDir, now: () => new Date(), tts: fakeTts().tts });
+      app = createApp({
+        projectsDir,
+        now: () => new Date(),
+        tts: fakeTts().tts,
+        settings: settingsStore({ envFile: join(projectsDir, ".env"), environment: {} }),
+      });
     });
     afterAll(() => rmSync(projectsDir, { recursive: true, force: true }));
 

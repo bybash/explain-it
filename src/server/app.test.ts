@@ -13,6 +13,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { fakeTts } from "../audio/fake-tts.testing.ts";
 import { parseProject } from "../schema/project.ts";
 import { createApp } from "./app.ts";
+import { settingsStore } from "./settings.ts";
 
 const example = new URL("../../examples/oauth-login/", import.meta.url).pathname;
 const NOW = "2026-11-20T10:00:00.000Z";
@@ -21,7 +22,12 @@ let projectsDir: string;
 let app: ReturnType<typeof createApp>;
 beforeEach(() => {
   projectsDir = mkdtempSync(join(tmpdir(), "explain-it-projects-"));
-  app = createApp({ projectsDir, now: () => new Date(NOW), tts: fakeTts().tts });
+  app = createApp({
+    projectsDir,
+    now: () => new Date(NOW),
+    tts: fakeTts().tts,
+    settings: settingsStore({ envFile: join(projectsDir, ".env"), environment: {} }),
+  });
 });
 afterEach(() => rmSync(projectsDir, { recursive: true, force: true }));
 
@@ -290,5 +296,77 @@ describe("request safety", () => {
       expect(response.status, `${method} ${path}`).toBe(404);
       expect((await response.json()).errors[0].path).toBe("url");
     }
+  });
+});
+
+describe("/api/settings", () => {
+  const KEY = "sk-or-v1-0123456789abcdef";
+  const put = (body: unknown) =>
+    app.request("/api/settings", {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+  it("saves the settings to .env and never sends the key back in full", async () => {
+    const saved = await put({ baseUrl: "https://api.openai.com/v1", model: "gpt-5", apiKey: KEY });
+    expect(saved.status).toBe(200);
+    const text = await saved.text();
+    expect(text).not.toContain(KEY);
+    expect(JSON.parse(text)).toMatchObject({
+      provider: "openai",
+      model: "gpt-5",
+      key: { state: "set", hint: "••••cdef" },
+    });
+    expect(readFileSync(join(projectsDir, ".env"), "utf8")).toContain(`LLM_API_KEY=${KEY}`);
+    const read = await app.request("/api/settings");
+    expect(await read.text()).toBe(text);
+  });
+
+  it("names what is wrong", async () => {
+    const response = await put({ baseUrl: "ftp://files.example.com" });
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      errors: [{ path: "baseUrl", message: "must be a valid url" }],
+    });
+  });
+
+  it("takes a key only from a page on this machine, where it never crosses a network", async () => {
+    const shared = createApp({
+      projectsDir,
+      now: () => new Date(NOW),
+      tts: fakeTts().tts,
+      hosts: ["192.168.1.20"],
+      settings: settingsStore({ envFile: join(projectsDir, ".env"), environment: {} }),
+    });
+    const putTo = (host: string, body: unknown) =>
+      shared.request(`http://${host}/api/settings`, {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      });
+    const overNetwork = await putTo("192.168.1.20:3000", { apiKey: KEY });
+    expect(overNetwork.status).toBe(403);
+    const { errors } = await overNetwork.json();
+    expect(errors).toEqual([{ path: "apiKey", message: expect.stringContaining(".env") }]);
+    expect(existsSync(join(projectsDir, ".env"))).toBe(false);
+    // Nothing secret travels in the other settings, or in removing the key.
+    expect((await putTo("192.168.1.20:3000", { model: "gpt-5", apiKey: null })).status).toBe(200);
+    expect((await putTo("127.0.0.1:3000", { apiKey: KEY })).status).toBe(200);
+  });
+
+  it("takes settings only as JSON from this app's own pages", async () => {
+    const form = await app.request("/api/settings", {
+      method: "PUT",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: "model=x",
+    });
+    expect(form.status).toBe(415);
+    const elsewhere = await app.request("/api/settings", {
+      method: "PUT",
+      headers: { "content-type": "application/json", origin: "https://evil.example" },
+      body: JSON.stringify({ model: "x" }),
+    });
+    expect(elsewhere.status).toBe(403);
   });
 });

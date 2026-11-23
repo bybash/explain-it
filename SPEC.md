@@ -548,7 +548,20 @@ comes later.
   only as JSON (which a cross-site form cannot send), and caps them at 1 MB.
   Uploaded files are checked by type and size.
 - Keys: read from `.env`; the settings page writes to it. Docker users pass
-  `-e OPENROUTER_API_KEY=…`.
+  `-e OPENROUTER_API_KEY=…`. The variables are `LLM_BASE_URL` (OpenRouter by
+  default), `LLM_MODEL` and `LLM_API_KEY`, with `OPENROUTER_API_KEY` read as
+  the key when `LLM_API_KEY` is not set. Each setting is looked up in the
+  environment first, then in `.env`, so a variable the environment sets wins
+  (even `OPENROUTER_API_KEY` over an `LLM_API_KEY` in `.env`), and the page
+  shows it but cannot change it. Only its owner
+  can read the `.env` the page writes, and the page sees the key only as its
+  last four characters. `ENV_FILE` moves the file (decision 019).
+  The app has no TLS, so a key never travels over plain HTTP between
+  machines: the page saves a key only when it is opened at a name of this
+  machine (`localhost`, `127.0.0.1`, `[::1]`), and a base URL may use
+  `http://` only for this machine or Docker's `host.docker.internal`. Any
+  program on this machine can still call the API; with no login, that is
+  accepted.
 - Visuals: Lucide icons (ISC); about 8 bundled OFL fonts; about 6 palettes,
   each with light and dark variants.
 - Layout: elkjs (EPL-2.0, used as a dependency).

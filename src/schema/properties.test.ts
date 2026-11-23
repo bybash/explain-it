@@ -1,11 +1,14 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { parseConfig } from "./config.ts";
-import { MAX_GRAPH_NODES, parseGraph } from "./graph.ts";
+import { MAX_GRAPH_NODES, MERMAID_KEYWORDS, parseGraph } from "./graph.ts";
 import { parseProject } from "./project.ts";
 import { parseStoryboard } from "./storyboard.ts";
 
-const id = fc.stringMatching(/^[a-z][a-z0-9_]{0,11}$/);
+/** Ids the schema takes: Mermaid's keywords, such as "end" or "href", are refused (decision 011). */
+const id = fc
+  .stringMatching(/^[a-z][a-z0-9_]{0,11}$/)
+  .filter((candidate) => !(MERMAID_KEYWORDS as readonly string[]).includes(candidate));
 const label = fc.string({ minLength: 1, maxLength: 24 });
 const kind = fc.constantFrom(
   "actor",

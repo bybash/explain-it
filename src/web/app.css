@@ -246,3 +246,71 @@ button:disabled {
 .file[data-present="false"] code {
   color: var(--muted);
 }
+
+.shell-header {
+  justify-content: space-between;
+}
+
+.shell-nav a {
+  color: var(--muted);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.shell-nav a[aria-current="page"] {
+  color: var(--accent);
+}
+
+.settings {
+  display: grid;
+  gap: 6px;
+  max-width: 560px;
+  margin-top: 24px;
+}
+
+.settings > label:not(.check) {
+  margin-top: 14px;
+  font-weight: 600;
+}
+
+.settings input:not([type="checkbox"]),
+.settings select {
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+
+.settings input:disabled,
+.settings select:disabled {
+  opacity: 0.6;
+}
+
+.settings input:focus-visible,
+.settings select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.field-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.settings-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 20px;
+}
