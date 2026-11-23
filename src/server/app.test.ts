@@ -11,6 +11,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { fakeTts } from "../audio/fake-tts.testing.ts";
+import { layoutGraph } from "../layout/layout.ts";
 import { graphToMermaid } from "../mermaid/generate.ts";
 import { parseGraph } from "../schema/graph.ts";
 import { parseProject } from "../schema/project.ts";
@@ -536,6 +537,28 @@ describe("/api/projects/:slug/graph", () => {
       readFileSync(join(projectsDir, "oauth-example", "project.json"), "utf8"),
     );
     expect(project.staleBeats).toEqual(body.staleBeats);
+  });
+
+  it("keeps the user's manual positions when it lays the saved graph out again", async () => {
+    copyExample("oauth-example");
+    const file = join(projectsDir, "oauth-example", "layout.json");
+    const layout = JSON.parse(readFileSync(file, "utf8"));
+    // The user dragged the browser two grid steps along: laid out as the app would with that.
+    const moved = { x: layout.positions.browser.x + 1, y: layout.positions.browser.y };
+    const graph = parseGraph(JSON.parse(readFileSync(join(example, "graph.json"), "utf8")));
+    if (!graph.ok) throw new Error("the example graph is invalid");
+    const dragged = await layoutGraph(graph.value, { browser: moved });
+    if (!dragged.ok) throw new Error("the example cannot be laid out");
+    writeFileSync(file, JSON.stringify(dragged.value));
+    const opened = await (await app.request("/api/projects/oauth-example")).json();
+    expect(opened.layout.overrides).toEqual({ browser: moved });
+    const saved = await put("oauth-example", {
+      mermaid: graphToMermaid(opened.graph).replace('"Photos API"', '"Photo API"'),
+    });
+    expect(saved.status).toBe(200);
+    const after = JSON.parse(readFileSync(file, "utf8"));
+    expect(after.overrides).toEqual({ browser: moved });
+    expect(after.positions.browser).toEqual(moved);
   });
 
   it("saves nothing when the Mermaid cannot be read", async () => {

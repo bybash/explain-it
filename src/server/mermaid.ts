@@ -52,9 +52,9 @@ const mermaidWorker = () => {
   const ready = new Promise<void>((resolve, reject) => {
     thread.on("message", (data: unknown) => {
       if (ReadySchema.safeParse(data).success) return resolve();
-      // Only a parse's reply carries its id. Node posts messages of its own too: under
-      // --watch (npm run dev), each worker reports the files it imports ("watch:import").
-      if (typeof data !== "object" || data === null || !("id" in data)) return;
+      // Node posts messages of its own too: under --watch (npm run dev's API), each worker
+      // reports the files it imports. Everything else must be a reply.
+      if (typeof data === "object" && data !== null && "watch:import" in data) return;
       const message = parseWith(ReplySchema, data);
       // The worker is ours, so a message it should not send is a bug: every waiting parse hears of it.
       if (!message.ok)

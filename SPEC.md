@@ -559,7 +559,8 @@ comes later.
 - The graph gate's panel is the code, in CodeMirror, beside the diagram it
   draws. The code is read on the server as it is typed (after a short
   pause), so the notes on what the graph leaves out, and an error marked on
-  its line, show before saving. Save writes `graph.json` the way MCP's
+  its line, show before saving. Save keeps the code as written and writes
+  `graph.json` the way MCP's
   `update_graph` does: the layout again, keeping manual positions, and the
   beats an edit touches marked stale. A project with no graph starts from a
   small diagram, and the gate cannot be approved while edits are unsaved

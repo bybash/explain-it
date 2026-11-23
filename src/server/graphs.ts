@@ -1,20 +1,26 @@
-import { laidOut } from "../mcp/edits.ts";
+import { layoutGraph } from "../layout/layout.ts";
+import { under } from "../mcp/edits.ts";
 import { inFile } from "../render/load.ts";
-import type { OpenedProject } from "../schema/api.ts";
+import type { GraphSaveOutcome, OpenedProject } from "../schema/api.ts";
 import { formatErrors, type Validated } from "../schema/errors.ts";
 import type { Graph } from "../schema/graph.ts";
-import { ok } from "../schema/result.ts";
+import type { Layout } from "../schema/layout.ts";
+import { fail, ok } from "../schema/result.ts";
 import { staleBeats } from "../schema/stale.ts";
 import { parseStoryboard } from "../schema/storyboard.ts";
 import { writeProjectFile } from "./projects.ts";
 
-/** What saving a graph did to the rest of the project. */
-export type SavedGraph = {
-  /** Every beat now stale: those this edit touched, and those already stale. */
-  readonly staleBeats: readonly string[];
-  /** What the storyboard no longer agrees with, such as a beat naming a removed node. */
-  readonly storyboardProblems: readonly string[];
-  readonly warnings: readonly string[];
+/** Lays the graph out, keeping the user's manual positions for the nodes it still has. */
+export const laidOut = async (
+  graph: Graph,
+  previous: Layout | null,
+): Promise<Validated<Layout>> => {
+  const ids = new Set(graph.nodes.map((n) => n.id));
+  const overrides = Object.fromEntries(
+    Object.entries(previous?.overrides ?? {}).filter(([id]) => ids.has(id)),
+  );
+  const layout = await layoutGraph(graph, overrides);
+  return layout.ok ? layout : fail(under("layout", layout.errors));
 };
 
 /**
@@ -30,7 +36,7 @@ export const saveGraph = async (
   before: OpenedProject,
   graph: Graph,
   now: Date,
-): Promise<Validated<SavedGraph>> => {
+): Promise<Validated<GraphSaveOutcome>> => {
   const layout = await laidOut(graph, before.layout);
   if (!layout.ok) return layout;
   const stale =

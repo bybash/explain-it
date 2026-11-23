@@ -1,13 +1,11 @@
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import type { MiddlewareHandler } from "hono";
-import { type Context, Hono } from "hono";
+import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { streamSSE } from "hono/streaming";
-import type { ContentfulStatusCode } from "hono/utils/http-status";
 import type { TtsProvider } from "../audio/tts.ts";
 import { createMcpServer } from "../mcp/server.ts";
 import type { ToolContext } from "../mcp/tools.ts";
-import { graphToMermaid } from "../mermaid/generate.ts";
 import { checkProjectFolder } from "../render/check.ts";
 import {
   missingRenderTools as findMissingRenderTools,
@@ -15,24 +13,16 @@ import {
 } from "../render/environment.ts";
 import { RenderQueue, type RenderRun } from "../render/queue.ts";
 import { renderFromFolder } from "../render/run.ts";
-import { ApproveSchema, GraphEditSchema } from "../schema/api.ts";
+import { ApproveSchema } from "../schema/api.ts";
 import { NewChatMessageSchema } from "../schema/chat.ts";
-import { parseWith, type Validated, type ValidationError } from "../schema/errors.ts";
+import { parseWith } from "../schema/errors.ts";
 import { MCP_PATH } from "../schema/mcp.ts";
-import { fail, ok } from "../schema/result.ts";
 import { addChat, readChat } from "./chat.ts";
 import { createEvents } from "./events.ts";
 import { approveGate } from "./gates.ts";
-import { saveGraph } from "./graphs.ts";
-import { mermaidToGraph } from "./mermaid.ts";
-import {
-  createProject,
-  listProjects,
-  openProject,
-  projectDir,
-  projectExists,
-  withProjectLock,
-} from "./projects.ts";
+import { graphRoutes } from "./graph-routes.ts";
+import { createProject, listProjects, openProject, projectDir, projectExists } from "./projects.ts";
+import { errorResponse, jsonBody, noProject } from "./responses.ts";
 import type { SettingsStore } from "./settings.ts";
 
 export type AppOptions = {
@@ -66,32 +56,6 @@ const MAX_API_BYTES = 1024 * 1024;
 const MAX_MCP_BYTES = 4 * 1024 * 1024;
 /** Names this machine answers to; a request addressed to any other name did not come from its user. */
 const LOCAL_HOSTS = ["localhost", "127.0.0.1", "[::1]"];
-
-/** Every error response has this shape: what is wrong, each naming its place. */
-const errorResponse = (
-  c: Context,
-  status: ContentfulStatusCode,
-  errors: readonly ValidationError[],
-) => c.json({ errors }, status);
-
-/** The answer for a slug that names no project. */
-const noProject = (c: Context, slug: string) =>
-  errorResponse(c, 404, [{ path: "slug", message: `no project "${slug}"` }]);
-
-/** The edited Mermaid in a request's body. */
-const graphEdit = async (c: Context): Promise<Validated<{ mermaid: string }>> => {
-  const body = await jsonBody(c);
-  return body.ok ? parseWith(GraphEditSchema, body.value) : body;
-};
-
-/** A request's JSON body, or the error that names why it is not one. */
-const jsonBody = async (c: Context): Promise<Validated<unknown>> => {
-  try {
-    return ok(await c.req.json());
-  } catch {
-    return fail([{ path: "(body)", message: "not valid JSON" }]);
-  }
-};
 
 /**
  * The API: projects over the folders in `projectsDir`, and server-sent events.
@@ -245,50 +209,7 @@ export const createApp = ({
     return c.json({ messages: added }, 201);
   });
 
-  // The graph gate's editor: read Mermaid as the user types, and save it (SPEC, Mermaid).
-  app.post("/api/projects/:slug/graph/read", async (c) => {
-    const slug = c.req.param("slug");
-    const edit = await graphEdit(c);
-    if (!edit.ok) return errorResponse(c, 400, edit.errors);
-    const opened = await openProject(projectsDir, slug);
-    if (!opened) return noProject(c, slug);
-    if (!opened.ok) return errorResponse(c, 422, opened.errors);
-    const read = await mermaidToGraph(
-      edit.value.mermaid,
-      opened.value.graph ?? undefined,
-      opened.value.project.name,
-    );
-    if (!read.ok) return errorResponse(c, 400, read.errors);
-    return c.json(read.value);
-  });
-
-  app.put("/api/projects/:slug/graph", async (c) => {
-    const slug = c.req.param("slug");
-    const edit = await graphEdit(c);
-    if (!edit.ok) return errorResponse(c, 400, edit.errors);
-    const result = await withProjectLock(projectsDir, slug, async () => {
-      const opened = await openProject(projectsDir, slug);
-      if (!opened) return { status: 404 as const };
-      if (!opened.ok) return { status: 422 as const, errors: opened.errors };
-      const before = opened.value;
-      const read = await mermaidToGraph(
-        edit.value.mermaid,
-        before.graph ?? undefined,
-        before.project.name,
-      );
-      if (!read.ok) return { status: 400 as const, errors: read.errors };
-      const saved = await saveGraph(projectsDir, slug, before, read.value.graph, now());
-      if (!saved.ok) return { status: 400 as const, errors: saved.errors };
-      return {
-        status: 200 as const,
-        body: { ...read.value, mermaid: graphToMermaid(read.value.graph), ...saved.value },
-      };
-    });
-    if (result.status === 404) return noProject(c, slug);
-    if (result.status !== 200) return errorResponse(c, result.status, result.errors);
-    events.publish({ type: "project-updated", slug });
-    return c.json(result.body);
-  });
+  graphRoutes(app, { projectsDir, now, events });
 
   app.post("/api/projects/:slug/approve", async (c) => {
     const slug = c.req.param("slug");

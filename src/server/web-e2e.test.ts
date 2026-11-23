@@ -194,7 +194,7 @@ const flow = (
     await page.click(".cm-content");
     await page.keyboard.press("ControlOrMeta+A");
     await page.keyboard.insertText(
-      "flowchart LR\n  user([User]) -->|signs in| app[Photo app]\n  app --> photos[(Photos)]",
+      "flowchart LR\n  %% the user's own note\n  user([User]) -->|signs in| app[Photo app]\n  app --> photos[(Photos)]",
     );
     await expect.poll(() => page.textContent(".mermaid-diagram"), SOON).toContain("Photo app");
     await expect.poll(() => page.isEnabled("text=Save the graph"), SOON).toBe(true);
@@ -202,6 +202,8 @@ const flow = (
     await expect
       .poll(() => page.textContent(".graph-actions [role=status]"), SOON)
       .toContain("Saved");
+    // The code stays as written, the comment included: it is what was saved.
+    expect(await page.textContent(".cm-content")).toContain("%% the user's own note");
     const graph = JSON.parse(readFileSync(join(projectsDir, "oauth-login", "graph.json"), "utf8"));
     expect(graph.nodes.map((n: { id: string; kind: string }) => [n.id, n.kind])).toEqual([
       ["user", "actor"],

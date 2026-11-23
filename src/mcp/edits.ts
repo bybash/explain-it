@@ -1,11 +1,9 @@
 import jsonpatch, { type Operation } from "fast-json-patch";
 import { beatOptions, buildBeats } from "../engine/beats/build.ts";
 import { narrationMode } from "../engine/beats/timing.ts";
-import { layoutGraph } from "../layout/layout.ts";
 import { type Config, DEFAULT_CONFIG } from "../schema/config.ts";
 import type { Validated, ValidationError } from "../schema/errors.ts";
 import type { Graph } from "../schema/graph.ts";
-import type { Layout } from "../schema/layout.ts";
 import type { Narration } from "../schema/narration.ts";
 import { GATES, type Gate } from "../schema/project.ts";
 import { fail, ok } from "../schema/result.ts";
@@ -76,19 +74,6 @@ export const merged = (base: unknown, changes: unknown): unknown => {
     if (value === null) delete result[key];
     else result[key] = merged(result[key], value);
   return result;
-};
-
-/** Lays the graph out, keeping the user's manual positions for the nodes it still has. */
-export const laidOut = async (
-  graph: Graph,
-  previous: Layout | null,
-): Promise<Validated<Layout>> => {
-  const ids = new Set(graph.nodes.map((n) => n.id));
-  const overrides = Object.fromEntries(
-    Object.entries(previous?.overrides ?? {}).filter(([id]) => ids.has(id)),
-  );
-  const layout = await layoutGraph(graph, overrides);
-  return layout.ok ? layout : fail(under("layout", layout.errors));
 };
 
 /**

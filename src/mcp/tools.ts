@@ -23,7 +23,7 @@ import type { Project } from "../schema/project.ts";
 import { fail, ok } from "../schema/result.ts";
 import { parseStoryboard, type Storyboard } from "../schema/storyboard.ts";
 import type { Events } from "../server/events.ts";
-import { saveGraph } from "../server/graphs.ts";
+import { laidOut, saveGraph } from "../server/graphs.ts";
 import { type CheckedLogo, checkLogo, saveLogo } from "../server/logo.ts";
 import {
   listProjects,
@@ -33,7 +33,7 @@ import {
   withProjectLock,
   writeProjectFile,
 } from "../server/projects.ts";
-import { allOf, asObject, edited, laidOut, laterGate, merged, timingOf, under } from "./edits.ts";
+import { allOf, asObject, edited, laterGate, merged, timingOf, under } from "./edits.ts";
 
 /** What the tools work with: the projects folder, the clock, the event hub and preview links. */
 export type ToolContext = {

@@ -11,6 +11,8 @@ const loadMermaid = () => {
       // Labels are the user's own text: strict keeps scripts and links out of the drawing.
       securityLevel: "strict",
       theme: matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "default",
+      // Drawn at its own size and scrolled, so a wide graph stays readable instead of shrinking to fit.
+      flowchart: { useMaxWidth: false },
     });
     return mermaid;
   });
@@ -26,17 +28,24 @@ export const MermaidDiagram = ({ text }: { text: string }) => {
 
   useEffect(() => {
     let current = true;
-    void loadMermaid()
-      .then((mermaid) => mermaid.render(`mermaid-diagram-${++drawn}`, text))
-      .then(({ svg }) => {
-        if (!current || !box.current) return;
-        // The SVG comes from Mermaid's strict mode, which sanitises the labels.
-        box.current.innerHTML = svg;
-        setProblem(undefined);
-      })
-      .catch(() => {
-        if (current) setProblem("The diagram cannot be drawn until the code reads.");
-      });
+    void loadMermaid().then(
+      (mermaid) =>
+        mermaid.render(`mermaid-diagram-${++drawn}`, text).then(
+          ({ svg }) => {
+            if (!current || !box.current) return;
+            // The SVG comes from Mermaid's strict mode, which sanitises the labels.
+            box.current.innerHTML = svg;
+            setProblem(undefined);
+          },
+          () => {
+            if (current) setProblem("The diagram cannot be drawn until the code reads.");
+          },
+        ),
+      () => {
+        loading = undefined;
+        if (current) setProblem("Mermaid could not be loaded, so the diagram cannot be drawn.");
+      },
+    );
     return () => {
       current = false;
     };
@@ -44,8 +53,8 @@ export const MermaidDiagram = ({ text }: { text: string }) => {
 
   return (
     <figure className="mermaid-diagram" aria-label="The graph as a diagram">
+      {problem && <figcaption className="diagram-problem">{problem}</figcaption>}
       <div ref={box} data-stale={problem !== undefined} />
-      {problem && <figcaption className="muted">{problem}</figcaption>}
     </figure>
   );
 };

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { graphToMermaid } from "../mermaid/generate.ts";
-import type { OpenedProject } from "../schema/api.ts";
+import type { GraphSaveOutcome, OpenedProject } from "../schema/api.ts";
 import type { ValidationError } from "../schema/errors.ts";
 import { readGraph, saveGraph } from "./api.ts";
 import { Errors } from "./Errors.tsx";
@@ -14,13 +14,6 @@ const PAUSE_MS = 400;
 type Read =
   | { readonly ok: true; readonly notes: readonly string[] }
   | { readonly ok: false; readonly errors: readonly ValidationError[] };
-
-/** What the last save did to the rest of the project. */
-type Saved = {
-  readonly staleBeats: readonly string[];
-  readonly storyboardProblems: readonly string[];
-  readonly warnings: readonly string[];
-};
 
 /**
  * The graph gate's panel (SPEC, User flow): the graph as Mermaid code, the
@@ -38,25 +31,33 @@ export const GraphPanel = ({
   const { slug } = opened;
   const saved = opened.graph ? graphToMermaid(opened.graph) : undefined;
   const [text, setText] = useState(saved ?? STARTER_MERMAID);
-  /** The saved Mermaid the edits started from. */
+  /** The text that matches the graph on disk, as far as this editor knows. */
   const [base, setBase] = useState(saved);
   const [shown, setShown] = useState(text);
   const [read, setRead] = useState<Read | undefined>();
-  const [outcome, setOutcome] = useState<Saved | undefined>();
+  const [outcome, setOutcome] = useState<GraphSaveOutcome | undefined>();
   const [saveErrors, setSaveErrors] = useState<readonly ValidationError[]>([]);
   const [saving, setSaving] = useState(false);
+  /** The graph was saved elsewhere (MCP, another tab) while this editor had edits. */
+  const [elsewhere, setElsewhere] = useState(false);
   const reads = useRef(0);
+  /** The graph as last seen on disk, and the one this editor saved, both as generated Mermaid. */
+  const seen = useRef(saved);
+  const ours = useRef<string | undefined>(undefined);
 
   const state = editorState({ text, saved: base, read });
 
-  // The graph changed elsewhere (MCP, another tab): follow it unless there are edits here.
-  const changedElsewhere = saved !== undefined && saved !== base;
+  // A new graph on disk: this editor's own save coming back is nothing new; one saved
+  // elsewhere replaces the text when there are no edits here, and is flagged when there are.
   useEffect(() => {
-    if (changedElsewhere && !state.unsaved) {
-      setText(saved);
-      setBase(saved);
-    }
-  }, [changedElsewhere, state.unsaved, saved]);
+    if (saved === seen.current) return;
+    seen.current = saved;
+    if (saved === undefined || saved === ours.current) return;
+    if (state.unsaved) return setElsewhere(true);
+    setText(saved);
+    setBase(saved);
+    setElsewhere(false);
+  }, [saved, state.unsaved]);
 
   // Read and draw the code once typing pauses; an answer to older text is dropped.
   useEffect(() => {
@@ -81,15 +82,18 @@ export const GraphPanel = ({
   }, [blocked, state.unsaved]);
 
   const save = async () => {
+    const sent = text;
     setSaving(true);
-    const result = await saveGraph(slug, text);
+    const result = await saveGraph(slug, sent);
     setSaving(false);
     if (!result.ok) return setSaveErrors(result.errors);
     setSaveErrors([]);
     const { mermaid, staleBeats, storyboardProblems, warnings } = result.value;
-    // The saved graph written again: the same graph, in the generator's own layout.
-    setText(mermaid);
-    setBase(mermaid);
+    // The text stays as the user wrote it, comments and all: it is what was saved. Anything
+    // typed while the save was on its way is still an edit.
+    ours.current = mermaid;
+    setBase(sent);
+    setElsewhere(false);
     setOutcome({ staleBeats, storyboardProblems, warnings });
   };
 
@@ -122,7 +126,7 @@ export const GraphPanel = ({
           Save the graph
         </button>
         {state.unsaved && <span className="unsaved">Unsaved changes</span>}
-        {changedElsewhere && state.unsaved && (
+        {elsewhere && state.unsaved && (
           <span className="muted">The graph was changed elsewhere; saving replaces it.</span>
         )}
         {outcome && !state.unsaved && (

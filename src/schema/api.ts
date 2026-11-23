@@ -17,11 +17,12 @@ export const ErrorsResponseSchema = z.object({ errors: z.array(ValidationErrorSc
 export const ApproveSchema = z.strictObject({ gate: z.enum(GATES) });
 export const ApprovedSchema = z.object({ project: ProjectSchema });
 
-/** The longest Mermaid the graph editor sends: far more than 36 nodes need. */
+/** The longest Mermaid the graph editor sends: far more than the most nodes a graph may have need. */
 export const MAX_MERMAID = 20_000;
 
 /** `POST /api/projects/:slug/graph/read` and `PUT /api/projects/:slug/graph`: the edited Mermaid. */
 export const GraphEditSchema = z.strictObject({ mermaid: z.string().max(MAX_MERMAID) });
+export type GraphEdit = z.output<typeof GraphEditSchema>;
 
 /** What the Mermaid reads as: the graph, and notes on what it leaves out. */
 export const GraphReadSchema = z.object({ graph: GraphSchema, notes: z.array(z.string()) });
@@ -34,6 +35,9 @@ export const GraphSavedSchema = z.object({
   storyboardProblems: z.array(z.string()),
   warnings: z.array(z.string()),
 });
+export type GraphSaved = z.output<typeof GraphSavedSchema>;
+/** What saving a graph did to the rest of the project. */
+export type GraphSaveOutcome = Pick<GraphSaved, "staleBeats" | "storyboardProblems" | "warnings">;
 
 /** `POST /api/projects`: only the name; everything else starts at its default. */
 export const NewProjectSchema = z.strictObject({ name: ProjectSchema.shape.name });

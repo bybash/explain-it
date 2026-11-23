@@ -496,7 +496,7 @@ span.gate[aria-disabled="true"] {
 
 .mermaid-diagram {
   margin: 0;
-  min-height: 360px;
+  height: 360px;
   padding: 12px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -508,9 +508,9 @@ span.gate[aria-disabled="true"] {
   opacity: 0.4;
 }
 
+/* At its own size, so labels stay readable; the box scrolls a wide graph. */
 .mermaid-diagram svg {
-  max-width: 100%;
-  height: auto;
+  max-width: none;
 }
 
 .notes {
@@ -531,4 +531,14 @@ span.gate[aria-disabled="true"] {
 .unsaved {
   color: var(--accent);
   font-weight: 600;
+}
+
+/* Stays in view while a wide diagram scrolls under it. */
+.diagram-problem {
+  position: sticky;
+  top: 0;
+  left: 0;
+  margin-bottom: 8px;
+  color: var(--muted);
+  font-size: 14px;
 }

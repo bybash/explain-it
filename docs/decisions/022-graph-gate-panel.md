@@ -11,12 +11,16 @@ edit, and the Mermaid section says the web UI renders Mermaid on the client.
 
 - **CodeMirror 6** for the code: line numbers, undo, Tab to indent, and the
   line Mermaid cannot read marked with a line decoration of our own (no lint
-  package). `@codemirror/state`, `view` and `commands` (MIT), pinned.
+  package). An error the schema finds names the node or edge instead, and
+  marks no line. `@codemirror/state`, `view` and `commands` (MIT), pinned.
 - **Read as typed, saved on purpose.** After a 400 ms pause the code is read
   on the server (`POST /api/projects/:slug/graph/read`, nothing saved) and
   drawn in the browser, so its notes and errors show while editing; an
   answer to older text is dropped. Save (`PUT /api/projects/:slug/graph`)
-  writes it. Edits are flagged until saved, and the gate cannot be approved
+  writes it, and the code stays as the user wrote it, comments and styling
+  lines included; the panel knows its own save when the project reloads, so
+  only a graph saved elsewhere replaces the text. Edits are flagged until
+  saved, and the gate cannot be approved
   while there are any, so an approval never covers a graph that was not
   saved.
 - **One way to save a graph.** `saveGraph` (`src/server/graphs.ts`) does
@@ -25,6 +29,8 @@ edit, and the Mermaid section says the web UI renders Mermaid on the client.
   storyboard checked against the new graph.
 - **A first graph.** A project with no graph starts from a three-node
   diagram, named after the project when saved.
+- **A readable diagram.** It is drawn at its own size in a box as tall as
+  the editor, which scrolls a wide graph, rather than shrunk to fit.
 - **Loaded with the gate.** CodeMirror and Mermaid load with the graph
   gate (`lazy` and a dynamic import), so the rest of the app stays as small
   as it was; `npm run dev` bundles them when it starts, so opening the gate
