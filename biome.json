@@ -7,7 +7,7 @@
   },
   "files": {
     "ignoreUnknown": true,
-    "includes": ["**", "!**/*.md", "!schemas", "!examples/**/layout.json"]
+    "includes": ["**", "!**/*.md", "!schemas", "!examples/**/layout.json", "!src/llm/fixtures"]
   },
   "formatter": {
     "enabled": true,
