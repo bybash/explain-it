@@ -44,3 +44,4 @@ later record supersedes an earlier one and says so.
 | [032](032-script-editor.md) | The Script gate's editor |
 | [033](033-llm-client.md) | The LLM client |
 | [034](034-chat-assistant.md) | The chat assistant |
+| [035](035-dim-focus.md) | A dim is its beat's focus |

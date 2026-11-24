@@ -48,11 +48,11 @@ export const highlightTweens = (target: string, at: number): TweenSpec[] => {
 };
 
 /** `dim`: 0 in full colour, 1 faded back. Used on node and edge targets alike. */
-export const dimTweens = (target: string, at: number): TweenSpec[] => [
+export const dimTweens = (target: string, at: number, back = false): TweenSpec[] => [
   {
     target,
-    from: { dim: 0 },
-    to: { dim: 1 },
+    from: { dim: back ? 1 : 0 },
+    to: { dim: back ? 0 : 1 },
     duration: NODE_TIMING.dim,
     ease: "inOutSine",
     at,

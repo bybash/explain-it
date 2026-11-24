@@ -186,7 +186,7 @@
                           "except"
                         ],
                         "additionalProperties": false,
-                        "description": "Everything but these nodes fades back."
+                        "description": "For this beat, everything but these nodes fades back; the next beat brings it back unless it dims too."
                       },
                       {
                         "type": "object",

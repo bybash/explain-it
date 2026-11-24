@@ -248,8 +248,11 @@ export const buildBeats = (
 
     const inScene = (id: string) => scoped(scene.id, id);
     const appears = new Map<string, number>();
+    /** Each beat's focus: when its dim starts, and the nodes it keeps; none for a beat without one. */
+    const focuses: { readonly at: number; readonly kept?: ReadonlySet<string> }[] = [];
     for (const { beat, timing, start: beatStart, end: beatEnd } of sceneBeats) {
       beats.push({ id: beat.id, scene: scene.id, start: beatStart, end: beatEnd });
+      focuses.push({ at: beatStart });
       show({
         kind: "step",
         id: `step:${beat.id}`,
@@ -300,15 +303,10 @@ export const buildBeats = (
               }),
             );
             break;
-          case "dim": {
-            const kept = new Set(action.except);
-            const dimmed = scene.nodes.filter((n) => !kept.has(n));
-            const fading = new Set(dimmed);
-            const edgesOut = edges.filter((e) => edgeEnds.get(e)?.some((n) => fading.has(n)));
-            for (const n of dimmed) tweens.push(...dimTweens(nodeTarget(inScene(n)), at));
-            for (const e of edgesOut) tweens.push(...dimTweens(edgeTarget(inScene(e)), at));
+          case "dim":
+            // The beat's focus, made into tweens with the scene's other beats' (see `focusTweens`).
+            focuses[focuses.length - 1] = { at, kept: new Set(action.except) };
             break;
-          }
           case "callout":
             show({
               kind: "callout",
@@ -337,8 +335,42 @@ export const buildBeats = (
       }
     }
     tweens.push(...zoneAppears(scene.nodes, zoneOf, appears, inScene));
+    tweens.push(...focusTweens(scene.nodes, edges, edgeEnds, focuses, inScene));
   }
   return { duration, cards, scenes, beats, overlays, cues, tweens };
+};
+
+/**
+ * The scene's dims as its beats' focus (SPEC, Actions): a beat with a dim
+ * fades every node it does not keep, and the edges that touch one, from its
+ * dim's start; what it keeps comes back then, so a later dim moves the
+ * focus, and a node kept by both stays bright. A beat without a dim brings
+ * everything back as it starts. The last beat's focus holds through the
+ * scene's fade-out.
+ */
+const focusTweens = (
+  nodes: readonly string[],
+  edges: readonly string[],
+  edgeEnds: ReadonlyMap<string, readonly [string, string]>,
+  focuses: readonly { readonly at: number; readonly kept?: ReadonlySet<string> }[],
+  inScene: (id: string) => string,
+): TweenSpec[] => {
+  const tweens: TweenSpec[] = [];
+  let faint = new Set<string>();
+  for (const { at, kept } of focuses) {
+    const nodesOut = kept ? nodes.filter((n) => !kept.has(n)) : [];
+    const out = new Set(nodesOut);
+    const now = new Set([
+      ...nodesOut.map((n) => nodeTarget(inScene(n))),
+      ...edges
+        .filter((e) => edgeEnds.get(e)?.some((n) => out.has(n)))
+        .map((e) => edgeTarget(inScene(e))),
+    ]);
+    for (const target of now) if (!faint.has(target)) tweens.push(...dimTweens(target, at));
+    for (const target of faint) if (!now.has(target)) tweens.push(...dimTweens(target, at, true));
+    faint = now;
+  }
+  return tweens;
 };
 
 /**

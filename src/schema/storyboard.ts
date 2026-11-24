@@ -42,7 +42,9 @@ export const ActionSchema = z.discriminatedUnion("type", [
     .describe("A card with text next to the node, shown until the narration ends."),
   z
     .strictObject({ type: z.literal("dim"), except: z.array(IdSchema).min(1) })
-    .describe("Everything but these nodes fades back."),
+    .describe(
+      "For this beat, everything but these nodes fades back; the next beat brings it back unless it dims too.",
+    ),
   z
     .strictObject({
       type: z.literal("badge"),

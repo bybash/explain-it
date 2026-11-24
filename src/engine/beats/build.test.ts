@@ -19,6 +19,7 @@ import {
   sceneTarget,
   scoped,
 } from "./build.ts";
+import dimFocusFixture from "./dim-focus.fixture.json" with { type: "json" };
 import { estimateNarration, LEAD_IN } from "./timing.ts";
 
 const unwrap = <T>(result: Validated<T>): T => {
@@ -486,5 +487,130 @@ describe("buildBeats: ending", () => {
     const gone = last.end + transition;
     for (const overlay of plan.overlays.filter((o) => o.scene === last.id))
       expect(overlay.until).toBeLessThanOrEqual(gone + 1e-9);
+  });
+});
+
+describe("buildBeats: a dim is its beat's focus", () => {
+  const focusGraph = unwrap(
+    parseGraph({
+      version: 1,
+      title: "Focus",
+      nodes: [
+        { id: "a", label: "A", kind: "service" },
+        { id: "b", label: "B", kind: "service" },
+        { id: "c", label: "C", kind: "service" },
+      ],
+      edges: [
+        { id: "ab", from: "a", to: "b" },
+        { id: "bc", from: "b", to: "c" },
+      ],
+      zones: [],
+    }),
+  );
+  const focusBoard = unwrap(
+    parseStoryboard(
+      {
+        version: 1,
+        scenes: [
+          {
+            id: "s",
+            title: "Focus",
+            nodes: ["a", "b", "c"],
+            beats: [
+              {
+                id: "one",
+                caption: "A and B.",
+                actions: [
+                  { type: "dim", except: ["a", "b"] },
+                  { type: "flow", edge: "ab" },
+                ],
+              },
+              {
+                id: "two",
+                caption: "B and C.",
+                actions: [
+                  { type: "dim", except: ["b", "c"] },
+                  { type: "flow", edge: "bc" },
+                ],
+              },
+              { id: "three", caption: "All of it.", actions: [{ type: "highlight", node: "a" }] },
+              { id: "four", caption: "Only A.", actions: [{ type: "dim", except: ["a"] }] },
+            ],
+          },
+        ],
+      },
+      focusGraph,
+    ),
+  );
+  const plan = buildBeats(focusBoard, focusGraph);
+  const at = seeker(plan);
+  const dim = (t: number, target: string) => at(t, target).dim ?? 0;
+  const mid = (id: string) => {
+    const b = spanOf(plan.beats, id);
+    return (b.start + b.end) / 2;
+  };
+  const n = (id: string) => nodeTarget(scoped("s", id));
+  const e = (id: string) => edgeTarget(scoped("s", id));
+
+  it("fades what a beat does not keep, for that beat", () => {
+    expect(dim(mid("one"), n("c"))).toBe(1);
+    expect(dim(mid("one"), e("bc"))).toBe(1);
+    expect(dim(mid("one"), n("a"))).toBe(0);
+    expect(dim(mid("one"), e("ab"))).toBe(0);
+  });
+
+  it("brings back what a later dim keeps, so the focus moves", () => {
+    expect(dim(mid("two"), n("c"))).toBe(0);
+    expect(dim(mid("two"), e("bc"))).toBe(0);
+    expect(dim(mid("two"), n("a"))).toBe(1);
+    expect(dim(mid("two"), e("ab"))).toBe(1);
+  });
+
+  it("keeps a node both beats keep bright across the change, with no flash", () => {
+    const one = spanOf(plan.beats, "one");
+    const two = spanOf(plan.beats, "two");
+    for (let t = one.start; t <= two.end; t += 0.05) expect(dim(t, n("b")), `at ${t}`).toBe(0);
+  });
+
+  it("brings everything back for a beat without a dim", () => {
+    for (const target of [n("a"), n("b"), n("c"), e("ab"), e("bc")])
+      expect(dim(mid("three"), target), target).toBe(0);
+  });
+
+  it("holds a dim in the scene's last beat through the scene's fade-out", () => {
+    expect(dim(mid("four"), n("b"))).toBe(1);
+    expect(dim(plan.duration, n("b"))).toBe(1);
+    expect(dim(plan.duration, n("a"))).toBe(0);
+  });
+});
+
+describe("buildBeats: a scene whose dims went semi-transparent", () => {
+  const { graph: fixtureGraph, storyboard: fixtureBoard } = dimFocusFixture;
+  const g = unwrap(parseGraph(fixtureGraph));
+  const board = unwrap(parseStoryboard(fixtureBoard, g));
+  const plan = buildBeats(board, g);
+  const at = seeker(plan);
+  const scene = board.scenes.find((s) => s.id === "backprop");
+  if (!scene) throw new Error("no backprop scene");
+
+  it("keeps bright, at each beat's middle, the nodes its dim keeps", () => {
+    for (const beat of scene.beats) {
+      const span = spanOf(plan.beats, beat.id);
+      const t = (span.start + span.end) / 2;
+      const focus = beat.actions.find((a) => a.type === "dim");
+      const kept = focus?.type === "dim" ? focus.except : scene.nodes;
+      for (const node of kept)
+        expect(at(t, nodeTarget(scoped(scene.id, node))).dim ?? 0, `${beat.id}: ${node}`).toBe(0);
+    }
+  });
+
+  it("has nothing faint in the beat that dims nothing", () => {
+    const span = spanOf(plan.beats, "nudge");
+    const t = (span.start + span.end) / 2;
+    const scenePlan = spanOf(plan.scenes, "backprop");
+    for (const node of scene.nodes)
+      expect(at(t, nodeTarget(scoped(scene.id, node))).dim ?? 0, node).toBe(0);
+    for (const edge of scenePlan.edges)
+      expect(at(t, edgeTarget(scoped(scene.id, edge))).dim ?? 0, edge).toBe(0);
   });
 });

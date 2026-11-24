@@ -1,0 +1,374 @@
+{
+  "about": "Scene 2 (backprop) of a video the assistant made in testing: three beats each dim to a different pair of nodes, then one beat dims nothing. It went semi-transparent before dim became a beat’s focus.",
+  "graph": {
+    "version": 1,
+    "title": "How a neural network learns",
+    "nodes": [
+      {
+        "id": "data",
+        "label": "Example input",
+        "kind": "document"
+      },
+      {
+        "id": "input",
+        "label": "Input layer",
+        "kind": "service",
+        "zone": "net"
+      },
+      {
+        "id": "hidden",
+        "label": "Hidden layers",
+        "kind": "service",
+        "zone": "net"
+      },
+      {
+        "id": "output",
+        "label": "Output layer",
+        "kind": "service",
+        "zone": "net"
+      },
+      {
+        "id": "label",
+        "label": "Correct answer",
+        "kind": "database"
+      },
+      {
+        "id": "loss",
+        "label": "Measure the error",
+        "kind": "decision"
+      },
+      {
+        "id": "weights",
+        "label": "Adjust the weights",
+        "kind": "queue"
+      }
+    ],
+    "edges": [
+      {
+        "id": "to_input",
+        "from": "data",
+        "to": "input",
+        "label": "pixels"
+      },
+      {
+        "id": "fwd_hidden",
+        "from": "input",
+        "to": "hidden",
+        "label": "weighted sums"
+      },
+      {
+        "id": "fwd_output",
+        "from": "hidden",
+        "to": "output",
+        "label": "features"
+      },
+      {
+        "id": "to_loss",
+        "from": "output",
+        "to": "loss",
+        "label": "prediction"
+      },
+      {
+        "id": "compare",
+        "from": "label",
+        "to": "loss",
+        "label": "compare"
+      },
+      {
+        "id": "error_up",
+        "from": "loss",
+        "to": "weights",
+        "label": "error signal"
+      },
+      {
+        "id": "back_output",
+        "from": "loss",
+        "to": "output",
+        "label": "send error back"
+      },
+      {
+        "id": "back_hidden",
+        "from": "output",
+        "to": "hidden",
+        "label": "share the blame"
+      },
+      {
+        "id": "back_input",
+        "from": "hidden",
+        "to": "input",
+        "label": "share the blame"
+      },
+      {
+        "id": "nudge_output",
+        "from": "weights",
+        "to": "output",
+        "label": "nudge connections"
+      },
+      {
+        "id": "nudge_hidden",
+        "from": "weights",
+        "to": "hidden",
+        "label": "nudge connections"
+      },
+      {
+        "id": "nudge_input",
+        "from": "weights",
+        "to": "input",
+        "label": "nudge connections"
+      }
+    ],
+    "zones": [
+      {
+        "id": "net",
+        "label": "The network"
+      }
+    ]
+  },
+  "storyboard": {
+    "version": 1,
+    "scenes": [
+      {
+        "id": "forward",
+        "title": "Forward pass",
+        "nodes": ["data", "input", "hidden", "output", "label", "loss"],
+        "beats": [
+          {
+            "id": "hook",
+            "caption": "No one writes rules for reading handwriting.",
+            "say": "How does a computer learn to read handwriting without being told the rules?",
+            "actions": [
+              {
+                "type": "appear",
+                "node": "data"
+              },
+              {
+                "type": "highlight",
+                "node": "data"
+              }
+            ]
+          },
+          {
+            "id": "example_in",
+            "caption": "An example image goes in as numbers.",
+            "say": "Each handwritten digit becomes a list of numbers, one for each pixel.",
+            "actions": [
+              {
+                "type": "appear",
+                "node": "input"
+              },
+              {
+                "type": "flow",
+                "edge": "to_input"
+              }
+            ]
+          },
+          {
+            "id": "layers",
+            "caption": "Each layer multiplies and adds the numbers.",
+            "say": "Each layer multiplies the numbers by weights and adds them up, then passes them on.",
+            "actions": [
+              {
+                "type": "appear",
+                "node": "hidden"
+              },
+              {
+                "type": "flow",
+                "edge": "fwd_hidden"
+              }
+            ]
+          },
+          {
+            "id": "predict",
+            "caption": "The output layer makes a prediction.",
+            "say": "The last layer turns these sums into a guess, such as a seven.",
+            "actions": [
+              {
+                "type": "appear",
+                "node": "output"
+              },
+              {
+                "type": "flow",
+                "edge": "fwd_output"
+              }
+            ]
+          },
+          {
+            "id": "compare",
+            "caption": "The guess is compared with the right answer.",
+            "say": "The correct answer is known for each example. The network measures how far off its guess is.",
+            "actions": [
+              {
+                "type": "appear",
+                "node": "loss"
+              },
+              {
+                "type": "flow",
+                "edge": "to_loss"
+              },
+              {
+                "type": "appear",
+                "node": "label"
+              },
+              {
+                "type": "flow",
+                "edge": "compare"
+              }
+            ]
+          },
+          {
+            "id": "error",
+            "caption": "The measured error sets up learning.",
+            "say": "That measured error is what drives learning, and it now travels backwards.",
+            "actions": [
+              {
+                "type": "highlight",
+                "node": "loss"
+              },
+              {
+                "type": "badge",
+                "node": "loss",
+                "text": "error found",
+                "tone": "warn"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "backprop",
+        "title": "Backpropagation",
+        "nodes": ["loss", "weights", "output", "hidden", "input"],
+        "beats": [
+          {
+            "id": "back_output",
+            "caption": "The error is sent back, starting at the output.",
+            "say": "Backpropagation starts with the error. It is sent back, first to the output layer.",
+            "actions": [
+              {
+                "type": "dim",
+                "except": ["loss", "output"]
+              },
+              {
+                "type": "flow",
+                "edge": "back_output"
+              }
+            ]
+          },
+          {
+            "id": "back_hidden",
+            "caption": "The blame is shared with the hidden layer.",
+            "say": "The hidden layer gets its share of the blame, based on how much each connection helped the mistake.",
+            "actions": [
+              {
+                "type": "dim",
+                "except": ["output", "hidden"]
+              },
+              {
+                "type": "flow",
+                "edge": "back_hidden"
+              },
+              {
+                "type": "callout",
+                "node": "hidden",
+                "title": "Share of blame",
+                "text": "Connections that caused more of the error get bigger nudges."
+              }
+            ]
+          },
+          {
+            "id": "back_input",
+            "caption": "The error reaches the input layer.",
+            "say": "The same happens one layer further back, all the way to the input.",
+            "actions": [
+              {
+                "type": "dim",
+                "except": ["hidden", "input"]
+              },
+              {
+                "type": "flow",
+                "edge": "back_input"
+              }
+            ]
+          },
+          {
+            "id": "nudge",
+            "caption": "Every layer's weights are nudged a little.",
+            "say": "Each connection is adjusted a small step in the direction that reduces the error.",
+            "actions": [
+              {
+                "type": "highlight",
+                "node": "weights"
+              },
+              {
+                "type": "flow",
+                "edge": "error_up"
+              },
+              {
+                "type": "flow",
+                "edge": "nudge_output"
+              },
+              {
+                "type": "flow",
+                "edge": "nudge_hidden"
+              },
+              {
+                "type": "flow",
+                "edge": "nudge_input"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "outcome",
+        "title": "Outcome",
+        "nodes": ["data", "input", "hidden", "output", "loss", "weights", "label"],
+        "beats": [
+          {
+            "id": "next_example",
+            "caption": "The next example starts the cycle again.",
+            "say": "The next example goes in, and the whole cycle repeats.",
+            "actions": [
+              {
+                "type": "highlight",
+                "node": "data"
+              },
+              {
+                "type": "flow",
+                "edge": "to_input"
+              }
+            ]
+          },
+          {
+            "id": "settle",
+            "caption": "Over many examples, the weights settle.",
+            "say": "Repeat this for thousands of examples, and the connections settle into patterns that recognise digits.",
+            "actions": [
+              {
+                "type": "badge",
+                "node": "output",
+                "text": "reads digits",
+                "tone": "ok"
+              }
+            ]
+          },
+          {
+            "id": "result",
+            "caption": "A computer that reads digits, learned from examples.",
+            "say": "Now it can read handwriting it has never seen, and nobody wrote the rules.",
+            "actions": [
+              {
+                "type": "dim",
+                "except": ["data", "output"]
+              },
+              {
+                "type": "highlight",
+                "node": "output"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
