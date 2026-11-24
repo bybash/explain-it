@@ -120,7 +120,7 @@ const STORY = `## Telling the story
 - One idea per beat: one step of the flow, said once.
 - The caption names the step; the narration explains why it matters. Write narration as you would say it, in short sentences. It is read at about ${WORDS_PER_SECOND} words a second, and that sets the beat's length; a beat without narration lasts at least its caption's length at ${CAPTION_CHARS_PER_SECOND} characters a second.
 - Show before you tell: \`appear\` a node or \`flow\` an edge in the beat that first talks about it.
-- Use \`callout\` for the one detail a viewer must remember, \`badge\` for a result, \`highlight\` to point, and \`dim\` to focus on a few nodes.
+- Use \`callout\` for the one detail a viewer must remember, \`badge\` for a result, \`highlight\` to point, and \`dim\` to focus a beat on a few nodes (the focus lasts that beat; dim again in the next beat to keep it).
 - Use scenes for the parts of a longer story, each with the nodes it needs. One scene is often enough.
 - End on the outcome: show what the user has at the end of the flow.`;
 

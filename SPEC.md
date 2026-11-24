@@ -351,7 +351,12 @@ for frame capture, so what the user approves is what gets rendered.
      characters per second, spoken or not (decision 017).
   3. Actions run in order at their default length, with the spare time
      shared out after each; callouts stay until the narration ends, and
-     badges until the scene ends.
+     badges until the scene ends. A `dim` is its beat's focus: from its
+     start, every node it does not keep, and each edge touching one, fades
+     back, and what it keeps comes back, so a later dim moves the focus and
+     a node both keep stays bright. A beat without a dim brings everything
+     back as it starts; the last beat's focus holds through the scene's
+     fade-out (decision 035).
   4. Narration longer than the caption band's two lines is split into cues,
      between sentences, else clauses, else words; each cue is on screen for
      its share of the line's characters. The cues are `__cues` and the `.srt`.

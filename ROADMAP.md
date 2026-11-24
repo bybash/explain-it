@@ -191,12 +191,8 @@ turned into slices; nothing here is scheduled yet.
 
 **The video**
 
-- **Scene 2 of a video went semi-transparent** (`projects/test1-2`, its
-  contact sheet). Cause found: `dim` only ever fades out. A later `dim`
-  does not bring back the nodes it keeps, nothing ends a dim before the
-  scene does, and edges drawn after a dim start dimmed. The SPEC does not
-  say how long a dim lasts or how two combine; the guide says "dim to focus
-  on a few nodes", which reads as each dim replacing the focus. Fix first.
+- ✅ Scene 2 of a video went semi-transparent: `dim` only ever faded out.
+  Fixed: a dim is now its beat's focus (decision 035).
 
 **The Graph gate**
 
