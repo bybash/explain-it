@@ -7,6 +7,7 @@ import { inFile } from "../render/load.ts";
 import { writeWhole } from "../render/write-whole.ts";
 import { parseWith, type Validated } from "../schema/errors.ts";
 import {
+  FIXTURE_HASH_LENGTH,
   LlmFixtureSchema,
   type LlmReply,
   LlmTurnFixtureSchema,
@@ -25,7 +26,7 @@ export const FIXTURES_DIR = fileURLToPath(new URL("./fixtures/", import.meta.url
  * for a new one.
  */
 const keyOf = (asked: unknown) =>
-  createHash("sha256").update(JSON.stringify(asked)).digest("hex").slice(0, 16);
+  createHash("sha256").update(JSON.stringify(asked)).digest("hex").slice(0, FIXTURE_HASH_LENGTH);
 
 /** A recorded file read through its schema: its reply, or why it cannot be used. */
 const readRecorded = async <S extends z.ZodType<{ reply: unknown }>>(

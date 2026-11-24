@@ -12,7 +12,12 @@ import {
   tool,
 } from "ai";
 import type { Validated } from "../schema/errors.ts";
-import type { AgentMessage, LlmReply, LlmTurnReply } from "../schema/llm.ts";
+import {
+  type AgentMessage,
+  CLAUDE_MAX_OUTPUT_TOKENS,
+  type LlmReply,
+  type LlmTurnReply,
+} from "../schema/llm.ts";
 import { fail, ok } from "../schema/result.ts";
 import { ANTHROPIC_HOST, isThisMachine } from "../schema/settings.ts";
 import type { LlmClient, LlmRequest, LlmTurnRequest } from "./client.ts";
@@ -23,9 +28,6 @@ export type ProviderSettings = {
   readonly model: string;
   readonly apiKey?: string | undefined;
 };
-
-/** Room for Claude's thinking, which counts toward the output limit, as well as the answer. */
-const CLAUDE_MAX_OUTPUT = 16_000;
 
 const llmError = (message: string): Validated<never> => fail([{ path: "llm", message }]);
 
@@ -53,14 +55,6 @@ const said = (error: unknown, host: string, model: string): string => {
   return `the call to ${host} failed: ${error instanceof Error ? error.message : String(error)}`;
 };
 
-/**
- * An LLM client for any OpenAI-compatible endpoint (SPEC, LLM): OpenRouter
- * by default, OpenAI, Ollama or LM Studio; and Claude's own API, for a key
- * from Anthropic. Settings are read on every call,
- * so a key changed in Settings counts at once. The answer comes back as
- * text, even when it is not the JSON asked for: the repair loop answers
- * that. A failed call names its cause plainly, never the key.
- */
 /** A model ready to call, from the settings, or why it cannot be called. */
 type Endpoint = {
   readonly model: LanguageModel;
@@ -69,6 +63,14 @@ type Endpoint = {
   readonly failed: (error: unknown) => Validated<never>;
 };
 
+/**
+ * An LLM client for any OpenAI-compatible endpoint (SPEC, LLM): OpenRouter
+ * by default, OpenAI, Ollama or LM Studio; and Claude's own API, for a key
+ * from Anthropic. Settings are read on every call,
+ * so a key changed in Settings counts at once. The answer comes back as
+ * text, even when it is not the JSON asked for: the repair loop answers
+ * that. A failed call names its cause plainly, never the key.
+ */
 export const providerClient = ({
   settings,
   maxRetries,
@@ -107,7 +109,7 @@ export const providerClient = ({
   /** What every call shares: the model, room for Claude's thinking, and the retries. */
   const common = ({ model, claude }: Endpoint) => ({
     model,
-    ...(claude ? { maxOutputTokens: CLAUDE_MAX_OUTPUT } : {}),
+    ...(claude ? { maxOutputTokens: CLAUDE_MAX_OUTPUT_TOKENS } : {}),
     ...(maxRetries === undefined ? {} : { maxRetries }),
   });
 

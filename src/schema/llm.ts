@@ -1,5 +1,10 @@
 import { z } from "zod";
 
+/** Room for Claude's thinking, which counts toward the output limit, as well as the answer. */
+export const CLAUDE_MAX_OUTPUT_TOKENS = 16_000;
+/** How many hex digits of a SHA-256 name a recorded call, and stand for a long part of it. */
+export const FIXTURE_HASH_LENGTH = 16;
+
 /**
  * What a structured call asks an LLM (SPEC, LLM): the shapes the client
  * sends and the fixtures record, so a recorded call is read back as it was
