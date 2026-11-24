@@ -14,6 +14,7 @@ import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { kokoroProvider } from "../audio/kokoro.ts";
 import { toneProvider } from "../audio/tone.ts";
+import { fixtureClient } from "../llm/fixtures.ts";
 import { formatErrors } from "../schema/errors.ts";
 import { createApp } from "./app.ts";
 import { listenOptions } from "./listen.ts";
@@ -33,6 +34,11 @@ if (voice !== "kokoro" && voice !== "tone") {
 const projectsDir = resolve(process.env.PROJECTS_DIR ?? "projects");
 // A specific HOST is a name the app is reached by; a wildcard is not one.
 const wildcard = hostname === "0.0.0.0" || hostname === "::";
+// `.env` is never loaded into the process, so what the environment sets is the user's own.
+const settings = settingsStore({
+  envFile: resolve(process.env.ENV_FILE ?? ".env"),
+  environment: process.env,
+});
 const app = createApp({
   projectsDir,
   // VOICE=tone speaks each word as a tone, with no model: for the browser test, not for videos.
@@ -43,11 +49,11 @@ const app = createApp({
   now: () => new Date(),
   hosts: wildcard ? [] : [hostname],
   ...(process.env.PUBLIC_URL ? { publicUrl: process.env.PUBLIC_URL } : {}),
-  // `.env` is never loaded into the process, so what the environment sets is the user's own.
-  settings: settingsStore({
-    envFile: resolve(process.env.ENV_FILE ?? ".env"),
-    environment: process.env,
-  }),
+  settings,
+  // LLM_FIXTURES=<dir> answers from recorded fixtures only: for the browser test, with no key.
+  ...(process.env.LLM_FIXTURES
+    ? { llm: fixtureClient({ dir: resolve(process.env.LLM_FIXTURES) }) }
+    : {}),
 });
 
 if (process.env.API_ONLY !== "1") {

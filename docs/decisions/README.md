@@ -43,3 +43,4 @@ later record supersedes an earlier one and says so.
 | [031](031-three-paths.md) | Three ways through one process, and the assistant |
 | [032](032-script-editor.md) | The Script gate's editor |
 | [033](033-llm-client.md) | The LLM client |
+| [034](034-chat-assistant.md) | The chat assistant |

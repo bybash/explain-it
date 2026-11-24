@@ -13,6 +13,8 @@ export const Chat = ({ slug, gate }: { slug: string; gate: Gate }) => {
   const [text, setText] = useState("");
   const [errors, setErrors] = useState<readonly ValidationError[]>([]);
   const [sending, setSending] = useState(false);
+  /** Whether the assistant is still answering, as the server last said. */
+  const [working, setWorking] = useState(false);
   const end = useRef<HTMLDivElement>(null);
 
   // An answer that arrives after the column is gone, or after another project opened, is dropped.
@@ -32,9 +34,10 @@ export const Chat = ({ slug, gate }: { slug: string; gate: Gate }) => {
     setErrors([]);
     setMessages(chat.value.messages);
     setProblems(chat.value.problems);
+    setWorking(chat.value.working);
   }, [slug]);
 
-  // Another tab, or later the LLM, adds to the chat too.
+  // Another tab, and the assistant as it works, add to the chat too.
   useEffect(() => {
     void load();
     return onServerEvents({
@@ -46,7 +49,7 @@ export const Chat = ({ slug, gate }: { slug: string; gate: Gate }) => {
   }, [load, slug]);
 
   // The newest message stays in sight.
-  const count = messages.length;
+  const count = messages.length + (working ? 1 : 0);
   useEffect(() => {
     if (count > 0) end.current?.scrollIntoView?.({ block: "end" });
   }, [count]);
@@ -73,21 +76,38 @@ export const Chat = ({ slug, gate }: { slug: string; gate: Gate }) => {
           <p className="text-muted">Describe the flow the video should explain.</p>
         )}
         <ol aria-label="Messages">
-          {messages.map((m, i) => (
-            <li
-              // A message has no id; its place in the file never changes.
-              // biome-ignore lint/suspicious/noArrayIndexKey: chat.jsonl is append-only.
-              key={i}
-              className="mb-3 rounded-box bg-page px-3 py-2.5 data-[role=user]:bg-accent-soft"
-              data-role={m.role}
-            >
-              <span className="font-semibold text-muted text-xs">
-                {m.role === "user" ? "You" : "explAIn-it"} · {GATE_LABELS[m.gate]}
-              </span>
-              <p className="mt-1 whitespace-pre-wrap">{m.text}</p>
-            </li>
-          ))}
+          {messages.map((m, i) =>
+            m.kind === "step" ? (
+              <li
+                // biome-ignore lint/suspicious/noArrayIndexKey: chat.jsonl is append-only.
+                key={i}
+                className="-mt-1 mb-2 px-3 text-muted text-sm"
+                data-role={m.role}
+                data-kind="step"
+              >
+                ✓ {m.text}
+              </li>
+            ) : (
+              <li
+                // A message has no id; its place in the file never changes.
+                // biome-ignore lint/suspicious/noArrayIndexKey: chat.jsonl is append-only.
+                key={i}
+                className="mb-3 rounded-box bg-page px-3 py-2.5 data-[role=user]:bg-accent-soft"
+                data-role={m.role}
+              >
+                <span className="font-semibold text-muted text-xs">
+                  {m.role === "user" ? "You" : "explAIn-it"} · {GATE_LABELS[m.gate]}
+                </span>
+                <p className="mt-1 whitespace-pre-wrap">{m.text}</p>
+              </li>
+            ),
+          )}
         </ol>
+        {working && (
+          <p className="px-3 text-muted text-sm" role="status">
+            The assistant is working…
+          </p>
+        )}
         {problems.length > 0 && (
           <details className="mt-6 text-muted">
             <summary>Some lines of chat.jsonl could not be read</summary>
@@ -115,7 +135,11 @@ export const Chat = ({ slug, gate }: { slug: string; gate: Gate }) => {
             }
           }}
         />
-        <button className="btn self-end" type="submit" disabled={sending || text.trim() === ""}>
+        <button
+          className="btn self-end"
+          type="submit"
+          disabled={sending || working || text.trim() === ""}
+        >
           Send
         </button>
         <Errors className="col-span-full" errors={errors} />

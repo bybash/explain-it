@@ -92,8 +92,12 @@ Rules:
   script gates need their file, valid. Going back to an earlier gate shows it
   (the address names it, `#/projects/<slug>/<gate>`) and keeps it approved.
 - Chat messages are saved to `chat.jsonl`, each with the gate it was sent at.
-  Until the LLM arrives (Milestone 5), every message gets a stub reply that
-  says so, and gates are approved with their button (decision 020).
+  The assistant answers each message in the background, one at a time per
+  project; the line for each change it makes (`kind: "step"`, such as
+  "Saved the graph.") and its reply are added as they come, and the chat
+  says while it is working. Without a key, its reply says so and points at
+  the panel and Settings (decision 034). Gates are approved with their
+  button, or by the assistant when the user approves in the chat.
 - Checks warn and never block. The user can always render.
 
 ## Data model
@@ -518,9 +522,14 @@ Decision 018 says why.
 ## LLM
 
 - **The assistant is an agent.** The in-app LLM calls the same tools as an
-  MCP agent, in-process, reads the same guide with the house rules, and
-  stops for the user's approval at each gate. Drafting a gate's file is one
-  of its tools.
+  MCP agent, in-process, on the chat's own project, reads the same guide with
+  the house rules, and stops for the user's approval at each gate. It has
+  one tool MCP agents do not, `approve_gate`, which it may call only when
+  the user approved that gate in their last message. It reads the
+  conversation as text (not its earlier tool calls), and the project through
+  `get_project`. Its tool results leave out links and times, so a recorded
+  conversation replays exactly. A turn stops at 16 steps. Drafting a gate's
+  file is one of its tools.
 - **Checks become fixes.** The quick checks run after every script change,
   and the full checks when the Preview gate opens and before a render. The
   assistant reports what they find in plain words, each with a Fix. A fix

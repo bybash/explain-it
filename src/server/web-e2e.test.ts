@@ -9,6 +9,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { isProjectOutput } from "../render/project-output.ts";
 import { MAX_PROJECT_NAME } from "../schema/project.ts";
 import { clockTime } from "../web/preview-time.ts";
+import { CONVERSATION, CONVERSATION_PROJECT } from "./assistant-conversation.ts";
 import { DEFAULT_HOST } from "./listen.ts";
 
 // The web app in a real browser (AGENTS.md, Tests, layer 5): skipped without Chrome, as on CI.
@@ -84,7 +85,8 @@ const running = new Set<ChildProcess>();
 const launch = (args: readonly string[], env: Record<string, string>) => {
   const child = spawn(process.execPath, args, {
     cwd: root,
-    env: { ...process.env, ...env },
+    // The assistant answers from the recorded fixtures: no key, and the same answers every run.
+    env: { ...process.env, LLM_FIXTURES: join(root, "src", "llm", "fixtures"), ...env },
     stdio: ["ignore", "ignore", "pipe"],
   });
   running.add(child);
@@ -192,13 +194,14 @@ const flow = (
     await page.waitForURL(/#\/projects\/oauth-login\/graph$/);
   });
 
-  it("keeps the chat, with its stub reply, across a restart", async () => {
+  it("keeps the chat, with the assistant's reply, across a restart", async () => {
     await page.fill("#chat-text", "Explain how OAuth login works");
     await page.press("#chat-text", "Enter");
     await expect.poll(() => page.locator(MESSAGES).count(), SOON).toBe(2);
+    // Nothing was recorded for this message, so the assistant says it cannot answer, and what works instead.
     await expect
       .poll(() => page.textContent(`${MESSAGES}[data-role=assistant]`), SOON)
-      .toContain("not connected yet");
+      .toContain("I can't answer yet");
     if (restart) {
       await server.stop();
       server = await serve(projectsDir);
@@ -340,6 +343,27 @@ const flow = (
 
     await page.click("text=Approve and go to Preview");
     await page.waitForURL(/#\/projects\/oauth-style\/preview$/);
+  }, 60_000);
+
+  it("has the assistant answer in the chat: it saves the graph, which the panel shows, and asks", async () => {
+    // The recorded conversation's project and first message, so the assistant's steps replay.
+    const made = await fetch(`${server.url}/api/projects`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name: CONVERSATION_PROJECT }),
+    });
+    expect(made.status).toBe(201);
+    await page.goto(`${server.url}/#/projects/password-reset/graph`);
+    await page.fill("#chat-text", CONVERSATION[0]);
+    await page.press("#chat-text", "Enter");
+    await expect
+      .poll(() => page.locator(`${MESSAGES}[data-kind=step]`).allTextContents(), SOON)
+      .toEqual(["✓ Saved the graph."]);
+    await expect
+      .poll(() => page.locator(`${MESSAGES}[data-role=assistant]:not([data-kind])`).count(), SOON)
+      .toBe(1);
+    // The panel follows: the graph the assistant saved is drawn.
+    await page.locator(DIAGRAM).waitFor(SOON);
   }, 60_000);
 
   it("keeps the story: a brief at the Script gate and house rules in Settings, which an agent then reads", async () => {
