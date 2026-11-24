@@ -5,8 +5,9 @@ import { ConfigSchema } from "../schema/config.ts";
 import { orThrow } from "../schema/errors.ts";
 import { GraphSchema, MERMAID_KEYWORDS, NODE_KINDS, parseGraph } from "../schema/graph.ts";
 import { TOOL_NAMES } from "../schema/mcp.ts";
+import { STORY_SHAPES } from "../schema/story.ts";
 import { ACTION_TYPES, parseStoryboard, StoryboardSchema } from "../schema/storyboard.ts";
-import { EXAMPLE_GRAPH, EXAMPLE_STORYBOARD } from "./example.ts";
+import { EXAMPLE_GRAPH, EXAMPLE_SHAPE, EXAMPLE_STORYBOARD } from "./example.ts";
 import {
   authoringGuide,
   GRAPH_SHAPE_NAMES,
@@ -55,6 +56,32 @@ describe("authoringGuide", () => {
   it("tells the agent when to stop for the user's approval", () => {
     expect(guide).toMatch(/show the user the Mermaid.*wait/is);
     expect(guide).toMatch(/show the user the script.*wait/is);
+  });
+});
+
+describe("shaping the story", () => {
+  it("offers every story shape, each with what its beats do", () => {
+    for (const shape of STORY_SHAPES) {
+      expect(guide, shape.id).toContain(`"${shape.id}"`);
+      expect(guide, shape.id).toContain(shape.label);
+      expect(guide, shape.id).toContain(shape.beats);
+    }
+  });
+
+  it("asks for the audience, the one takeaway and a hook, agreed with the user before the beats", () => {
+    expect(guide).toMatch(/who the video is for/i);
+    expect(guide).toMatch(/one thing.*remember/i);
+    expect(guide).toMatch(/hook/i);
+    const agree = guide.search(/agree the story with the user/i);
+    const script = guide.search(/show the user the script/i);
+    expect(agree).toBeGreaterThan(-1);
+    expect(agree).toBeLessThan(script);
+  });
+
+  it("says which shape the worked example follows", () => {
+    const shape = STORY_SHAPES.find((s) => s.id === EXAMPLE_SHAPE);
+    expect(shape).toBeDefined();
+    expect(guide).toMatch(new RegExp(`example follows the "${EXAMPLE_SHAPE}" shape`));
   });
 });
 

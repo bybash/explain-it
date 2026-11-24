@@ -533,7 +533,9 @@ page follows along. Decision 011 says why.
 
 **Guidance.** An MCP prompt, `explain_flow`, and the tool descriptions carry
 what the agent needs to write good files: the schemas, the limits, the node
-kinds and actions, how to tell the story in beats, and when to stop for the
+kinds and actions, how to shape the whole story (who it is for, the one
+thing to remember, the hook, the length, and one of a few story shapes in
+`src/schema/story.ts`), how to tell it in beats, and when to stop for the
 user's approval. The in-app LLM prompts are built from the same guidance.
 The guide is one text in `src/guidance/` (`authoringGuide()`): the file
 formats are generated from the zod schemas as TypeScript-like types, with
@@ -545,7 +547,7 @@ text, and the graph and storyboard tools carry a short summary of their
 format that points at it.
 
 **Approval.** The prompt tells the agent to show the user the Mermaid, then
-the script, in the IDE chat and to wait for approval before moving on. Every
+agree the story with them, then show the script, in the IDE chat and to wait for approval before moving on. Every
 tool result includes a link to the project in the web app for a visual
 preview. The server never blocks a render on approval. MCP elicitation may
 replace this once clients support it widely.
