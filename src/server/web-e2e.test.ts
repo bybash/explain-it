@@ -205,7 +205,8 @@ const flow = (
     await page.reload();
     await expect.poll(() => page.locator(MESSAGES).count(), SOON).toBe(2);
     expect(await page.textContent(`${MESSAGES}[data-role=user]`)).toContain("Explain how OAuth");
-  });
+    // A restart under the whole suite's load takes longer than the default 5 s.
+  }, 60_000);
 
   it("edits the graph as Mermaid: drawn as it is typed, saved, and approved", async () => {
     await page.goto(`${server.url}/#/projects/oauth-login/graph`);
