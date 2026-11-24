@@ -3,6 +3,7 @@ import type { OpenedProject } from "../schema/api.ts";
 import type { ValidationError } from "../schema/errors.ts";
 import { type Gate, nextGate, type Project } from "../schema/project.ts";
 import { approveGate, onServerEvents, openProject } from "./api.ts";
+import { BriefPanel } from "./BriefPanel.tsx";
 import { Chat } from "./Chat.tsx";
 import { Errors } from "./Errors.tsx";
 import { GATE_LABELS, GATE_PANELS, updatedLabel } from "./labels.ts";
@@ -196,6 +197,11 @@ const GatePanel = ({
         <Suspense fallback={<Muted>Opening the style…</Muted>}>
           <StylePanel opened={opened} blocked={setBlocked} />
         </Suspense>
+      ) : gate === "script" ? (
+        <>
+          <BriefPanel opened={opened} blocked={setBlocked} />
+          <Muted>The scene and beat editor comes in a later version.</Muted>
+        </>
       ) : (
         <Muted>This gate's panel comes in a later version.</Muted>
       )}
@@ -241,6 +247,7 @@ const Files = ({ opened }: { opened: OpenedProject }) => {
         storyboard &&
         `${storyboard.scenes.length} scenes, ${storyboard.scenes.flatMap((s) => s.beats).length} beats`,
     },
+    { file: "brief.json", summary: opened.brief && "the story brief" },
     { file: "layout.json", summary: layout && `${Object.keys(layout.positions).length} positions` },
     { file: "config.json", summary: config && "style and output set" },
   ];
