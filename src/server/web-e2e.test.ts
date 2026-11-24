@@ -410,6 +410,47 @@ const flow = (
     },
     150_000,
   );
+
+  it.skipIf(!hasFfmpeg)(
+    "renders the example from the render gate: it can be cancelled, then plays and downloads",
+    async () => {
+      await page.click("text=Approve and go to Render");
+      await page.waitForURL(/#\/projects\/oauth-preview\/render$/);
+      await page.getByLabel("Theme").selectOption("light");
+      await page.getByLabel("Resolution").selectOption("720p");
+
+      // A render under way says what it is doing, and stops when cancelled.
+      await page.getByRole("button", { name: "Render", exact: true }).click();
+      const jobs = page.getByRole("list", { name: "Render jobs" });
+      await expect.poll(() => jobs.getByRole("status").first().textContent(), SOON).not.toBe("");
+      await jobs.getByRole("button", { name: "Cancel" }).click();
+      await expect
+        .poll(() => jobs.getByRole("status").first().textContent(), SOON)
+        .toBe("Cancelled.");
+
+      await page.getByRole("button", { name: "Render", exact: true }).click();
+      await expect
+        .poll(() => jobs.getByRole("status").first().textContent(), { timeout: 60_000 })
+        .toMatch(/^Capturing the light video: frame \d+ of \d+$/);
+      const finished = page.getByRole("article", { name: /^Render of / });
+      await finished.waitFor({ timeout: 240_000 });
+
+      const video = finished.getByLabel("The light video", { exact: true });
+      await expect
+        .poll(() => video.evaluate((v: HTMLVideoElement) => v.readyState >= 1 && v.duration), SOON)
+        .toBeGreaterThan(30);
+      const srt = finished
+        .getByRole("list", { name: "Files of the light video" })
+        .getByRole("link", { name: "Captions (.srt)" });
+      const download = await page.request.get(
+        new URL((await srt.getAttribute("href")) ?? "", page.url()).href,
+      );
+      expect(download.status()).toBe(200);
+      expect(download.headers()["content-disposition"]).toContain("captions.srt");
+      expect(await download.text()).toMatch(/^1\n00:00:/);
+    },
+    360_000,
+  );
 };
 
 describe.skipIf(!hasChrome)("the web app (npm start)", () => {

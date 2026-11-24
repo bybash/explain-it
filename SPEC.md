@@ -617,6 +617,12 @@ comes later.
   order they show; a click on one goes to where it shows, in the Beats
   tab. Contact sheet shows the sheet the checks drew. A report older than
   the files is shown, marked as out of date (decision 027).
+- The render gate's panel renders the video with the style's theme and
+  resolution, or others chosen there without changing the style. A render
+  under way says its step ("Speaking line 4 of 10", "Capturing the light
+  video: frame 812 of 1950") with a bar and Cancel; renders queue behind
+  it. Each finished render plays each theme's video inline, its poster
+  first, and lists every file with its size to download (decision 028).
 
 ## App and stack
 

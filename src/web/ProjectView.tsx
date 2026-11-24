@@ -12,6 +12,9 @@ import { BoxList, Muted, PageTitle, SectionTitle } from "./ui.tsx";
 /** The graph editor, loaded with the graph gate: CodeMirror and Mermaid are large, and only it needs them. */
 const GraphPanel = lazy(() => import("./GraphPanel.tsx").then((m) => ({ default: m.GraphPanel })));
 /** The player, loaded with the preview gate. */
+const RenderPanel = lazy(() =>
+  import("./RenderPanel.tsx").then((m) => ({ default: m.RenderPanel })),
+);
 const PreviewPanel = lazy(() =>
   import("./PreviewPanel.tsx").then((m) => ({ default: m.PreviewPanel })),
 );
@@ -183,6 +186,10 @@ const GatePanel = ({
       ) : gate === "preview" ? (
         <Suspense fallback={<Muted>Opening the preview…</Muted>}>
           <PreviewPanel opened={opened} />
+        </Suspense>
+      ) : gate === "render" ? (
+        <Suspense fallback={<Muted>Opening the renders…</Muted>}>
+          <RenderPanel opened={opened} />
         </Suspense>
       ) : gate === "style" ? (
         <Suspense fallback={<Muted>Opening the style…</Muted>}>
