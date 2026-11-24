@@ -35,10 +35,13 @@ Slices keep their IDs, but after Milestone 1 they are built in this order:
 3. **Milestone 2**, audio and checks.
 4. **3.2 to 3.5**, then **3.10** (the app's styles in Tailwind, before the
    remaining panels add more CSS), then **3.7**, **3.11**, **3.8**, **3.13**,
-   **3.9** and **3.12**: the rest of the web app.
-5. **Milestones 5 and 6**, as listed, with **3.6** (the script gate's panel)
-   just before **5.4**: until the LLM drafts scripts, a script comes over MCP,
-   and nothing blocks on editing it in the app.
+   **3.9**, **4.5** (storytelling guidance, so MCP agents tell better
+   stories straight away) and **3.12**: the rest of the web app.
+5. **Milestones 5 and 6**, as listed, with **3.14** (the story brief and
+   rules), **2.8** (story checks) and **3.6** (the script gate's panel) just
+   before **5.4**: until the LLM drafts scripts, a script comes over MCP,
+   and nothing blocks on editing it in the app. 5.4 then drafts the brief
+   first, for approval, and the beats from it.
 6. **Milestone 7**, share outputs: not placed in the order yet. Its open
    questions (below the table) are settled first, in a decision record.
 
@@ -86,6 +89,7 @@ The goal: the CLI renders a hand-written example to an MP4, with no LLM and no v
 | ✅ 2.5 | **Layout checks**: overlap (polygons) and off-frame at each beat's midpoint, including boxes moved onto each other or onto another zone by manual overrides; a JSON report; `explain-it check` | A broken fixture is caught; an overlapping override is reported; the example passes |
 | ✅ 2.6 | **Timing and audio checks**: reading speed, narration fit, loudness | Same as 2.5 |
 | ✅ 2.7 | **Contact sheet**: one still per beat on one image | A contact sheet of the example in the PR |
+| 2.8 | **Story checks**: pure checks on the script's shape, as warnings by beat: the first beat is narrated and short (the hook), the last shows the outcome, the video's length is within a target, and no narrated beat does more than one thing; run by `check`, the Checks tab and 5.4's repair loop. Judgement calls (jargon, tone) stay with the LLM | A broken fixture is caught; the example passes |
 
 ## Milestone 3: web app
 
@@ -104,6 +108,17 @@ The goal: the CLI renders a hand-written example to an MP4, with no LLM and no v
 | ✅ 3.13 | **Preview gate checks**: run the checks from the panel, warnings that jump to their beat, the contact sheet | A warning in the example jumps to its beat |
 | 3.12 | **Style extras**: a custom palette editor, font upload | A custom palette and an uploaded font show in the preview and the render |
 | ✅ 3.10 | **App styles in Tailwind**: Tailwind v4 through its Vite plugin; the colour tokens and the dark set become `@theme` values; `app.css` moves to utility classes, keeping plain CSS only for CodeMirror's and Mermaid's own classes; the video's styles (`src/engine/`) are untouched; a decision record | Screenshots of each page, light and dark, look the same before and after |
+| 3.14 | **Story brief and rules**: an optional brief for the script (the audience, the one takeaway, the shape of the story from 4.5's list, the hook), the project's own notes and rules (what to stress, what to leave out), and house rules in Settings that every project follows (for example "no jargon", "end with the docs link"); all in the zod schemas with their limits, set with `set_storyboard` and the Script gate, and given to MCP agents in `get_project` and the `explain_flow` prompt | A brief and a house rule set in the app reach an agent through the prompt and `get_project` |
+
+Open questions for 3.14, settled in its decision record:
+
+- **Where the brief lives**: in `storyboard.json`, or in its own file so
+  that a new script keeps the brief it was written for.
+- **Where the house rules live**: in `.env` with the other settings, or in a
+  file next to the projects that can be shared with a team.
+- **How rules are written**: free text with a length limit, which an agent
+  or the LLM follows, or a few fixed switches (tone, jargon, length), which
+  2.8's checks could also verify. Free text first is simplest.
 
 ## Milestone 4: MCP
 
@@ -115,6 +130,7 @@ The goal: make a video end to end from an IDE, with no LLM in explAIn-it.
 | ✅ 4.2 | **Guidance and the `explain_flow` prompt**: authoring guidance in `src/guidance/` (schemas, limits, node kinds, actions, beats, approval steps), served as an MCP prompt and in the tool descriptions | The prompt lists correctly in an MCP client; the guidance is one source the LLM slices can reuse |
 | ✅ 4.3 | **Check and render tools**: `check` (voice, checks, contact sheet returned as an image), `render`, `render_status` | A test project goes from `create_project` to an MP4 through tools alone |
 | ✅ 4.4 | **IDE setup**: README configuration for Claude Code, Cursor and VS Code; a walkthrough explaining a feature of this repository | A video of an explAIn-it feature made from Claude Code, attached to the PR |
+| 4.5 | **Storytelling guidance**: how to shape the whole story, not only a beat, in `src/guidance/`: who it is for, the one takeaway, a hook in the first few seconds, and a few story shapes to pick from (problem, how it works, outcome; before and after; the happy path, then what goes wrong; the whole system, then one part). The agent agrees the story with the user before writing the beats; served in `get_guide` and the `explain_flow` prompt, and reused by 5.4 | The prompt shows the shapes and the brief step; the example's script follows one shape |
 
 ## Milestone 5: LLM in the web app
 
@@ -123,7 +139,7 @@ The goal: make a video end to end from an IDE, with no LLM in explAIn-it.
 | 5.1 | **LLM client**: AI SDK with OpenRouter and OpenAI-compatible providers, structured calls, the repair loop, fixture recording and replay | Tests replay fixtures without a key |
 | 5.2 | **Context**: pasted text and file upload, the 100k-character limit, storing files in `context/` | Oversized context is refused with a clear message |
 | 5.3 | **Graph drafting**: chat and context to `graph.json`, streamed into the Mermaid view, at most two questions | Fixtures: three described flows give valid graphs |
-| 5.4 | **Script drafting**: graph to scenes and beats, and a suggested title card, validated by the schema and the checks, repaired on failure | Fixtures: the three graphs give valid storyboards |
+| 5.4 | **Script drafting**: the story brief first (3.14), for approval, keeping to the project's and the house rules; then graph to scenes and beats, and a suggested title card, validated by the schema and the checks, repaired on failure | Fixtures: the three graphs give valid storyboards |
 | 5.5 | **Edits through chat**: JSON Patches for the graph and the storyboard | Fixtures: "rename X", "add a retry step", "shorten beat 3" |
 | 5.6 | **Layout repair**: check failures the layout engine cannot fix go back to the LLM | A crowded fixture is fixed |
 
