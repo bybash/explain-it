@@ -188,9 +188,10 @@ Open questions, settled before the milestone starts:
 Work a finished slice left for a later one. Each list is removed by the slice
 that finishes it.
 
-### For 5.4 (script drafting), from 2.6 and 3.13
+### For 5.4 (script drafting) and 5.8 (checks in the chat), from 2.6 and 3.13
 
-- `set_storyboard`, and the script drafting's repair loop, could use the
+- `set_storyboard`, the script drafting's repair loop, and 5.8's checks
+  after every script change could use the
   quick checks (reading speed and narration fit, pure, in
   `src/checks/timing.ts`) without Chrome; the layout checks need Chrome and
   loudness a mix. The Preview gate runs them all from its Checks tab.

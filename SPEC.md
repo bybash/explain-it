@@ -521,7 +521,8 @@ Decision 018 says why.
 - Vercel AI SDK. Providers: OpenRouter (default) and any OpenAI-compatible
   endpoint (OpenAI, Ollama, LM Studio). Settings: base URL, API key, model.
   One model for every call in v1.
-- One structured call per gate, each with its own zod schema:
+- Drafting is one of the assistant's tools: one structured call per file,
+  each with its own zod schema:
   - **Graph:** the chat and context in, `graph.json` out. Streamed, so the
     Mermaid view builds up live.
   - **Script:** the approved graph in, `storyboard.json` out.
@@ -783,8 +784,9 @@ key and also serve as test fixtures:
 3. **Web app.** The five gates, Mermaid round-trip, editors, preview, render queue.
 4. **MCP.** The endpoint, the tools and the `explain_flow` prompt: the first
    way to make a video end to end, from the IDE, with no LLM in explAIn-it.
-5. **LLM.** Graph and script drafting in the web app, repair loops, edits
-   through chat.
+5. **The assistant.** The in-app LLM as an agent with the MCP tools, checks
+   in the chat with Fix and undo, graph and script drafting through it, edits
+   through chat, layout repair.
 6. **Ship.** Docker on GHCR, three examples, docs, v0.1.0.
 
 The pull requests that make up each milestone are listed in [`ROADMAP.md`](ROADMAP.md).
