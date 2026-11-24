@@ -32,7 +32,7 @@ const briefOf = (form: BriefForm): Brief => {
     version: 1 as const,
     audience: text(form.audience),
     takeaway: text(form.takeaway),
-    shape: (text(form.shape) as StoryShape | undefined) ?? undefined,
+    shape: text(form.shape) as StoryShape | undefined,
     hook: text(form.hook),
     notes: text(form.notes),
   };
@@ -81,7 +81,7 @@ export const BriefPanel = ({
   opened: OpenedProject;
   blocked: (reason: string | undefined) => void;
 }) => {
-  const [saved, setSaved] = useState(briefOf(formOf(opened.brief)));
+  const [saved, setSaved] = useState(() => briefOf(formOf(opened.brief)));
   const [form, setForm] = useState(() => formOf(opened.brief));
   const [errors, setErrors] = useState<readonly ValidationError[]>([]);
   const [saving, setSaving] = useState(false);

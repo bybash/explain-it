@@ -17,11 +17,18 @@ export const HouseRules = () => {
   const [justSaved, setJustSaved] = useState(false);
 
   useEffect(() => {
+    let open = true;
     void getHouseRules().then((result) => {
-      if (!result.ok) return setErrors(result.errors);
-      setSaved(result.value.text);
-      setText(result.value.text);
+      if (!open) return;
+      // A file that cannot be read (too long, edited by hand) is named, and new rules can replace it.
+      if (!result.ok) setErrors(result.errors);
+      const text = result.ok ? result.value.text : "";
+      setSaved(text);
+      setText(text);
     });
+    return () => {
+      open = false;
+    };
   }, []);
 
   const submit = async (event: FormEvent) => {
