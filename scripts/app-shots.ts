@@ -47,7 +47,16 @@ const seed = (dir: string) => {
   cpSync(example, rendering, { recursive: true });
   writeFileSync(
     join(rendering, "project.json"),
-    JSON.stringify({ ...project, name: "Sign-in video", gate: "render" }),
+    JSON.stringify({ ...project, name: "Sign-in video", gate: "render", staleBeats: ["code"] }),
+  );
+  // The example's graph with no script yet, for the Script gate's starter.
+  const drafting = join(dir, "draft-video");
+  cpSync(example, drafting, { recursive: true });
+  rmSync(join(drafting, "storyboard.json"));
+  rmSync(join(drafting, "brief.json"));
+  writeFileSync(
+    join(drafting, "project.json"),
+    JSON.stringify({ ...project, name: "Draft video", gate: "script" }),
   );
 
   const draft = join(dir, "photo-upload");
@@ -188,7 +197,28 @@ const SHOTS: readonly {
   {
     name: "script-gate",
     hash: "#/projects/oauth-example/script",
-    ready: (p) => p.getByText("comes in a later version").waitFor(),
+    ready: (p) => p.getByRole("heading", { name: "Beat 1" }).first().waitFor(),
+  },
+  {
+    name: "script-stale",
+    hash: "#/projects/oauth-render/script",
+    ready: async (p) => {
+      await p.getByText("Stale: the graph changed").waitFor();
+      await p.locator("[data-beat=code]").scrollIntoViewIfNeeded();
+    },
+  },
+  {
+    name: "script-start",
+    hash: "#/projects/draft-video/script",
+    ready: (p) => p.getByRole("button", { name: "Start from the graph" }).waitFor(),
+  },
+  {
+    name: "script-starter",
+    hash: "#/projects/draft-video/script",
+    ready: async (p) => {
+      await p.getByRole("button", { name: "Start from the graph" }).click();
+      await p.getByRole("heading", { name: "Beat 1" }).waitFor();
+    },
   },
   {
     name: "style-gate",

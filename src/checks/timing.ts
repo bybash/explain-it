@@ -20,7 +20,16 @@ const EPSILON = 1e-9;
  * `READING_SPEED.step` characters a second over its beat, a narration
  * caption at `READING_SPEED.narration` over its cue.
  */
-export const readingWarnings = (plan: BeatPlan): BeatWarning[] => {
+/** A caption on screen too briefly to read: which kind, of which beat, and how fast it goes. */
+export type ReadingProblem = {
+  readonly kind: keyof typeof READING_SPEED;
+  readonly beat: BeatPlan["beats"][number];
+  readonly at: number;
+  readonly speed: number;
+};
+
+/** The captions read too fast, as data: the reading-speed check's warnings, and the editor's hints, say them. */
+export const readingProblems = (plan: BeatPlan): ReadingProblem[] => {
   const beats = new Map(plan.beats.map((b) => [b.id, b]));
   const captions = [
     ...plan.overlays.flatMap((o) =>
@@ -44,24 +53,22 @@ export const readingWarnings = (plan: BeatPlan): BeatWarning[] => {
       kind: "narration" as const,
     })),
   ];
-  return captions.flatMap(({ beat, text, at, until, kind }): BeatWarning[] => {
+  return captions.flatMap(({ beat, text, at, until, kind }): ReadingProblem[] => {
     // Every caption belongs to a beat of this plan; one that does not is a bug, not a warning.
     if (!beat) throw new Error(`a ${kind} caption with no beat: "${text}"`);
     const speed = text.length / (until - at);
-    const limit = READING_SPEED[kind];
-    if (speed <= limit + EPSILON) return [];
-    const which = kind === "step" ? "the step caption" : "a narration caption";
-    return [
-      {
-        check: "reading-speed",
-        scene: beat.scene,
-        beat: beat.id,
-        at,
-        message: `${which} of beat "${beat.id}" needs ${said(speed)} characters a second to read; ${limit} is the most`,
-      },
-    ];
+    return speed <= READING_SPEED[kind] + EPSILON ? [] : [{ kind, beat, at, speed }];
   });
 };
+
+export const readingWarnings = (plan: BeatPlan): BeatWarning[] =>
+  readingProblems(plan).map(({ kind, beat, at, speed }) => ({
+    check: "reading-speed",
+    scene: beat.scene,
+    beat: beat.id,
+    at,
+    message: `${kind === "step" ? "the step caption" : "a narration caption"} of beat "${beat.id}" needs ${said(speed)} characters a second to read; ${READING_SPEED[kind]} is the most`,
+  }));
 
 /**
  * Lines longer than the room their beat leaves them, from the lead-in to the
