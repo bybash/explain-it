@@ -9,6 +9,7 @@ import { join, resolve } from "node:path";
 import { chromium, type Page } from "playwright-core";
 import { build } from "vite";
 import { isProjectOutput } from "../src/render/project-output.ts";
+import type { ChatMessage } from "../src/schema/chat.ts";
 
 const [outArg] = process.argv.slice(2);
 if (!outArg) throw new Error("usage: node scripts/app-shots.ts <out-dir>");
@@ -30,6 +31,33 @@ const seed = (dir: string) => {
   });
   const project = JSON.parse(readFileSync(join(example, "project.json"), "utf8"));
   writeFileSync(join(example, "project.json"), JSON.stringify({ ...project, gate: "preview" }));
+  // A conversation with the assistant, as the recorded one went, with its step lines.
+  const said = (
+    role: ChatMessage["role"],
+    text: string,
+    gate: string,
+    kind?: ChatMessage["kind"],
+  ) =>
+    JSON.stringify({ role, text, gate, at: "2026-11-19T12:00:00.000Z", ...(kind ? { kind } : {}) });
+  writeFileSync(
+    join(example, "chat.jsonl"),
+    `${[
+      said("user", "Make a video explaining how signing in with Google works in our app.", "graph"),
+      said("assistant", "Saved the graph.", "graph", "step"),
+      said(
+        "assistant",
+        "I've drafted the graph: the user, the browser, the web app, the identity provider, the sessions store and the photos API, with the sign-in steps between them. Does it look right?",
+        "graph",
+      ),
+      said("user", "The graph looks good. I approve it.", "graph"),
+      said("assistant", "Approved the graph gate.", "graph", "step"),
+      said(
+        "assistant",
+        "Graph approved. Before the script, here is the story I'd tell: for developers new to the codebase, the one thing to remember is that the app never sees the password. Shall I go ahead?",
+        "script",
+      ),
+    ].join("\n")}\n`,
+  );
   // The example's story, so the Script gate shows a brief filled in.
   writeFileSync(
     join(example, "brief.json"),
@@ -193,6 +221,11 @@ const SHOTS: readonly {
       await p.getByText("Approved").first().waitFor();
       await diagramDrawn(p);
     },
+  },
+  {
+    name: "chat-assistant",
+    hash: "#/projects/oauth-example/script",
+    ready: (p) => p.getByText("Approved the graph gate.").waitFor(),
   },
   {
     name: "script-gate",

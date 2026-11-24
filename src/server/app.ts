@@ -5,6 +5,8 @@ import { bodyLimit } from "hono/body-limit";
 import { streamSSE } from "hono/streaming";
 import { makeSoundtrack } from "../audio/soundtrack.ts";
 import type { TtsProvider } from "../audio/tts.ts";
+import type { LlmClient } from "../llm/client.ts";
+import { providerClient } from "../llm/provider.ts";
 import { createMcpServer } from "../mcp/server.ts";
 import type { ToolContext } from "../mcp/tools.ts";
 import { checkProjectFolder } from "../render/check.ts";
@@ -19,7 +21,8 @@ import { NewChatMessageSchema } from "../schema/chat.ts";
 import { parseWith } from "../schema/errors.ts";
 import { MCP_PATH } from "../schema/mcp.ts";
 import { LOCAL_HOSTS } from "../schema/settings.ts";
-import { addChat, readChat } from "./chat.ts";
+import { runAssistant } from "./assistant.ts";
+import { addChat, appendChat, readChat } from "./chat.ts";
 import { createEvents } from "./events.ts";
 import { approveGate } from "./gates.ts";
 import { graphRoutes } from "./graph-routes.ts";
@@ -59,6 +62,8 @@ export type AppOptions = {
   readonly mixSoundtrack?: typeof makeSoundtrack;
   /** The LLM settings in `.env` (see `main.ts`); tests give each its own file. */
   readonly settings: SettingsStore;
+  /** The assistant's LLM: the endpoint in Settings by default; recorded answers or a fake in tests. */
+  readonly llm?: LlmClient;
 };
 
 /** How often an idle event stream sends a comment, so proxies and browsers keep it open. */
@@ -97,6 +102,7 @@ export const createApp = ({
   runChecks = (run) => checkProjectFolder({ ...run, now: now() }),
   settings,
   mixSoundtrack = makeSoundtrack,
+  llm = providerClient({ settings: settings.current }),
 }: AppOptions) => {
   const app = new Hono();
   const events = createEvents();
@@ -122,6 +128,21 @@ export const createApp = ({
         ...(job.progress ? { percent: job.progress.percent } : {}),
       }),
   });
+  // The in-app assistant works with the same tools as MCP, on the same projects and queue.
+  const assistantContext: ToolContext = {
+    projectsDir,
+    now,
+    events,
+    renders,
+    missingRenderTools,
+    runChecks,
+    tts,
+    // The assistant's tools leave links out; one is still needed to make them.
+    previewUrl: (slug) =>
+      `${publicUrl ? new URL(publicUrl).origin : "http://127.0.0.1"}/#/projects/${slug}`,
+  };
+  /** The projects whose last message the assistant is still answering. */
+  const answering = new Set<string>();
   const allowed = new Set([...LOCAL_HOSTS, ...hosts]);
 
   const guard: MiddlewareHandler = async (c, next) => {
@@ -233,19 +254,48 @@ export const createApp = ({
   app.get("/api/projects/:slug/chat", async (c) => {
     const slug = c.req.param("slug");
     if (!(await projectExists(projectsDir, slug))) return noProject(c, slug);
-    return c.json(await readChat(projectDir(projectsDir, slug)));
+    // Asked before the file is read: once the assistant is done, its reply is already in the file.
+    const working = answering.has(slug);
+    return c.json({ ...(await readChat(projectDir(projectsDir, slug))), working });
   });
 
-  // Until the LLM arrives, every message gets the same stub reply (SPEC, User flow; Milestone 5).
+  // The assistant answers each message in the background, one at a time per project (SPEC, LLM: the assistant).
   app.post("/api/projects/:slug/chat", async (c) => {
     const slug = c.req.param("slug");
     const body = await jsonBody(c);
     if (!body.ok) return errorResponse(c, 400, body.errors);
     const sent = parseWith(NewChatMessageSchema, body.value);
     if (!sent.ok) return errorResponse(c, 400, sent.errors);
+    if (answering.has(slug))
+      return errorResponse(c, 409, [
+        { path: "chat", message: "the assistant is still answering the last message" },
+      ]);
+    // Marked before the message is saved, so a second message sent meanwhile waits its turn.
+    answering.add(slug);
     const added = await addChat(projectsDir, slug, sent.value, now());
-    if (!added) return noProject(c, slug);
+    if (!added) {
+      answering.delete(slug);
+      return noProject(c, slug);
+    }
     events.publish({ type: "chat", slug });
+    const { gate } = sent.value;
+    void runAssistant({ context: assistantContext, client: llm, slug, gate })
+      // A broken environment still leaves the user an answer, not a chat that stops.
+      .catch(async (error: unknown) => {
+        console.error(`the assistant failed on "${slug}":`, error);
+        await appendChat(projectDir(projectsDir, slug), [
+          {
+            role: "assistant",
+            text: "Something went wrong while I was working; the server's log says what. Try again, or carry on in the panel on the right.",
+            gate,
+            at: now().toISOString(),
+          },
+        ]);
+      })
+      .finally(() => {
+        answering.delete(slug);
+        events.publish({ type: "chat", slug });
+      });
     return c.json({ messages: added }, 201);
   });
 

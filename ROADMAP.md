@@ -40,8 +40,9 @@ Slices keep their IDs, but after Milestone 1 they are built in this order:
    **3.6** (the script gate's editor): the rest of the web app. 3.6 closes
    the path by hand, so a video can be made in the app without an LLM
    (decision 031). 3.12 moved to **Later**.
-5. **Milestone 5**, the assistant: **5.1**, **5.2**, then **5.7** (the
-   chat agent) and **5.8** (checks in the chat), then **5.3**, **5.4** with
+5. **Milestone 5**, the assistant: **5.1**, then **5.7** (the chat agent,
+   built first so the chat works as soon as there is a client), **5.2**,
+   **5.8** (checks in the chat), then **5.3**, **5.4** with
    **2.8** (story checks, which the agent runs on its own drafts), **5.5**
    and **5.6**. Then **Milestone 6**.
 6. **Milestone 7**, share outputs: not placed in the order yet. Its open
@@ -142,7 +143,7 @@ user works by hand or over MCP.
 | 5.4 | **Script drafting**, through the chat agent (5.7): the story brief first (3.14), for approval, keeping to the project's and the house rules; then graph to scenes and beats, and a suggested title card, validated by the schema, the quick checks and 2.8's story checks, and repaired before the user sees it | Fixtures: the three graphs give valid storyboards |
 | 5.5 | **Edits through chat**: JSON Patches for the graph and the storyboard | Fixtures: "rename X", "add a retry step", "shorten beat 3" |
 | 5.6 | **Layout repair**: check failures the layout engine cannot fix go back to the LLM | A crowded fixture is fixed |
-| 5.7 | **Chat agent**: the in-app LLM calls the same tools as MCP agents, in-process (the graph, the brief, the storyboard, the style, the checks, the render), following the guide with the house rules; it works gate by gate and waits for the user's approval in the chat; the panel follows each change; without a key, the chat points at the panel and Settings | Fixtures: a described flow goes from the first message to an approved graph and script through tools alone |
+| ✅ 5.7 | **Chat agent**: the in-app LLM calls the same tools as MCP agents, in-process (the graph, the brief, the storyboard, the style, the checks, the render), following the guide with the house rules; it works gate by gate and waits for the user's approval in the chat; the panel follows each change; without a key, the chat points at the panel and Settings | Fixtures: a described flow goes from the first message to an approved graph and script through tools alone |
 | 5.8 | **Checks in the chat**: the quick checks after every script change, the full checks when the Preview gate opens and before a render; the assistant reports them in plain words, each with a Fix. A fix that changes the user's words is offered first; a timing or layout fix is applied and said. Every fix can be undone | Fixtures: a beat that reads too fast is fixed with one click, then undone |
 
 ## Milestone 6: ship
@@ -205,21 +206,29 @@ that finishes it.
   heights off its line (the example's "save session").
 - Not checked yet: the title and end cards, and edges against zone labels.
 
-### For 5.7 (chat agent), from 5.1
+### For 5.3, 5.4 and 5.8, from 5.1 and 5.7
 
-- The client is not wired into the app yet. `providerClient` in
-  `src/llm/provider.ts` takes `settingsStore(...).current` from
-  `src/server/settings.ts` (read on every call), and `structuredCall` in
-  `src/llm/structured.ts` runs one call with the repair loop. 5.7 makes the
-  agent's tool calls on the same client.
-- Tests replay recorded answers (`fixtureClient`, `src/llm/fixtures/`),
-  keyed by a hash of the request without the model: a changed prompt or
-  schema fails to replay until it is recorded again with
-  `npm run llm:record` (add its calls to `src/llm/recordings.ts`).
-- Calls are not streamed yet; 5.3 streams the graph into the Mermaid view.
-- The recorded calls write their prompts inline, as examples; the
-  drafting slices (5.3, 5.4) put theirs in `src/llm/prompts/` as Markdown
-  (SPEC, LLM) and add the models they test to the README's list.
+- The assistant (`runAssistant` in `src/server/assistant.ts`) drafts with
+  its tools today, in whole files, as an MCP agent does. 5.3 and 5.4 can
+  add drafting tools that make one structured call each
+  (`structuredCall`, `src/llm/structured.ts`, with the repair loop), with
+  prompts in `src/llm/prompts/` as Markdown (SPEC, LLM), and add the
+  models they test to the README's list.
+- Nothing is streamed: the chat gets a line per change, then the reply.
+  5.3 streams the graph into the Mermaid view.
+- Every step sends the whole guide as the system prompt; prompt caching
+  (Claude's own API) would cut the cost of a long turn.
+- A turn cannot be cancelled from the chat, and a message sent while the
+  assistant is answering is refused (409).
+- The assistant reads earlier turns as text only; a long conversation sends
+  them all. A summary of older turns can come when it matters.
+- `approve_gate` is guarded by its description and the system prompt
+  only: the model is trusted to call it after the user approves. 5.8's
+  checks can run when it is called.
+- Recorded answers replay by a hash of everything asked
+  (`src/llm/fixtures/`); a changed guide, tool or prompt needs
+  `npm run llm:record` again (the scripted conversation is in
+  `src/server/assistant-conversation.ts`).
 - A personal Anthropic key that is not scoped to a workspace needs the
   `anthropic-workspace-id` header; the client does not send one.
 

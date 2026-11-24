@@ -12,6 +12,8 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { fakeTts } from "../audio/fake-tts.testing.ts";
 import { layoutGraph } from "../layout/layout.ts";
+import type { LlmClient } from "../llm/client.ts";
+import { fakeLlm } from "../llm/fake-llm.testing.ts";
 import { graphToMermaid } from "../mermaid/generate.ts";
 import { parseGraph } from "../schema/graph.ts";
 import { parseProject } from "../schema/project.ts";
@@ -382,32 +384,84 @@ const postJson = (url: string, body: unknown) =>
   });
 
 describe("/api/projects/:slug/chat", () => {
-  it("saves the user's message with a stub reply, and keeps them across a restart", async () => {
+  /** Reads the chat until the assistant has finished answering. */
+  const untilAnswered = async (slug: string, on = app) => {
+    for (let i = 0; i < 200; i++) {
+      const chat = await (await on.request(`/api/projects/${slug}/chat`)).json();
+      if (!chat.working) return chat;
+      await new Promise((r) => setTimeout(r, 10));
+    }
+    throw new Error("the assistant never finished");
+  };
+  const withLlm = (llm: LlmClient) =>
+    createApp({
+      projectsDir,
+      now: () => new Date(NOW),
+      tts: fakeTts().tts,
+      settings: settingsStore({ envFile: join(projectsDir, ".env"), environment: {} }),
+      llm,
+    });
+
+  it("saves the user's message, has the assistant answer it, and keeps both across a restart", async () => {
     await create({ name: "Chatty" });
+    app = withLlm(
+      fakeLlm([], [{ text: "Which flow should the video explain?", toolCalls: [] }]).client,
+    );
     const sent = await postJson("/api/projects/chatty/chat", {
       text: "  Explain OAuth  ",
       gate: "graph",
     });
     expect(sent.status).toBe(201);
     const { messages } = await sent.json();
-    expect(messages.map((m: { role: string }) => m.role)).toEqual(["user", "assistant"]);
-    expect(messages[0]).toEqual({ role: "user", text: "Explain OAuth", at: NOW, gate: "graph" });
-    expect(messages[1].text).toMatch(/not connected yet/);
-
-    const lines = readFileSync(join(projectsDir, "chatty", "chat.jsonl"), "utf8")
-      .trim()
-      .split("\n");
-    expect(lines).toHaveLength(2);
+    expect(messages).toEqual([{ role: "user", text: "Explain OAuth", at: NOW, gate: "graph" }]);
+    const answered = await untilAnswered("chatty");
+    expect(answered.messages.map((m: { role: string; text: string }) => [m.role, m.text])).toEqual([
+      ["user", "Explain OAuth"],
+      ["assistant", "Which flow should the video explain?"],
+    ]);
 
     // A restarted server reads the same folder.
-    const restarted = createApp({
-      projectsDir,
-      now: () => new Date(NOW),
-      tts: fakeTts().tts,
-      settings: settingsStore({ envFile: join(projectsDir, ".env"), environment: {} }),
-    });
+    const restarted = withLlm(fakeLlm([]).client);
     const read = await (await restarted.request("/api/projects/chatty/chat")).json();
-    expect(read).toEqual({ messages, problems: [] });
+    expect(read).toEqual({ ...answered, working: false });
+  });
+
+  it("says plainly that there is no LLM until a key is set, and what works instead", async () => {
+    await create({ name: "Keyless" });
+    await postJson("/api/projects/keyless/chat", { text: "Hello", gate: "graph" });
+    const { messages } = await untilAnswered("keyless");
+    expect(messages.at(-1).text).toBe(
+      "I can't answer yet: no API key for openrouter.ai; add one in Settings. Check the LLM in Settings; until then, you can make the video in the panel on the right.",
+    );
+  });
+
+  it("answers one message at a time", async () => {
+    await create({ name: "Busy" });
+    let finish: (() => void) | undefined;
+    const slow: LlmClient = {
+      generate: async () => ({ ok: true, value: { text: "" } }),
+      converse: () =>
+        new Promise((done) => {
+          finish = () => done({ ok: true, value: { text: "Done.", toolCalls: [] } });
+        }),
+    };
+    app = withLlm(slow);
+    expect((await postJson("/api/projects/busy/chat", { text: "One", gate: "graph" })).status).toBe(
+      201,
+    );
+    expect((await (await app.request("/api/projects/busy/chat")).json()).working).toBe(true);
+    const second = await postJson("/api/projects/busy/chat", { text: "Two", gate: "graph" });
+    expect(second.status).toBe(409);
+    expect(await second.json()).toEqual({
+      errors: [{ path: "chat", message: "the assistant is still answering the last message" }],
+    });
+    // The model is asked once the assistant has read the project; then it answers.
+    for (let i = 0; i < 200 && !finish; i++) await new Promise((r) => setTimeout(r, 10));
+    finish?.();
+    expect((await untilAnswered("busy")).messages.map((m: { text: string }) => m.text)).toEqual([
+      "One",
+      "Done.",
+    ]);
   });
 
   it("starts empty, names a bad message, and refuses an unknown project", async () => {
@@ -415,6 +469,7 @@ describe("/api/projects/:slug/chat", () => {
     expect(await (await app.request("/api/projects/quiet/chat")).json()).toEqual({
       messages: [],
       problems: [],
+      working: false,
     });
     const noGate = await postJson("/api/projects/quiet/chat", { text: "hi" });
     expect(noGate.status).toBe(400);
@@ -439,6 +494,7 @@ describe("/api/projects/:slug/chat", () => {
     expect(await (await app.request("/api/projects/broken-chat/chat")).json()).toEqual({
       messages: [],
       problems: [{ path: "chat.jsonl line 1", message: "not valid JSON" }],
+      working: false,
     });
   });
 });
