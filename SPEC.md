@@ -546,6 +546,10 @@ Decision 018 says why.
 - Every result is validated (schema, then references between graph and
   storyboard, then the checks that apply). Errors are sent back to the model,
   at most twice.
+- The client makes two kinds of call: a structured call (JSON in a
+  schema's shape) and an agent's step (the conversation so far and the tools
+  on offer in, the model's text and the tools it calls out; the agent runs
+  them). Both are recorded and replayed the same way.
 - One client for every endpoint: the AI SDK's Anthropic provider for
   `api.anthropic.com`, its OpenAI-compatible provider for the rest, with the
   settings read on every call. A failed call names its cause so

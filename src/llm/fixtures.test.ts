@@ -68,3 +68,31 @@ describe("fixtureClient", () => {
     );
   });
 });
+
+describe("fixtureClient for an agent's steps", () => {
+  const TURN = {
+    name: "chat-greeting",
+    system: "Greet people.",
+    messages: [{ role: "user" as const, content: "Greet Ada." }],
+    tools: [{ name: "greet", description: "Greets someone.", inputSchema: { type: "object" } }],
+  };
+  const STEP = { text: "", toolCalls: [{ id: "call_1", name: "greet", input: { name: "Ada" } }] };
+
+  it("records a step with its tool calls once, then replays it", async () => {
+    const real = fakeLlm([], [STEP]);
+    expect(await fixtureClient({ dir, record: real.client }).converse(TURN)).toEqual({
+      ok: true,
+      value: STEP,
+    });
+    expect(await fixtureClient({ dir }).converse(TURN)).toEqual({ ok: true, value: STEP });
+    expect(real.conversed).toHaveLength(1);
+  });
+
+  it("finds no step for a conversation or tool list that changed", async () => {
+    await fixtureClient({ dir, record: fakeLlm([], [STEP]).client }).converse(TURN);
+    const changed = { ...TURN, tools: [...TURN.tools, { ...TURN.tools[0], name: "wave" }] };
+    expect(lines(await fixtureClient({ dir }).converse(changed as typeof TURN))[0]).toMatch(
+      /^llm: no recorded answer for "chat-greeting"/,
+    );
+  });
+});

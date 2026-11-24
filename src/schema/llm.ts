@@ -31,3 +31,56 @@ export const LlmFixtureSchema = z.strictObject({
 
 export type LlmMessage = z.output<typeof LlmMessageSchema>;
 export type LlmReply = z.output<typeof LlmReplySchema>;
+
+/** A tool the model may call: its name, what it does, and its input as JSON Schema. */
+export const LlmToolSchema = z.strictObject({
+  name: z.string(),
+  description: z.string(),
+  inputSchema: z.record(z.string(), z.unknown()),
+});
+
+/** A call the model made to a tool, with the id its result answers to. */
+export const LlmToolCallSchema = z.strictObject({
+  id: z.string(),
+  name: z.string(),
+  input: z.unknown(),
+});
+
+/** One message of an agent's conversation: the user's, the model's (with its tool calls), or the tools' results. */
+export const AgentMessageSchema = z.discriminatedUnion("role", [
+  z.strictObject({ role: z.literal("user"), content: z.string() }),
+  z.strictObject({
+    role: z.literal("assistant"),
+    content: z.string(),
+    toolCalls: z.array(LlmToolCallSchema),
+  }),
+  z.strictObject({
+    role: z.literal("tool"),
+    results: z.array(z.strictObject({ id: z.string(), name: z.string(), output: z.unknown() })),
+  }),
+]);
+
+/** One step of an agent, as asked: what a turn fixture keeps and its key is made from. */
+export const LlmTurnAskedSchema = z.strictObject({
+  system: z.string(),
+  messages: z.array(AgentMessageSchema),
+  tools: z.array(LlmToolSchema),
+});
+
+/** The model's step: what it said, and the tools it called (none when it is done for now). */
+export const LlmTurnReplySchema = z.strictObject({
+  text: z.string(),
+  toolCalls: z.array(LlmToolCallSchema),
+});
+
+/** A recorded agent step (`src/llm/fixtures/`). */
+export const LlmTurnFixtureSchema = z.strictObject({
+  name: z.string(),
+  turn: LlmTurnAskedSchema,
+  reply: LlmTurnReplySchema,
+});
+
+export type LlmTool = z.output<typeof LlmToolSchema>;
+export type LlmToolCall = z.output<typeof LlmToolCallSchema>;
+export type AgentMessage = z.output<typeof AgentMessageSchema>;
+export type LlmTurnReply = z.output<typeof LlmTurnReplySchema>;

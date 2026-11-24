@@ -218,3 +218,119 @@ describe("providerClient with Anthropic's API", () => {
     ]);
   });
 });
+
+const TURN = {
+  name: "greeting-turn",
+  system: "Greet people with the greet tool.",
+  messages: [
+    { role: "user" as const, content: "Greet Ada." },
+    {
+      role: "assistant" as const,
+      content: "",
+      toolCalls: [{ id: "call_1", name: "lookup", input: { who: "Ada" } }],
+    },
+    { role: "tool" as const, results: [{ id: "call_1", name: "lookup", output: { known: true } }] },
+  ],
+  tools: [
+    {
+      name: "greet",
+      description: "Greets someone.",
+      inputSchema: {
+        type: "object",
+        properties: { name: { type: "string" } },
+        required: ["name"],
+        additionalProperties: false,
+      },
+    },
+    {
+      name: "lookup",
+      description: "Looks someone up.",
+      inputSchema: { type: "object", properties: { who: { type: "string" } }, required: ["who"] },
+    },
+  ],
+};
+
+describe("providerClient.converse", () => {
+  it("offers the tools, sends the earlier calls and results, and reads back the tools the model calls", async () => {
+    const { baseUrl, received } = await stub(() => ({
+      status: 200,
+      body: {
+        ...completion(""),
+        choices: [
+          {
+            index: 0,
+            finish_reason: "tool_calls",
+            message: {
+              role: "assistant",
+              content: "Greeting now.",
+              tool_calls: [
+                {
+                  id: "call_2",
+                  type: "function",
+                  function: { name: "greet", arguments: '{"name":"Ada"}' },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    }));
+    expect(await client({ baseUrl }).converse(TURN)).toEqual({
+      ok: true,
+      value: {
+        text: "Greeting now.",
+        toolCalls: [{ id: "call_2", name: "greet", input: { name: "Ada" } }],
+      },
+    });
+    const body = received[0]?.body ?? {};
+    expect((body.tools as { function: { name: string } }[]).map((t) => t.function.name)).toEqual([
+      "greet",
+      "lookup",
+    ]);
+    const toolMessage = (
+      body.messages as { role: string; tool_call_id?: string; content: string }[]
+    ).find((m) => m.role === "tool");
+    expect(toolMessage?.tool_call_id).toBe("call_1");
+    expect(JSON.parse(toolMessage?.content ?? "{}")).toEqual({ known: true });
+  });
+
+  it("speaks Claude's tool use too", async () => {
+    const { baseUrl, received } = await stub(() => ({
+      status: 200,
+      body: {
+        ...message(""),
+        content: [
+          { type: "text", text: "Greeting now." },
+          { type: "tool_use", id: "toolu_2", name: "greet", input: { name: "Ada" } },
+        ],
+        stop_reason: "tool_use",
+      },
+    }));
+    const claude = providerClient({
+      settings: async () => ({ baseUrl, model: "claude-opus-5-5", apiKey: "sk-ant-test-123" }),
+      maxRetries: 0,
+      anthropicHosts: ["127.0.0.1"],
+    });
+    expect(await claude.converse(TURN)).toEqual({
+      ok: true,
+      value: {
+        text: "Greeting now.",
+        toolCalls: [{ id: "toolu_2", name: "greet", input: { name: "Ada" } }],
+      },
+    });
+    const body = received[0]?.body ?? {};
+    expect((body.tools as { name: string }[]).map((t) => t.name)).toEqual(["greet", "lookup"]);
+    expect(JSON.stringify(body.messages)).toContain('"tool_use_id":"call_1"');
+  });
+
+  it("names a refused key plainly, as a structured call does", async () => {
+    const { baseUrl } = await stub(() => ({
+      status: 401,
+      body: { error: { message: "No auth" } },
+    }));
+    const reply = await client({ baseUrl }).converse(TURN);
+    expect(reply.ok ? [] : formatErrors(reply.errors)).toEqual([
+      "llm: the key was refused by 127.0.0.1; check it in Settings",
+    ]);
+  });
+});
