@@ -80,9 +80,10 @@ Rules:
   graph when there is none: one scene, a beat for each edge that shows its
   ends and sends its flow, captions from the labels, and no narration yet.
   Actions are picked from the scene's own nodes and edges. Beside each
-  beat it shows its length and hints from the quick checks, worked out in
-  the browser as the user types: a line or caption that goes by too fast
-  to read, and a first beat too long for a hook. A line already spoken is
+  beat it shows its length and hints, worked out in the browser as the
+  user types: from the reading-speed check, a line or caption that goes by
+  too fast to read; from 4.5's hook rule, a first beat too long for a
+  hook. Hints show while the script is valid. A line already spoken is
   timed by its voice, as the checks time it; any other by its words. The
   script saves only when it is valid, as `set_storyboard` saves it.
 - Style can be changed at any later gate without going back.

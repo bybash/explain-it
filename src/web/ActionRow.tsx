@@ -9,11 +9,11 @@ import {
   MAX_CAPTION,
   type Scene,
 } from "../schema/storyboard.ts";
-import { sceneEdges } from "./script-model.ts";
+import { type ActionType, sceneEdges, withText } from "./script-model.ts";
 import { Pill } from "./ui.tsx";
 
 /** What each action does, as the editor names it. */
-export const ACTION_LABELS: Readonly<Record<Action["type"], string>> = {
+export const ACTION_LABELS: Readonly<Record<ActionType, string>> = {
   appear: "Show a node",
   flow: "Send along an edge",
   highlight: "Highlight a node",
@@ -84,20 +84,18 @@ export const ActionRow = ({
                 </option>
               ))}
             </select>
-            {text(action.label ?? "", MAX_CAPTION, "Label on the edge (optional)", (value) => {
-              const { label: _label, ...rest } = action;
-              change(value === "" ? rest : { ...rest, label: value });
-            })}
+            {text(action.label ?? "", MAX_CAPTION, "Label on the edge (optional)", (value) =>
+              change(withText(action, "label", value)),
+            )}
           </>
         );
       case "callout":
         return (
           <>
             {nodePicker(action.node, (node) => change({ ...action, node }), "Node")}
-            {text(action.title ?? "", MAX_CALLOUT_TITLE, "Callout title (optional)", (value) => {
-              const { title: _title, ...rest } = action;
-              change(value === "" ? rest : { ...rest, title: value });
-            })}
+            {text(action.title ?? "", MAX_CALLOUT_TITLE, "Callout title (optional)", (value) =>
+              change(withText(action, "title", value)),
+            )}
             {text(action.text, MAX_CALLOUT_TEXT, "Callout text", (value) =>
               change({ ...action, text: value }),
             )}

@@ -1,4 +1,4 @@
-import { readingWarnings } from "../checks/timing.ts";
+import { readingProblems } from "../checks/timing.ts";
 import { beatOptions, buildBeats } from "../engine/beats/build.ts";
 import type { Config } from "../schema/config.ts";
 import type { Graph } from "../schema/graph.ts";
@@ -99,6 +99,12 @@ export const starterScript = (graph: Graph): Storyboard => {
   };
 };
 
+/** `item` with an optional text field set, or left out when the text is empty, as the schemas want it. */
+export const withText = <T extends object, K extends string>(item: T, key: K, text: string) => {
+  const { [key]: _old, ...rest } = item as T & Record<K, unknown>;
+  return (text === "" ? rest : { ...rest, [key]: text }) as T;
+};
+
 /** The storyboard with one scene changed by `change`. */
 const inScene = (storyboard: Storyboard, at: number, change: (scene: Scene) => Scene) => ({
   ...storyboard,
@@ -176,7 +182,7 @@ export const editScene = (
   change: Partial<Pick<Scene, "title" | "nodes">>,
 ): Storyboard => inScene(storyboard, scene, (s) => ({ ...s, ...change }));
 
-/** The first edge whose ends are both in the scene: what a new flow sends. */
+/** The edges whose ends are both in the scene: those a flow in it may send along. */
 export const sceneEdges = (scene: Scene, graph: Graph) => {
   const nodes = new Set(scene.nodes);
   return graph.edges.filter((e) => nodes.has(e.from) && nodes.has(e.to));
@@ -264,10 +270,11 @@ export const beatHints = (
   );
   const plan = buildBeats(parsed.value, graph, beatOptions(config, narration));
   const said = new Map<string, string[]>();
-  for (const warning of readingWarnings(plan)) {
-    const hint = warning.message.startsWith("the step caption") ? HINTS.step : HINTS.narration;
-    said.set(warning.beat, [...new Set([...(said.get(warning.beat) ?? []), hint])]);
-  }
+  for (const { kind, beat } of readingProblems(plan))
+    said.set(beat.id, [...new Set([...(said.get(beat.id) ?? []), HINTS[kind]])]);
+  const spoken = new Set(
+    parsed.value.scenes.flatMap((s) => s.beats.filter((b) => b.say).map((b) => b.id)),
+  );
   const tenth = (seconds: number) => Math.round(seconds * 10) / 10;
   return new Map(
     plan.beats.map((beat, i) => {
@@ -275,7 +282,7 @@ export const beatHints = (
       const hook =
         i === 0 && seconds > HOOK_SECONDS
           ? [
-              `As the first beat, this is the hook: it takes ${tenth(seconds)} s, and a hook lands within ${HOOK_SECONDS} s. Shorten its line.`,
+              `As the first beat, this is the hook: it takes ${tenth(seconds)} s, and a hook lands within ${HOOK_SECONDS} s. ${spoken.has(beat.id) ? "Shorten its line." : "Shorten its caption, or give it fewer actions."}`,
             ]
           : [];
       return [beat.id, { seconds: tenth(seconds), hints: [...hook, ...(said.get(beat.id) ?? [])] }];

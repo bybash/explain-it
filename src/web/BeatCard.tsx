@@ -2,7 +2,7 @@ import { useId } from "react";
 import type { Graph } from "../schema/graph.ts";
 import { ACTION_TYPES, type Beat, MAX_CAPTION, MAX_SAY, type Scene } from "../schema/storyboard.ts";
 import { ACTION_LABELS, ActionRow } from "./ActionRow.tsx";
-import { type ActionType, type BeatHint, newAction } from "./script-model.ts";
+import { type ActionType, type BeatHint, newAction, withText } from "./script-model.ts";
 import { Pill } from "./ui.tsx";
 
 /** What the beat card can do to its beat and its place, wired by the panel. */
@@ -90,10 +90,7 @@ export const BeatCard = ({
           value={beat.say ?? ""}
           maxLength={MAX_SAY}
           placeholder="What the voice says. Without it, the beat is timed by its caption."
-          onChange={(e) => {
-            const { say: _say, ...rest } = beat;
-            controls.change(e.target.value === "" ? rest : { ...rest, say: e.target.value });
-          }}
+          onChange={(e) => controls.change(withText(beat, "say", e.target.value))}
         />
       </label>
 
@@ -153,8 +150,9 @@ export const BeatCard = ({
       )}
       {errors.length > 0 && (
         <ul className="mt-2 text-error text-sm" aria-label={`Problems in ${name}`}>
-          {errors.map((e) => (
-            <li key={e}>{e}</li>
+          {errors.map((e, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: two problems may read the same.
+            <li key={`${i}-${e}`}>{e}</li>
           ))}
         </ul>
       )}

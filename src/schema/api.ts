@@ -240,7 +240,7 @@ export type ProjectList = z.output<typeof ProjectListSchema>;
 /** A storyboard saved at the Script gate, with the beats still stale. */
 export const StoryboardSavedSchema = z.strictObject({
   storyboard: StoryboardSchema,
-  staleBeats: z.array(z.string()),
+  staleBeats: ProjectSchema.shape.staleBeats,
 });
 
 /** Each line of the script already spoken, by its words, with its measured length in seconds. */
