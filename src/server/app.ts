@@ -252,7 +252,7 @@ export const createApp = ({
   graphRoutes(app, { projectsDir, now, events });
   styleRoutes(app, { projectsDir, now, events });
   storyRoutes(app, { projectsDir, now, events });
-  storyboardRoutes(app, { projectsDir, now, events });
+  storyboardRoutes(app, { projectsDir, now, events, tts });
   sampleRoutes(app, { projectsDir, tts });
   renderRoutes(app, { projectsDir, renders });
   previewRoutes(app, {

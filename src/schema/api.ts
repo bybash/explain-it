@@ -237,6 +237,12 @@ export const ServerEventSchema = z.discriminatedUnion("type", [
 
 export type ProjectSummary = z.output<typeof ProjectSummarySchema>;
 export type ProjectList = z.output<typeof ProjectListSchema>;
+/** Each line of the script already spoken, by its words, with its measured length in seconds. */
+export const MeasuredLinesSchema = z.strictObject({
+  seconds: z.record(z.string(), z.number().positive()),
+});
+export type MeasuredLines = z.output<typeof MeasuredLinesSchema>;
+
 /** A brief saved at the Script gate. */
 export const BriefSavedSchema = z.strictObject({ brief: BriefSchema });
 

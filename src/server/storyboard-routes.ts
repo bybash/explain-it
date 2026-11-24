@@ -1,17 +1,56 @@
 import type { Hono } from "hono";
+import type { TtsProvider } from "../audio/tts.ts";
+import { readCachedVoice } from "../audio/voice.ts";
+import type { MeasuredLines } from "../schema/api.ts";
+import { DEFAULT_CONFIG } from "../schema/config.ts";
 import type { Events } from "./events.ts";
-import { openProject, withProjectLock } from "./projects.ts";
+import { openProject, projectDir, withProjectLock } from "./projects.ts";
 import { errorResponse, jsonBody, noProject } from "./responses.ts";
 import { NO_GRAPH, saveStoryboard } from "./storyboards.ts";
 
 /**
- * The Script gate's save (SPEC, User flow): the whole storyboard from the
- * beat editor, saved as MCP's `set_storyboard` saves it.
+ * The Script gate (SPEC, User flow): the whole storyboard from the beat
+ * editor, saved as MCP's `set_storyboard` saves it; and the measured length
+ * of each line already spoken, so the editor's hints time a beat as the
+ * checks do.
  */
 export const storyboardRoutes = (
   app: Hono,
-  { projectsDir, now, events }: { projectsDir: string; now: () => Date; events: Events },
+  {
+    projectsDir,
+    now,
+    events,
+    tts,
+  }: { projectsDir: string; now: () => Date; events: Events; tts: TtsProvider },
 ) => {
+  app.get("/api/projects/:slug/narration", async (c) => {
+    const slug = c.req.param("slug");
+    const opened = await openProject(projectsDir, slug);
+    if (!opened) return noProject(c, slug);
+    if (!opened.ok) return errorResponse(c, 422, opened.errors);
+    const { storyboard, config } = opened.value;
+    const said = new Map(storyboard?.scenes.flatMap((s) => s.beats.map((b) => [b.id, b.say])));
+    // Read from the voice cache only: nothing is spoken here.
+    const lines = storyboard
+      ? await readCachedVoice({
+          projectDir: projectDir(projectsDir, slug),
+          storyboard,
+          voice: (config ?? DEFAULT_CONFIG).voice,
+          tts,
+        })
+      : [];
+    // By the words of each line, which is what the cache is keyed by, so an edited line is not mistaken for its old self.
+    const measured: MeasuredLines = {
+      seconds: Object.fromEntries(
+        lines.flatMap((line) => {
+          const say = said.get(line.beat);
+          return say ? [[say, line.seconds]] : [];
+        }),
+      ),
+    };
+    return c.json(measured);
+  });
+
   app.put("/api/projects/:slug/storyboard", async (c) => {
     const slug = c.req.param("slug");
     const body = await jsonBody(c);

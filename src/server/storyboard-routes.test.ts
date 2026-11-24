@@ -3,7 +3,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Hono } from "hono";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { fakeTts } from "../audio/fake-tts.testing.ts";
+import { generateVoice } from "../audio/voice.ts";
 import type { ServerEvent } from "../schema/api.ts";
+import { parseConfig } from "../schema/config.ts";
+import { orThrow } from "../schema/errors.ts";
 import { createEvents } from "./events.ts";
 import { copyExample } from "./example.testing.ts";
 import { storyboardRoutes } from "./storyboard-routes.ts";
@@ -13,6 +17,7 @@ const NOW = "2026-11-24T12:00:00.000Z";
 let projectsDir: string;
 let app: Hono;
 let published: ServerEvent[];
+const { tts } = fakeTts();
 beforeEach(() => {
   projectsDir = mkdtempSync(join(tmpdir(), "explain-it-script-"));
   copyExample(projectsDir, "oauth");
@@ -20,7 +25,7 @@ beforeEach(() => {
   published = [];
   events.subscribe((event) => published.push(event));
   app = new Hono();
-  storyboardRoutes(app, { projectsDir, now: () => new Date(NOW), events });
+  storyboardRoutes(app, { projectsDir, now: () => new Date(NOW), events, tts });
 });
 afterEach(() => rmSync(projectsDir, { recursive: true, force: true }));
 
@@ -82,5 +87,31 @@ describe("PUT /api/projects/:slug/storyboard", () => {
     expect(needsGraph.status).toBe(409);
     expect((await needsGraph.json()).errors[0].path).toBe("graph.json");
     expect((await put("nothing", {})).status).toBe(404);
+  });
+});
+
+describe("GET /api/projects/:slug/narration", () => {
+  it("gives nothing before the voice is made", async () => {
+    const response = await app.request("/api/projects/oauth/narration");
+    expect(await response.json()).toEqual({ seconds: {} });
+  });
+
+  it("gives each line's measured length once the voice is made, by its words", async () => {
+    const storyboard = read("storyboard.json");
+    const { voice } = orThrow(parseConfig(read("config.json")), "config.json");
+    const lines = await generateVoice({
+      projectDir: join(projectsDir, "oauth"),
+      storyboard,
+      voice,
+      tts,
+    });
+    const body = await (await app.request("/api/projects/oauth/narration")).json();
+    const first = storyboard.scenes[0].beats.find((b: { say?: string }) => b.say);
+    expect(body.seconds[first.say]).toBe(lines[0]?.seconds);
+    expect(Object.keys(body.seconds)).toHaveLength(new Set(lines.map((l) => l.file)).size);
+  });
+
+  it("answers 404 for a project that does not exist", async () => {
+    expect((await app.request("/api/projects/nothing/narration")).status).toBe(404);
   });
 });
