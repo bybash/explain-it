@@ -62,7 +62,7 @@ mixed on one project:
 | Gate | The LLM produces | The panel shows | Direct edits |
 |---|---|---|---|
 | 1. Graph | `graph.json` from the description and context | Mermaid code and the rendered diagram | Edit the Mermaid code |
-| 2. Script | `brief.json`, the story, then `storyboard.json`: scenes and beats | The brief, then a list of scenes and beats | Edit the brief; edit captions, narration, actions |
+| 2. Script | `brief.json`, the story, then `storyboard.json`: scenes and beats | The brief, then the scenes and beats as a form, each beat with its length and hints | Edit the brief; start a script from the graph; edit scenes, captions, narration, actions |
 | 3. Style | Nothing (defaults are filled in) | Palette, font, voice, captions, music, output | The form |
 | 4. Preview | Nothing (voice is generated here) | The player with a scrubber, beat list, check warnings and contact sheet | Jump to a beat and edit it |
 | 5. Render | Nothing | Render progress, then downloads | Cancel, render again |
@@ -76,6 +76,15 @@ Rules:
   A beat references what its actions name (a dim action names the nodes it
   keeps); a scene's node list does not make its beats stale. A stale beat
   stops being stale once it is rewritten.
+- The Script gate's editor (decision 032) makes a starter script from the
+  graph when there is none: one scene, a beat for each edge that shows its
+  ends and sends its flow, captions from the labels, and no narration yet.
+  Actions are picked from the scene's own nodes and edges. Beside each
+  beat it shows its length and hints from the quick checks, worked out in
+  the browser as the user types: a line or caption that goes by too fast
+  to read, and a first beat too long for a hook. A line already spoken is
+  timed by its voice, as the checks time it; any other by its words. The
+  script saves only when it is valid, as `set_storyboard` saves it.
 - Style can be changed at any later gate without going back.
 - `project.json` keeps the furthest gate reached. Approving moves on from that
   gate only, so a second click or an old tab changes nothing; the graph and

@@ -41,3 +41,4 @@ later record supersedes an earlier one and says so.
 | [029](029-story-guidance.md) | Storytelling guidance |
 | [030](030-story-brief.md) | The story brief and house rules |
 | [031](031-three-paths.md) | Three ways through one process, and the assistant |
+| [032](032-script-editor.md) | The Script gate's editor |

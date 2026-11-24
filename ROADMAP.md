@@ -102,7 +102,7 @@ The goal: the CLI renders a hand-written example to an MP4, with no LLM and no v
 | ✅ 3.3 | **Chat and gates**: the chat column, the gate stepper, the split layout, `chat.jsonl`; no LLM yet (a stub reply) | Messages persist across restarts |
 | ✅ 3.4 | **Mermaid round-trip**: Mermaid to graph (jsdom, pinned version) and graph to Mermaid, keeping kind, icon and category by id | Round-trip tests on all examples and a set of Mermaid fixtures |
 | ✅ 3.5 | **Graph gate panel**: a Mermaid editor with the rendered diagram, approve and edit | Editing the Mermaid updates `graph.json` |
-| 3.6 | **Script gate panel**: the scene and beat editor, a form (captions, narration, actions picked from the scene's nodes and edges), with a starter script made from the graph, live hints beside each beat (its length, and a caption or line that reads too fast), and stale beats after graph edits | Changing a node marks only its beats as stale |
+| ✅ 3.6 | **Script gate panel**: the scene and beat editor, a form (captions, narration, actions picked from the scene's nodes and edges), with a starter script made from the graph, live hints beside each beat (its length, and a caption or line that reads too fast), and stale beats after graph edits | Changing a node marks only its beats as stale |
 | ✅ 3.7 | **Style gate panel, the look**: palette and mode, font, title and end cards, logo upload, output, with a live preview drawn by the render player | Changes show in the preview straight away |
 | ✅ 3.8 | **Preview gate**: the player with its sound (the voice generated with progress, mixed as the render mixes it), play and pause, a scrubber and the beat list | The example can be previewed with voice |
 | ✅ 3.9 | **Render gate**: the job queue, progress over SSE, cancel, downloads | The example renders from the UI |
@@ -215,25 +215,21 @@ that finishes it.
   `anthropic/claude-sonnet-5.5` (`SUGGESTED_MODEL`) is unchecked; confirm
   the id when recording the first fixtures.
 
-### For 3.6 (script gate panel), from 3.3, 3.5, 3.8 and 3.13
+### For 5.8 (checks in the chat), from 3.6 and 3.13
 
-- The script gate's panel replaces the last placeholder in `GatePanel`
-  (`src/web/ProjectView.tsx`), as `GraphPanel` does for the graph gate;
-  a panel tells `GatePanel` through `blocked` when the gate cannot be
-  approved yet (unsaved edits). Approving the script gate needs
-  `storyboard.json`, valid (`src/server/gates.ts`); the other gates need
-  nothing yet. A panel that needs a large library loads it with the panel
-  (`lazy`), as the graph editor does.
-- The end-to-end test (`src/server/web-e2e.test.ts`) runs the app as
-  `npm start` and as `npm run dev` on ports of its own; 3.6 adds the
-  script gate's steps to its flow. It needs Chrome, so CI skips it.
-- SPEC's preview gate says "jump to a beat and edit it": 3.8's beat list
-  (`src/web/PreviewBeats.tsx`) jumps, and so does a warning in the Checks
-  tab (3.13); editing a beat there can reuse 3.6's beat editor once it
-  exists.
-- 3.6's stale beats come from saving the graph: `saveGraph`
-  (`src/server/graphs.ts`) marks them in `project.json`, as MCP's
-  `update_graph` does.
+- SPEC's preview gate says "jump to a beat and edit it": the Preview
+  gate's beat list (`src/web/PreviewBeats.tsx`) and a warning in its
+  Checks tab jump to the beat in the player, not to the Script gate's
+  editor (`src/web/ScriptPanel.tsx`, `BeatCard.tsx`). A Fix there can open
+  the beat it changed.
+- The editor's hints (`beatHints` in `src/web/script-model.ts`) are the
+  quick checks in the browser; the chat's Fix can act on the same hints.
+- The starter script (`starterScript`) makes one scene of at most 12
+  nodes and 10 beats; a larger graph keeps its other nodes and edges out
+  of the starter, for the user, or the assistant, to add as scenes.
+- 3.6 has no browser test of its own (the seams agreed were the API, the
+  editor's pure functions and MCP); the e2e flow can add the Script
+  gate's steps when 5.8 changes it.
 
 ### For 5.5 (edits through chat), from 3.3
 

@@ -3,11 +3,11 @@ import type { OpenedProject } from "../schema/api.ts";
 import type { ValidationError } from "../schema/errors.ts";
 import { type Gate, nextGate, type Project } from "../schema/project.ts";
 import { approveGate, onServerEvents, openProject } from "./api.ts";
-import { BriefPanel } from "./BriefPanel.tsx";
 import { Chat } from "./Chat.tsx";
 import { Errors } from "./Errors.tsx";
 import { GATE_LABELS, GATE_PANELS, updatedLabel } from "./labels.ts";
 import { gateSteps } from "./route.ts";
+import { ScriptGate } from "./ScriptGate.tsx";
 import { BoxList, Muted, PageTitle, SectionTitle } from "./ui.tsx";
 
 /** The graph editor, loaded with the graph gate: CodeMirror and Mermaid are large, and only it needs them. */
@@ -198,10 +198,7 @@ const GatePanel = ({
           <StylePanel opened={opened} blocked={setBlocked} />
         </Suspense>
       ) : gate === "script" ? (
-        <>
-          <BriefPanel opened={opened} blocked={setBlocked} />
-          <Muted>The scene and beat editor comes in a later version.</Muted>
-        </>
+        <ScriptGate opened={opened} blocked={setBlocked} />
       ) : (
         <Muted>This gate's panel comes in a later version.</Muted>
       )}

@@ -8,6 +8,7 @@ import {
   GraphReadSchema,
   GraphSavedSchema,
   HouseRulesBodySchema,
+  MeasuredLinesSchema,
   type OpenedProject,
   OpenedProjectSchema,
   PreviewChecksSchema,
@@ -19,6 +20,7 @@ import {
   SavedLogoSchema,
   type ServerEvent,
   ServerEventSchema,
+  StoryboardSavedSchema,
   type StyleEdit,
   StyleSavedSchema,
 } from "../schema/api.ts";
@@ -30,6 +32,7 @@ import { RenderJobSchema } from "../schema/render.ts";
 import { fail, ok } from "../schema/result.ts";
 import { type SettingsUpdate, type SettingsView, SettingsViewSchema } from "../schema/settings.ts";
 import type { Brief } from "../schema/story.ts";
+import type { Storyboard } from "../schema/storyboard.ts";
 
 /**
  * Calls the API and checks what comes back against its schema. Expected
@@ -160,6 +163,18 @@ export const saveBrief = (slug: string, brief: Brief) =>
     headers: { "content-type": "application/json" },
     body: JSON.stringify(brief),
   });
+
+/** Saves the script from the Script gate's editor. */
+export const saveStoryboard = (slug: string, storyboard: Storyboard) =>
+  fetchChecked(StoryboardSavedSchema, `/api/projects/${encodeURIComponent(slug)}/storyboard`, {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(storyboard),
+  });
+
+/** The measured length of each line already spoken, by its words. */
+export const getMeasuredLines = (slug: string) =>
+  fetchChecked(MeasuredLinesSchema, `/api/projects/${encodeURIComponent(slug)}/narration`);
 
 /** The house rules every project's story follows. */
 export const getHouseRules = () => fetchChecked(HouseRulesBodySchema, "/api/house-rules");
