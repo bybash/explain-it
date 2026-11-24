@@ -28,6 +28,7 @@
     "screenshot": "node scripts/dev-screenshot.ts",
     "clip": "node scripts/dev-clip.ts",
     "shots": "node scripts/app-shots.ts",
+    "llm:record": "node scripts/llm-record.ts",
     "shots:compare": "node scripts/compare-shots.ts",
     "layout": "node scripts/layout.ts",
     "music": "node scripts/music.ts",
