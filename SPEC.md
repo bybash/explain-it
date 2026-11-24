@@ -541,6 +541,11 @@ Decision 018 says why.
 - Every result is validated (schema, then references between graph and
   storyboard, then the checks that apply). Errors are sent back to the model,
   at most twice.
+- One client for every endpoint: the AI SDK's OpenAI-compatible provider,
+  with the settings read on every call. A failed call names its cause so
+  the user can act on it: a refused key, an unknown model or base URL, a
+  host that cannot be reached, a missing key. An endpoint on this machine
+  (Ollama, LM Studio) needs no key.
 - Prompts live in `src/llm/prompts/` as Markdown files.
 - Context: pasted text and uploaded `.md`, `.txt`, `.mmd` and source files, up
   to about 100,000 characters in total. Above that the user is asked to trim;
