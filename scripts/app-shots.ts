@@ -9,6 +9,7 @@ import { join, resolve } from "node:path";
 import { chromium, type Page } from "playwright-core";
 import { build } from "vite";
 import { isProjectOutput } from "../src/render/project-output.ts";
+import type { ChatMessage } from "../src/schema/chat.ts";
 
 const [outArg] = process.argv.slice(2);
 if (!outArg) throw new Error("usage: node scripts/app-shots.ts <out-dir>");
@@ -31,7 +32,12 @@ const seed = (dir: string) => {
   const project = JSON.parse(readFileSync(join(example, "project.json"), "utf8"));
   writeFileSync(join(example, "project.json"), JSON.stringify({ ...project, gate: "preview" }));
   // A conversation with the assistant, as the recorded one went, with its step lines.
-  const said = (role: "user" | "assistant", text: string, gate: string, kind?: "step") =>
+  const said = (
+    role: ChatMessage["role"],
+    text: string,
+    gate: string,
+    kind?: ChatMessage["kind"],
+  ) =>
     JSON.stringify({ role, text, gate, at: "2026-11-19T12:00:00.000Z", ...(kind ? { kind } : {}) });
   writeFileSync(
     join(example, "chat.jsonl"),

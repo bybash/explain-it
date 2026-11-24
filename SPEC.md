@@ -50,8 +50,8 @@ mixed on one project:
 
 - **The chat.** With an LLM key in Settings, the assistant does the work:
   it calls the same tools as an MCP agent, gate by gate, and waits for the
-  user's approval in the chat. It runs the checks itself and offers a fix
-  for what they find (see LLM).
+  user's approval in the chat. From 5.8 it runs the checks itself and offers
+  a fix for what they find (see LLM).
 - **MCP.** An agent in the user's IDE, with their own LLM, calls the tools
   (see MCP).
 - **By hand.** Without a key, the user does each gate in its panel: the
@@ -524,11 +524,15 @@ Decision 018 says why.
 - **The assistant is an agent.** The in-app LLM calls the same tools as an
   MCP agent, in-process, on the chat's own project, reads the same guide with
   the house rules, and stops for the user's approval at each gate. It has
-  one tool MCP agents do not, `approve_gate`, which it may call only when
-  the user approved that gate in their last message. It reads the
+  one tool MCP agents do not, `approve_gate`, which its instructions allow
+  only when the user approved that gate in their last message (the model is
+  trusted to follow them; the server checks only that the gate is the one
+  reached and its file is valid). It reads the
   conversation as text (not its earlier tool calls), and the project through
   `get_project`. Its tool results leave out links and times, so a recorded
-  conversation replays exactly. A turn stops at 16 steps. Drafting a gate's
+  conversation replays exactly. A turn stops at `MAX_AGENT_STEPS` steps (16). It has every MCP project
+  tool but `create_project`, `list_projects` and `get_guide`, which a chat on
+  one project has no use for. Drafting a gate's
   file is one of its tools.
 - **Checks become fixes.** The quick checks run after every script change,
   and the full checks when the Preview gate opens and before a render. The

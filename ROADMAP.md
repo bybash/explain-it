@@ -40,8 +40,9 @@ Slices keep their IDs, but after Milestone 1 they are built in this order:
    **3.6** (the script gate's editor): the rest of the web app. 3.6 closes
    the path by hand, so a video can be made in the app without an LLM
    (decision 031). 3.12 moved to **Later**.
-5. **Milestone 5**, the assistant: **5.1**, **5.2**, then **5.7** (the
-   chat agent) and **5.8** (checks in the chat), then **5.3**, **5.4** with
+5. **Milestone 5**, the assistant: **5.1**, then **5.7** (the chat agent,
+   built first so the chat works as soon as there is a client), **5.2**,
+   **5.8** (checks in the chat), then **5.3**, **5.4** with
    **2.8** (story checks, which the agent runs on its own drafts), **5.5**
    and **5.6**. Then **Milestone 6**.
 6. **Milestone 7**, share outputs: not placed in the order yet. Its open

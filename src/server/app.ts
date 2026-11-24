@@ -22,7 +22,7 @@ import { parseWith } from "../schema/errors.ts";
 import { MCP_PATH } from "../schema/mcp.ts";
 import { LOCAL_HOSTS } from "../schema/settings.ts";
 import { runAssistant } from "./assistant.ts";
-import { addChat, readChat } from "./chat.ts";
+import { addChat, appendChat, readChat } from "./chat.ts";
 import { createEvents } from "./events.ts";
 import { approveGate } from "./gates.ts";
 import { graphRoutes } from "./graph-routes.ts";
@@ -271,12 +271,28 @@ export const createApp = ({
       return errorResponse(c, 409, [
         { path: "chat", message: "the assistant is still answering the last message" },
       ]);
-    const added = await addChat(projectsDir, slug, sent.value, now());
-    if (!added) return noProject(c, slug);
+    // Marked before the message is saved, so a second message sent meanwhile waits its turn.
     answering.add(slug);
+    const added = await addChat(projectsDir, slug, sent.value, now());
+    if (!added) {
+      answering.delete(slug);
+      return noProject(c, slug);
+    }
     events.publish({ type: "chat", slug });
-    void runAssistant({ context: assistantContext, client: llm, slug, gate: sent.value.gate })
-      .catch((error: unknown) => console.error(`the assistant failed on "${slug}":`, error))
+    const { gate } = sent.value;
+    void runAssistant({ context: assistantContext, client: llm, slug, gate })
+      // A broken environment still leaves the user an answer, not a chat that stops.
+      .catch(async (error: unknown) => {
+        console.error(`the assistant failed on "${slug}":`, error);
+        await appendChat(projectDir(projectsDir, slug), [
+          {
+            role: "assistant",
+            text: "Something went wrong while I was working; the server's log says what. Try again, or carry on in the panel on the right.",
+            gate,
+            at: now().toISOString(),
+          },
+        ]);
+      })
       .finally(() => {
         answering.delete(slug);
         events.publish({ type: "chat", slug });

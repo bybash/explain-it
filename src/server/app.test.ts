@@ -431,13 +431,13 @@ describe("/api/projects/:slug/chat", () => {
     await postJson("/api/projects/keyless/chat", { text: "Hello", gate: "graph" });
     const { messages } = await untilAnswered("keyless");
     expect(messages.at(-1).text).toBe(
-      "I can't answer yet: no API key for openrouter.ai; add one in Settings. Until then, you can make the video in the panel on the right.",
+      "I can't answer yet: no API key for openrouter.ai; add one in Settings. Check the LLM in Settings; until then, you can make the video in the panel on the right.",
     );
   });
 
   it("answers one message at a time", async () => {
     await create({ name: "Busy" });
-    let finish: () => void = () => {};
+    let finish: (() => void) | undefined;
     const slow: LlmClient = {
       generate: async () => ({ ok: true, value: { text: "" } }),
       converse: () =>
@@ -455,7 +455,9 @@ describe("/api/projects/:slug/chat", () => {
     expect(await second.json()).toEqual({
       errors: [{ path: "chat", message: "the assistant is still answering the last message" }],
     });
-    finish();
+    // The model is asked once the assistant has read the project; then it answers.
+    for (let i = 0; i < 200 && !finish; i++) await new Promise((r) => setTimeout(r, 10));
+    finish?.();
     expect((await untilAnswered("busy")).messages.map((m: { text: string }) => m.text)).toEqual([
       "One",
       "Done.",

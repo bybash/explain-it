@@ -76,32 +76,31 @@ export const Chat = ({ slug, gate }: { slug: string; gate: Gate }) => {
           <p className="text-muted">Describe the flow the video should explain.</p>
         )}
         <ol aria-label="Messages">
-          {messages.map((m, i) =>
-            m.kind === "step" ? (
-              <li
-                // biome-ignore lint/suspicious/noArrayIndexKey: chat.jsonl is append-only.
-                key={i}
-                className="-mt-1 mb-2 px-3 text-muted text-sm"
-                data-role={m.role}
-                data-kind="step"
-              >
-                ✓ {m.text}
-              </li>
-            ) : (
-              <li
-                // A message has no id; its place in the file never changes.
-                // biome-ignore lint/suspicious/noArrayIndexKey: chat.jsonl is append-only.
-                key={i}
-                className="mb-3 rounded-box bg-page px-3 py-2.5 data-[role=user]:bg-accent-soft"
-                data-role={m.role}
-              >
-                <span className="font-semibold text-muted text-xs">
-                  {m.role === "user" ? "You" : "explAIn-it"} · {GATE_LABELS[m.gate]}
-                </span>
-                <p className="mt-1 whitespace-pre-wrap">{m.text}</p>
-              </li>
-            ),
-          )}
+          {messages.map((m, i) => (
+            <li
+              // A message has no id; its place in the file never changes.
+              // biome-ignore lint/suspicious/noArrayIndexKey: chat.jsonl is append-only.
+              key={i}
+              className={
+                m.kind === "step"
+                  ? "-mt-1 mb-2 px-3 text-muted text-sm"
+                  : "mb-3 rounded-box bg-page px-3 py-2.5 data-[role=user]:bg-accent-soft"
+              }
+              data-role={m.role}
+              {...(m.kind ? { "data-kind": m.kind } : {})}
+            >
+              {m.kind === "step" ? (
+                `✓ ${m.text}`
+              ) : (
+                <>
+                  <span className="font-semibold text-muted text-xs">
+                    {m.role === "user" ? "You" : "explAIn-it"} · {GATE_LABELS[m.gate]}
+                  </span>
+                  <p className="mt-1 whitespace-pre-wrap">{m.text}</p>
+                </>
+              )}
+            </li>
+          ))}
         </ol>
         {working && (
           <p className="px-3 text-muted text-sm" role="status">
