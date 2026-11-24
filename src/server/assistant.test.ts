@@ -103,7 +103,16 @@ describe("runAssistant", () => {
     );
     await runAssistant({ context, client, slug: "sign-in", gate: "graph" });
     expect((await chat()).at(-1)?.text).toBe(
-      "I can't answer yet: no API key for openrouter.ai; add one in Settings. Until then, you can make the video in the panel on the right.",
+      "I can't answer yet: no API key for openrouter.ai; add one in Settings. Check the LLM in Settings; until then, you can make the video in the panel on the right.",
     );
+  });
+
+  it("tells the model the gate the project is at, not the one the user is looking back at", async () => {
+    await appendChat(projectDir(projectsDir, "sign-in"), [said("user", "Change the title.")]);
+    const { client, conversed } = fakeLlm([], [{ text: "Done.", toolCalls: [] }]);
+    // The project is at the graph gate; the user looks at it from the script gate's address.
+    await runAssistant({ context, client, slug: "sign-in", gate: "script" });
+    expect(conversed[0]?.system).toContain("which is at the graph gate");
+    expect((await chat()).at(-1)?.gate).toBe("script");
   });
 });

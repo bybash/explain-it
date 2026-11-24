@@ -1,10 +1,7 @@
 import type { Validated } from "../schema/errors.ts";
-import type { AgentMessage, LlmToolCall } from "../schema/llm.ts";
+import { type AgentMessage, type LlmToolCall, MAX_AGENT_STEPS } from "../schema/llm.ts";
 import { fail, ok } from "../schema/result.ts";
 import type { LlmClient } from "./client.ts";
-
-/** How many steps an agent may take for one message before it must answer. */
-export const MAX_AGENT_STEPS = 16;
 
 /** A tool the agent offers the model, and runs when the model calls it. */
 export type AgentTool = {
@@ -13,6 +10,15 @@ export type AgentTool = {
   readonly inputSchema: Readonly<Record<string, unknown>>;
   /** Runs the call; what it returns goes back to the model as the result. */
   readonly run: (input: unknown) => Promise<unknown>;
+};
+
+/** A tool's result; one that throws (a broken environment) tells the model why, so it can tell the user. */
+const runTool = async (tool: AgentTool, input: unknown): Promise<unknown> => {
+  try {
+    return await tool.run(input);
+  } catch (error) {
+    return { error: `the tool failed: ${error instanceof Error ? error.message : String(error)}` };
+  }
 };
 
 /** One tool call the agent ran, and what came of it. */
@@ -57,7 +63,7 @@ export const runAgent = async ({
     for (const call of toolCalls) {
       const tool = byName.get(call.name);
       const output = tool
-        ? await tool.run(call.input)
+        ? await runTool(tool, call.input)
         : { error: `no tool "${call.name}"; the tools are: ${[...byName.keys()].join(", ")}` };
       results.push({ id: call.id, name: call.name, output });
       await onStep?.({ call, output });

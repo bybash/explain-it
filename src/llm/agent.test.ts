@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { formatErrors } from "../schema/errors.ts";
-import { type AgentTool, MAX_AGENT_STEPS, runAgent } from "./agent.ts";
+import { MAX_AGENT_STEPS } from "../schema/llm.ts";
+import { type AgentTool, runAgent } from "./agent.ts";
 import { fakeLlm } from "./fake-llm.testing.ts";
 
 const greet = (runs: unknown[]): AgentTool => ({
@@ -59,6 +60,38 @@ describe("runAgent", () => {
       role: "tool",
       results: [
         { id: "c1", name: "wave", output: { error: 'no tool "wave"; the tools are: greet' } },
+      ],
+    });
+  });
+
+  it("answers a tool that throws with its reason, and goes on", async () => {
+    const broken: AgentTool = {
+      name: "greet",
+      description: "Greets someone.",
+      inputSchema: { type: "object" },
+      run: async () => {
+        throw new Error("ffmpeg is not installed");
+      },
+    };
+    const { client, conversed } = fakeLlm(
+      [],
+      [
+        { text: "", toolCalls: [call("c1", "greet", {})] },
+        { text: "The tool is broken.", toolCalls: [] },
+      ],
+    );
+    const result = await runAgent({
+      client,
+      name: "chat",
+      system: "",
+      history: [],
+      tools: [broken],
+    });
+    expect(result).toEqual({ ok: true, value: { reply: "The tool is broken." } });
+    expect(conversed[1]?.messages.at(-1)).toEqual({
+      role: "tool",
+      results: [
+        { id: "c1", name: "greet", output: { error: "the tool failed: ffmpeg is not installed" } },
       ],
     });
   });

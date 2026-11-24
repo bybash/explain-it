@@ -4,11 +4,11 @@ import type { LlmClient } from "../llm/client.ts";
 import { agentTools, AGENT_TOOL_NAMES as T } from "../mcp/agent-tools.ts";
 import type { ToolContext } from "../mcp/tools.ts";
 import type { ChatMessage } from "../schema/chat.ts";
-import { formatErrors } from "../schema/errors.ts";
+import type { ValidationError } from "../schema/errors.ts";
 import type { AgentMessage } from "../schema/llm.ts";
 import type { Gate } from "../schema/project.ts";
 import { appendChat, readChat } from "./chat.ts";
-import { projectDir } from "./projects.ts";
+import { openProject, projectDir } from "./projects.ts";
 import { readHouseRules } from "./stories.ts";
 
 /**
@@ -19,7 +19,7 @@ const inTheApp = (slug: string, gate: Gate) => `## In this app
 
 You are the assistant in the explAIn-it web app, working on the project "${slug}", which is at the ${gate} gate. The user sees the project in the panel on the right, and it changes as you save, so do not paste files back: say in a sentence or two what you did, then ask what you need.
 
-- The project already exists: use ${T.updateGraph} to make or change its graph. There is no create_project, list_projects or get_guide here. Read the project with ${T.getProject} when you need its state.
+- The project already exists: use ${T.updateGraph} to make or change its graph. There is no create_project, list_projects or get_guide here: you work on this project only. Read the project with ${T.getProject} when you need its state.
 - Follow the Steps above. Stop and wait for the user's approval in this chat after the graph, after the story, and after the script. When they approve one, call ${T.approveGate} for that gate, then go on to the next step.
 - Never call ${T.approveGate} unless the user approved that gate in their last message.
 - When a tool gives back errors, fix what they name and call it again.`;
@@ -33,29 +33,36 @@ const historyOf = (messages: readonly ChatMessage[]): AgentMessage[] =>
       : [{ role: "assistant", content: m.text, toolCalls: [] }];
   });
 
-/** What a tool's result says, as the chat shows it; nothing for a tool that only reads. */
-const stepLine = ({ call, output }: AgentStep): string | undefined => {
-  const errors = (output as { errors?: string[] } | null)?.errors;
-  const done: Record<string, string> = {
-    [T.updateGraph]: "Saved the graph.",
-    [T.setBrief]: "Saved the story brief.",
-    [T.setStoryboard]: "Saved the script.",
-    [T.setStyle]: "Saved the style.",
-    [T.check]: "Ran the checks.",
-    [T.render]: "Started a render.",
-  };
-  if (call.name === T.approveGate && !errors)
-    return `Approved the ${(output as { approved: string }).approved} gate.`;
-  const line = done[call.name];
-  if (!line) return undefined;
-  return errors
-    ? `${line.replace("Saved", "Could not save").replace(".", "")}: ${errors[0]}`
-    : line;
+/** The chat's line for each tool that changes the project: when it worked, and when it did not. */
+const STEP_LINES: Readonly<Record<string, { readonly done: string; readonly failed: string }>> = {
+  [T.updateGraph]: { done: "Saved the graph.", failed: "Could not save the graph" },
+  [T.setBrief]: { done: "Saved the story brief.", failed: "Could not save the story brief" },
+  [T.setStoryboard]: { done: "Saved the script.", failed: "Could not save the script" },
+  [T.setStyle]: { done: "Saved the style.", failed: "Could not save the style" },
+  [T.check]: { done: "Ran the checks.", failed: "Could not run the checks" },
+  [T.render]: { done: "Started a render.", failed: "Could not start a render" },
+  [T.cancelRender]: { done: "Cancelled the render.", failed: "Could not cancel the render" },
 };
 
-/** The reply when the turn could not finish: what went wrong, and what still works. */
-const failed = (errors: readonly string[]) =>
-  `I can't answer yet: ${errors.join("; ").replace(/^llm: /, "")}. Until then, you can make the video in the panel on the right.`;
+/** What a tool's result says, as the chat shows it; nothing for a tool that only reads. */
+const stepLine = ({ call, output }: AgentStep): string | undefined => {
+  const result = (output ?? {}) as { errors?: readonly string[]; approved?: string };
+  const problem = result.errors?.[0];
+  if (call.name === T.approveGate)
+    return problem
+      ? `Could not approve the gate: ${problem}`
+      : `Approved the ${result.approved} gate.`;
+  const line = STEP_LINES[call.name];
+  if (!line) return undefined;
+  return problem ? `${line.failed}: ${problem}` : line.done;
+};
+
+/** The reply when the turn could not finish: what went wrong, and where to look. */
+const failed = (errors: readonly ValidationError[]) => {
+  // A problem with the LLM itself says so plainly; anything else keeps its place.
+  const reasons = errors.map((e) => (e.path === "llm" ? e.message : `${e.path}: ${e.message}`));
+  return `I can't answer yet: ${reasons.join("; ")}. Check the LLM in Settings; until then, you can make the video in the panel on the right.`;
+};
 
 /**
  * One turn of the in-app assistant (SPEC, LLM: the assistant): it reads the
@@ -74,11 +81,11 @@ export const runAssistant = async ({
   readonly context: ToolContext;
   readonly client: LlmClient;
   readonly slug: string;
-  /** The gate the user is at, which the assistant's lines are saved with. */
+  /** The gate the user is looking at, which the assistant's lines are saved with. */
   readonly gate: Gate;
 }): Promise<void> => {
   const dir = projectDir(context.projectsDir, slug);
-  const add = async (text: string, kind?: "step") => {
+  const add = async (text: string, kind?: ChatMessage["kind"]) => {
     await appendChat(dir, [
       {
         role: "assistant",
@@ -91,9 +98,12 @@ export const runAssistant = async ({
     context.events.publish({ type: "chat", slug });
   };
   const houseRules = await readHouseRules(context.projectsDir);
+  // The project's own gate: the user may be looking back at an earlier one.
+  const opened = await openProject(context.projectsDir, slug);
+  const reached = opened?.ok ? opened.value.project.gate : gate;
   const system = [
     authoringGuide({ houseRules: houseRules.ok ? houseRules.value : null }),
-    inTheApp(slug, gate),
+    inTheApp(slug, reached),
   ].join("\n\n");
   const result = await runAgent({
     client,
@@ -106,5 +116,5 @@ export const runAssistant = async ({
       if (line) await add(line, "step");
     },
   });
-  await add(result.ok ? result.value.reply : failed(formatErrors(result.errors)));
+  await add(result.ok ? result.value.reply : failed(result.errors));
 };

@@ -2,6 +2,8 @@ import { z } from "zod";
 
 /** Room for Claude's thinking, which counts toward the output limit, as well as the answer. */
 export const CLAUDE_MAX_OUTPUT_TOKENS = 16_000;
+/** How many steps the assistant may take for one message before it must answer. */
+export const MAX_AGENT_STEPS = 16;
 /** How many hex digits of a SHA-256 name a recorded call, and stand for a long part of it. */
 export const FIXTURE_HASH_LENGTH = 16;
 
