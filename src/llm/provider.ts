@@ -1,3 +1,4 @@
+import { createAnthropic } from "@ai-sdk/anthropic";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { APICallError, generateText, jsonSchema, NoObjectGeneratedError, Output } from "ai";
 import type { Validated } from "../schema/errors.ts";
@@ -11,6 +12,11 @@ export type ProviderSettings = {
   readonly model: string;
   readonly apiKey?: string | undefined;
 };
+
+/** Hosts that speak Claude's own Messages API rather than OpenAI's. */
+const ANTHROPIC_HOSTS = ["api.anthropic.com"];
+/** Room for Claude's thinking, which counts toward the output limit, as well as the answer. */
+const CLAUDE_MAX_OUTPUT = 16_000;
 
 /** Docker's name for the machine it runs on, where Ollama or LM Studio listen. */
 const DOCKER_HOST = "host.docker.internal";
@@ -47,7 +53,8 @@ const said = (error: unknown, host: string, model: string): string => {
 
 /**
  * An LLM client for any OpenAI-compatible endpoint (SPEC, LLM): OpenRouter
- * by default, OpenAI, Ollama or LM Studio. Settings are read on every call,
+ * by default, OpenAI, Ollama or LM Studio; and Claude's own API, for a key
+ * from Anthropic. Settings are read on every call,
  * so a key changed in Settings counts at once. The answer comes back as
  * text, even when it is not the JSON asked for: the repair loop answers
  * that. A failed call names its cause plainly, never the key.
@@ -55,25 +62,33 @@ const said = (error: unknown, host: string, model: string): string => {
 export const providerClient = ({
   settings,
   maxRetries,
+  anthropicHosts = ANTHROPIC_HOSTS,
 }: {
   readonly settings: () => Promise<ProviderSettings>;
   /** How often a failed call is tried again; the SDK's default when not given. */
   readonly maxRetries?: number;
+  /** Hosts called through Claude's own API; tests name their stub. */
+  readonly anthropicHosts?: readonly string[];
 }): LlmClient => ({
   generate: async (request: LlmRequest): Promise<Validated<LlmReply>> => {
     const { baseUrl, model, apiKey } = await settings();
     const { hostname } = new URL(baseUrl);
     if (!apiKey && !onThisMachine(hostname))
       return llmError(`no API key for ${hostname}; add one in Settings`);
-    const provider = createOpenAICompatible({
-      name: "llm",
-      baseURL: baseUrl,
-      ...(apiKey ? { apiKey } : {}),
-      supportsStructuredOutputs: true,
-    });
+    // Claude's key works with its own API, which has native structured output; every other endpoint speaks OpenAI's.
+    const claude = anthropicHosts.includes(hostname);
+    const languageModel = claude
+      ? createAnthropic({ baseURL: baseUrl, ...(apiKey ? { apiKey } : {}) })(model)
+      : createOpenAICompatible({
+          name: "llm",
+          baseURL: baseUrl,
+          ...(apiKey ? { apiKey } : {}),
+          supportsStructuredOutputs: true,
+        })(model);
     try {
       const result = await generateText({
-        model: provider(model),
+        model: languageModel,
+        ...(claude ? { maxOutputTokens: CLAUDE_MAX_OUTPUT } : {}),
         system: request.system,
         messages: request.messages.map((m) => ({ role: m.role, content: m.content })),
         // The schema is checked by the repair loop, with our own errors, so the SDK only asks for it.

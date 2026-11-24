@@ -528,8 +528,11 @@ Decision 018 says why.
   (a slower beat, a moved box) is applied and said. Every fix can be undone.
   The assistant runs the checks on its own drafts and repairs them before
   showing them, so most problems never reach the user.
-- Vercel AI SDK. Providers: OpenRouter (default) and any OpenAI-compatible
-  endpoint (OpenAI, Ollama, LM Studio). Settings: base URL, API key, model.
+- Vercel AI SDK. Providers: OpenRouter (default), Anthropic's own API for a
+  Claude key (native structured output), and any OpenAI-compatible
+  endpoint (OpenAI, Ollama, LM Studio). Settings: base URL, API key, model;
+  a preset suggests a model its API knows (`claude-opus-5-5` for
+  Anthropic).
   One model for every call in v1.
 - Drafting is one of the assistant's tools: one structured call per file,
   each with its own zod schema:
@@ -541,8 +544,9 @@ Decision 018 says why.
 - Every result is validated (schema, then references between graph and
   storyboard, then the checks that apply). Errors are sent back to the model,
   at most twice.
-- One client for every endpoint: the AI SDK's OpenAI-compatible provider,
-  with the settings read on every call. A failed call names its cause so
+- One client for every endpoint: the AI SDK's Anthropic provider for
+  `api.anthropic.com`, its OpenAI-compatible provider for the rest, with the
+  settings read on every call. A failed call names its cause so
   the user can act on it: a refused key, an unknown model or base URL, a
   host that cannot be reached, a missing key. An endpoint on this machine
   (Ollama, LM Studio) needs no key.

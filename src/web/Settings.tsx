@@ -5,7 +5,7 @@ import {
   PROVIDERS,
   providerOf,
   type SettingsView,
-  SUGGESTED_MODEL,
+  suggestedModel,
 } from "../schema/settings.ts";
 import { getSettings, saveSettings } from "./api.ts";
 import { Errors } from "./Errors.tsx";
@@ -94,8 +94,11 @@ export const Settings = () => {
           disabled={locked("baseUrl")}
           onChange={(e) => {
             const preset = PROVIDERS.find((p) => p.id === e.target.value);
+            const baseUrl = preset ? preset.baseUrl : "";
+            // A model left as the old endpoint's suggestion becomes the new one's; one typed is kept.
+            const suggested = form.model === suggestedModel(form.baseUrl);
             // Custom clears the URL for the user to type their endpoint's.
-            change({ baseUrl: preset ? preset.baseUrl : "" });
+            change({ baseUrl, ...(suggested ? { model: suggestedModel(baseUrl) } : {}) });
             if (!preset) document.getElementById("settings-base-url")?.focus();
           }}
         >
@@ -129,7 +132,7 @@ export const Settings = () => {
           value={form.model}
           disabled={locked("model")}
           spellCheck={false}
-          placeholder={SUGGESTED_MODEL}
+          placeholder={suggestedModel(form.baseUrl)}
           onChange={(e) => change({ model: e.target.value })}
         />
         {locked("model") ? (

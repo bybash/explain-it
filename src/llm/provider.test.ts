@@ -6,7 +6,12 @@ import type { LlmRequest } from "./client.ts";
 import { type ProviderSettings, providerClient } from "./provider.ts";
 
 /** A request the stub received: its path, headers and JSON body. */
-type Received = { path: string; auth: string | undefined; body: Record<string, unknown> };
+type Received = {
+  path: string;
+  auth: string | undefined;
+  apiKey: string | undefined;
+  body: Record<string, unknown>;
+};
 
 /** An OpenAI-compatible endpoint on a port of the system's choosing, answering as `answer` says. */
 const stub = async (answer: (received: Received) => { status: number; body: unknown }) => {
@@ -17,6 +22,7 @@ const stub = async (answer: (received: Received) => { status: number; body: unkn
     const got = {
       path: req.url ?? "",
       auth: req.headers.authorization,
+      apiKey: req.headers["x-api-key"] as string | undefined,
       body: JSON.parse(text || "{}"),
     };
     received.push(got);
@@ -126,6 +132,63 @@ describe("providerClient", () => {
     }).generate(REQUEST);
     expect(remote.ok ? [] : formatErrors(remote.errors)).toEqual([
       "llm: no API key for openrouter.ai; add one in Settings",
+    ]);
+  });
+});
+
+/** A reply from Claude's Messages API whose text is `text`. */
+const message = (text: string) => ({
+  id: "msg_1",
+  type: "message",
+  role: "assistant",
+  model: "claude-opus-5-5",
+  content: [{ type: "text", text }],
+  stop_reason: "end_turn",
+  stop_sequence: null,
+  usage: { input_tokens: 12, output_tokens: 5 },
+});
+
+describe("providerClient with Anthropic's API", () => {
+  /** The stub stands in for api.anthropic.com, whose base URL picks Claude's own API. */
+  const anthropic = (baseUrl: string) =>
+    providerClient({
+      settings: async () => ({ baseUrl, model: "claude-opus-5-5", apiKey: "sk-ant-test-123" }),
+      maxRetries: 0,
+      anthropicHosts: ["127.0.0.1"],
+    });
+
+  it("asks Claude's Messages API, with the key in its own header and room for thinking", async () => {
+    const { baseUrl, received } = await stub(() => ({
+      status: 200,
+      body: message('{"greeting":"Hello"}'),
+    }));
+    expect(await anthropic(baseUrl).generate(REQUEST)).toEqual({
+      ok: true,
+      value: { text: '{"greeting":"Hello"}' },
+    });
+    const [sent] = received;
+    expect(sent?.path).toBe("/v1/messages");
+    expect(sent?.auth).toBeUndefined();
+    expect(sent?.apiKey).toBe("sk-ant-test-123");
+    expect(sent?.body).toMatchObject({
+      model: "claude-opus-5-5",
+      system: [{ text: "Answer with JSON only." }],
+    });
+    expect(sent?.body.max_tokens).toBeGreaterThanOrEqual(16_000);
+    expect(JSON.stringify(sent?.body)).toContain('"greeting"');
+  });
+
+  it("names a refused key plainly", async () => {
+    const { baseUrl } = await stub(() => ({
+      status: 401,
+      body: {
+        type: "error",
+        error: { type: "authentication_error", message: "invalid x-api-key" },
+      },
+    }));
+    const reply = await anthropic(baseUrl).generate(REQUEST);
+    expect(reply.ok ? [] : formatErrors(reply.errors)).toEqual([
+      "llm: the key was refused by 127.0.0.1; check it in Settings",
     ]);
   });
 });

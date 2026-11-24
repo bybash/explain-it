@@ -13,9 +13,21 @@ export const ENV_NAMES = {
   openRouterKey: "OPENROUTER_API_KEY",
 } as const;
 
-/** Endpoints the page offers by name; any other base URL is "custom". */
+/** The model suggested when none is set: a capable model that OpenRouter serves. */
+export const SUGGESTED_MODEL = "anthropic/claude-sonnet-5.5";
+
+/**
+ * Endpoints the page offers by name; any other base URL is "custom". One
+ * with a `model` suggests that one, as its own API names models its own way.
+ */
 export const PROVIDERS = [
   { id: "openrouter", label: "OpenRouter", baseUrl: "https://openrouter.ai/api/v1" },
+  {
+    id: "anthropic",
+    label: "Anthropic (Claude)",
+    baseUrl: "https://api.anthropic.com/v1",
+    model: "claude-opus-5-5",
+  },
   { id: "openai", label: "OpenAI", baseUrl: "https://api.openai.com/v1" },
   { id: "ollama", label: "Ollama", baseUrl: "http://127.0.0.1:11434/v1" },
   { id: "lmstudio", label: "LM Studio", baseUrl: "http://127.0.0.1:1234/v1" },
@@ -26,9 +38,6 @@ export type ProviderId = z.output<typeof ProviderSchema>;
 
 /** OpenRouter, the default provider (SPEC, LLM). */
 export const DEFAULT_BASE_URL = PROVIDERS[0].baseUrl;
-/** The model suggested when none is set: a capable model that OpenRouter serves. */
-export const SUGGESTED_MODEL = "anthropic/claude-sonnet-5.5";
-
 const MAX_URL = 500;
 const MAX_MODEL = 200;
 const MAX_KEY = 500;
@@ -122,3 +131,9 @@ const withoutSlash = (url: string) => url.replace(/\/+$/, "");
 /** The preset a base URL belongs to, or "custom". */
 export const providerOf = (baseUrl: string): ProviderId =>
   PROVIDERS.find((p) => withoutSlash(p.baseUrl) === withoutSlash(baseUrl))?.id ?? "custom";
+
+/** The model suggested for an endpoint when none is set: its preset's own, or `SUGGESTED_MODEL`. */
+export const suggestedModel = (baseUrl: string): string => {
+  const preset = PROVIDERS.find((p) => p.id === providerOf(baseUrl));
+  return preset && "model" in preset ? preset.model : SUGGESTED_MODEL;
+};
