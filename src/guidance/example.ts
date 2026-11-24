@@ -6,8 +6,14 @@
 
 import type { StoryShape } from "../schema/story.ts";
 
-/** The story shape the example follows: it opens on the problem and ends on the outcome. */
-export const EXAMPLE_SHAPE = "problem" satisfies StoryShape;
+/** The story the example tells: it opens on the problem and ends on the outcome. */
+export const EXAMPLE_BRIEF = {
+  version: 1,
+  audience: "People who use the app, not its developers",
+  takeaway: "A reset link works once, and only for an hour.",
+  shape: "problem" satisfies StoryShape,
+  hook: "Someone can't remember their password.",
+} as const;
 
 export const EXAMPLE_GRAPH = {
   version: 1,

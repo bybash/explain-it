@@ -1,0 +1,54 @@
+{
+  "$id": "https://raw.githubusercontent.com/bybash/explain-it/main/schemas/brief.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "description": "The JSON Schema for this file, for editors. Ignored by explAIn-it.",
+      "type": "string"
+    },
+    "version": {
+      "type": "number",
+      "const": 1
+    },
+    "audience": {
+      "description": "Who the video is for, such as \"new backend developers\".",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80
+    },
+    "takeaway": {
+      "description": "The one thing the viewer should remember, in a sentence.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 140
+    },
+    "shape": {
+      "description": "The shape the story takes.",
+      "type": "string",
+      "enum": [
+        "problem",
+        "before-after",
+        "failure",
+        "zoom"
+      ]
+    },
+    "hook": {
+      "description": "What the first beat says to make the viewer want the rest.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 140
+    },
+    "notes": {
+      "description": "This project's own notes and rules for the story: what to stress, what to leave out.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2000
+    }
+  },
+  "required": [
+    "version"
+  ],
+  "additionalProperties": false,
+  "description": "The story a project's script tells: who it is for, what to remember, its shape."
+}

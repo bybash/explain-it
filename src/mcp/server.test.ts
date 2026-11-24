@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
@@ -100,6 +100,7 @@ describe("tools", () => {
       "list_projects",
       "render",
       "render_status",
+      "set_brief",
       "set_storyboard",
       "set_style",
       "update_graph",
@@ -419,6 +420,51 @@ describe("review fixes", () => {
     ]);
     const nodes = readProjectFile(slug, "graph.json").nodes;
     expect([nodes[0].label, nodes[1].label]).toEqual(["First", "Second"]);
+  });
+});
+
+describe("set_brief and the house rules", () => {
+  const BRIEF = {
+    version: 1,
+    audience: "Product managers",
+    takeaway: "Sign-in never shows the app your password.",
+    shape: "problem",
+    hook: "Where does your password go when you sign in?",
+    notes: "Leave out token refresh.",
+  };
+
+  it("saves the brief, which get_project then returns, and leaves the gate where it was", async () => {
+    const { slug } = await succeeds("create_project", { graph: graphFile });
+    const saved = await succeeds("set_brief", { slug, brief: BRIEF });
+    expect(saved).toEqual({ brief: BRIEF, preview: preview(slug) });
+    expect(published).toContainEqual({ type: "project-updated", slug });
+    const body = await succeeds("get_project", { slug });
+    expect(body.brief).toEqual(BRIEF);
+    expect(body.project.gate).toBe("graph");
+  });
+
+  it("names what is wrong in the brief, and saves nothing", async () => {
+    const { slug } = await succeeds("create_project", { graph: graphFile });
+    expect(await fails("set_brief", { slug, brief: { version: 1, shape: "saga" } })).toEqual([
+      'brief.shape: must be one of "problem", "before-after", "failure", "zoom"',
+      `preview: ${preview(slug)}`,
+    ]);
+    expect((await succeeds("get_project", { slug })).brief).toBeNull();
+  });
+
+  it("gives the house rules in get_project, get_guide and the prompt", async () => {
+    const { slug } = await succeeds("create_project", { graph: graphFile });
+    expect((await succeeds("get_project", { slug })).houseRules).toBeNull();
+    const rules = "- No jargon.\n- End with a link to the docs.";
+    writeFileSync(join(projectsDir, "house-rules.md"), rules);
+    expect((await succeeds("get_project", { slug })).houseRules).toBe(rules);
+    const guide = await client.callTool({ name: "get_guide", arguments: {} });
+    expect(guide.content).toEqual([{ type: "text", text: authoringGuide({ houseRules: rules }) }]);
+    const { messages } = await client.getPrompt({ name: "explain_flow", arguments: {} });
+    expect(messages[0]?.content).toEqual({
+      type: "text",
+      text: authoringGuide({ houseRules: rules }),
+    });
   });
 });
 

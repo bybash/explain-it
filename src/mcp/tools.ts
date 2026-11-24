@@ -12,6 +12,7 @@ import {
   CreateProjectArgsSchema,
   GetProjectArgsSchema,
   ListProjectsArgsSchema,
+  SetBriefArgsSchema,
   SetStoryboardArgsSchema,
   SetStyleArgsSchema,
   UpdateGraphArgsSchema,
@@ -30,6 +31,7 @@ import {
   withProjectLock,
   writeProjectFile,
 } from "../server/projects.ts";
+import { readHouseRules, saveBrief } from "../server/stories.ts";
 import { saveStyle } from "../server/styles.ts";
 import { allOf, edited, timingOf } from "./edits.ts";
 
@@ -78,10 +80,31 @@ export const getProjectTool = async (context: ToolContext, input: Args) => {
   const opened = await open(context, args.value.slug);
   if (!opened.ok) return opened;
   const { graph } = opened.value;
+  const houseRules = await readHouseRules(context.projectsDir);
   return ok({
     ...opened.value,
+    houseRules: houseRules.trim() === "" ? null : houseRules,
     mermaid: graph ? graphToMermaid(graph) : null,
     preview: context.previewUrl(args.value.slug),
+  });
+};
+
+export const setBriefTool = async (context: ToolContext, input: Args) => {
+  const args = parseWith(SetBriefArgsSchema, input);
+  if (!args.ok) return args;
+  const { slug } = args.value;
+  return withProjectLock(context.projectsDir, slug, async () => {
+    const opened = await open(context, slug);
+    if (!opened.ok) return opened;
+    const saved = await saveBrief(
+      context.projectsDir,
+      opened.value,
+      args.value.brief,
+      context.now(),
+    );
+    if (!saved.ok) return fail(under("brief", saved.errors));
+    context.events.publish({ type: "project-updated", slug });
+    return ok({ brief: saved.value, preview: context.previewUrl(slug) });
   });
 };
 

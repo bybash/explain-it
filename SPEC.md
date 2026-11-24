@@ -47,7 +47,7 @@ by chat or by button, or edits it, either through chat or directly in the panel.
 | Gate | The LLM produces | The panel shows | Direct edits |
 |---|---|---|---|
 | 1. Graph | `graph.json` from the description and context | Mermaid code and the rendered diagram | Edit the Mermaid code |
-| 2. Script | `storyboard.json`: scenes and beats | A list of scenes and beats | Edit captions, narration, actions |
+| 2. Script | `brief.json`, the story, then `storyboard.json`: scenes and beats | The brief, then a list of scenes and beats | Edit the brief; edit captions, narration, actions |
 | 3. Style | Nothing (defaults are filled in) | Palette, font, voice, captions, music, output | The form |
 | 4. Preview | Nothing (voice is generated here) | The player with a scrubber, beat list, check warnings and contact sheet | Jump to a beat and edit it |
 | 5. Render | Nothing | Render progress, then downloads | Cancel, render again |
@@ -154,6 +154,28 @@ type Action =
 The camera is fixed within a scene and frames the scene's nodes. Scenes change
 with a short transition.
 
+### Brief (`brief.json`)
+
+The story the script tells, agreed before the beats are written (decision
+030). Every field is optional; the file is replaced whole.
+
+```ts
+type Brief = {
+  version: 1;
+  audience?: string;  // who the video is for, ≤ 80 characters
+  takeaway?: string;  // the one thing to remember, ≤ 140 characters
+  shape?: "problem" | "before-after" | "failure" | "zoom";  // src/schema/story.ts
+  hook?: string;      // what the first beat says, ≤ 140 characters
+  notes?: string;     // this project's own notes and rules for the story, ≤ 2000 characters
+};
+```
+
+**House rules** are the user's rules for every project's story, such as "no
+jargon" or "end with a link to the docs": free text, at most 4000
+characters, in `house-rules.md` in the projects folder. The Settings page
+edits them, and they can be written or shared by hand. The guide puts them
+first, above the advice they override, and `get_project` returns them.
+
 ### Config (`config.json`)
 
 ```ts
@@ -200,6 +222,7 @@ projects/<slug>/
   graph.json
   layout.json         computed positions plus the user's manual overrides
   storyboard.json
+  brief.json          the story brief
   config.json
   assets/             the logo, referred to from config.json
   cache/tts/          <hash of model + voice + speed + text>.wav (decision 012)
@@ -501,11 +524,12 @@ server validates, lays out, checks, previews and renders.
 
 | Tool | Does | Returns |
 |---|---|---|
-| `get_guide` | Reads the authoring guide | The guide as text, the same as `explain_flow` |
+| `get_guide` | Reads the authoring guide | The guide as text, with the house rules, the same as `explain_flow` |
 | `list_projects` | Lists projects | Names, gates, last update |
-| `get_project` | Reads one project | Its files and the current gate |
+| `get_project` | Reads one project | Its files, the current gate and the house rules |
 | `create_project` | Creates a project from a graph, with optional `sources` | Validation errors or the Mermaid, and a preview link |
 | `update_graph` | Replaces the graph or applies a JSON Patch | Errors or the Mermaid; stale beats |
+| `set_brief` | Replaces the story brief | Errors or the brief, and a preview link |
 | `set_storyboard` | Replaces the storyboard or applies a JSON Patch | Errors, timing (measured for lines already voiced, else estimated, with a count of each), check warnings |
 | `set_style` | Updates `config.json` | The config, a preview link |
 | `check` | Generates the voice if needed and runs the checks | The report (readiness, the voice, every check by beat, the timing) and the contact sheet as an image |
@@ -547,7 +571,8 @@ text, and the graph and storyboard tools carry a short summary of their
 format that points at it.
 
 **Approval.** The prompt tells the agent to show the user the Mermaid, then
-agree the story with them, then show the script, in the IDE chat and to wait for approval before moving on. Every
+agree the story with them and save it with `set_brief`, then show the
+script, in the IDE chat and to wait for approval before moving on. Every
 tool result includes a link to the project in the web app for a visual
 preview. The server never blocks a render on approval. MCP elicitation may
 replace this once clients support it widely.

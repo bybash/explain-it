@@ -36,10 +36,10 @@ Slices keep their IDs, but after Milestone 1 they are built in this order:
 4. **3.2 to 3.5**, then **3.10** (the app's styles in Tailwind, before the
    remaining panels add more CSS), then **3.7**, **3.11**, **3.8**, **3.13**,
    **3.9**, **4.5** (storytelling guidance, so MCP agents tell better
-   stories straight away) and **3.12**: the rest of the web app.
-5. **Milestones 5 and 6**, as listed, with **3.14** (the story brief and
-   rules), **2.8** (story checks) and **3.6** (the script gate's panel) just
-   before **5.4**: until the LLM drafts scripts, a script comes over MCP,
+   stories straight away) with **3.14** (the story brief and rules), and
+   **3.12**: the rest of the web app.
+5. **Milestones 5 and 6**, as listed, with **2.8** (story checks) and
+   **3.6** (the script gate's panel) just before **5.4**: until the LLM drafts scripts, a script comes over MCP,
    and nothing blocks on editing it in the app. 5.4 then drafts the brief
    first, for approval, and the beats from it.
 6. **Milestone 7**, share outputs: not placed in the order yet. Its open
@@ -108,17 +108,10 @@ The goal: the CLI renders a hand-written example to an MP4, with no LLM and no v
 | ✅ 3.13 | **Preview gate checks**: run the checks from the panel, warnings that jump to their beat, the contact sheet | A warning in the example jumps to its beat |
 | 3.12 | **Style extras**: a custom palette editor, font upload | A custom palette and an uploaded font show in the preview and the render |
 | ✅ 3.10 | **App styles in Tailwind**: Tailwind v4 through its Vite plugin; the colour tokens and the dark set become `@theme` values; `app.css` moves to utility classes, keeping plain CSS only for CodeMirror's and Mermaid's own classes; the video's styles (`src/engine/`) are untouched; a decision record | Screenshots of each page, light and dark, look the same before and after |
-| 3.14 | **Story brief and rules**: an optional brief for the script (the audience, the one takeaway, the shape of the story from 4.5's list, the hook), the project's own notes and rules (what to stress, what to leave out), and house rules in Settings that every project follows (for example "no jargon", "end with the docs link"); all in the zod schemas with their limits, set with `set_storyboard` and the Script gate, and given to MCP agents in `get_project` and the `explain_flow` prompt | A brief and a house rule set in the app reach an agent through the prompt and `get_project` |
+| 3.14 | **Story brief and rules**: an optional brief for the script (the audience, the one takeaway, the shape of the story from 4.5's list, the hook), the project's own notes and rules (what to stress, what to leave out), and house rules in Settings that every project follows (for example "no jargon", "end with the docs link"); all in the zod schemas with their limits, in `brief.json` (set with `set_brief` and the Script gate) and `house-rules.md`, and given to MCP agents in `get_project` and the `explain_flow` prompt | A brief and a house rule set in the app reach an agent through the prompt and `get_project` |
 
-Open questions for 3.14, settled in its decision record:
-
-- **Where the brief lives**: in `storyboard.json`, or in its own file so
-  that a new script keeps the brief it was written for.
-- **Where the house rules live**: in `.env` with the other settings, or in a
-  file next to the projects that can be shared with a team.
-- **How rules are written**: free text with a length limit, which an agent
-  or the LLM follows, or a few fixed switches (tone, jargon, length), which
-  2.8's checks could also verify. Free text first is simplest.
+3.14's open questions (where the brief and the house rules live, and how
+rules are written) are settled in decision 030.
 
 ## Milestone 4: MCP
 

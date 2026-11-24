@@ -22,6 +22,7 @@ import {
   RenderJobSchema,
   RenderRequestSchema,
 } from "./render.ts";
+import { BriefSchema, HouseRulesSchema } from "./story.ts";
 import { StoryboardSchema } from "./storyboard.ts";
 
 /** The projects API's requests and responses: the server sends these shapes and the web app checks them. */
@@ -137,6 +138,7 @@ export const OpenedProjectSchema = z.object({
   project: ProjectSchema,
   graph: GraphSchema.nullable(),
   storyboard: StoryboardSchema.nullable(),
+  brief: BriefSchema.nullable(),
   layout: LayoutSchema.nullable(),
   config: ConfigSchema.nullable(),
   problems: z.array(ValidationErrorSchema),
@@ -235,5 +237,9 @@ export const ServerEventSchema = z.discriminatedUnion("type", [
 
 export type ProjectSummary = z.output<typeof ProjectSummarySchema>;
 export type ProjectList = z.output<typeof ProjectListSchema>;
+/** The house rules, as the Settings page reads and writes them. */
+export const HouseRulesBodySchema = z.strictObject({ text: HouseRulesSchema });
+export type HouseRulesBody = z.output<typeof HouseRulesBodySchema>;
+
 export type OpenedProject = z.output<typeof OpenedProjectSchema>;
 export type ServerEvent = z.output<typeof ServerEventSchema>;

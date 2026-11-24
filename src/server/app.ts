@@ -31,6 +31,7 @@ import { renderRoutes } from "./render-routes.ts";
 import { errorResponse, jsonBody, noProject } from "./responses.ts";
 import { sampleRoutes } from "./sample-routes.ts";
 import type { SettingsStore } from "./settings.ts";
+import { storyRoutes } from "./story-routes.ts";
 import { isStyleSave, styleRoutes } from "./style-routes.ts";
 
 export type AppOptions = {
@@ -249,6 +250,7 @@ export const createApp = ({
 
   graphRoutes(app, { projectsDir, now, events });
   styleRoutes(app, { projectsDir, now, events });
+  storyRoutes(app, { projectsDir, now, events });
   sampleRoutes(app, { projectsDir, tts });
   renderRoutes(app, { projectsDir, renders });
   previewRoutes(app, {

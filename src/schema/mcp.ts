@@ -23,6 +23,7 @@ export const TOOL_NAMES = {
   getProject: "get_project",
   createProject: "create_project",
   updateGraph: "update_graph",
+  setBrief: "set_brief",
   setStoryboard: "set_storyboard",
   setStyle: "set_style",
   check: "check",
@@ -70,6 +71,11 @@ export const UpdateGraphArgsSchema = z.strictObject({
   slug: SlugSchema,
   graph: z.unknown().optional().describe("The whole new graph.json."),
   patch: JsonPatchSchema.optional(),
+});
+
+export const SetBriefArgsSchema = z.strictObject({
+  slug: SlugSchema,
+  brief: document("The whole brief.json: it replaces the one before."),
 });
 
 export const SetStoryboardArgsSchema = z.strictObject({
