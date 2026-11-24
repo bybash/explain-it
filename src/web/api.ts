@@ -12,6 +12,8 @@ import {
   PreviewSoundSchema,
   type ProjectList,
   ProjectListSchema,
+  type RenderAsk,
+  RendersViewSchema,
   SavedLogoSchema,
   type ServerEvent,
   ServerEventSchema,
@@ -22,6 +24,7 @@ import { type Chat, ChatSchema } from "../schema/chat.ts";
 import type { Config, VoiceConfig } from "../schema/config.ts";
 import { parseWith, type Validated, type ValidationError } from "../schema/errors.ts";
 import type { Gate } from "../schema/project.ts";
+import { RenderJobSchema } from "../schema/render.ts";
 import { fail, ok } from "../schema/result.ts";
 import { type SettingsUpdate, type SettingsView, SettingsViewSchema } from "../schema/settings.ts";
 
@@ -177,6 +180,29 @@ export const getChecks = (slug: string) =>
  */
 export const contactSheetUrl = (slug: string, file: string, checkedAt: string) =>
   `/api/projects/${encodeURIComponent(slug)}/checks/${encodeURIComponent(file)}?v=${encodeURIComponent(checkedAt)}`;
+
+/** The project's render jobs and its finished renders. */
+export const getRenders = (slug: string) =>
+  fetchChecked(RendersViewSchema, `/api/projects/${encodeURIComponent(slug)}/renders`);
+
+/** Queues a render; the theme and resolution left out are the style's. */
+export const startRender = (slug: string, ask: RenderAsk) =>
+  postJson(RenderJobSchema, `/api/projects/${encodeURIComponent(slug)}/renders`, ask);
+
+export const cancelRender = (slug: string, job: string) =>
+  postJson(
+    RenderJobSchema,
+    `/api/projects/${encodeURIComponent(slug)}/renders/${encodeURIComponent(job)}/cancel`,
+    {},
+  );
+
+/** Where a finished render's file is served; as a download when asked. */
+export const renderFileUrl = (
+  slug: string,
+  { stamp, theme, name }: { stamp: string; theme: string; name: string },
+  download = false,
+) =>
+  `/api/projects/${[slug, "renders", stamp, theme, name].map(encodeURIComponent).join("/")}${download ? "?download=1" : ""}`;
 
 export const approveGate = (slug: string, gate: Gate) =>
   postJson(ApprovedSchema, `/api/projects/${encodeURIComponent(slug)}/approve`, { gate });

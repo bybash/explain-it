@@ -410,6 +410,54 @@ const flow = (
     },
     150_000,
   );
+
+  it.skipIf(!hasFfmpeg)(
+    "renders the example from the render gate: it can be cancelled, then plays and downloads",
+    async () => {
+      await page.click("text=Approve and go to Render");
+      await page.waitForURL(/#\/projects\/oauth-preview\/render$/);
+      await page.getByLabel("Theme").selectOption("light");
+      await page.getByLabel("Resolution").selectOption("720p");
+
+      // A render under way says what it is doing, and stops when cancelled.
+      await page.getByRole("button", { name: "Render", exact: true }).click();
+      const jobs = page.getByRole("list", { name: "Render jobs" });
+      await expect.poll(() => jobs.getByRole("status").textContent(), SOON).not.toBe("");
+      await jobs.getByRole("button", { name: /^Cancel the render/ }).click();
+      const ended = page.getByRole("list", { name: "Renders that did not finish" });
+      await expect.poll(() => ended.textContent(), SOON).toContain("Cancelled.");
+
+      await page.getByRole("button", { name: "Render", exact: true }).click();
+      await expect
+        .poll(() => jobs.getByRole("status").textContent(), { timeout: 60_000 })
+        .toMatch(/^Capturing the light video: frame \d+ of \d+$/);
+      const finished = page.getByRole("article", { name: /^Render of / });
+      await finished.waitFor({ timeout: 240_000 });
+
+      // The video plays: its clock moves on from where it starts.
+      const video = finished.getByLabel("The light video", { exact: true });
+      await expect
+        .poll(() => video.evaluate((v: HTMLVideoElement) => v.readyState >= 1 && v.duration), SOON)
+        .toBeGreaterThan(30);
+      await video.evaluate((v: HTMLVideoElement) => {
+        v.muted = true;
+        return v.play();
+      });
+      await expect
+        .poll(() => video.evaluate((v: HTMLVideoElement) => v.currentTime), SOON)
+        .toBeGreaterThan(0.2);
+      await video.evaluate((v: HTMLVideoElement) => v.pause());
+
+      // A file downloads as the browser saves it, named for its project, render and theme.
+      const srt = finished
+        .getByRole("list", { name: "Files of the light video" })
+        .getByRole("link", { name: "Captions (.srt)" });
+      const [download] = await Promise.all([page.waitForEvent("download"), srt.click()]);
+      expect(download.suggestedFilename()).toMatch(/^oauth-preview-[\dT.Z-]+-light-captions\.srt$/);
+      expect(readFileSync((await download.path()) ?? "", "utf8")).toMatch(/^1\n00:00:/);
+    },
+    360_000,
+  );
 };
 
 describe.skipIf(!hasChrome)("the web app (npm start)", () => {

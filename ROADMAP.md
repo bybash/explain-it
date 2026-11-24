@@ -99,7 +99,7 @@ The goal: the CLI renders a hand-written example to an MP4, with no LLM and no v
 | 3.6 | **Script gate panel**: the scene and beat editor; stale beats after graph edits | Changing a node marks only its beats as stale |
 | ✅ 3.7 | **Style gate panel, the look**: palette and mode, font, title and end cards, logo upload, output, with a live preview drawn by the render player | Changes show in the preview straight away |
 | ✅ 3.8 | **Preview gate**: the player with its sound (the voice generated with progress, mixed as the render mixes it), play and pause, a scrubber and the beat list | The example can be previewed with voice |
-| 3.9 | **Render gate**: the job queue, progress over SSE, cancel, downloads | The example renders from the UI |
+| ✅ 3.9 | **Render gate**: the job queue, progress over SSE, cancel, downloads | The example renders from the UI |
 | ✅ 3.11 | **Style gate panel, the sound**: voice picker with a sample, voice speed, pacing, captions, music | A voice sample plays from the panel |
 | ✅ 3.13 | **Preview gate checks**: run the checks from the panel, warnings that jump to their beat, the contact sheet | A warning in the example jumps to its beat |
 | 3.12 | **Style extras**: a custom palette editor, font upload | A custom palette and an uploaded font show in the preview and the render |
@@ -177,21 +177,6 @@ that finishes it.
   `src/checks/timing.ts`) without Chrome; the layout checks need Chrome and
   loudness a mix. The Preview gate runs them all from its Checks tab.
 
-### For 3.9 (render gate), from 2.1, 2.2, 2.4 and 3.8
-
-- A render job shows no progress while it speaks or mixes, and a cancel
-  waits for a model download already under way. The Preview gate already
-  speaks every line with progress (`generateVoice`'s `onProgress`), so a
-  render after a preview finds them cached; the render's own soundtrack is
-  mixed again, though the preview's (`cache/preview/<key>.wav`) is the same
-  mix.
-- A render captures every frame twice (captioned and clean), about twice
-  the time; the music takes 1.4–2.8 s per 75 s to make. If renders feel slow,
-  cache the music keyed by mood, seed and length, as the voice is, or make
-  the clean video optional.
-- Old lines stay in `cache/tts/` when a line is edited; nothing prunes
-  them yet.
-
 ### For 3.12 (style extras), from 3.7
 
 - The palette select shows a custom palette set over MCP as "Custom" but
@@ -215,30 +200,6 @@ that finishes it.
   heights off its line (the example's "save session").
 - Not checked yet: the title and end cards, and edges against zone labels.
 
-### For 3.9 (render gate), from 4.3
-
-- The render queue exists: `RenderQueue` in `src/render/queue.ts`, one
-  per app, shared with MCP. It runs one job at a time, can cancel a queued
-  or running job, and announces every change as a `render` event on
-  `/api/events`. 3.9 adds the UI, an API for it, and downloads.
-- Jobs are kept in memory, so a restart forgets them; their files stay in
-  the project's `out/`. Progress counts the whole job (each theme the
-  same), and a cancelled or failed render removes its `out/<time>/` folder.
-
-### For 3.9 (render gate), from 1.10
-
-- Keep one render job at a time, with themes rendered one after the other.
-  One 4-page render nearly fills the machine: 4 browsers capture about
-  61 fps, and 8 only about 68. Two renders at once each run at about half
-  speed. The example's light and dark together took 78 s, against about
-  82 s one after the other, with twice the Chrome processes in memory.
-- Overlapping renders are still correct: light and dark rendered together
-  came out byte-identical to each rendered alone. The queue is for speed and
-  memory, not for determinism.
-- The page count defaults to 4 (`PAGES` in `src/render/render.ts`; only
-  tests pass `pages`). On a machine with many more cores, choosing it from
-  the CPU count would help more than running jobs side by side.
-
 ### For 5.1 (LLM client), from 3.2
 
 - `settingsStore(...).current()` in `src/server/settings.ts` gives the base
@@ -249,9 +210,9 @@ that finishes it.
   `anthropic/claude-sonnet-5.5` (`SUGGESTED_MODEL`) is unchecked; confirm
   the id when recording the first fixtures.
 
-### For 3.6 to 3.9 (gate panels), from 3.3 and 3.5
+### For 3.6 (script gate panel), from 3.3, 3.5, 3.8 and 3.13
 
-- Each gate's panel replaces the placeholder in `GatePanel`
+- The script gate's panel replaces the last placeholder in `GatePanel`
   (`src/web/ProjectView.tsx`), as `GraphPanel` does for the graph gate;
   a panel tells `GatePanel` through `blocked` when the gate cannot be
   approved yet (unsaved edits). Approving the script gate needs
@@ -259,8 +220,8 @@ that finishes it.
   nothing yet. A panel that needs a large library loads it with the panel
   (`lazy`), as the graph editor does.
 - The end-to-end test (`src/server/web-e2e.test.ts`) runs the app as
-  `npm start` and as `npm run dev` on ports of its own; each panel slice
-  adds its gate's steps to its flow. It needs Chrome, so CI skips it.
+  `npm start` and as `npm run dev` on ports of its own; 3.6 adds the
+  script gate's steps to its flow. It needs Chrome, so CI skips it.
 - SPEC's preview gate says "jump to a beat and edit it": 3.8's beat list
   (`src/web/PreviewBeats.tsx`) jumps, and so does a warning in the Checks
   tab (3.13); editing a beat there can reuse 3.6's beat editor once it
@@ -330,3 +291,19 @@ that finishes it.
   pitch, a release as one card or clip per feature, a module as an
   onboarding walkthrough (as 4.4's walkthrough of this repository).
 - The narration alone as audio, to listen to away from the screen.
+- Render speed (from 1.10, 2.4 and 3.9): a render captures every frame
+  twice (captioned and clean), about twice the time; making the clean video
+  optional, caching the music by mood, seed and length (1.4–2.8 s per
+  75 s), and choosing the page count from the CPU count (`PAGES` in
+  `src/render/render.ts`, 4 by default) would each help. One render at a
+  time stays: one fills the machine (4 pages capture about 61 fps, 8 about
+  68), and two at once each run at about half speed; overlapping renders
+  still came out byte-identical to each rendered alone, so the queue is
+  for speed and memory, not for determinism.
+- Housekeeping (from 2.1 and 3.9): old lines stay in `cache/tts/` when a
+  line is edited; the Render gate cannot delete a render; renders made
+  before 3.9 have no `render.json`, so the gate does not list them; and a
+  cancel waits for a voice model download already under way. The gate
+  re-reads every render on each progress event; with many renders, the
+  event could carry the job and the disk list be read only when a job ends.
+  Renders that failed or were cancelled stay listed until the app restarts.

@@ -135,7 +135,7 @@ describe("a render's files", () => {
     expect((await video.arrayBuffer()).byteLength).toBe(1000);
     const srt = await file("captions.srt?download=1");
     expect(srt.headers.get("content-disposition")).toBe(
-      'attachment; filename="oauth-light-captions.srt"',
+      `attachment; filename="oauth-${STAMP}-light-captions.srt"`,
     );
   });
 

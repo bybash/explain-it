@@ -30,6 +30,13 @@ const seed = (dir: string) => {
   });
   const project = JSON.parse(readFileSync(join(example, "project.json"), "utf8"));
   writeFileSync(join(example, "project.json"), JSON.stringify({ ...project, gate: "preview" }));
+  // The example again, at the render gate, for its renders.
+  const rendering = join(dir, "oauth-render");
+  cpSync(example, rendering, { recursive: true });
+  writeFileSync(
+    join(rendering, "project.json"),
+    JSON.stringify({ ...project, name: "Sign-in video", gate: "render" }),
+  );
 
   const draft = join(dir, "photo-upload");
   mkdirSync(draft);
@@ -236,6 +243,41 @@ const SHOTS: readonly {
       await p
         .getByRole("img", { name: /^The contact sheet/ })
         .evaluate((img: HTMLImageElement) => img.decode());
+    },
+  },
+  {
+    name: "render-running",
+    hash: "#/projects/oauth-render/render",
+    ready: async (p) => {
+      await p.getByLabel("Resolution").selectOption("720p");
+      await p.getByLabel("Theme").selectOption("light");
+      await p.getByRole("button", { name: "Render", exact: true }).click();
+      await p
+        .getByRole("list", { name: "Render jobs" })
+        .getByText(/^Capturing the light video: frame/)
+        .waitFor({ timeout: 120_000 });
+    },
+  },
+  {
+    name: "render-done",
+    hash: "#/projects/oauth-render/render",
+    ready: async (p) => {
+      // The render the shot before started, once it is finished and nothing else is under way.
+      await p
+        .getByRole("article", { name: /^Render of / })
+        .first()
+        .waitFor({ timeout: 240_000 });
+      await p
+        .getByRole("list", { name: "Render jobs" })
+        .waitFor({ state: "detached", timeout: 240_000 });
+      await p
+        .getByLabel("The light video", { exact: true })
+        .first()
+        .evaluate((v: HTMLVideoElement) =>
+          v.readyState >= 1
+            ? undefined
+            : new Promise((r) => v.addEventListener("loadedmetadata", r)),
+        );
     },
   },
   {

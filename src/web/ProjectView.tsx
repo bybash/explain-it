@@ -15,6 +15,10 @@ const GraphPanel = lazy(() => import("./GraphPanel.tsx").then((m) => ({ default:
 const PreviewPanel = lazy(() =>
   import("./PreviewPanel.tsx").then((m) => ({ default: m.PreviewPanel })),
 );
+/** The renders and their downloads, loaded with the render gate. */
+const RenderPanel = lazy(() =>
+  import("./RenderPanel.tsx").then((m) => ({ default: m.RenderPanel })),
+);
 /** The style form, loaded with the style gate: it carries the palettes and fonts. */
 const StylePanel = lazy(() => import("./StylePanel.tsx").then((m) => ({ default: m.StylePanel })));
 
@@ -183,6 +187,10 @@ const GatePanel = ({
       ) : gate === "preview" ? (
         <Suspense fallback={<Muted>Opening the preview…</Muted>}>
           <PreviewPanel opened={opened} />
+        </Suspense>
+      ) : gate === "render" ? (
+        <Suspense fallback={<Muted>Opening the renders…</Muted>}>
+          <RenderPanel opened={opened} />
         </Suspense>
       ) : gate === "style" ? (
         <Suspense fallback={<Muted>Opening the style…</Muted>}>

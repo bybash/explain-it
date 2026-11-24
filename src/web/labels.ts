@@ -1,3 +1,4 @@
+import type { THEME_MODES } from "../schema/config.ts";
 import type { Gate } from "../schema/project.ts";
 
 /** How each gate is named in the app (SPEC, User flow). */
@@ -17,12 +18,23 @@ export const GATE_PANELS: Readonly<Record<Gate, string>> = {
     "How the video looks and sounds. Changes show in the preview straight away; the voice and the music have samples to listen to.",
   preview:
     "The video with its voice and music, as the render will make it. The voice is made when the gate opens; until then the video plays silently. The checks warn about anything that overlaps, leaves the frame, reads too fast or sounds too loud.",
-  render: "Render progress, then the downloads.",
+  render:
+    "The video rendered as MP4, each theme with and without its captions, with the .srt, the soundtrack, a poster and the contact sheet to download.",
 };
 
-/** "Updated 20 Nov 2026, 10:00" in the viewer's own time zone. */
-export const updatedLabel = (iso: string): string =>
-  `Updated ${new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}`;
+/** "20 Nov 2026, 10:00" in the viewer's own time zone. */
+export const dateTimeLabel = (iso: string): string =>
+  new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+
+/** "Updated 20 Nov 2026, 10:00". */
+export const updatedLabel = (iso: string): string => `Updated ${dateTimeLabel(iso)}`;
+
+/** How each theme choice reads, at the style gate and the render gate. */
+export const THEME_MODE_LABELS: Readonly<Record<(typeof THEME_MODES)[number], string>> = {
+  light: "Light",
+  dark: "Dark",
+  both: "Both (two videos)",
+};
 
 /** A name as a label shows it: "ocean" as "Ocean". */
 export const capitalised = (name: string): string => name.charAt(0).toUpperCase() + name.slice(1);

@@ -117,7 +117,9 @@ export const renderRoutes = (
       : undefined;
     if (!path)
       return errorResponse(c, 404, [{ path: "url", message: "no such file in a finished render" }]);
-    const download = c.req.query("download") === "1" ? `${slug}-${theme}-${file}` : undefined;
+    // The render's time in the name, so two renders' files never download over each other.
+    const download =
+      c.req.query("download") === "1" ? `${slug}-${stamp}-${theme}-${file}` : undefined;
     return fileResponse(c, path, download);
   });
 };
