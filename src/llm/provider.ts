@@ -81,6 +81,8 @@ export const providerClient = ({
           schema: jsonSchema(request.schema as Parameters<typeof jsonSchema>[0]),
         }),
         ...(maxRetries === undefined ? {} : { maxRetries }),
+        // Strict mode wants every field required; ours has optional ones, and the repair loop checks the shape.
+        providerOptions: { openaiCompatible: { strictJsonSchema: false } },
       });
       return ok({ text: result.text });
     } catch (error) {

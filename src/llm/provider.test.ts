@@ -79,6 +79,8 @@ describe("providerClient", () => {
       { role: "user", content: "Say hello." },
     ]);
     expect(JSON.stringify(sent?.body.response_format)).toContain('"greeting"');
+    // Not strict: our schemas have optional fields, and the repair loop checks the shape.
+    expect(sent?.body.response_format).toMatchObject({ json_schema: { strict: false } });
   });
 
   it("gives back a reply that is not JSON as it is, for the repair loop to answer", async () => {
