@@ -15,7 +15,9 @@ import {
 import { GATES } from "../schema/project.ts";
 import { BriefSchema } from "../schema/story.ts";
 import { StoryboardSchema } from "../schema/storyboard.ts";
+import { readContext } from "../server/context.ts";
 import { approveGate } from "../server/gates.ts";
+import { projectDir } from "../server/projects.ts";
 import { cancelRenderTool, checkTool, renderStatusTool, renderTool } from "./render-tools.ts";
 import {
   getProjectTool,
@@ -38,6 +40,7 @@ export const AGENT_TOOL_NAMES = {
   render: "render",
   renderStatus: "render_status",
   cancelRender: "cancel_render",
+  readContext: "read_context",
 } as const;
 const T = AGENT_TOOL_NAMES;
 
@@ -141,6 +144,17 @@ export const agentTools = (context: ToolContext, slug: string): AgentTool[] => [
       return approval.kind === "missing"
         ? { errors: [`slug: no project "${slug}"`] }
         : { errors: formatErrors(approval.errors) };
+    },
+  },
+  {
+    name: T.readContext,
+    description:
+      "Reads one of the files of context the user gave for this project (listed under Context in your instructions): notes, a spec, Mermaid or source code. Read what you need before drafting.",
+    inputSchema: inputOf(z.strictObject({ name: z.string() })),
+    run: async (input) => {
+      const name = String(argsOf(input).name ?? "");
+      const text = await readContext(projectDir(context.projectsDir, slug), name);
+      return text.ok ? { name, text: text.value } : { errors: formatErrors(text.errors) };
     },
   },
   {

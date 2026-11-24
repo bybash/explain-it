@@ -45,3 +45,4 @@ later record supersedes an earlier one and says so.
 | [033](033-llm-client.md) | The LLM client |
 | [034](034-chat-assistant.md) | The chat assistant |
 | [035](035-dim-focus.md) | A dim is its beat's focus |
+| [036](036-context.md) | Context for the assistant |

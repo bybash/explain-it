@@ -23,6 +23,7 @@ import { MCP_PATH } from "../schema/mcp.ts";
 import { LOCAL_HOSTS } from "../schema/settings.ts";
 import { runAssistant } from "./assistant.ts";
 import { addChat, appendChat, readChat } from "./chat.ts";
+import { contextRoutes } from "./context-routes.ts";
 import { createEvents } from "./events.ts";
 import { approveGate } from "./gates.ts";
 import { graphRoutes } from "./graph-routes.ts";
@@ -302,6 +303,7 @@ export const createApp = ({
   graphRoutes(app, { projectsDir, now, events });
   styleRoutes(app, { projectsDir, now, events });
   storyRoutes(app, { projectsDir, now, events });
+  contextRoutes(app, { projectsDir, events });
   storyboardRoutes(app, { projectsDir, now, events, tts });
   sampleRoutes(app, { projectsDir, tts });
   renderRoutes(app, { projectsDir, renders });

@@ -138,7 +138,7 @@ user works by hand or over MCP.
 | ID | Slice | Done when |
 |---|---|---|
 | ✅ 5.1 | **LLM client**: AI SDK with OpenRouter, Anthropic's own API (a Claude key) and OpenAI-compatible providers, structured calls, the repair loop, fixture recording and replay | Tests replay fixtures without a key |
-| 5.2 | **Context**: pasted text and file upload, the 100k-character limit, storing files in `context/` | Oversized context is refused with a clear message |
+| ✅ 5.2 | **Context**: pasted text and file upload, the 100k-character limit, storing files in `context/` | Oversized context is refused with a clear message |
 | 5.3 | **Graph drafting**, through the chat agent (5.7): chat and context to `graph.json`, streamed into the Mermaid view, at most two questions | Fixtures: three described flows give valid graphs |
 | 5.4 | **Script drafting**, through the chat agent (5.7): the story brief first (3.14), for approval, keeping to the project's and the house rules; then graph to scenes and beats, and a suggested title card, validated by the schema, the quick checks and 2.8's story checks, and repaired before the user sees it | Fixtures: the three graphs give valid storyboards |
 | 5.5 | **Edits through chat**: JSON Patches for the graph and the storyboard | Fixtures: "rename X", "add a retry step", "shorten beat 3" |

@@ -4,10 +4,12 @@ import type { LlmClient } from "../llm/client.ts";
 import { agentTools, AGENT_TOOL_NAMES as T } from "../mcp/agent-tools.ts";
 import type { ToolContext } from "../mcp/tools.ts";
 import type { ChatMessage } from "../schema/chat.ts";
+import type { ContextFile } from "../schema/context.ts";
 import type { ValidationError } from "../schema/errors.ts";
 import type { AgentMessage } from "../schema/llm.ts";
 import type { Gate } from "../schema/project.ts";
 import { appendChat, readChat } from "./chat.ts";
+import { listContext } from "./context.ts";
 import { openProject, projectDir } from "./projects.ts";
 import { readHouseRules } from "./stories.ts";
 
@@ -23,6 +25,18 @@ You are the assistant in the explAIn-it web app, working on the project "${slug}
 - Follow the Steps above. Stop and wait for the user's approval in this chat after the graph, after the story, and after the script. When they approve one, call ${T.approveGate} for that gate, then go on to the next step.
 - Never call ${T.approveGate} unless the user approved that gate in their last message.
 - When a tool gives back errors, fix what they name and call it again.`;
+
+/** The context the user gave, by name and size, for the model to read with its tool; nothing when there is none. */
+const contextSection = (files: readonly ContextFile[]) =>
+  files.length === 0
+    ? []
+    : [
+        `## Context
+
+The user gave these files for this project. Read the ones that bear on what you are drafting with ${T.readContext} before you draft, and say which you used.
+
+${files.map((f) => `- ${f.name} (${f.chars} characters)`).join("\n")}`,
+      ];
 
 /** The conversation for the model: the user's messages and the assistant's replies, without its step lines. */
 const historyOf = (messages: readonly ChatMessage[]): AgentMessage[] =>
@@ -101,9 +115,11 @@ export const runAssistant = async ({
   // The project's own gate: the user may be looking back at an earlier one.
   const opened = await openProject(context.projectsDir, slug);
   const reached = opened?.ok ? opened.value.project.gate : gate;
+  const given = await listContext(dir);
   const system = [
     authoringGuide({ houseRules: houseRules.ok ? houseRules.value : null }),
     inTheApp(slug, reached),
+    ...contextSection(given.files),
   ].join("\n\n");
   const result = await runAgent({
     client,

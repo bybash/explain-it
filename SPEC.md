@@ -575,9 +575,15 @@ Decision 018 says why.
   host that cannot be reached, a missing key. An endpoint on this machine
   (Ollama, LM Studio) needs no key.
 - Prompts live in `src/llm/prompts/` as Markdown files.
-- Context: pasted text and uploaded `.md`, `.txt`, `.mmd` and source files, up
-  to about 100,000 characters in total. Above that the user is asked to trim;
-  nothing is summarised silently.
+- Context: pasted text and uploaded `.md`, `.txt`, `.mmd` and source files
+  (`CONTEXT_EXTENSIONS`), kept as text in the project's `context/`, up to
+  100,000 characters in total (`MAX_CONTEXT_CHARS`). Above that nothing is
+  kept, and the user is told by how much and asked to remove or trim a
+  file; nothing is summarised silently. A binary file is refused. The
+  assistant's prompt lists the files by name and size, and its
+  `read_context` tool reads one when it needs it, so the text is not sent
+  on every step (decision 036). Context is added from the chat: attach a
+  file, or add what is typed in the message box as a file.
 - The README lists models tested for structured output. Local models are best
   effort.
 

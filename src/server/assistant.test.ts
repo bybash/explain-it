@@ -11,6 +11,7 @@ import { RenderQueue } from "../render/queue.ts";
 import type { ServerEvent } from "../schema/api.ts";
 import { runAssistant } from "./assistant.ts";
 import { appendChat, readChat } from "./chat.ts";
+import { addContext } from "./context.ts";
 import { createEvents } from "./events.ts";
 import { makeProject, projectDir } from "./projects.ts";
 
@@ -114,5 +115,39 @@ describe("runAssistant", () => {
     await runAssistant({ context, client, slug: "sign-in", gate: "script" });
     expect(conversed[0]?.system).toContain("which is at the graph gate");
     expect((await chat()).at(-1)?.gate).toBe("script");
+  });
+
+  it("lists the user's context in the prompt, and reads a file of it when the model asks", async () => {
+    await addContext(projectDir(projectsDir, "sign-in"), {
+      name: "spec.md",
+      text: "Sign-in uses Google and keeps a session for 30 days.",
+    });
+    await appendChat(projectDir(projectsDir, "sign-in"), [said("user", "Use my notes.")]);
+    const { client, conversed } = fakeLlm(
+      [],
+      [
+        { text: "", toolCalls: [{ id: "1", name: T.readContext, input: { name: "spec.md" } }] },
+        { text: "Read it.", toolCalls: [] },
+      ],
+    );
+    await runAssistant({ context, client, slug: "sign-in", gate: "graph" });
+    expect(conversed[0]?.system).toContain("- spec.md (52 characters)");
+    expect(conversed[1]?.messages.at(-1)).toEqual({
+      role: "tool",
+      results: [
+        {
+          id: "1",
+          name: T.readContext,
+          output: { name: "spec.md", text: "Sign-in uses Google and keeps a session for 30 days." },
+        },
+      ],
+    });
+  });
+
+  it("says nothing of context when there is none", async () => {
+    await appendChat(projectDir(projectsDir, "sign-in"), [said("user", "Hi.")]);
+    const { client, conversed } = fakeLlm([], [{ text: "Hello.", toolCalls: [] }]);
+    await runAssistant({ context, client, slug: "sign-in", gate: "graph" });
+    expect(conversed[0]?.system).not.toContain("## Context");
   });
 });
