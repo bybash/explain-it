@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { formatErrors, parseWith, type Validated, type ValidationError } from "../schema/errors.ts";
+import type { LlmMessage } from "../schema/llm.ts";
 import { fail } from "../schema/result.ts";
-import type { LlmClient, LlmMessage } from "./client.ts";
+import type { LlmClient } from "./client.ts";
 
 /** How often a call is asked again after its answer did not fit (SPEC, LLM: "at most twice"). */
 export const MAX_REPAIRS = 2;

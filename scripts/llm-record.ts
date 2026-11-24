@@ -6,7 +6,6 @@ import { resolve } from "node:path";
 import { FIXTURES_DIR, fixtureClient } from "../src/llm/fixtures.ts";
 import { providerClient } from "../src/llm/provider.ts";
 import { RECORDED_CALLS } from "../src/llm/recordings.ts";
-import { structuredCall } from "../src/llm/structured.ts";
 import { formatErrors } from "../src/schema/errors.ts";
 import { settingsStore } from "../src/server/settings.ts";
 
@@ -22,7 +21,7 @@ const client = fixtureClient({
 });
 let failed = false;
 for (const call of RECORDED_CALLS) {
-  const result = await structuredCall(client, call as Parameters<typeof structuredCall>[1]);
+  const result = await call.run(client);
   console.log(
     result.ok ? `${call.name}: ok` : `${call.name}:\n  ${formatErrors(result.errors).join("\n  ")}`,
   );

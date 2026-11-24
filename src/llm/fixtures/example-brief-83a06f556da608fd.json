@@ -35,12 +35,7 @@
         "shape": {
           "description": "The shape the story takes.",
           "type": "string",
-          "enum": [
-            "problem",
-            "before-after",
-            "failure",
-            "zoom"
-          ]
+          "enum": ["problem", "before-after", "failure", "zoom"]
         },
         "hook": {
           "description": "What the first beat says to make the viewer want the rest.",
@@ -55,9 +50,7 @@
           "maxLength": 2000
         }
       },
-      "required": [
-        "version"
-      ],
+      "required": ["version"],
       "additionalProperties": false,
       "description": "The story a project's script tells: who it is for, what to remember, its shape."
     }

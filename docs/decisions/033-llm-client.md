@@ -16,16 +16,21 @@ most two rounds, and recorded fixtures so that tests and CI need no key.
   and Anthropic recommends it for testing rather than production. Settings
   gains an "Anthropic (Claude)" preset; each preset suggests a model its API
   knows (`claude-opus-5-5` there, `anthropic/claude-sonnet-5.5` on
-  OpenRouter, confirmed in OpenRouter's model list).
+  OpenRouter, which is in OpenRouter's model list but was not used for a
+  recording). OpenAI and local endpoints suggest none: their models are
+  the user's to name.
 - **Our validation, not the SDK's.** The client asks for the schema as JSON
   Schema, without strict mode (our schemas have optional fields), and gives
   back the text, JSON or not. `structuredCall` reads it with the zod schema
   and an optional check (references between files), and sends any problems
   back by their place, at most twice. The same error paths the rest of the
-  app uses reach the model, as they reach MCP agents.
-- **Plain errors.** A refused key, no credit, an unknown model or base URL,
+  app uses reach the model, as they reach MCP agents. The SPEC's three
+  stages (schema, references, checks) are the schema and one `check`: a
+  drafting slice composes references and quick checks into it.
+- **Plain errors, never the key.** A refused key, no credit, an unknown model or base URL,
   rate limits and an unreachable host each say what to do. An endpoint on
-  this machine needs no key; any other does, before a call is made.
+  this machine needs no key; any other does, before a call is made. A key
+  an endpoint echoes in its error is wiped before the message goes on.
 - **Fixtures keyed by the request.** A hash of the system prompt, messages
   and schema, not the model, names each recording, so a changed prompt can
   never replay an old answer. Failed calls are not recorded.

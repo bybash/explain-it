@@ -1,26 +1,16 @@
 import { createHash } from "node:crypto";
 import { mkdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { z } from "zod";
+import { fileURLToPath } from "node:url";
 import { inFile } from "../render/load.ts";
 import { writeWhole } from "../render/write-whole.ts";
 import { parseWith, type Validated } from "../schema/errors.ts";
+import { LlmFixtureSchema, type LlmReply } from "../schema/llm.ts";
 import { fail, ok } from "../schema/result.ts";
-import type { LlmClient, LlmReply, LlmRequest } from "./client.ts";
+import type { LlmClient, LlmRequest } from "./client.ts";
 
 /** Where the recorded answers live; tests replay them, so CI needs no key (AGENTS.md, Tests). */
-export const FIXTURES_DIR = new URL("./fixtures/", import.meta.url).pathname;
-
-/** A recorded call: what was asked, and the answer. */
-const FixtureSchema = z.strictObject({
-  name: z.string(),
-  request: z.strictObject({
-    system: z.string(),
-    messages: z.array(z.strictObject({ role: z.enum(["user", "assistant"]), content: z.string() })),
-    schema: z.record(z.string(), z.unknown()),
-  }),
-  reply: z.strictObject({ text: z.string() }),
-});
+export const FIXTURES_DIR = fileURLToPath(new URL("./fixtures/", import.meta.url));
 
 /**
  * A request's key: a hash of everything the model is asked, but not the
@@ -50,7 +40,11 @@ export const fixtureClient = ({
     const key = keyOf(request);
     const file = `${request.name}-${key}.json`;
     const path = join(dir, file);
-    const text = await readFile(path, "utf8").catch(() => undefined);
+    // Only a missing file means "not recorded"; any other failure is a broken environment.
+    const text = await readFile(path, "utf8").catch((error: NodeJS.ErrnoException) => {
+      if (error.code === "ENOENT") return undefined;
+      throw error;
+    });
     if (text !== undefined) {
       let data: unknown;
       try {
@@ -58,7 +52,7 @@ export const fixtureClient = ({
       } catch {
         return fail([{ path: file, message: "not valid JSON" }]);
       }
-      const fixture = parseWith(FixtureSchema, data);
+      const fixture = parseWith(LlmFixtureSchema, data);
       return fixture.ok ? ok(fixture.value.reply) : fail(inFile(file, fixture.errors));
     }
     if (!record)

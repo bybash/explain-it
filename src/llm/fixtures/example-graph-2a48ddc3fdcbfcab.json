@@ -82,11 +82,7 @@
                 "description": "A palette category name; a node's defaults by its kind, an edge's and a zone's to the accent."
               }
             },
-            "required": [
-              "id",
-              "label",
-              "kind"
-            ],
+            "required": ["id", "label", "kind"],
             "additionalProperties": false
           }
         },
@@ -123,11 +119,7 @@
                 "description": "A palette category name; a node's defaults by its kind, an edge's and a zone's to the accent."
               }
             },
-            "required": [
-              "id",
-              "from",
-              "to"
-            ],
+            "required": ["id", "from", "to"],
             "additionalProperties": false
           }
         },
@@ -152,22 +144,13 @@
                 "description": "A palette category name; a node's defaults by its kind, an edge's and a zone's to the accent."
               }
             },
-            "required": [
-              "id",
-              "label"
-            ],
+            "required": ["id", "label"],
             "additionalProperties": false
           },
           "description": "Groups of nodes; Mermaid subgraphs."
         }
       },
-      "required": [
-        "version",
-        "title",
-        "nodes",
-        "edges",
-        "zones"
-      ],
+      "required": ["version", "title", "nodes", "edges", "zones"],
       "additionalProperties": false,
       "description": "The structure of a flow. Mermaid is generated from it."
     }

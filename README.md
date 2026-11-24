@@ -46,6 +46,16 @@ your own machine. Projects are kept in `projects/`. Keep it running while
 your IDE uses it. `HOST`, `PORT`, `PROJECTS_DIR` and `CACHE_DIR` change these; with
 another address, change the URL in your IDE's config to match.
 
+## Models
+
+The app's own LLM (Settings) can be OpenRouter, Anthropic's API with a
+Claude key, or any OpenAI-compatible endpoint, including Ollama and LM
+Studio. Models tested for structured output:
+
+| Model | Endpoint | Tested |
+|---|---|---|
+| `anthropic/claude-haiku-5.5` | OpenRouter | The recorded fixtures in `src/llm/fixtures/` (5.1) |
+
 ## Use it from your IDE
 
 The app serves MCP at `http://127.0.0.1:3000/mcp`. Add it to your IDE once.

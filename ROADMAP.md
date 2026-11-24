@@ -217,6 +217,9 @@ that finishes it.
   schema fails to replay until it is recorded again with
   `npm run llm:record` (add its calls to `src/llm/recordings.ts`).
 - Calls are not streamed yet; 5.3 streams the graph into the Mermaid view.
+- The recorded calls write their prompts inline, as examples; the
+  drafting slices (5.3, 5.4) put theirs in `src/llm/prompts/` as Markdown
+  (SPEC, LLM) and add the models they test to the README's list.
 - A personal Anthropic key that is not scoped to a workspace needs the
   `anthropic-workspace-id` header; the client does not send one.
 
