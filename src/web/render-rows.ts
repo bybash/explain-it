@@ -33,15 +33,11 @@ export const jobLine = (job: RenderJob): string => {
 
 /**
  * The jobs the Render gate shows: those queued or running, and those that
- * failed or were cancelled. A finished job is left out once its render is
- * listed from disk, so a render shows once.
+ * failed or were cancelled. A finished job is left out: its render is
+ * listed from disk (it is written before the job is done), so it shows once.
  */
-export const jobsToShow = (view: RendersView): RenderJob[] => {
-  const listed = new Set(view.renders.map((render) => render.stamp));
-  return view.jobs.filter(
-    (job) => job.state !== "done" || job.stamp === undefined || !listed.has(job.stamp),
-  );
-};
+export const jobsToShow = (view: RendersView): RenderJob[] =>
+  view.jobs.filter((job) => job.state !== "done");
 
 /** A render's files by theme, in the order it rendered them. */
 export const themesOf = (render: RenderedFolder) =>

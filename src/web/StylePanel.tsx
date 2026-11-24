@@ -16,7 +16,7 @@ import {
 import type { ValidationError } from "../schema/errors.ts";
 import { getLogo, saveStyle } from "./api.ts";
 import { Errors } from "./Errors.tsx";
-import { capitalised } from "./labels.ts";
+import { capitalised, THEME_MODE_LABELS } from "./labels.ts";
 import { StylePreview } from "./StylePreview.tsx";
 import { CaptionsCard, MusicCard, PacingCard, VoiceCard } from "./sound-fields.tsx";
 import { CardFields, INPUT_CLASS, LABEL_CLASS, LogoFields, Section } from "./style-fields.tsx";
@@ -29,7 +29,6 @@ const CARDS_CLASS = "grid grid-cols-[1fr] items-start gap-4 @2xl:grid-cols-2";
 /** The settings each tab changes, to mark the tab that has unsaved changes. */
 const LOOK_SETTINGS = ["theme", "font", "cards", "logo", "output"] as const;
 const SOUND_SETTINGS = ["voice", "pacing", "captions", "music"] as const;
-const MODE_LABELS = { light: "Light", dark: "Dark", both: "Both (two videos)" } as const;
 
 /** Whether opening the project found config.json broken, so the defaults stand in for it. */
 const configBroken = (opened: OpenedProject) =>
@@ -221,7 +220,7 @@ export const StylePanel = ({
                             checked={draft.theme.mode === mode}
                             onChange={() => change({ ...draft, theme: { ...draft.theme, mode } })}
                           />
-                          {MODE_LABELS[mode]}
+                          {THEME_MODE_LABELS[mode]}
                         </label>
                       ))}
                     </div>

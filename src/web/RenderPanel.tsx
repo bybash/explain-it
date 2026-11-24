@@ -1,22 +1,16 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { OpenedProject } from "../schema/api.ts";
 import { DEFAULT_CONFIG, RESOLUTIONS, type Resolution, THEME_MODES } from "../schema/config.ts";
-import type { RenderedFolder, RenderFile } from "../schema/render.ts";
+import type { RenderedFolder, RenderFile, RenderJob } from "../schema/render.ts";
 import { renderFileUrl } from "./api.ts";
-import { capitalised } from "./labels.ts";
+import { capitalised, dateTimeLabel, THEME_MODE_LABELS } from "./labels.ts";
 import { clockTime } from "./preview-time.ts";
 import { jobLine, jobsToShow, sizeLabel, themesOf } from "./render-rows.ts";
+import { Pill } from "./ui.tsx";
 import { useRenders } from "./useRenders.ts";
 
 /** A theme to render: one, or both. */
 type ThemeMode = (typeof THEME_MODES)[number];
-
-/** How each theme choice reads in the form. */
-const THEME_LABELS: Readonly<Record<ThemeMode, string>> = {
-  light: "Light",
-  dark: "Dark",
-  both: "Light and dark",
-};
 
 /** How each of a render's files is named for download. */
 const FILE_LABELS: Readonly<Record<RenderFile, string>> = {
@@ -28,17 +22,13 @@ const FILE_LABELS: Readonly<Record<RenderFile, string>> = {
   contactSheet: "Contact sheet",
 };
 
-/** "23 Nov 2026, 22:40" in the viewer's own time zone. */
-const whenLabel = (iso: string): string =>
-  new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
-
 const CARD = "rounded-box border border-line bg-surface p-4";
 
 /** A finished render: each theme's video to play, and every file to download with its size. */
 const FinishedRender = ({ slug, render }: { slug: string; render: RenderedFolder }) => (
-  <article className={CARD} aria-label={`Render of ${whenLabel(render.createdAt)}`}>
+  <article className={CARD} aria-label={`Render of ${dateTimeLabel(render.createdAt)}`}>
     <h4 className="font-semibold">
-      {whenLabel(render.createdAt)}
+      {dateTimeLabel(render.createdAt)}
       <span className="font-normal text-muted text-sm">
         {" "}
         · {render.resolution} · {clockTime(render.seconds)}
@@ -71,7 +61,7 @@ const FinishedRender = ({ slug, render }: { slug: string; render: RenderedFolder
                   <a
                     className="underline"
                     href={renderFileUrl(slug, where(file.name), true)}
-                    download={`${slug}-${theme}-${file.name}`}
+                    download
                   >
                     {FILE_LABELS[file.file]}
                   </a>
@@ -87,6 +77,48 @@ const FinishedRender = ({ slug, render }: { slug: string; render: RenderedFolder
 );
 
 /**
+ * A render queued or running: what it is doing, a bar (moving while it
+ * speaks or mixes, then filling with its frames), and Cancel. Its controls
+ * name it by the time it was asked for, as several can be listed.
+ */
+const LiveJob = ({
+  job,
+  announced,
+  cancel,
+}: {
+  job: RenderJob;
+  announced: boolean;
+  cancel: () => void;
+}) => {
+  const asked = dateTimeLabel(job.createdAt);
+  const framing = job.state === "running" && job.step?.step === "frames" && job.progress;
+  return (
+    <li className="flex flex-wrap items-center gap-3 py-2" data-job={job.id}>
+      <span className="font-semibold">{capitalised(job.state)}</span>
+      <span className="text-muted text-sm" {...(announced ? { role: "status" } : {})}>
+        {jobLine(job)}
+      </span>
+      {job.state === "running" && (
+        <progress
+          className="h-1.5 w-40 accent-accent"
+          max={100}
+          // Without a value the bar moves on its own: the voice and the mix have no frames to count.
+          {...(framing ? { value: job.progress?.percent ?? 0 } : {})}
+          aria-label={`Progress of the render asked for ${asked}`}
+        />
+      )}
+      <Pill
+        className="ml-auto"
+        onClick={cancel}
+        aria-label={`Cancel the render asked for ${asked}`}
+      >
+        Cancel
+      </Pill>
+    </li>
+  );
+};
+
+/**
  * The Render gate's panel (SPEC, Rendering): render the video with the
  * style's theme and resolution, or others chosen here (the style is not
  * changed); follow the render step by step, and cancel it; then play each
@@ -97,10 +129,14 @@ export const RenderPanel = ({ opened }: { opened: OpenedProject }) => {
   const config = opened.config ?? DEFAULT_CONFIG;
   const [theme, setTheme] = useState<ThemeMode>(config.theme.mode);
   const [resolution, setResolution] = useState<Resolution>(config.output.resolution);
+  // A style saved since (in another tab, or over MCP) presets the form again.
+  useEffect(() => setTheme(config.theme.mode), [config.theme.mode]);
+  useEffect(() => setResolution(config.output.resolution), [config.output.resolution]);
   const { view, problem, render, cancel } = useRenders(slug);
   const jobs = view ? jobsToShow(view) : [];
   const renders = view?.renders ?? [];
-  const busy = jobs.some((job) => job.state === "running" || job.state === "queued");
+  const live = jobs.filter((job) => job.state === "running" || job.state === "queued");
+  const ended = jobs.filter((job) => !live.includes(job));
 
   return (
     <div className="mt-3 mb-2 flex flex-col gap-6">
@@ -124,7 +160,7 @@ export const RenderPanel = ({ opened }: { opened: OpenedProject }) => {
             >
               {THEME_MODES.map((mode) => (
                 <option key={mode} value={mode}>
-                  {THEME_LABELS[mode]}
+                  {THEME_MODE_LABELS[mode]}
                 </option>
               ))}
             </select>
@@ -144,58 +180,51 @@ export const RenderPanel = ({ opened }: { opened: OpenedProject }) => {
             </select>
           </label>
           <button type="submit" className="btn px-4 py-1.5">
-            {busy ? "Render after this one" : "Render"}
+            Render
           </button>
         </form>
         <p className="mt-3 text-muted text-sm">
           The style's theme and resolution are chosen; changing them here does not change the style.
-          A render takes about a minute a theme for the example, after the voice.
+          {live.length > 0 && " A new render starts when the one under way is done."}
         </p>
         {problem && <p className="mt-2 text-error text-sm">{problem}</p>}
       </section>
 
-      {jobs.length > 0 && (
+      {live.length > 0 && (
         <section className={CARD} aria-labelledby="render-jobs-heading">
           <h3 id="render-jobs-heading" className="mb-1 font-bold text-base">
             Renders under way
           </h3>
           <ul className="divide-y divide-line" aria-label="Render jobs">
-            {jobs.map((job) => {
-              const ended = job.state === "failed" || job.state === "cancelled";
-              const percent = job.state === "running" ? (job.progress?.percent ?? 0) : undefined;
-              return (
-                <li
-                  key={job.id}
-                  className="flex flex-wrap items-center gap-3 py-2"
-                  data-job={job.id}
+            {live.map((job, i) => (
+              <LiveJob
+                key={job.id}
+                job={job}
+                // Only the first is running; its line alone is announced as it moves on.
+                announced={i === 0}
+                cancel={() => cancel(job.id)}
+              />
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {ended.length > 0 && (
+        <section className={CARD} aria-labelledby="render-ended-heading">
+          <h3 id="render-ended-heading" className="mb-1 font-bold text-base">
+            Renders that did not finish
+          </h3>
+          <ul className="divide-y divide-line" aria-label="Renders that did not finish">
+            {ended.map((job) => (
+              <li key={job.id} className="flex flex-wrap items-baseline gap-3 py-2">
+                <span className="text-muted text-sm">{dateTimeLabel(job.createdAt)}</span>
+                <span
+                  className={job.state === "failed" ? "text-error text-sm" : "text-muted text-sm"}
                 >
-                  <span className="font-semibold">{capitalised(job.state)}</span>
-                  <span
-                    role="status"
-                    className={job.state === "failed" ? "text-error text-sm" : "text-muted text-sm"}
-                  >
-                    {jobLine(job)}
-                  </span>
-                  {percent !== undefined && (
-                    <progress
-                      className="h-1.5 w-40 accent-accent"
-                      value={percent}
-                      max={100}
-                      aria-label="Render progress"
-                    />
-                  )}
-                  {!ended && (
-                    <button
-                      type="button"
-                      className="ml-auto rounded-full border border-line px-3 py-1 text-sm hover:border-accent"
-                      onClick={() => cancel(job.id)}
-                    >
-                      Cancel
-                    </button>
-                  )}
-                </li>
-              );
-            })}
+                  {jobLine(job)}
+                </span>
+              </li>
+            ))}
           </ul>
         </section>
       )}

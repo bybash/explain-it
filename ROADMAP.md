@@ -297,8 +297,13 @@ that finishes it.
   75 s), and choosing the page count from the CPU count (`PAGES` in
   `src/render/render.ts`, 4 by default) would each help. One render at a
   time stays: one fills the machine (4 pages capture about 61 fps, 8 about
-  68), and two at once each run at about half speed.
+  68), and two at once each run at about half speed; overlapping renders
+  still came out byte-identical to each rendered alone, so the queue is
+  for speed and memory, not for determinism.
 - Housekeeping (from 2.1 and 3.9): old lines stay in `cache/tts/` when a
   line is edited; the Render gate cannot delete a render; renders made
   before 3.9 have no `render.json`, so the gate does not list them; and a
-  cancel waits for a voice model download already under way.
+  cancel waits for a voice model download already under way. The gate
+  re-reads every render on each progress event; with many renders, the
+  event could carry the job and the disk list be read only when a job ends.
+  Renders that failed or were cancelled stay listed until the app restarts.

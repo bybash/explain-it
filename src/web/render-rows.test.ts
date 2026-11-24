@@ -59,13 +59,14 @@ describe("jobsToShow", () => {
     files: [],
   });
 
-  it("leaves out a finished job, as its render is listed, and keeps the others", () => {
+  it("leaves out a finished job, as its render is listed from disk, and keeps the others", () => {
     const view: RendersView = {
       jobs: [
         job({ id: "a", state: "queued" }),
         job({ id: "b", state: "running", stamp: "2026-11-23T10-40-00.000Z" }),
         job({ id: "c", state: "done", stamp: "2026-11-23T10-30-00.000Z" }),
         job({ id: "d", state: "failed", error: "Chrome crashed" }),
+        job({ id: "e", state: "done" }),
       ],
       renders: [render("2026-11-23T10-30-00.000Z")],
     };

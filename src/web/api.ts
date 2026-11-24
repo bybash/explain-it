@@ -202,7 +202,7 @@ export const renderFileUrl = (
   { stamp, theme, name }: { stamp: string; theme: string; name: string },
   download = false,
 ) =>
-  `/api/projects/${encodeURIComponent(slug)}/renders/${stamp}/${theme}/${name}${download ? "?download=1" : ""}`;
+  `/api/projects/${[slug, "renders", stamp, theme, name].map(encodeURIComponent).join("/")}${download ? "?download=1" : ""}`;
 
 export const approveGate = (slug: string, gate: Gate) =>
   postJson(ApprovedSchema, `/api/projects/${encodeURIComponent(slug)}/approve`, { gate });

@@ -1,6 +1,6 @@
 import type { ChecksRun, PreviewChecks } from "../schema/api.ts";
 import type { checkRows, WarningPlace } from "./check-rows.ts";
-import { counted } from "./labels.ts";
+import { counted, dateTimeLabel } from "./labels.ts";
 import { clockTime } from "./preview-time.ts";
 
 type CheckRows = ReturnType<typeof checkRows>;
@@ -26,8 +26,7 @@ const runLine = (run: ChecksRun): string => {
 };
 
 /** "Checked 23 Nov 2026, 10:00" in the viewer's own time zone. */
-export const checkedLabel = (iso: string): string =>
-  `Checked ${new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}`;
+export const checkedLabel = (iso: string): string => `Checked ${dateTimeLabel(iso)}`;
 
 /** The note an older report carries once the files have changed since. */
 export const OutOfDate = ({ checks }: { checks: PreviewChecks }) =>
