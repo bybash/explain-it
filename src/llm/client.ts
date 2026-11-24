@@ -1,4 +1,6 @@
+import type { z } from "zod";
 import type { Validated } from "../schema/errors.ts";
+import type { LlmAskedSchema, LlmReply } from "../schema/llm.ts";
 
 /**
  * The port to an LLM (AGENTS.md, Ports): one structured call, answered with
@@ -7,19 +9,10 @@ import type { Validated } from "../schema/errors.ts";
  * a schema, and asking again when it does not fit, is the repair loop's work.
  */
 
-export type LlmMessage = { readonly role: "user" | "assistant"; readonly content: string };
-
-export type LlmRequest = {
+export type LlmRequest = z.output<typeof LlmAskedSchema> & {
   /** What the call is for, such as "graph": it names its fixtures. */
   readonly name: string;
-  readonly system: string;
-  readonly messages: readonly LlmMessage[];
-  /** The JSON Schema the answer is asked to follow. */
-  readonly schema: Readonly<Record<string, unknown>>;
 };
-
-/** The model's answer, as text: JSON when it followed the schema, anything when it did not. */
-export type LlmReply = { readonly text: string };
 
 export type LlmClient = {
   /** The model's answer, or why the endpoint could not give one, named plainly. */

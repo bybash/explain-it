@@ -118,6 +118,32 @@ describe("providerClient", () => {
     ]);
   });
 
+  it("says plainly when the account has no credit or the endpoint is limiting calls", async () => {
+    const broke = await stub(() => ({ status: 402, body: { error: { message: "Payment" } } }));
+    const busy = await stub(() => ({ status: 429, body: { error: { message: "Slow down" } } }));
+    const first = async (baseUrl: string) => {
+      const reply = await client({ baseUrl }).generate(REQUEST);
+      return reply.ok ? "" : (formatErrors(reply.errors)[0] ?? "");
+    };
+    expect(await first(broke.baseUrl)).toBe(
+      "llm: 127.0.0.1 refused the call for payment; check the account's credit",
+    );
+    expect(await first(busy.baseUrl)).toBe(
+      "llm: 127.0.0.1 is limiting calls; wait a moment and try again",
+    );
+  });
+
+  it("never repeats the key, even when the endpoint's own error does", async () => {
+    const { baseUrl } = await stub(() => ({
+      status: 400,
+      body: { error: { message: "Bad request for key sk-test-123" } },
+    }));
+    const reply = await client({ baseUrl }).generate(REQUEST);
+    const said = reply.ok ? "" : formatErrors(reply.errors).join("\n");
+    expect(said).toMatch(/^llm: 127\.0\.0\.1 answered 400/);
+    expect(said).not.toContain("sk-test-123");
+  });
+
   it("needs a key for an endpoint on the network, but not for one on this machine", async () => {
     const { baseUrl, received } = await stub(() => ({
       status: 200,

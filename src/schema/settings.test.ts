@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   maskKey,
   PROVIDERS,
+  presetModel,
   providerOf,
   SettingsUpdateSchema,
   SUGGESTED_MODEL,
@@ -72,5 +73,12 @@ describe("suggestedModel", () => {
     expect(suggestedModel("https://api.anthropic.com/v1")).toBe("claude-opus-5-5");
     expect(suggestedModel("https://openrouter.ai/api/v1")).toBe(SUGGESTED_MODEL);
     expect(suggestedModel("https://example.com/v1")).toBe(SUGGESTED_MODEL);
+  });
+
+  it("leaves the model to the user for endpoints whose models are theirs to name", () => {
+    expect(presetModel("https://api.anthropic.com/v1")).toBe("claude-opus-5-5");
+    expect(presetModel("https://openrouter.ai/api/v1")).toBe(SUGGESTED_MODEL);
+    expect(presetModel("https://api.openai.com/v1")).toBeUndefined();
+    expect(presetModel("http://127.0.0.1:11434/v1")).toBeUndefined();
   });
 });

@@ -530,9 +530,11 @@ Decision 018 says why.
   showing them, so most problems never reach the user.
 - Vercel AI SDK. Providers: OpenRouter (default), Anthropic's own API for a
   Claude key (native structured output), and any OpenAI-compatible
-  endpoint (OpenAI, Ollama, LM Studio). Settings: base URL, API key, model;
-  a preset suggests a model its API knows (`claude-opus-5-5` for
-  Anthropic).
+  endpoint (OpenAI, Ollama, LM Studio). Settings: base URL, API key, model.
+  The OpenRouter and Anthropic presets suggest a model their API knows
+  (`claude-opus-5-5` for Anthropic); for OpenAI and local endpoints the
+  user names the model. A key echoed in an endpoint's error is never
+  repeated.
   One model for every call in v1.
 - Drafting is one of the assistant's tools: one structured call per file,
   each with its own zod schema:

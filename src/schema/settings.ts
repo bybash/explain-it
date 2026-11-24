@@ -53,16 +53,16 @@ export const LOCAL_HOSTS = ["localhost", "127.0.0.1", "[::1]"] as const;
 /** Docker's name for the machine it runs on, where Ollama or LM Studio listen. */
 const DOCKER_HOST = "host.docker.internal";
 
+/** Whether a hostname is this machine, as Ollama and LM Studio are: their calls never cross the network. */
+export const isThisMachine = (hostname: string): boolean =>
+  (LOCAL_HOSTS as readonly string[]).includes(hostname) || hostname === DOCKER_HOST;
+
 /** Whether calls to this base URL keep the key off the network: anything but http, or http to this machine. */
 const keepsKeyPrivate = (url: string) => {
   // zod runs this even after the URL check fails; that failure is already named.
   if (!URL.canParse(url)) return true;
   const { protocol, hostname } = new URL(url);
-  return (
-    protocol !== "http:" ||
-    (LOCAL_HOSTS as readonly string[]).includes(hostname) ||
-    hostname === DOCKER_HOST
-  );
+  return protocol !== "http:" || isThisMachine(hostname);
 };
 
 export const SettingsUpdateSchema = z.strictObject({
@@ -132,8 +132,24 @@ const withoutSlash = (url: string) => url.replace(/\/+$/, "");
 export const providerOf = (baseUrl: string): ProviderId =>
   PROVIDERS.find((p) => withoutSlash(p.baseUrl) === withoutSlash(baseUrl))?.id ?? "custom";
 
-/** The model suggested for an endpoint when none is set: its preset's own, or `SUGGESTED_MODEL`. */
-export const suggestedModel = (baseUrl: string): string => {
-  const preset = PROVIDERS.find((p) => p.id === providerOf(baseUrl));
-  return preset && "model" in preset ? preset.model : SUGGESTED_MODEL;
+/** The preset a base URL belongs to, if any. */
+const presetOf = (baseUrl: string) => PROVIDERS.find((p) => p.id === providerOf(baseUrl));
+
+/**
+ * The model a preset suggests, as its own API names it: OpenRouter's and
+ * Anthropic's; undefined for an endpoint whose models are the user's to name
+ * (OpenAI, Ollama, LM Studio, a custom one).
+ */
+export const presetModel = (baseUrl: string): string | undefined => {
+  if (providerOf(baseUrl) === "openrouter") return SUGGESTED_MODEL;
+  const preset = presetOf(baseUrl);
+  return preset && "model" in preset ? preset.model : undefined;
 };
+
+/** The model used when none is set: the preset's own, else `SUGGESTED_MODEL`. */
+export const suggestedModel = (baseUrl: string): string => presetModel(baseUrl) ?? SUGGESTED_MODEL;
+
+/** The host of Claude's own API, from its preset: the provider client calls it with Anthropic's API. */
+export const ANTHROPIC_HOST = new URL(
+  PROVIDERS.find((p) => p.id === "anthropic")?.baseUrl ?? "https://api.anthropic.com",
+).hostname;

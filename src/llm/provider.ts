@@ -2,9 +2,10 @@ import { createAnthropic } from "@ai-sdk/anthropic";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { APICallError, generateText, jsonSchema, NoObjectGeneratedError, Output } from "ai";
 import type { Validated } from "../schema/errors.ts";
+import type { LlmReply } from "../schema/llm.ts";
 import { fail, ok } from "../schema/result.ts";
-import { LOCAL_HOSTS } from "../schema/settings.ts";
-import type { LlmClient, LlmReply, LlmRequest } from "./client.ts";
+import { ANTHROPIC_HOST, isThisMachine } from "../schema/settings.ts";
+import type { LlmClient, LlmRequest } from "./client.ts";
 
 /** What a call needs from Settings: the endpoint, the model, and the key when there is one. */
 export type ProviderSettings = {
@@ -13,17 +14,8 @@ export type ProviderSettings = {
   readonly apiKey?: string | undefined;
 };
 
-/** Hosts that speak Claude's own Messages API rather than OpenAI's. */
-const ANTHROPIC_HOSTS = ["api.anthropic.com"];
 /** Room for Claude's thinking, which counts toward the output limit, as well as the answer. */
 const CLAUDE_MAX_OUTPUT = 16_000;
-
-/** Docker's name for the machine it runs on, where Ollama or LM Studio listen. */
-const DOCKER_HOST = "host.docker.internal";
-
-/** Whether an endpoint runs on this machine, as Ollama and LM Studio do, and so needs no key. */
-const onThisMachine = (hostname: string) =>
-  (LOCAL_HOSTS as readonly string[]).includes(hostname) || hostname === DOCKER_HOST;
 
 const llmError = (message: string): Validated<never> => fail([{ path: "llm", message }]);
 
@@ -62,7 +54,7 @@ const said = (error: unknown, host: string, model: string): string => {
 export const providerClient = ({
   settings,
   maxRetries,
-  anthropicHosts = ANTHROPIC_HOSTS,
+  anthropicHosts = [ANTHROPIC_HOST],
 }: {
   readonly settings: () => Promise<ProviderSettings>;
   /** How often a failed call is tried again; the SDK's default when not given. */
@@ -73,7 +65,7 @@ export const providerClient = ({
   generate: async (request: LlmRequest): Promise<Validated<LlmReply>> => {
     const { baseUrl, model, apiKey } = await settings();
     const { hostname } = new URL(baseUrl);
-    if (!apiKey && !onThisMachine(hostname))
+    if (!apiKey && !isThisMachine(hostname))
       return llmError(`no API key for ${hostname}; add one in Settings`);
     // Claude's key works with its own API, which has native structured output; every other endpoint speaks OpenAI's.
     const claude = anthropicHosts.includes(hostname);
@@ -103,7 +95,9 @@ export const providerClient = ({
     } catch (error) {
       // An answer that is not JSON is still an answer: the repair loop asks again.
       if (NoObjectGeneratedError.isInstance(error)) return ok({ text: error.text ?? "" });
-      return llmError(said(error, hostname, model));
+      // Some endpoints echo the key in their error text; it never goes further than here.
+      const reason = said(error, hostname, model);
+      return llmError(apiKey ? reason.replaceAll(apiKey, "••••") : reason);
     }
   },
 });
