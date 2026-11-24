@@ -254,10 +254,9 @@ export const createApp = ({
   app.get("/api/projects/:slug/chat", async (c) => {
     const slug = c.req.param("slug");
     if (!(await projectExists(projectsDir, slug))) return noProject(c, slug);
-    return c.json({
-      ...(await readChat(projectDir(projectsDir, slug))),
-      working: answering.has(slug),
-    });
+    // Asked before the file is read: once the assistant is done, its reply is already in the file.
+    const working = answering.has(slug);
+    return c.json({ ...(await readChat(projectDir(projectsDir, slug))), working });
   });
 
   // The assistant answers each message in the background, one at a time per project (SPEC, LLM: the assistant).
