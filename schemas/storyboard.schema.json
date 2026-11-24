@@ -186,7 +186,7 @@
                           "except"
                         ],
                         "additionalProperties": false,
-                        "description": "For this beat, everything but these nodes fades back; the next beat brings it back unless it dims too."
+                        "description": "Everything but these nodes fades back from here to the next dim or the next beat without one; a dim in a scene's last beat holds to its end."
                       },
                       {
                         "type": "object",

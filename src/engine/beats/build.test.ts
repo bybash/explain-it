@@ -549,46 +549,84 @@ describe("buildBeats: a dim is its beat's focus", () => {
     const b = spanOf(plan.beats, id);
     return (b.start + b.end) / 2;
   };
-  const n = (id: string) => nodeTarget(scoped("s", id));
-  const e = (id: string) => edgeTarget(scoped("s", id));
+  const nodeOf = (id: string) => nodeTarget(scoped("s", id));
+  const edgeOf = (id: string) => edgeTarget(scoped("s", id));
 
   it("fades what a beat does not keep, for that beat", () => {
-    expect(dim(mid("one"), n("c"))).toBe(1);
-    expect(dim(mid("one"), e("bc"))).toBe(1);
-    expect(dim(mid("one"), n("a"))).toBe(0);
-    expect(dim(mid("one"), e("ab"))).toBe(0);
+    expect(dim(mid("one"), nodeOf("c"))).toBe(1);
+    expect(dim(mid("one"), edgeOf("bc"))).toBe(1);
+    expect(dim(mid("one"), nodeOf("a"))).toBe(0);
+    expect(dim(mid("one"), edgeOf("ab"))).toBe(0);
   });
 
   it("brings back what a later dim keeps, so the focus moves", () => {
-    expect(dim(mid("two"), n("c"))).toBe(0);
-    expect(dim(mid("two"), e("bc"))).toBe(0);
-    expect(dim(mid("two"), n("a"))).toBe(1);
-    expect(dim(mid("two"), e("ab"))).toBe(1);
+    expect(dim(mid("two"), nodeOf("c"))).toBe(0);
+    expect(dim(mid("two"), edgeOf("bc"))).toBe(0);
+    expect(dim(mid("two"), nodeOf("a"))).toBe(1);
+    expect(dim(mid("two"), edgeOf("ab"))).toBe(1);
   });
 
   it("keeps a node both beats keep bright across the change, with no flash", () => {
     const one = spanOf(plan.beats, "one");
     const two = spanOf(plan.beats, "two");
-    for (let t = one.start; t <= two.end; t += 0.05) expect(dim(t, n("b")), `at ${t}`).toBe(0);
+    for (let t = one.start; t <= two.end; t += 0.05) expect(dim(t, nodeOf("b")), `at ${t}`).toBe(0);
   });
 
   it("brings everything back for a beat without a dim", () => {
-    for (const target of [n("a"), n("b"), n("c"), e("ab"), e("bc")])
+    for (const target of [nodeOf("a"), nodeOf("b"), nodeOf("c"), edgeOf("ab"), edgeOf("bc")])
       expect(dim(mid("three"), target), target).toBe(0);
   });
 
+  it("moves the focus within a beat at each of its dims", () => {
+    const twice = unwrap(
+      parseStoryboard(
+        {
+          version: 1,
+          scenes: [
+            {
+              id: "s",
+              title: "Twice",
+              nodes: ["a", "b", "c"],
+              beats: [
+                {
+                  id: "both",
+                  caption: "A, then C.",
+                  actions: [
+                    { type: "dim", except: ["a"] },
+                    { type: "flow", edge: "ab" },
+                    { type: "dim", except: ["c"] },
+                  ],
+                },
+                { id: "after", caption: "All.", actions: [] },
+                { id: "end", caption: "End.", actions: [] },
+              ],
+            },
+          ],
+        },
+        focusGraph,
+      ),
+    );
+    const built = buildBeats(twice, focusGraph);
+    const seek = seeker(built);
+    const span = spanOf(built.beats, "both");
+    // Early in the beat only A is kept; by its end only C is.
+    expect(seek(span.start + 0.9, nodeOf("c")).dim ?? 0).toBe(1);
+    expect(seek(span.end - 0.01, nodeOf("c")).dim ?? 0).toBe(0);
+    expect(seek(span.end - 0.01, nodeOf("a")).dim ?? 0).toBe(1);
+  });
+
   it("holds a dim in the scene's last beat through the scene's fade-out", () => {
-    expect(dim(mid("four"), n("b"))).toBe(1);
-    expect(dim(plan.duration, n("b"))).toBe(1);
-    expect(dim(plan.duration, n("a"))).toBe(0);
+    expect(dim(mid("four"), nodeOf("b"))).toBe(1);
+    expect(dim(plan.duration, nodeOf("b"))).toBe(1);
+    expect(dim(plan.duration, nodeOf("a"))).toBe(0);
   });
 });
 
 describe("buildBeats: a scene whose dims went semi-transparent", () => {
   const { graph: fixtureGraph, storyboard: fixtureBoard } = dimFocusFixture;
-  const g = unwrap(parseGraph(fixtureGraph));
-  const board = unwrap(parseStoryboard(fixtureBoard, g));
-  const plan = buildBeats(board, g);
+  const fixture = unwrap(parseGraph(fixtureGraph));
+  const board = unwrap(parseStoryboard(fixtureBoard, fixture));
+  const plan = buildBeats(board, fixture);
   const at = seeker(plan);
   const scene = board.scenes.find((s) => s.id === "backprop");
   if (!scene) throw new Error("no backprop scene");

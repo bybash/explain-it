@@ -43,7 +43,7 @@ export const ActionSchema = z.discriminatedUnion("type", [
   z
     .strictObject({ type: z.literal("dim"), except: z.array(IdSchema).min(1) })
     .describe(
-      "For this beat, everything but these nodes fades back; the next beat brings it back unless it dims too.",
+      "Everything but these nodes fades back from here to the next dim or the next beat without one; a dim in a scene's last beat holds to its end.",
     ),
   z
     .strictObject({
