@@ -351,12 +351,13 @@ const flow = (
     await page.getByLabel("Hook").fill("Where does your password go?");
     await page.getByLabel("Notes and rules").fill("Leave out token refresh.");
     // Unsaved, the brief holds the gate.
-    expect(await page.isDisabled("text=Approve and go to Style")).toBe(true);
+    await expect.poll(() => page.isDisabled("text=Approve and go to Style"), SOON).toBe(true);
     await page.click("text=Save the brief");
     await expect
       .poll(() => page.textContent(`${SCRIPT_GATE} [role=status]`), SOON)
       .toContain("Saved");
-    expect(await page.isDisabled("text=Approve and go to Style")).toBe(false);
+    // The gate hears of the save a render later, through the Script gate's panel.
+    await expect.poll(() => page.isDisabled("text=Approve and go to Style"), SOON).toBe(false);
     await page.reload();
     await expect.poll(() => page.getByLabel("Shape").inputValue(), SOON).toBe("before-after");
     expect(await page.getByLabel("Who it is for").inputValue()).toBe("New backend developers");

@@ -12,7 +12,7 @@ import {
   type SettingField,
   SettingsUpdateSchema,
   type SettingsView,
-  SUGGESTED_MODEL,
+  suggestedModel,
 } from "../schema/settings.ts";
 import { parseEnvFile, updateEnvFile } from "./env-file.ts";
 
@@ -91,7 +91,7 @@ export const settingsStore = ({
     return {
       baseUrl,
       provider: providerOf(baseUrl),
-      model: found.model?.value ?? SUGGESTED_MODEL,
+      model: found.model?.value ?? suggestedModel(baseUrl),
       modelIsSuggested: found.model === undefined,
       key: found.apiKey
         ? {
@@ -108,9 +108,10 @@ export const settingsStore = ({
     view,
     current: async () => {
       const found = await resolve();
+      const baseUrl = found.baseUrl?.value ?? DEFAULT_BASE_URL;
       return {
-        baseUrl: found.baseUrl?.value ?? DEFAULT_BASE_URL,
-        model: found.model?.value ?? SUGGESTED_MODEL,
+        baseUrl,
+        model: found.model?.value ?? suggestedModel(baseUrl),
         ...(found.apiKey ? { apiKey: found.apiKey.value } : {}),
       };
     },
