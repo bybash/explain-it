@@ -35,8 +35,10 @@ export const storyRoutes = (
   });
 
   app.get("/api/house-rules", async (c) => {
-    const rules: HouseRulesBody = { text: await readHouseRules(projectsDir) };
-    return c.json(rules);
+    const rules = await readHouseRules(projectsDir);
+    if (!rules.ok) return errorResponse(c, 422, rules.errors);
+    const body: HouseRulesBody = { text: rules.value ?? "" };
+    return c.json(body);
   });
 
   app.put("/api/house-rules", async (c) => {

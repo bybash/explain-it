@@ -15,6 +15,7 @@ import { orThrow } from "../schema/errors.ts";
 import { parseGraph } from "../schema/graph.ts";
 import { parseLayout } from "../schema/layout.ts";
 import { parseProject } from "../schema/project.ts";
+import { MAX_HOUSE_RULES } from "../schema/story.ts";
 import { createEvents } from "../server/events.ts";
 import { createMcpServer } from "./server.ts";
 
@@ -465,6 +466,16 @@ describe("set_brief and the house rules", () => {
       type: "text",
       text: authoringGuide({ houseRules: rules }),
     });
+  });
+});
+
+describe("house rules over the limit", () => {
+  it("are named as the broken file by get_project and get_guide, not passed on", async () => {
+    const { slug } = await succeeds("create_project", { graph: graphFile });
+    writeFileSync(join(projectsDir, "house-rules.md"), "x".repeat(MAX_HOUSE_RULES + 1));
+    expect((await fails("get_project", { slug }))[0]).toMatch(/^house-rules\.md/);
+    const guide = await client.callTool({ name: "get_guide", arguments: {} });
+    expect(guide.isError).toBe(true);
   });
 });
 

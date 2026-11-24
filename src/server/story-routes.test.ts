@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Hono } from "hono";
@@ -98,5 +98,12 @@ describe("the house rules", () => {
     expect(response.status).toBe(400);
     expect((await response.json()).errors[0].path).toBe("text");
     expect(readFileSync(join(projectsDir, "house-rules.md"), "utf8")).toBe("- No jargon.");
+  });
+
+  it("names a hand-edited file over the limit, rather than passing it on", async () => {
+    writeFileSync(join(projectsDir, "house-rules.md"), "x".repeat(MAX_HOUSE_RULES + 1));
+    const response = await app.request("/api/house-rules");
+    expect(response.status).toBe(422);
+    expect((await response.json()).errors[0].path).toMatch(/^house-rules\.md/);
   });
 });

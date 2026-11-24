@@ -155,8 +155,8 @@ ${json(EXAMPLE_STORYBOARD)}
 \`\`\``;
 
 /** The user's house rules, above the advice they override; nothing when there are none. */
-const houseRulesSection = (rules: string) =>
-  rules.trim() === ""
+const houseRulesSection = (rules: string | null) =>
+  rules === null || rules.trim() === ""
     ? []
     : [
         `## House rules
@@ -172,9 +172,9 @@ ${rules.trim()}`,
  * written any (\`house-rules.md\`).
  */
 export const authoringGuide = ({
-  houseRules = "",
+  houseRules = null,
 }: {
-  readonly houseRules?: string;
+  readonly houseRules?: string | null;
 } = {}): string =>
   [
     "# Making an explAIn-it video",

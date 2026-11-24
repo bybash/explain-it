@@ -1,5 +1,6 @@
 import type { TtsProvider } from "../audio/tts.ts";
 import { narrationLengths, readCachedVoice } from "../audio/voice.ts";
+import { authoringGuide } from "../guidance/guide.ts";
 import { graphToMermaid } from "../mermaid/generate.ts";
 import type { RunChecks } from "../render/check.ts";
 import type { MissingTool } from "../render/environment.ts";
@@ -81,12 +82,19 @@ export const getProjectTool = async (context: ToolContext, input: Args) => {
   if (!opened.ok) return opened;
   const { graph } = opened.value;
   const houseRules = await readHouseRules(context.projectsDir);
+  if (!houseRules.ok) return houseRules;
   return ok({
     ...opened.value,
-    houseRules: houseRules.trim() === "" ? null : houseRules,
+    houseRules: houseRules.value,
     mermaid: graph ? graphToMermaid(graph) : null,
     preview: context.previewUrl(args.value.slug),
   });
+};
+
+/** The guide with the user's house rules, for `get_guide` and the `explain_flow` prompt. */
+export const guideTool = async (context: ToolContext): Promise<Validated<string>> => {
+  const houseRules = await readHouseRules(context.projectsDir);
+  return houseRules.ok ? ok(authoringGuide({ houseRules: houseRules.value })) : houseRules;
 };
 
 export const setBriefTool = async (context: ToolContext, input: Args) => {

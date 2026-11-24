@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { authoringGuide, graphSummary, storyboardSummary } from "../guidance/guide.ts";
+import { graphSummary, storyboardSummary } from "../guidance/guide.ts";
 import { RESOLUTIONS, THEME_MODES } from "../schema/config.ts";
 import { formatErrors, type Validated } from "../schema/errors.ts";
 import {
@@ -22,7 +22,6 @@ import {
 } from "../schema/mcp.ts";
 import { RENDER_STATES } from "../schema/render.ts";
 import { isSlug } from "../server/projects.ts";
-import { readHouseRules } from "../server/stories.ts";
 import { VERSION } from "../version.ts";
 import {
   cancelRenderTool,
@@ -34,6 +33,7 @@ import {
 import {
   createProjectTool,
   getProjectTool,
+  guideTool,
   listProjectsTool,
   setBriefTool,
   setStoryboardTool,
@@ -91,10 +91,7 @@ const TOOLS = [
   {
     name: TOOL_NAMES.getGuide,
     schema: GetGuideArgsSchema,
-    run: async (context: ToolContext) => ({
-      ok: true as const,
-      value: authoringGuide({ houseRules: await readHouseRules(context.projectsDir) }),
-    }),
+    run: guideTool,
     text: true,
     description:
       "Returns the guide to making an explAIn-it video: the user's house rules, the steps and when to wait for the user's approval, the exact formats of graph.json and storyboard.json with their limits, how to shape the story and tell it in beats, the style options, and a worked example. Read it before writing a graph or a storyboard.",
@@ -213,7 +210,10 @@ export const createMcpServer = (context: ToolContext): McpServer => {
       },
     },
     async ({ topic }) => {
-      const guide = authoringGuide({ houseRules: await readHouseRules(context.projectsDir) });
+      const read = await guideTool(context);
+      // A prompt has no error result of its own; the client shows this message.
+      if (!read.ok) throw new Error(formatErrors(read.errors).join("\n"));
+      const guide = read.value;
       return {
         messages: [
           {
