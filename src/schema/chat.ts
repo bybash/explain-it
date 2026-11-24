@@ -18,6 +18,8 @@ export const ChatMessageSchema = z.strictObject({
   at: z.iso.datetime(),
   /** The gate the user was looking at when the message was sent. */
   gate: z.enum(GATES),
+  /** A line the assistant adds as it works ("Saved the graph."): shown, but not part of the conversation it reads back. */
+  kind: z.literal("step").optional(),
 });
 export type ChatMessage = z.output<typeof ChatMessageSchema>;
 

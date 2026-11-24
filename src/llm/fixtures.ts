@@ -28,6 +28,13 @@ export const FIXTURES_DIR = fileURLToPath(new URL("./fixtures/", import.meta.url
 const keyOf = (asked: unknown) =>
   createHash("sha256").update(JSON.stringify(asked)).digest("hex").slice(0, FIXTURE_HASH_LENGTH);
 
+/** What a turn fixture keeps of the step it recorded: hashes of the long, repeated parts. */
+const recordedTurn = ({ system, tools, messages }: Record<string, unknown>) => ({
+  system: `sha256:${keyOf(system)}`,
+  tools: `sha256:${keyOf(tools)}`,
+  messages,
+});
+
 /** A recorded file read through its schema: its reply, or why it cannot be used. */
 const readRecorded = async <S extends z.ZodType<{ reply: unknown }>>(
   path: string,
@@ -89,7 +96,7 @@ export const fixtureClient = ({
     await mkdir(dir, { recursive: true });
     await writeWhole(
       path,
-      `${JSON.stringify({ name, [field]: asked, reply: reply.value }, null, 2)}\n`,
+      `${JSON.stringify({ name, [field]: field === "turn" ? recordedTurn(asked) : asked, reply: reply.value }, null, 2)}\n`,
     );
     return reply;
   };
