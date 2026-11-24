@@ -136,7 +136,7 @@ user works by hand or over MCP.
 
 | ID | Slice | Done when |
 |---|---|---|
-| 5.1 | **LLM client**: AI SDK with OpenRouter, Anthropic's own API (a Claude key) and OpenAI-compatible providers, structured calls, the repair loop, fixture recording and replay | Tests replay fixtures without a key |
+| ✅ 5.1 | **LLM client**: AI SDK with OpenRouter, Anthropic's own API (a Claude key) and OpenAI-compatible providers, structured calls, the repair loop, fixture recording and replay | Tests replay fixtures without a key |
 | 5.2 | **Context**: pasted text and file upload, the 100k-character limit, storing files in `context/` | Oversized context is refused with a clear message |
 | 5.3 | **Graph drafting**, through the chat agent (5.7): chat and context to `graph.json`, streamed into the Mermaid view, at most two questions | Fixtures: three described flows give valid graphs |
 | 5.4 | **Script drafting**, through the chat agent (5.7): the story brief first (3.14), for approval, keeping to the project's and the house rules; then graph to scenes and beats, and a suggested title card, validated by the schema, the quick checks and 2.8's story checks, and repaired before the user sees it | Fixtures: the three graphs give valid storyboards |
@@ -205,15 +205,23 @@ that finishes it.
   heights off its line (the example's "save session").
 - Not checked yet: the title and end cards, and edges against zone labels.
 
-### For 5.1 (LLM client), from 3.2
+### For 5.7 (chat agent), from 5.1
 
-- `settingsStore(...).current()` in `src/server/settings.ts` gives the base
-  URL, model and full key, read fresh from `.env` on each call; the client
-  takes them from there. The page checks nothing against the provider: a
-  wrong key or model shows up only on the first call, so 5.1 should name it
-  plainly ("the key was refused by openrouter.ai"). The suggested model
-  `anthropic/claude-sonnet-5.5` (`SUGGESTED_MODEL`) is unchecked; confirm
-  the id when recording the first fixtures.
+- The client is not wired into the app yet. `providerClient` in
+  `src/llm/provider.ts` takes `settingsStore(...).current` from
+  `src/server/settings.ts` (read on every call), and `structuredCall` in
+  `src/llm/structured.ts` runs one call with the repair loop. 5.7 makes the
+  agent's tool calls on the same client.
+- Tests replay recorded answers (`fixtureClient`, `src/llm/fixtures/`),
+  keyed by a hash of the request without the model: a changed prompt or
+  schema fails to replay until it is recorded again with
+  `npm run llm:record` (add its calls to `src/llm/recordings.ts`).
+- Calls are not streamed yet; 5.3 streams the graph into the Mermaid view.
+- The recorded calls write their prompts inline, as examples; the
+  drafting slices (5.3, 5.4) put theirs in `src/llm/prompts/` as Markdown
+  (SPEC, LLM) and add the models they test to the README's list.
+- A personal Anthropic key that is not scoped to a workspace needs the
+  `anthropic-workspace-id` header; the client does not send one.
 
 ### For 5.8 (checks in the chat), from 3.6 and 3.13
 
