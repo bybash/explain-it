@@ -9,6 +9,7 @@ import {
 } from "../schema/settings.ts";
 import { getSettings, saveSettings } from "./api.ts";
 import { Errors } from "./Errors.tsx";
+import { HouseRules } from "./HouseRules.tsx";
 import { formOf, type SettingsForm, settingsChanges } from "./settings-form.ts";
 import { Muted, PageTitle } from "./ui.tsx";
 
@@ -183,6 +184,7 @@ export const Settings = () => {
         </div>
         <Errors errors={errors} />
       </form>
+      <HouseRules />
     </section>
   );
 };

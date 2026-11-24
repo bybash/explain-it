@@ -37,6 +37,7 @@ const DIAGRAM = "[aria-label='The graph as a diagram']";
 const PROJECTS = "[aria-label=Projects] > li";
 const GRAPH_GATE = "[aria-label='Graph gate']";
 const STYLE_GATE = "[aria-label='Style gate']";
+const SCRIPT_GATE = "[aria-label='Script gate']";
 
 /** Ports away from the defaults, so a developer's own app on 3000 and 3001 is left alone. */
 const START_PORT = 3457;
@@ -339,6 +340,65 @@ const flow = (
 
     await page.click("text=Approve and go to Preview");
     await page.waitForURL(/#\/projects\/oauth-style\/preview$/);
+  }, 60_000);
+
+  it("keeps the story: a brief at the Script gate and house rules in Settings, which an agent then reads", async () => {
+    exampleAt(projectsDir, "oauth-story", "script");
+    await page.goto(`${server.url}/#/projects/oauth-story/script`);
+    await page.getByLabel("Who it is for").fill("New backend developers");
+    await page.getByLabel("The one thing to remember").fill("The app never sees the password.");
+    await page.getByLabel("Shape").selectOption("before-after");
+    await page.getByLabel("Hook").fill("Where does your password go?");
+    await page.getByLabel("Notes and rules").fill("Leave out token refresh.");
+    // Unsaved, the brief holds the gate.
+    expect(await page.isDisabled("text=Approve and go to Style")).toBe(true);
+    await page.click("text=Save the brief");
+    await expect
+      .poll(() => page.textContent(`${SCRIPT_GATE} [role=status]`), SOON)
+      .toContain("Saved");
+    expect(await page.isDisabled("text=Approve and go to Style")).toBe(false);
+    await page.reload();
+    await expect.poll(() => page.getByLabel("Shape").inputValue(), SOON).toBe("before-after");
+    expect(await page.getByLabel("Who it is for").inputValue()).toBe("New backend developers");
+
+    await page.goto(`${server.url}/#/settings`);
+    const rules = "- No jargon.\n- End with a link to the docs.";
+    await page.getByLabel("House rules").fill(rules);
+    await page.click("text=Save the house rules");
+    await expect
+      .poll(() => page.textContent("[aria-label=Storytelling] [role=status]"), SOON)
+      .toContain("Saved");
+    await page.reload();
+    await expect.poll(() => page.getByLabel("House rules").inputValue(), SOON).toBe(rules);
+
+    // An agent reads both, as an IDE's MCP client would.
+    const rpc = async (method: string, params: unknown) => {
+      const response = await fetch(`${server.url}/mcp`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+        },
+        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
+      });
+      return (await response.json()).result;
+    };
+    const opened = await rpc("tools/call", {
+      name: "get_project",
+      arguments: { slug: "oauth-story" },
+    });
+    const project = JSON.parse(opened.content[0].text);
+    expect(project.brief).toEqual({
+      version: 1,
+      audience: "New backend developers",
+      takeaway: "The app never sees the password.",
+      shape: "before-after",
+      hook: "Where does your password go?",
+      notes: "Leave out token refresh.",
+    });
+    expect(project.houseRules).toBe(rules);
+    const prompt = await rpc("prompts/get", { name: "explain_flow", arguments: {} });
+    expect(prompt.messages[0].content.text).toContain(rules);
   }, 60_000);
 
   it.skipIf(!hasFfmpeg)(

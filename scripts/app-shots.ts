@@ -30,6 +30,18 @@ const seed = (dir: string) => {
   });
   const project = JSON.parse(readFileSync(join(example, "project.json"), "utf8"));
   writeFileSync(join(example, "project.json"), JSON.stringify({ ...project, gate: "preview" }));
+  // The example's story, so the Script gate shows a brief filled in.
+  writeFileSync(
+    join(example, "brief.json"),
+    JSON.stringify({
+      version: 1,
+      audience: "Developers new to the codebase",
+      takeaway: "The app never sees the password: it gets a token instead.",
+      shape: "problem",
+      hook: "Where does your password go when you sign in with Google?",
+      notes: "Leave out token refresh; it has its own video.",
+    }),
+  );
   // The example again, at the render gate, for its renders.
   const rendering = join(dir, "oauth-render");
   cpSync(example, rendering, { recursive: true });
@@ -72,6 +84,10 @@ const seed = (dir: string) => {
       .concat("not a message")
       .join("\n")
       .concat("\n"),
+  );
+  writeFileSync(
+    join(dir, "house-rules.md"),
+    "- No jargon without saying what it means.\n- End with a link to the docs.\n",
   );
   // A saved key, so the settings show its hint and the box to remove it.
   writeFileSync(join(dir, ".env"), "LLM_API_KEY=sk-or-v1-0123456789abcdef\n");

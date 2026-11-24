@@ -237,6 +237,9 @@ export const ServerEventSchema = z.discriminatedUnion("type", [
 
 export type ProjectSummary = z.output<typeof ProjectSummarySchema>;
 export type ProjectList = z.output<typeof ProjectListSchema>;
+/** A brief saved at the Script gate. */
+export const BriefSavedSchema = z.strictObject({ brief: BriefSchema });
+
 /** The house rules, as the Settings page reads and writes them. */
 export const HouseRulesBodySchema = z.strictObject({ text: HouseRulesSchema });
 export type HouseRulesBody = z.output<typeof HouseRulesBodySchema>;

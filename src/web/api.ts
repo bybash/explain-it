@@ -1,11 +1,13 @@
 import type { z } from "zod";
 import {
   ApprovedSchema,
+  BriefSavedSchema,
   ChecksRunSchema,
   CreatedProjectSchema,
   ErrorsResponseSchema,
   GraphReadSchema,
   GraphSavedSchema,
+  HouseRulesBodySchema,
   type OpenedProject,
   OpenedProjectSchema,
   PreviewChecksSchema,
@@ -27,6 +29,7 @@ import type { Gate } from "../schema/project.ts";
 import { RenderJobSchema } from "../schema/render.ts";
 import { fail, ok } from "../schema/result.ts";
 import { type SettingsUpdate, type SettingsView, SettingsViewSchema } from "../schema/settings.ts";
+import type { Brief } from "../schema/story.ts";
 
 /**
  * Calls the API and checks what comes back against its schema. Expected
@@ -148,6 +151,24 @@ export const saveStyle = (slug: string, edit: StyleEdit) =>
     method: "PUT",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(edit),
+  });
+
+/** Saves the project's story brief, replacing the one before. */
+export const saveBrief = (slug: string, brief: Brief) =>
+  fetchChecked(BriefSavedSchema, `/api/projects/${encodeURIComponent(slug)}/brief`, {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(brief),
+  });
+
+/** The house rules every project's story follows. */
+export const getHouseRules = () => fetchChecked(HouseRulesBodySchema, "/api/house-rules");
+
+export const saveHouseRules = (text: string) =>
+  fetchChecked(HouseRulesBodySchema, "/api/house-rules", {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ text }),
   });
 
 /** The saved logo as data URLs, for the preview, or null without one. */
