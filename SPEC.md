@@ -44,6 +44,21 @@ The app is a chat on the left and a panel on the right. Work moves through
 five **gates**. Each gate shows its result in the panel; the user approves it
 by chat or by button, or edits it, either through chat or directly in the panel.
 
+**Three ways through, one process** (decision 031). The gates, the files
+and the checks are the same whoever does the work, and the ways can be
+mixed on one project:
+
+- **The chat.** With an LLM key in Settings, the assistant does the work:
+  it calls the same tools as an MCP agent, gate by gate, and waits for the
+  user's approval in the chat. It runs the checks itself and offers a fix
+  for what they find (see LLM).
+- **MCP.** An agent in the user's IDE, with their own LLM, calls the tools
+  (see MCP).
+- **By hand.** Without a key, the user does each gate in its panel: the
+  Mermaid editor, the brief and the beat editor, the style form, the
+  preview and the render; or writes the files and uses the CLI. The chat
+  says that no LLM is connected and points at the panel and Settings.
+
 | Gate | The LLM produces | The panel shows | Direct edits |
 |---|---|---|---|
 | 1. Graph | `graph.json` from the description and context | Mermaid code and the rendered diagram | Edit the Mermaid code |
@@ -492,10 +507,22 @@ Decision 018 says why.
 
 ## LLM
 
+- **The assistant is an agent.** The in-app LLM calls the same tools as an
+  MCP agent, in-process, reads the same guide with the house rules, and
+  stops for the user's approval at each gate. Drafting a gate's file is one
+  of its tools.
+- **Checks become fixes.** The quick checks run after every script change,
+  and the full checks when the Preview gate opens and before a render. The
+  assistant reports what they find in plain words, each with a Fix. A fix
+  that changes the user's words is offered first; a timing or layout fix
+  (a slower beat, a moved box) is applied and said. Every fix can be undone.
+  The assistant runs the checks on its own drafts and repairs them before
+  showing them, so most problems never reach the user.
 - Vercel AI SDK. Providers: OpenRouter (default) and any OpenAI-compatible
   endpoint (OpenAI, Ollama, LM Studio). Settings: base URL, API key, model.
   One model for every call in v1.
-- One structured call per gate, each with its own zod schema:
+- Drafting is one of the assistant's tools: one structured call per file,
+  each with its own zod schema:
   - **Graph:** the chat and context in, `graph.json` out. Streamed, so the
     Mermaid view builds up live.
   - **Script:** the approved graph in, `storyboard.json` out.
@@ -757,8 +784,9 @@ key and also serve as test fixtures:
 3. **Web app.** The five gates, Mermaid round-trip, editors, preview, render queue.
 4. **MCP.** The endpoint, the tools and the `explain_flow` prompt: the first
    way to make a video end to end, from the IDE, with no LLM in explAIn-it.
-5. **LLM.** Graph and script drafting in the web app, repair loops, edits
-   through chat.
+5. **The assistant.** The in-app LLM as an agent with the MCP tools, checks
+   in the chat with Fix and undo, graph and script drafting through it, edits
+   through chat, layout repair.
 6. **Ship.** Docker on GHCR, three examples, docs, v0.1.0.
 
 The pull requests that make up each milestone are listed in [`ROADMAP.md`](ROADMAP.md).
