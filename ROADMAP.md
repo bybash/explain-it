@@ -184,6 +184,45 @@ Open questions, settled before the milestone starts:
   the zod schemas, as every other limit does, so the LLM's drafts keep to
   them.
 
+## Feedback to plan (2026-11-24)
+
+From using the app after 5.7, in the user's words where possible. To be
+turned into slices; nothing here is scheduled yet.
+
+**The video**
+
+- **Scene 2 of a video went semi-transparent** (`projects/test1-2`, its
+  contact sheet). Cause found: `dim` only ever fades out. A later `dim`
+  does not bring back the nodes it keeps, nothing ends a dim before the
+  scene does, and edges drawn after a dim start dimmed. The SPEC does not
+  say how long a dim lasts or how two combine; the guide says "dim to focus
+  on a few nodes", which reads as each dim replacing the focus. Fix first.
+
+**The Graph gate**
+
+- The screen is a mess; it needs a cosmetic pass.
+- The Mermaid text and the drawn graph should be one view with a toggle
+  icon button between them, and it should expand (full width or full
+  screen) to see the graph better.
+- "Approve and go to Script" belongs at the top right, not under the
+  editor.
+- The graph the assistant makes should show in the graph viewer on the
+  right, not as Mermaid text in its reply. Two causes seen: the editor kept
+  its old text when the assistant saved ("The graph was changed elsewhere;
+  saving replaces it"), and the guide tells agents to show the Mermaid,
+  which suits the IDE but not the app.
+
+**The chat**
+
+- Replies should render Markdown (headings, bold, lists); the script
+  arrives as raw `**…**` today. A light Markdown editor for writing
+  messages too, for example Milkdown.
+- The chat should be bigger: the whole screen, or expandable; or a full
+  chat with a button that toggles to the gate's panel, to switch between
+  talking and changing things by hand.
+- Long replies (the whole script in the chat) are hard to read; the panel
+  is the place for the files, the chat for a short summary and a question.
+
 ## Carried over
 
 Work a finished slice left for a later one. Each list is removed by the slice
