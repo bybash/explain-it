@@ -19,9 +19,8 @@ import {
   UpdateGraphArgsSchema,
 } from "../schema/mcp.ts";
 import type { Narration } from "../schema/narration.ts";
-import { laterGate, type Project } from "../schema/project.ts";
 import { fail, ok } from "../schema/result.ts";
-import { parseStoryboard, type Storyboard } from "../schema/storyboard.ts";
+import type { Storyboard } from "../schema/storyboard.ts";
 import type { Events } from "../server/events.ts";
 import { laidOut, saveGraph } from "../server/graphs.ts";
 import {
@@ -30,9 +29,9 @@ import {
   openProject,
   projectDir,
   withProjectLock,
-  writeProjectFile,
 } from "../server/projects.ts";
 import { readHouseRules, saveBrief } from "../server/stories.ts";
+import { saveStoryboard } from "../server/storyboards.ts";
 import { saveStyle } from "../server/styles.ts";
 import { allOf, edited, timingOf } from "./edits.ts";
 
@@ -58,12 +57,6 @@ type Args = Readonly<Record<string, unknown>>;
 const open = async (context: ToolContext, slug: string): Promise<Validated<OpenedProject>> =>
   (await openProject(context.projectsDir, slug)) ??
   fail([{ path: "slug", message: `no project "${slug}"` }]);
-
-const saveProject = (context: ToolContext, slug: string, project: Project) =>
-  writeProjectFile(context.projectsDir, slug, "project.json", {
-    ...project,
-    updatedAt: context.now().toISOString(),
-  });
 
 export const listProjectsTool = async (context: ToolContext, input: Args) => {
   const args = parseWith(ListProjectsArgsSchema, input);
@@ -163,10 +156,6 @@ export const updateGraphTool = async (context: ToolContext, input: Args) => {
   });
 };
 
-/** Each beat as JSON by id, to tell which beats a new storyboard rewrote. */
-const beatsById = (storyboard: Storyboard | null) =>
-  new Map((storyboard?.scenes ?? []).flatMap((s) => s.beats).map((b) => [b.id, JSON.stringify(b)]));
-
 export const setStoryboardTool = async (context: ToolContext, input: Args) => {
   const args = parseWith(SetStoryboardArgsSchema, input);
   if (!args.ok) return args;
@@ -181,31 +170,18 @@ export const setStoryboardTool = async (context: ToolContext, input: Args) => {
       ]);
     const next = edited("storyboard", before.storyboard, args.value.storyboard, args.value.patch);
     if (!next.ok) return next;
-    const storyboard = parseStoryboard(next.value, before.graph);
-    if (!storyboard.ok) return fail(under("storyboard", storyboard.errors));
-
-    // A stale beat stops being stale once it is rewritten; one left exactly as it was stays stale.
-    const previous = beatsById(before.storyboard);
-    const rewritten = beatsById(storyboard.value);
-    const staleNow = before.project.staleBeats.filter(
-      (id) => rewritten.has(id) && rewritten.get(id) === previous.get(id),
-    );
-
-    await writeProjectFile(context.projectsDir, slug, "storyboard.json", storyboard.value);
-    await saveProject(context, slug, {
-      ...before.project,
-      staleBeats: staleNow,
-      gate: laterGate(before.project.gate, "script"),
-    });
+    const saved = await saveStoryboard(context.projectsDir, before, next.value, context.now());
+    if (!saved.ok) return fail(under("storyboard", saved.errors));
+    const { storyboard, staleBeats } = saved.value;
     context.events.publish({ type: "project-updated", slug });
     return ok({
       timing: timingOf(
-        storyboard.value,
+        storyboard,
         before.graph,
         before.config,
-        await cachedNarration(context, slug, storyboard.value, before.config ?? DEFAULT_CONFIG),
+        await cachedNarration(context, slug, storyboard, before.config ?? DEFAULT_CONFIG),
       ),
-      staleBeats: staleNow,
+      staleBeats,
       preview: context.previewUrl(slug),
     });
   });
