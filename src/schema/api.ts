@@ -16,7 +16,12 @@ import { GraphSchema } from "./graph.ts";
 import { LayoutSchema } from "./layout.ts";
 import { NarrationSchema } from "./narration.ts";
 import { GATES, ProjectSchema } from "./project.ts";
-import { RenderEventSchema } from "./render.ts";
+import {
+  RenderEventSchema,
+  RenderedFolderSchema,
+  RenderJobSchema,
+  RenderRequestSchema,
+} from "./render.ts";
 import { StoryboardSchema } from "./storyboard.ts";
 
 /** The projects API's requests and responses: the server sends these shapes and the web app checks them. */
@@ -192,6 +197,20 @@ export const PreviewChecksSchema = z.object({
   upToDate: z.boolean(),
 });
 export type PreviewChecks = z.output<typeof PreviewChecksSchema>;
+
+/** `POST /api/projects/:slug/renders`: what to render; the project's style for what is left out. */
+export const RenderAskSchema = RenderRequestSchema.omit({ slug: true });
+export type RenderAsk = z.output<typeof RenderAskSchema>;
+
+/**
+ * `GET /api/projects/:slug/renders`: the queue's jobs for the project, the
+ * newest first, and its finished renders on disk, also the newest first.
+ */
+export const RendersViewSchema = z.object({
+  jobs: z.array(RenderJobSchema),
+  renders: z.array(RenderedFolderSchema),
+});
+export type RendersView = z.output<typeof RendersViewSchema>;
 
 /** `GET /api/events`: what the server tells listeners about, including each render job's changes. */
 export const ServerEventSchema = z.discriminatedUnion("type", [

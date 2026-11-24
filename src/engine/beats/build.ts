@@ -129,6 +129,15 @@ export const beatOptions = (config: Config, narration?: Narration): BuildOptions
   };
 };
 
+/** A project's beat plan as it plays: its script on its graph, timed by its style and measured narration. */
+export const projectBeats = (project: {
+  readonly storyboard: Storyboard;
+  readonly graph: Graph;
+  readonly config: Config;
+  readonly narration?: Narration | undefined;
+}): BeatPlan =>
+  buildBeats(project.storyboard, project.graph, beatOptions(project.config, project.narration));
+
 const ENTRANCES: Readonly<Record<PlannedOverlay["kind"], Entrance>> = {
   title: "fade",
   step: "rise",

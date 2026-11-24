@@ -47,8 +47,9 @@ beforeEach(async () => {
   const renders = new RenderQueue({
     now: () => new Date(NOW),
     newId: () => `job-${requests.length + 1}`,
-    run: async (request, { onProgress }) => {
+    run: async (request, { onProgress, onStep }) => {
       requests.push(request);
+      onStep({ step: "voice", spoken: 4, total: 10 });
       await gate;
       onProgress({ theme: "light", done: 1, total: 1, themeIndex: 0, themes: 1 });
       return (["light"] as const).map((theme) => ({
@@ -166,6 +167,23 @@ describe("render_status and cancel_render", () => {
       progress: { theme: "light", done: 1, total: 1, themeIndex: 0, themes: 1, percent: 100 },
       outputs: [{ theme: "light", video: join(projectsDir, slug, "out", "light", "video.mp4") }],
     });
+  });
+
+  it("says what a running job is doing", async () => {
+    const slug = await project();
+    let release = () => {};
+    gate = new Promise((resolve) => {
+      release = resolve;
+    });
+    const { job } = await succeeds("render", { slug });
+    await settle();
+    const running: RenderJob = await succeeds("render_status", { job: job.id });
+    expect(running).toMatchObject({
+      state: "running",
+      step: { step: "voice", spoken: 4, total: 10 },
+    });
+    release();
+    await settle();
   });
 
   it("names a job that does not exist, or one that cannot be cancelled", async () => {

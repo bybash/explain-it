@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { RenderJob } from "../schema/render.ts";
+import type { RenderJob, RenderStep } from "../schema/render.ts";
 import { RenderQueue, type RenderRun } from "./queue.ts";
 
 /** A renderer the test steps by hand: each run waits until the test finishes or fails it. */
@@ -13,16 +13,20 @@ const steppedRenderer = () => {
       themeIndex?: number,
       themes?: number,
     ) => void;
+    step: (step: RenderStep) => void;
+    folder: (stamp: string) => void;
     finish: () => void;
     fail: (message: string) => void;
     signal: AbortSignal;
   }[] = [];
-  const run: RenderRun = (request, { onProgress, signal }) =>
+  const run: RenderRun = (request, { onProgress, onStep, onFolder, signal }) =>
     new Promise((resolve, reject) => {
       runs.push({
         slug: request.slug,
         report: (theme, done, total, themeIndex = 0, themes = 1) =>
           onProgress({ theme, done, total, themeIndex, themes }),
+        step: onStep,
+        folder: onFolder,
         finish: () =>
           resolve([
             {
@@ -95,6 +99,22 @@ describe("RenderQueue", () => {
       startedAt: "2026-11-20T10:00:00.000Z",
       finishedAt: "2026-11-20T10:00:00.000Z",
     });
+  });
+
+  it("keeps what a running job is doing, until it ends", async () => {
+    const { queue, renderer } = setup();
+    const job = queue.add(request("one"));
+    await settle();
+    renderer.runs[0]?.folder("2026-11-20T10-00-00.000Z");
+    renderer.runs[0]?.step({ step: "voice", spoken: 3, total: 10 });
+    expect(queue.get(job.id)?.step).toEqual({ step: "voice", spoken: 3, total: 10 });
+    renderer.runs[0]?.step({ step: "mix" });
+    expect(queue.get(job.id)?.step).toEqual({ step: "mix" });
+    renderer.runs[0]?.finish();
+    await settle();
+    expect(queue.get(job.id)?.step).toBeUndefined();
+    // Its folder stays named, so the gate can tell its render on disk from it.
+    expect(queue.get(job.id)?.stamp).toBe("2026-11-20T10-00-00.000Z");
   });
 
   it("records a failed job with its error and goes on to the next", async () => {

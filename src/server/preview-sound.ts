@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
-import { mkdir, readdir, rename, rm } from "node:fs/promises";
+import { access, mkdir, readdir, rename, rm } from "node:fs/promises";
 import { join } from "node:path";
 import type { makeSoundtrack, SoundtrackProject } from "../audio/soundtrack.ts";
 import type { TtsProvider } from "../audio/tts.ts";
@@ -210,6 +210,23 @@ export const previewSound = ({
         await job.finished;
         if (jobs.get(slug) === job) return { key: job.key, status: job.status };
       }
+    },
+
+    /**
+     * The soundtrack mixed for these files, for a render to take instead of
+     * mixing the same one again; undefined when there is none.
+     */
+    soundtrackFor: async (
+      slug: string,
+      project: SoundtrackProject,
+    ): Promise<string | undefined> => {
+      const file = soundFile(slug, soundKey(tts, project));
+      return (await access(file).then(
+        () => true,
+        () => false,
+      ))
+        ? file
+        : undefined;
     },
 
     /** The key the sound for these files has: a sound settled under another is for other files. */

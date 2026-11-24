@@ -443,7 +443,19 @@ Decision 018 says why.
   frame in the middle of the first scene's last beat, when that scene is
   fully drawn. Outputs go in `out/<timestamp>/<theme>/`.
 - One render job runs at a time, in an in-process queue, with progress over
-  SSE and a cancel button.
+  SSE and a cancel button: each change to a job is an event, and the page
+  reads the job, with its folder in `out/`, from the API. A job names its step: the voice, line by line;
+  the mix; each theme's frames, by the hundredth; then its files. When the
+  Preview gate has mixed the same soundtrack (`cache/preview/<key>.wav`, its
+  key a hash of what the sound follows), the render copies it instead of
+  mixing again.
+- A finished render writes `out/<timestamp>/render.json` last: when it
+  started, its resolution, its themes and the video's length. The Render
+  gate lists every folder that has one, newest first, so renders made
+  before a restart, or by MCP or the CLI, are listed too; a folder without
+  one is a render still running, or one stopped part way. The gate serves
+  a finished render's files, in byte ranges so its player can seek, and as
+  downloads (decision 028).
 - Outputs per theme (light, dark or both):
   - `video.mp4`: with captions and audio
   - `video-clean.mp4`: no burned-in narration captions (the step captions

@@ -3,19 +3,24 @@ import { join } from "node:path";
 import { type Browser, chromium, type Page } from "playwright-core";
 import { z } from "zod";
 import { stillAt } from "../checks/sheet.ts";
-import { beatOptions, buildBeats } from "../engine/beats/build.ts";
+import { projectBeats } from "../engine/beats/build.ts";
 import type { InjectedProject } from "../engine/page/render.ts";
 import type { ThemeMode } from "../engine/theme/palettes.ts";
 import { type BeatSpan, BeatSpanSchema, STAGE } from "../schema/checks.ts";
 import type { Resolution } from "../schema/config.ts";
 import { formatErrors, parseWith } from "../schema/errors.ts";
-import type { RenderedTheme, RenderProgress } from "../schema/render.ts";
+import {
+  RENDER_FILES,
+  type RenderedTheme,
+  type RenderProgress,
+  type RenderStep,
+} from "../schema/render.ts";
 import { encodeArgs, posterArgs } from "./encode.ts";
 import { pipeFrames } from "./ffmpeg.ts";
 import { FPS, frameTimes, posterTime } from "./frames.ts";
 import type { ProjectFiles } from "./load.ts";
 import { captureInOrder } from "./parallel.ts";
-import { CONTACT_SHEET, drawSheet } from "./sheet.ts";
+import { drawSheet } from "./sheet.ts";
 import { type SrtCue, toSrt } from "./srt.ts";
 
 /** What to render: one video per theme, at one resolution. */
@@ -26,8 +31,12 @@ export type RenderSettings = {
 
 /** How a caller follows and stops a render. */
 export type RenderControl = {
-  /** Called at every tenth of each theme's frames. */
+  /** Called at every hundredth of each theme's frames. */
   readonly onProgress?: (progress: RenderProgress) => void;
+  /** Called as the render moves on: the voice, the mix, each theme's frames, then its files. */
+  readonly onStep?: (step: RenderStep) => void;
+  /** Called once the render's folder in `out/` is made, with its name. */
+  readonly onFolder?: (stamp: string) => void;
   /** Stops the render at its next step: a frame, a theme, the poster. */
   readonly signal?: AbortSignal;
 };
@@ -125,18 +134,18 @@ const closeAll = async <T>(items: readonly T[], close: (item: T) => Promise<void
 const renderTheme = async (
   browsers: readonly Browser[],
   { theme, themeIndex, themes }: { theme: ThemeMode; themeIndex: number; themes: number },
-  { project, settings, outDir, pageUrl, onProgress, signal, audio }: RenderOptions,
+  { project, settings, outDir, pageUrl, onProgress, onStep, signal, audio }: RenderOptions,
 ): Promise<RenderedTheme> => {
   const dir = join(outDir, theme);
   await mkdir(dir, { recursive: true });
   const files: RenderedTheme = {
     theme,
-    video: join(dir, "video.mp4"),
-    clean: join(dir, "video-clean.mp4"),
-    captions: join(dir, "captions.srt"),
-    poster: join(dir, "poster.png"),
-    contactSheet: join(dir, CONTACT_SHEET.full),
-    ...(audio ? { audio: join(dir, "audio.wav") } : {}),
+    video: join(dir, RENDER_FILES.video),
+    clean: join(dir, RENDER_FILES.clean),
+    captions: join(dir, RENDER_FILES.captions),
+    poster: join(dir, RENDER_FILES.poster),
+    contactSheet: join(dir, RENDER_FILES.contactSheet),
+    ...(audio ? { audio: join(dir, RENDER_FILES.audio) } : {}),
   };
   const narrationShown = project.config.captions.narration;
   const injected = { ...project, mode: theme };
@@ -155,6 +164,7 @@ const renderTheme = async (
     const times = frameTimes(duration);
     const resolution = settings.resolution;
     let shown = 0;
+    onStep?.({ step: "frames" });
     const encode = (out: string) =>
       encodeArgs({ fps: FPS, resolution, out, ...(audio ? { audio } : {}) });
     type Write = (frame: Buffer) => Promise<void>;
@@ -174,9 +184,9 @@ const renderTheme = async (
             writeVideo(frames.captioned),
             frames.clean && writeClean ? writeClean(frames.clean) : undefined,
           ]);
-          const tenth = Math.floor(((i + 1) / times.length) * 10);
-          if (tenth > shown) {
-            shown = tenth;
+          const hundredth = Math.floor(((i + 1) / times.length) * 100);
+          if (hundredth > shown) {
+            shown = hundredth;
             onProgress?.({ theme, done: i + 1, total: times.length, themeIndex, themes });
           }
         },
@@ -193,11 +203,8 @@ const renderTheme = async (
     }
     if (audio && files.audio) await copyFile(audio, files.audio);
     signal?.throwIfAborted();
-    const plan = buildBeats(
-      project.storyboard,
-      project.graph,
-      beatOptions(project.config, project.narration),
-    );
+    onStep?.({ step: "finishing" });
+    const plan = projectBeats(project);
     const poster = await frameAt(first, Math.min(posterTime(plan), duration));
     await pipeFrames(posterArgs({ resolution, out: files.poster }), (write) => write(poster));
     await writeFile(files.captions, toSrt(cues));

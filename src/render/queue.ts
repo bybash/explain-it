@@ -96,8 +96,10 @@ export class RenderQueue {
     return job;
   }
 
+  /** Ends a job: what it was doing is over, so only its end is kept. */
   #finish(job: RenderJob, end: Partial<RenderJob> & { state: RenderState }): RenderJob {
-    return this.#update({ ...job, ...end, finishedAt: this.#options.now().toISOString() });
+    const { step: _step, ...ended } = job;
+    return this.#update({ ...ended, ...end, finishedAt: this.#options.now().toISOString() });
   }
 
   async #next(): Promise<void> {
@@ -120,6 +122,12 @@ export class RenderQueue {
             ...current,
             progress: { ...progress, percent: percentOf(progress) },
           });
+        },
+        onStep: (step) => {
+          current = this.#update({ ...current, step });
+        },
+        onFolder: (stamp) => {
+          current = this.#update({ ...current, stamp });
         },
       });
       // A cancel that came after the render's last look at the signal still wins: the caller was told it would stop.
