@@ -78,10 +78,18 @@ export const LlmTurnReplySchema = z.strictObject({
   toolCalls: z.array(LlmToolCallSchema),
 });
 
-/** A recorded agent step (`src/llm/fixtures/`). */
+/**
+ * A recorded agent step (`src/llm/fixtures/`). The system prompt and the
+ * tools are the same on every step and long, so the file keeps only their
+ * hashes; the conversation is kept whole, to read what was asked.
+ */
 export const LlmTurnFixtureSchema = z.strictObject({
   name: z.string(),
-  turn: LlmTurnAskedSchema,
+  turn: z.strictObject({
+    system: z.string().regex(/^sha256:[0-9a-f]{16}$/),
+    tools: z.string().regex(/^sha256:[0-9a-f]{16}$/),
+    messages: z.array(AgentMessageSchema),
+  }),
   reply: LlmTurnReplySchema,
 });
 
