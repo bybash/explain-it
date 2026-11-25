@@ -25,6 +25,7 @@ import { runAssistant } from "./assistant.ts";
 import { addChat, appendChat, readChat } from "./chat.ts";
 import { contextRoutes } from "./context-routes.ts";
 import { createEvents } from "./events.ts";
+import { fixRoutes } from "./fix-routes.ts";
 import { approveGate } from "./gates.ts";
 import { graphRoutes } from "./graph-routes.ts";
 import { previewChecks } from "./preview-checks.ts";
@@ -305,6 +306,7 @@ export const createApp = ({
   storyRoutes(app, { projectsDir, now, events });
   contextRoutes(app, { projectsDir, events });
   storyboardRoutes(app, { projectsDir, now, events, tts });
+  fixRoutes(app, { projectsDir, now, events });
   sampleRoutes(app, { projectsDir, tts });
   renderRoutes(app, { projectsDir, renders });
   previewRoutes(app, {
