@@ -2,6 +2,7 @@ import { z } from "zod";
 import { graphSummary, storyboardSummary } from "../guidance/guide.ts";
 import type { AgentTool } from "../llm/agent.ts";
 import { ApproveSchema } from "../schema/api.ts";
+import { ReadContextArgsSchema } from "../schema/context.ts";
 import { formatErrors, parseWith, type Validated } from "../schema/errors.ts";
 import { GraphSchema } from "../schema/graph.ts";
 import {
@@ -86,8 +87,9 @@ const withSlug = (slug: string, input: unknown) => ({ ...argsOf(input), slug });
 /**
  * The in-app assistant's tools (SPEC, LLM: the assistant): the MCP tools,
  * called in-process on the project the chat belongs to, so the app and an
- * IDE's agent do the same things, plus `approve_gate`, which only the app
- * has: in the IDE, approval stays in its chat. Results leave out links and
+ * IDE's agent do the same things, plus two only
+ * the app has: `approve_gate` (in the IDE, approval stays in its chat) and
+ * `read_context` (an IDE's agent reads the repository itself). Results leave out links and
  * times, which the agent has no use for, so a recorded conversation replays
  * exactly.
  */
@@ -150,9 +152,11 @@ export const agentTools = (context: ToolContext, slug: string): AgentTool[] => [
     name: T.readContext,
     description:
       "Reads one of the files of context the user gave for this project (listed under Context in your instructions): notes, a spec, Mermaid or source code. Read what you need before drafting.",
-    inputSchema: inputOf(z.strictObject({ name: z.string() })),
+    inputSchema: inputOf(ReadContextArgsSchema),
     run: async (input) => {
-      const name = String(argsOf(input).name ?? "");
+      const asked = parseWith(ReadContextArgsSchema, input);
+      if (!asked.ok) return { errors: formatErrors(asked.errors) };
+      const { name } = asked.value;
       const text = await readContext(projectDir(context.projectsDir, slug), name);
       return text.ok ? { name, text: text.value } : { errors: formatErrors(text.errors) };
     },

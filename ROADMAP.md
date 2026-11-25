@@ -267,6 +267,15 @@ that finishes it.
 - A personal Anthropic key that is not scoped to a workspace needs the
   `anthropic-workspace-id` header; the client does not send one.
 
+### For 5.3 and 5.4 (drafting), from 5.2
+
+- Once the assistant has read a context file, its text is sent again on
+  every later step of that turn (and read again on the next turn, as earlier
+  turns are kept as text only).
+- A context file is UTF-8 text; a file in another encoding is refused in
+  the chat rather than converted. PDFs and images are not context.
+- Characters are counted as JavaScript counts them, so an emoji is two.
+
 ### For 5.8 (checks in the chat), from 3.6 and 3.13
 
 - SPEC's preview gate says "jump to a beat and edit it": the Preview

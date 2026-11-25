@@ -15,9 +15,13 @@ many steps a turn.
   name ("Login spec.md" becomes `login-spec.md`; a second `pasted.md` is
   `pasted-2.md`). Only known text kinds (`CONTEXT_EXTENSIONS`) are taken; a
   file that looks binary is refused.
+- **Only plain files of those kinds count.** A folder, a link or a system's
+  own file in `context/` is passed over; a file put there by hand is used.
+  A file is reached only by a name in the list, so never outside `context/`.
 - **A hard limit of 100,000 characters across the files.** A file that
-  would go over it is not kept, and the error says the new total, the
-  limit, and to remove or trim a file. The API answers 413.
+  would go over it is not kept, and the error says the new total, how far
+  over it is, and to remove or trim a file. The API answers 413. Adding
+  holds the project lock, so files added at once are counted together.
 - **The prompt lists, a tool reads.** The assistant's system prompt names
   each file with its size; `read_context` reads one. Sending all the text
   on every step of a turn would multiply its cost by the steps, about 15.

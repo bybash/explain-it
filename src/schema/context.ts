@@ -40,7 +40,24 @@ export const CONTEXT_EXTENSIONS = [
   ".html",
   ".css",
   ".sh",
+  ".c",
+  ".h",
+  ".cpp",
+  ".hpp",
+  ".vue",
+  ".svelte",
+  ".scss",
+  ".graphql",
+  ".proto",
+  ".tf",
 ] as const;
+
+/** A count as people read it: "100,010". */
+export const counted = (n: number): string => n.toLocaleString("en-GB");
+
+/** Why a file cannot join the context when it would take it to `total` characters: by how much, and what to do. */
+export const overLimitMessage = (name: string, total: number): string =>
+  `${name} would take the context to ${counted(total)} characters, ${counted(total - MAX_CONTEXT_CHARS)} over the most it can hold (${counted(MAX_CONTEXT_CHARS)}). Remove a file or trim one, then add it again.`;
 
 /** A context file as listed: its name and how many characters it holds. */
 export const ContextFileSchema = z.strictObject({ name: z.string(), chars: z.int().min(0) });
@@ -60,3 +77,6 @@ export const AddContextSchema = z.strictObject({
   text: z.string().min(1, "must not be empty"),
 });
 export type AddContext = z.output<typeof AddContextSchema>;
+
+/** The assistant's `read_context`: the file to read, by its name in the list. */
+export const ReadContextArgsSchema = z.strictObject({ name: z.string() });

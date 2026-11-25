@@ -52,12 +52,21 @@ describe("/api/projects/:slug/context", () => {
     expect(await response.json()).toEqual({
       errors: [
         {
-          path: "context",
+          path: "text",
           message:
-            "100,001 characters with huge.md; the most is 100,000. Remove a file or trim one, then add it again.",
+            "huge.md would take the context to 100,001 characters, 1 over the most it can hold (100,000). Remove a file or trim one, then add it again.",
         },
       ],
     });
+  });
+
+  it("keeps to the limit, and every file, when several are added at once", async () => {
+    const half = "x".repeat(MAX_CONTEXT_CHARS / 2);
+    const answers = await Promise.all([1, 2, 3].map(() => add({ name: "same.md", text: half })));
+    expect(answers.map((a) => a.status).sort()).toEqual([201, 201, 413]);
+    const list = await (await app.request("/api/projects/login/context")).json();
+    expect(list.files.map((f: { name: string }) => f.name)).toEqual(["same-2.md", "same.md"]);
+    expect(list.chars).toBe(MAX_CONTEXT_CHARS);
   });
 
   it("names a bad request, an unknown file and an unknown project", async () => {
