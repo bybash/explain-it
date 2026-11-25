@@ -18,7 +18,9 @@ const fixtures = new URL("../mermaid/fixtures/", import.meta.url).pathname;
 
 describe("mermaidToGraph, with the pinned mermaid", () => {
   it("reads every example's Mermaid back to the same graph", async () => {
-    for (const name of readdirSync(examples)) {
+    for (const { name } of readdirSync(examples, { withFileTypes: true }).filter((e) =>
+      e.isDirectory(),
+    )) {
       const read = parseGraph(JSON.parse(readFileSync(join(examples, name, "graph.json"), "utf8")));
       if (!read.ok) throw new Error(`examples/${name}/graph.json is invalid`);
       const { $schema: _, ...graph } = read.value;
