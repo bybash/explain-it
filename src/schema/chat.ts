@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { IdSchema } from "./common.ts";
 import { parseWith, type ValidationError, ValidationErrorSchema } from "./errors.ts";
 import { FixDoneSchema, FixOfferSchema } from "./fixes.ts";
 import { GATES } from "./project.ts";
@@ -20,13 +21,25 @@ export const ChatMessageSchema = z.strictObject({
   /** The gate the user was looking at when the message was sent. */
   gate: z.enum(GATES),
   /**
-   * What the assistant adds besides its replies, none of it read back to it:
-   * a line as it works ("Saved the graph."), what the checks found, with
-   * fixes to offer, and a fix applied or undone.
+   * What the assistant adds besides its replies: a line as it works ("Saved
+   * the graph."), which is not read back to it; what the checks found, with
+   * fixes to offer; and a fix applied or undone.
    */
   kind: z.enum(["step", "checks", "fix"]).optional(),
   /** A step that did not work: shown as such, not with a tick. */
   failed: z.literal(true).optional(),
+  /** What a "checks" message found, each in plain words, at its beat, and with its fix when there is one. */
+  found: z
+    .array(
+      z.strictObject({
+        /** What makes it the same problem from one run to the next. */
+        key: z.string(),
+        text: z.string().min(1),
+        beat: IdSchema.optional(),
+        fix: FixOfferSchema.shape.id.optional(),
+      }),
+    )
+    .optional(),
   /** The fixes a "checks" message offers. */
   fixes: z.array(FixOfferSchema).optional(),
   /** What a "fix" message did. */

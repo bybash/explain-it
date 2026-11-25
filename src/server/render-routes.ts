@@ -73,7 +73,16 @@ const fileResponse = async (c: Context, path: string, download: string | undefin
  */
 export const renderRoutes = (
   app: Hono,
-  { projectsDir, renders }: { projectsDir: string; renders: RenderQueue },
+  {
+    projectsDir,
+    renders,
+    beforeRender = () => {},
+  }: {
+    projectsDir: string;
+    renders: RenderQueue;
+    /** Told of each render asked for: the app runs the checks then, so what they find is said in the chat. */
+    beforeRender?: (slug: string) => void;
+  },
 ) => {
   app.get("/api/projects/:slug/renders", async (c) => {
     const slug = c.req.param("slug");
@@ -95,6 +104,7 @@ export const renderRoutes = (
     // Read as the renderer reads it, so a project that cannot render is said now, not after the queue.
     const loaded = await loadProject(projectDir(projectsDir, slug));
     if (!loaded.ok) return errorResponse(c, 422, loaded.errors);
+    beforeRender(slug);
     return c.json(renders.add({ slug, ...ask.value }), 202);
   });
 
