@@ -33,6 +33,11 @@ describe("the recorded conversation", () => {
       expect(reply.text).not.toMatch(/^I can't answer yet/);
       // The panel shows the graph: it is never pasted into the chat as Mermaid.
       expect(reply.text).not.toMatch(/```|flowchart (LR|RL|TB|TD|BT)/);
+      // Nor the script: a reply may quote how it opens and ends, not read it out.
+      const said = (storyboard?.scenes ?? []).flatMap((s) =>
+        s.beats.map((b) => b.say ?? b.caption),
+      );
+      expect(said.filter((line) => reply.text.includes(line)).length).toBeLessThan(3);
     }
     expect(chat.filter((m) => m.kind === "step").map((m) => m.text)).toEqual(
       expect.arrayContaining(["Approved the graph gate.", "Approved the script gate."]),

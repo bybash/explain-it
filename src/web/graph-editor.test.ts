@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { editorState, errorLine, STARTER_MERMAID } from "./graph-editor.ts";
+import { editorState, errorLine, onDisk, STARTER_MERMAID } from "./graph-editor.ts";
 
 describe("errorLine", () => {
   it("is the first error that names a line", () => {
@@ -48,5 +48,30 @@ describe("editorState", () => {
     const read = { ok: true };
     expect(editorState({ text: STARTER_MERMAID, saved: undefined, read }).edited).toBe(false);
     expect(editorState({ text: `${STARTER_MERMAID}\n`, saved: undefined, read }).edited).toBe(true);
+  });
+});
+
+describe("onDisk", () => {
+  const calm = { edited: false, saving: false };
+
+  it("takes a graph saved elsewhere, as an untouched editor has nothing to lose", () => {
+    expect(onDisk({ saved: "theirs", synced: undefined, ...calm })).toBe("take");
+    expect(onDisk({ saved: "theirs", synced: "ours", ...calm })).toBe("take");
+    expect(onDisk({ saved: "ours", synced: "ours", ...calm })).toBe("same");
+    expect(onDisk({ saved: undefined, synced: undefined, ...calm })).toBe("same");
+  });
+
+  it("flags it while the user has edits, and takes it once they are undone", () => {
+    expect(onDisk({ saved: "theirs", synced: "ours", edited: true, saving: false })).toBe("flag");
+    expect(onDisk({ saved: "theirs", synced: "ours", edited: false, saving: false })).toBe("take");
+  });
+
+  it("takes a graph put back to one this editor saved before", () => {
+    // Saved A here, B taken from elsewhere, then A again from elsewhere.
+    expect(onDisk({ saved: "A", synced: "B", ...calm })).toBe("take");
+  });
+
+  it("leaves its own save alone until it is known to be its own", () => {
+    expect(onDisk({ saved: "ours", synced: undefined, edited: false, saving: true })).toBe("same");
   });
 });

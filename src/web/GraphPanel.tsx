@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { graphToMermaid } from "../mermaid/generate.ts";
 import type { GraphSaveOutcome, OpenedProject } from "../schema/api.ts";
 import type { ValidationError } from "../schema/errors.ts";
 import { readGraph, saveGraph } from "./api.ts";
 import { Errors } from "./Errors.tsx";
-import { editorState, errorLine, STARTER_MERMAID } from "./graph-editor.ts";
+import { editorState, errorLine, onDisk, STARTER_MERMAID } from "./graph-editor.ts";
 import { counted } from "./labels.ts";
 import { MermaidDiagram } from "./MermaidDiagram.tsx";
 import { MermaidEditor } from "./MermaidEditor.tsx";
@@ -42,35 +42,29 @@ export const GraphPanel = ({
   const [outcome, setOutcome] = useState<GraphSaveOutcome | undefined>();
   const [saveErrors, setSaveErrors] = useState<readonly ValidationError[]>([]);
   const [saving, setSaving] = useState(false);
-  /** The graph was saved elsewhere (MCP, another tab) while this editor had edits. */
+  /** The graph was saved elsewhere (the assistant, MCP, another tab) while this editor had edits. */
   const [elsewhere, setElsewhere] = useState(false);
   const reads = useRef(0);
-  /** The graph as last seen on disk, and the one this editor saved, both as generated Mermaid. */
-  const seen = useRef(saved);
-  const ours = useRef<string | undefined>(undefined);
+  /** The graph on disk this editor last took or wrote, as generated Mermaid. */
+  const synced = useRef(saved);
 
   const state = editorState({ text, saved: base, read });
 
-  // A new graph on disk: this editor's own save coming back is nothing new; one saved
-  // elsewhere replaces the text when there are no edits here, and is flagged when there are.
-  useEffect(() => {
-    if (saved === seen.current) return;
-    seen.current = saved;
-    if (saved === undefined || saved === ours.current) return;
-    if (state.edited) return setElsewhere(true);
-    setText(saved);
-    setBase(saved);
+  /** Shows the graph on disk in place of what is here. */
+  const take = useCallback((graph: string) => {
+    synced.current = graph;
+    setText(graph);
+    setBase(graph);
     setOutcome(undefined);
+    setSaveErrors([]);
     setElsewhere(false);
-  }, [saved, state.edited]);
+  }, []);
 
-  /** Drops the edits here for the graph saved elsewhere, when the user asks to. */
-  const takeSaved = () => {
-    if (saved === undefined) return;
-    setText(saved);
-    setBase(saved);
-    setElsewhere(false);
-  };
+  useEffect(() => {
+    const what = onDisk({ saved, synced: synced.current, edited: state.edited, saving });
+    if (what === "take" && saved !== undefined) take(saved);
+    else setElsewhere(what === "flag");
+  }, [saved, state.edited, saving, take]);
 
   // Read and draw the code once typing pauses; an answer to older text is dropped.
   useEffect(() => {
@@ -104,7 +98,7 @@ export const GraphPanel = ({
     const { mermaid, staleBeats, storyboardProblems, warnings } = result.value;
     // The text stays as the user wrote it, comments and all: it is what was saved. Anything
     // typed while the save was on its way is still an edit.
-    ours.current = mermaid;
+    synced.current = mermaid;
     setBase(sent);
     setElsewhere(false);
     setOutcome({ staleBeats, storyboardProblems, warnings });
@@ -142,7 +136,11 @@ export const GraphPanel = ({
         {elsewhere && state.unsaved && (
           <span className="text-muted">
             The graph was changed elsewhere; saving replaces it.{" "}
-            <button type="button" className="underline hover:text-ink" onClick={takeSaved}>
+            <button
+              type="button"
+              className="underline hover:text-ink"
+              onClick={() => saved !== undefined && take(saved)}
+            >
               Show the saved graph instead
             </button>
           </span>

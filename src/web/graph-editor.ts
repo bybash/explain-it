@@ -37,3 +37,25 @@ export const editorState = ({
     edited: text !== (saved ?? STARTER_MERMAID),
   };
 };
+
+/**
+ * What the editor does about the graph on disk: `saved` is it now, `synced`
+ * the one this editor last took or wrote, both as generated Mermaid. A graph
+ * saved elsewhere is taken, unless the user has edits: then it is flagged,
+ * and taken if they undo them, so the graph shown is never an old one by
+ * mistake. Nothing is done while this editor's own save is on its way.
+ */
+export const onDisk = ({
+  saved,
+  synced,
+  edited,
+  saving,
+}: {
+  readonly saved: string | undefined;
+  readonly synced: string | undefined;
+  readonly edited: boolean;
+  readonly saving: boolean;
+}): "same" | "take" | "flag" => {
+  if (saving || saved === undefined || saved === synced) return "same";
+  return edited ? "flag" : "take";
+};

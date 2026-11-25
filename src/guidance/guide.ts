@@ -61,6 +61,11 @@ const fieldsOf = (schema: z.ZodType): string => {
   return `{ ${fields.join(", ")} }`;
 };
 
+/** What both sets of steps say of the check and the render. */
+const CHECK_NOTE =
+  "it also generates the narration voice, which can take a minute the first time, and lists problems by beat: shorter labels or fewer nodes in a scene fix most layout ones, and a shorter caption or line, or a slower pace, fixes reading speed";
+const RENDER_NOTE = "Rendering takes about half a minute per minute of video, per theme.";
+
 /** The rules every step shares, wherever the guide is read. */
 const FIELDS_RULE =
   "Every object below takes exactly the fields shown: any other field, such as a `description` on a node, is an error.";
@@ -74,7 +79,7 @@ const IDE_STEPS = `## Steps
 4. Write storyboard.json and call \`${T.setStoryboard}\`. Show the user the script: each scene's title, then each beat's caption and narration, with the timing from the result (estimated until the voice is generated). Wait for their approval; change it with \`${T.setStoryboard}\` again.
 5. Optionally call \`${T.setStyle}\`: a palette, a title card that names the video, an end card with a link, a logo.
 6. Point the user at the preview link to watch it.
-7. When the user wants the video, call \`${T.check}\` to see that the project is ready (it also generates the narration voice, which can take a minute the first time, and lists problems by beat: shorter labels or fewer nodes in a scene fix most layout ones, and a shorter caption or line, or a slower pace, fixes reading speed), then \`${T.render}\`. Follow the job with \`${T.renderStatus}\` until it is done, and give the user the paths of the files it wrote; \`${T.cancelRender}\` stops it. Rendering takes about half a minute per minute of video, per theme.
+7. When the user wants the video, call \`${T.check}\` to see that the project is ready (${CHECK_NOTE}), then \`${T.render}\`. Follow the job with \`${T.renderStatus}\` until it is done, and give the user the paths of the files it wrote; \`${T.cancelRender}\` stops it. ${RENDER_NOTE}
 
 Every tool result carries a preview link to the project in the web app. When a tool returns errors, each one names its place (\`graph.nodes[2].kind: …\`): fix those and call it again. Use \`${T.listProjects}\` and \`${T.getProject}\` to pick up a project you made before.
 
@@ -83,7 +88,7 @@ ${FIELDS_RULE}`;
 /** The steps for an agent in the app, whose user sees each file in the panel beside the chat. */
 const APP_STEPS = `## Steps
 
-The user sees the project in the panel next to this chat, and it changes as you save: the graph as a diagram, the story, the script beat by beat, the style, the preview and the renders. Never paste the graph, its Mermaid or the script into the chat: say in a sentence or two what you made or changed, then ask what you need to know.
+The user sees the project in the panel, beside this chat or behind the Panel button at the top of the page when only the chat is shown. It changes as you save: the graph as a diagram, the story, the script beat by beat, the style, the preview and the renders. Never paste the graph, its Mermaid or the script into the chat: say in a sentence or two what you made or changed, then ask what you need to know. If they ask to see one of these, say which gate of the panel shows it.
 
 1. Read the description and the context the user gave you, and find the flow: who and what takes part, and what passes between them.
 2. Write graph.json and call \`${T.updateGraph}\` (a whole graph, or a JSON Patch to change it). Say what the graph shows, and ask whether the graph is right. Wait for the user to approve it or ask for changes.
@@ -91,7 +96,7 @@ The user sees the project in the panel next to this chat, and it changes as you 
 4. Write storyboard.json and call \`${T.setStoryboard}\`. Say how many scenes and beats it has, how long it runs (from the result, estimated until the voice is generated) and how it opens and ends, and ask whether the script is right. Wait for their approval; change it with \`${T.setStoryboard}\` again.
 5. Optionally call \`${T.setStyle}\`: a palette, a title card that names the video, an end card with a link.
 6. Point the user at the Preview gate to watch it.
-7. When the user wants the video, call \`${T.check}\` to see that the project is ready (it also generates the narration voice, which can take a minute the first time, and lists problems by beat: shorter labels or fewer nodes in a scene fix most layout ones, and a shorter caption or line, or a slower pace, fixes reading speed), then \`${T.render}\`. Follow the job with \`${T.renderStatus}\`; the finished video plays at the Render gate, and \`${T.cancelRender}\` stops one under way. Rendering takes about half a minute per minute of video, per theme.
+7. When the user wants the video, call \`${T.check}\` to see that the project is ready (${CHECK_NOTE}), then \`${T.render}\`. Follow the job with \`${T.renderStatus}\`; the finished video plays at the Render gate, and \`${T.cancelRender}\` stops one under way. ${RENDER_NOTE}
 
 When a tool returns errors, each one names its place (\`graph.nodes[2].kind: …\`): fix those and call it again.
 
