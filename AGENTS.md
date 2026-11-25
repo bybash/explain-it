@@ -61,7 +61,7 @@ npm run music -- calm 30 calm.wav          # 30 s of a music mood (calm, upbeat,
 npm run dev:engine  # the engine dev page in a browser
 npm run screenshot -- "dev/iso.html?t=4" out.png   # a still of a dev page
 npm run clip -- dev/iso.html out.mp4               # a clip of a dev page (needs ffmpeg)
-npm run shots -- shots/before                      # every web app page, light and dark, as PNGs (needs Chrome)
+npm run shots -- shots/before                      # every web app page, light and dark, as PNGs (needs Chrome); a name after the folder takes only the shots starting with it
 npm run shots:compare -- shots/before shots/after shots/diff   # pixel differences between two sets of shots
 npm run llm:record                                 # record the LLM fixtures in src/llm/fixtures/ with the model in .env (costs a few calls)
 npm run build:engine                               # build the render page into dist/render

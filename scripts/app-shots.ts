@@ -1,6 +1,6 @@
 // Screenshots of every page of the web app, light and dark, from a fixed set of projects:
 // run before and after a change to its look, then compare with scripts/compare-shots.ts.
-// Usage: node scripts/app-shots.ts <out-dir>
+// Usage: node scripts/app-shots.ts <out-dir> [only shots whose names start with this]
 // Needs Chrome. It builds the web app into dist/web first, as `npm run build` does.
 import { type ChildProcess, spawn } from "node:child_process";
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -11,8 +11,8 @@ import { build } from "vite";
 import { isProjectOutput } from "../src/render/project-output.ts";
 import type { ChatMessage } from "../src/schema/chat.ts";
 
-const [outArg] = process.argv.slice(2);
-if (!outArg) throw new Error("usage: node scripts/app-shots.ts <out-dir>");
+const [outArg, only = ""] = process.argv.slice(2);
+if (!outArg) throw new Error("usage: node scripts/app-shots.ts <out-dir> [name]");
 const out = resolve(outArg);
 mkdirSync(out, { recursive: true });
 
@@ -155,7 +155,7 @@ const waitUntilUp = async (child: ChildProcess) => {
 
 /** The graph editor is open and Mermaid has drawn its diagram. */
 const graphReady = async (page: Page) => {
-  await page.locator(".cm-content").waitFor();
+  await page.locator(".cm-content").waitFor({ state: "attached" });
   await diagramDrawn(page);
 };
 
@@ -218,6 +218,16 @@ const SHOTS: readonly {
       await typeInGraph(p, "\n  style web fill:#f00");
       await p.getByLabel("Left out of the graph").waitFor();
       await diagramDrawn(p);
+    },
+  },
+  {
+    name: "graph-full-screen",
+    hash: "#/projects/oauth-example/graph",
+    ready: async (p) => {
+      await diagramDrawn(p);
+      await p.getByRole("button", { name: "Show the diagram full screen" }).click();
+      await p.getByRole("dialog").locator("svg[id^=mermaid]").waitFor();
+      await p.waitForTimeout(500);
     },
   },
   {
@@ -392,7 +402,7 @@ const checksRun = async (page: Page) => {
 
 /** Mermaid has drawn, and the drawing has settled. */
 const diagramDrawn = async (page: Page) => {
-  await page.locator("svg[aria-roledescription]").first().waitFor();
+  await page.locator("svg[aria-roledescription]").first().waitFor({ state: "attached" });
   await page.waitForTimeout(500);
 };
 
@@ -415,7 +425,7 @@ const browser = await chromium.launch({ channel: "chrome" });
 try {
   await waitUntilUp(server);
   for (const scheme of ["light", "dark"] as const)
-    for (const shot of SHOTS) {
+    for (const shot of SHOTS.filter((s) => s.name.startsWith(only))) {
       const page = await browser.newPage({
         viewport: { width: shot.width ?? 1280, height: 900 },
         colorScheme: scheme,

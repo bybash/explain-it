@@ -114,3 +114,18 @@ export const Tabs = <Id extends string>({
     </div>
   );
 };
+
+/** A square button that shows an icon; `label` says what it does, to a pointer and a screen reader. */
+export const IconButton = ({
+  label,
+  className = "",
+  ...button
+}: { label: string } & ButtonHTMLAttributes<HTMLButtonElement>) => (
+  <button
+    type="button"
+    aria-label={label}
+    title={label}
+    className={`inline-flex size-9 items-center justify-center rounded-box border border-line bg-surface text-muted hover:border-accent hover:text-ink focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-50 ${className}`}
+    {...button}
+  />
+);
