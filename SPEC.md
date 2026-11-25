@@ -646,6 +646,11 @@ user, as a slash command in Claude Code), so `get_guide` returns the same
 text, and the graph and storyboard tools carry a short summary of their
 format that points at it.
 
+**In the app** the same guide has steps of its own (`authoringGuide({ where:
+"app" })`): the panel beside the chat shows each file, so the assistant never
+pastes the graph or the script; it says what it made and asks. Its tools leave
+out the Mermaid too. Everything after the steps is the same text.
+
 **Approval.** The prompt tells the agent to show the user the Mermaid, then
 agree the story with them and save it with `set_brief`, then show the
 script, in the IDE chat and to wait for approval before moving on. Every

@@ -17,7 +17,8 @@ export const errorLine = (errors: readonly ValidationError[]): number | undefine
 /**
  * Whether the editor holds changes not saved yet, and whether they can be:
  * only once they read as a graph. `saved` is undefined while the project has
- * no graph, so even an unchanged starter is a change.
+ * no graph, so even an unchanged starter can be saved; but it is not
+ * `edited`: a graph saved elsewhere may replace it, as nothing is lost.
  */
 export const editorState = ({
   text,
@@ -28,7 +29,11 @@ export const editorState = ({
   readonly saved: string | undefined;
   /** The last read of `text`: undefined until it comes back. */
   readonly read: { readonly ok: boolean } | undefined;
-}): { readonly unsaved: boolean; readonly canSave: boolean } => {
+}): { readonly unsaved: boolean; readonly canSave: boolean; readonly edited: boolean } => {
   const unsaved = text !== saved;
-  return { unsaved, canSave: unsaved && read?.ok === true };
+  return {
+    unsaved,
+    canSave: unsaved && read?.ok === true,
+    edited: text !== (saved ?? STARTER_MERMAID),
+  };
 };

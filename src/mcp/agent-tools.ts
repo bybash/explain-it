@@ -45,8 +45,11 @@ export const AGENT_TOOL_NAMES = {
 } as const;
 const T = AGENT_TOOL_NAMES;
 
-/** Fields the in-app agent never needs: links into the app it is in, and times that change on every run. */
-const NOT_FOR_THE_AGENT = new Set(["preview", "createdAt", "updatedAt"]);
+/**
+ * Fields the in-app agent never needs: links into the app it is in, the
+ * Mermaid the panel already draws, and times that change on every run.
+ */
+const NOT_FOR_THE_AGENT = new Set(["preview", "mermaid", "createdAt", "updatedAt"]);
 
 /** A tool's result with those fields taken out, at any depth. */
 const forTheAgent = (value: unknown): unknown => {
@@ -97,13 +100,13 @@ export const agentTools = (context: ToolContext, slug: string): AgentTool[] => [
   {
     name: T.getProject,
     description:
-      "Reads the project: its gate, graph.json, storyboard.json, brief.json, config.json, any broken files, the user's house rules, and the graph as Mermaid.",
+      "Reads the project: its gate, graph.json, storyboard.json, brief.json, config.json, any broken files, and the user's house rules.",
     inputSchema: inputOf(z.strictObject({})),
     run: async () => output(await getProjectTool(context, { slug })),
   },
   {
     name: T.updateGraph,
-    description: `Saves the project's graph.json: the whole graph in \`graph\`, or an RFC 6902 JSON Patch in \`patch\`. Lays it out, and returns the Mermaid and the beats the change made stale. ${graphSummary()}`,
+    description: `Saves the project's graph.json: the whole graph in \`graph\`, or an RFC 6902 JSON Patch in \`patch\`. Lays it out, shows it in the panel, and returns the beats the change made stale. ${graphSummary()}`,
     inputSchema: argsFor(UpdateGraphArgsSchema.omit({ slug: true }), { graph: GraphSchema }),
     run: async (input) => output(await updateGraphTool(context, withSlug(slug, input))),
   },

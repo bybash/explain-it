@@ -19,12 +19,11 @@ import { readHouseRules } from "./stories.ts";
  */
 const inTheApp = (slug: string, gate: Gate) => `## In this app
 
-You are the assistant in the explAIn-it web app, working on the project "${slug}", which is at the ${gate} gate. The user sees the project in the panel on the right, and it changes as you save, so do not paste files back: say in a sentence or two what you did, then ask what you need.
+You are the assistant in the explAIn-it web app, working on the project "${slug}", which is at the ${gate} gate. The project already exists, and you work on it only: read it with ${T.getProject} when you need its state.
 
-- The project already exists: use ${T.updateGraph} to make or change its graph. There is no create_project, list_projects or get_guide here: you work on this project only. Read the project with ${T.getProject} when you need its state.
-- Follow the Steps above. Stop and wait for the user's approval in this chat after the graph, after the story, and after the script. When they approve one, call ${T.approveGate} for that gate, then go on to the next step.
-- Never call ${T.approveGate} unless the user approved that gate in their last message.
-- When a tool gives back errors, fix what they name and call it again.`;
+- Your replies are shown as Markdown, in a narrow column. Keep them short.
+- After the graph, the story and the script, stop and wait for the user. When they approve the graph or the script, call ${T.approveGate} for that gate, then go on to the next step.
+- Never call ${T.approveGate} unless the user approved that gate in their last message.`;
 
 /** The context the user gave, by name and size, for the model to read with its tool; nothing when there is none. */
 const contextSection = (files: readonly ContextFile[]) =>
@@ -117,7 +116,7 @@ export const runAssistant = async ({
   const reached = opened?.ok ? opened.value.project.gate : gate;
   const given = await listContext(dir);
   const system = [
-    authoringGuide({ houseRules: houseRules.ok ? houseRules.value : null }),
+    authoringGuide({ where: "app", houseRules: houseRules.ok ? houseRules.value : null }),
     inTheApp(slug, reached),
     ...contextSection(given.files),
   ].join("\n\n");

@@ -57,11 +57,20 @@ export const GraphPanel = ({
     if (saved === seen.current) return;
     seen.current = saved;
     if (saved === undefined || saved === ours.current) return;
-    if (state.unsaved) return setElsewhere(true);
+    if (state.edited) return setElsewhere(true);
+    setText(saved);
+    setBase(saved);
+    setOutcome(undefined);
+    setElsewhere(false);
+  }, [saved, state.edited]);
+
+  /** Drops the edits here for the graph saved elsewhere, when the user asks to. */
+  const takeSaved = () => {
+    if (saved === undefined) return;
     setText(saved);
     setBase(saved);
     setElsewhere(false);
-  }, [saved, state.unsaved]);
+  };
 
   // Read and draw the code once typing pauses; an answer to older text is dropped.
   useEffect(() => {
@@ -131,7 +140,12 @@ export const GraphPanel = ({
         </button>
         {state.unsaved && <span className="font-semibold text-accent">Unsaved changes</span>}
         {elsewhere && state.unsaved && (
-          <span className="text-muted">The graph was changed elsewhere; saving replaces it.</span>
+          <span className="text-muted">
+            The graph was changed elsewhere; saving replaces it.{" "}
+            <button type="button" className="underline hover:text-ink" onClick={takeSaved}>
+              Show the saved graph instead
+            </button>
+          </span>
         )}
         {outcome && !state.unsaved && (
           <span className="text-muted" role="status">
