@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import type { OpenedProject } from "../schema/api.ts";
 import type { ValidationError } from "../schema/errors.ts";
 import { type Gate, nextGate, type Project } from "../schema/project.ts";
@@ -6,9 +6,11 @@ import { approveGate, onServerEvents, openProject } from "./api.ts";
 import { Chat } from "./Chat.tsx";
 import { Errors } from "./Errors.tsx";
 import { GATE_LABELS, GATE_PANELS, updatedLabel } from "./labels.ts";
+import { LAYOUT_LABELS } from "./layout.ts";
 import { gateSteps } from "./route.ts";
 import { ScriptGate } from "./ScriptGate.tsx";
 import { BoxList, Muted, PageTitle } from "./ui.tsx";
+import { useLayout } from "./useLayout.ts";
 
 /** The graph editor, loaded with the graph gate: CodeMirror and Mermaid are large, and only it needs them. */
 const GraphPanel = lazy(() => import("./GraphPanel.tsx").then((m) => ({ default: m.GraphPanel })));
@@ -24,10 +26,9 @@ const RenderPanel = lazy(() =>
 const StylePanel = lazy(() => import("./StylePanel.tsx").then((m) => ({ default: m.StylePanel })));
 
 /**
- * An opened project: the chat on the left and, on the right, the gate
- * stepper and the panel of the gate viewed (SPEC, User flow). The gates'
- * own panels come in the next slices; until then a panel says what it will
- * show, lists the project's files and approves the gate.
+ * An opened project (SPEC, User flow): its gates and Approve across the top,
+ * then the chat and the panel of the gate viewed, side by side or either
+ * one alone, as the user chooses.
  */
 export const ProjectView = ({ slug, gate }: { slug: string; gate?: Gate | undefined }) => {
   const [opened, setOpened] = useState<OpenedProject | undefined>();
@@ -65,9 +66,11 @@ export const ProjectView = ({ slug, gate }: { slug: string; gate?: Gate | undefi
   const addressed = opened?.slug === slug ? opened : undefined;
   return (
     <section>
-      <a className="mb-4 inline-block text-muted" href="#/">
-        ← All projects
-      </a>
+      {!addressed && (
+        <a className="mb-4 inline-block text-muted" href="#/">
+          ← All projects
+        </a>
+      )}
       {errors.length > 0 && (
         <>
           <PageTitle>{slug}</PageTitle>
@@ -108,16 +111,58 @@ const Opened = ({
     if (requested !== undefined && requested !== viewed)
       location.replace(`#/projects/${slug}/${viewed}`);
   }, [requested, viewed, slug]);
+  const { layout, choices, choose } = useLayout();
+  /** Why a gate cannot be approved yet, as its panel says, and what approving it came to; said only at that gate. */
+  const [blocked, setBlocked] = useState<{ gate: Gate; reason: string | undefined }>();
+  const [failed, setFailed] = useState<{ gate: Gate; errors: readonly ValidationError[] }>();
+  const [approving, setApproving] = useState(false);
+  const reason = blocked?.gate === viewed ? blocked.reason : undefined;
+  const block = useCallback(
+    (why: string | undefined) => setBlocked({ gate: viewed, reason: why }),
+    [viewed],
+  );
+  const next = nextGate(viewed);
+
+  const approve = async () => {
+    setApproving(true);
+    const result = await approveGate(slug, viewed);
+    setApproving(false);
+    if (!result.ok) return setFailed({ gate: viewed, errors: result.errors });
+    setFailed(undefined);
+    // The approved project first, so the next gate is open before the address names it.
+    approved(result.value.project);
+    location.hash = `#/projects/${slug}/${result.value.project.gate}`;
+  };
+
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-6 min-[861px]:grid-cols-[minmax(280px,380px)_minmax(0,1fr)]">
-      <Chat key={slug} slug={slug} gate={viewed} />
-      <div>
-        <PageTitle>{project.name}</PageTitle>
-        <Muted>
+    <div>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <a className="text-muted hover:text-ink" href="#/" aria-label="All projects">
+          ←
+        </a>
+        <h1 className="font-bold text-lg">{project.name}</h1>
+        <span className="text-muted text-sm">
           {slug} · {project.origin === "mcp" ? "made over MCP" : "made in the app"} ·{" "}
           {updatedLabel(project.updatedAt)}
-        </Muted>
-        <ol className="mt-6 flex flex-wrap gap-2" aria-label="Gates">
+        </span>
+        <fieldset className="ml-auto flex rounded-box border border-line bg-surface p-0.5">
+          <legend className="sr-only">Layout</legend>
+          {choices.map((choice) => (
+            <button
+              key={choice}
+              type="button"
+              aria-pressed={choice === layout}
+              className="rounded-[8px] px-3 py-1 text-muted text-sm hover:text-ink aria-pressed:bg-accent-soft aria-pressed:font-semibold aria-pressed:text-accent"
+              onClick={() => choose(choice)}
+            >
+              {LAYOUT_LABELS[choice]}
+            </button>
+          ))}
+        </fieldset>
+      </div>
+      {/* Stays at the top as a long panel scrolls, so a gate can be approved from anywhere in it. */}
+      <div className="sticky top-0 z-10 -mx-2 mb-2 flex flex-wrap items-center gap-x-4 gap-y-2 bg-page px-2 py-3">
+        <ol className="flex flex-wrap gap-2" aria-label="Gates">
           {steps.map((step, i) => (
             <li key={step.gate}>
               {step.open ? (
@@ -127,6 +172,10 @@ const Opened = ({
                   data-state={step.state}
                   data-viewed={step.viewed}
                   aria-current={step.viewed ? "step" : undefined}
+                  // A gate asked for is there to be seen, beside the chat where there is room.
+                  onClick={() => {
+                    if (layout === "chat") choose(choices.includes("split") ? "split" : "panel");
+                  }}
                 >
                   <span className="tabular-nums">{i + 1}</span> {GATE_LABELS[step.gate]}
                 </a>
@@ -142,77 +191,69 @@ const Opened = ({
             </li>
           ))}
         </ol>
-        {/* Keyed by gate, so an error shown at one gate is gone at the next. */}
-        <GatePanel key={viewed} opened={opened} gate={viewed} approved={approved} />
+        {viewed === project.gate && next && (
+          <div className="ml-auto flex flex-wrap items-center justify-end gap-3">
+            {reason && <span className="text-muted text-sm">{reason}</span>}
+            <button
+              className="btn"
+              type="button"
+              onClick={approve}
+              disabled={approving || reason !== undefined}
+            >
+              Approve and go to {GATE_LABELS[next]}
+            </button>
+          </div>
+        )}
+        <Errors className="w-full" errors={failed?.gate === viewed ? failed.errors : []} />
+      </div>
+      {/* Both stay in the page whatever the layout, so nothing typed in either is lost. */}
+      <div
+        className={`grid grid-cols-[minmax(0,1fr)] items-start gap-6 ${layout === "split" ? "min-[861px]:grid-cols-[minmax(300px,420px)_minmax(0,1fr)]" : ""}`}
+      >
+        <Chat
+          key={slug}
+          slug={slug}
+          gate={viewed}
+          hidden={layout === "panel"}
+          full={layout === "chat"}
+        />
+        <div hidden={layout === "chat"}>
+          <GatePanel key={viewed} opened={opened} gate={viewed} blocked={block} />
+        </div>
       </div>
     </div>
   );
 };
 
-/** A gate's panel: Approve at the top when it is the gate reached, what it shows, and the files so far. */
+/** A gate's panel: what it shows, and the files so far. `blocked` is told why it cannot be approved yet. */
 const GatePanel = ({
   opened,
   gate,
-  approved,
+  blocked,
 }: {
   opened: OpenedProject;
   gate: Gate;
-  approved: (project: Project) => void;
+  blocked: (reason: string | undefined) => void;
 }) => {
   const { slug, project } = opened;
-  const [errors, setErrors] = useState<readonly ValidationError[]>([]);
-  const [approving, setApproving] = useState(false);
-  /** Why the gate cannot be approved yet, as its panel says: unsaved edits. */
-  const [blocked, setBlocked] = useState<string | undefined>();
-  const next = nextGate(gate);
-
-  const approve = async () => {
-    setApproving(true);
-    const result = await approveGate(slug, gate);
-    setApproving(false);
-    if (!result.ok) return setErrors(result.errors);
-    setErrors([]);
-    // The approved project first, so the next gate is open before the address names it.
-    approved(result.value.project);
-    location.hash = `#/projects/${slug}/${result.value.project.gate}`;
-  };
-
   return (
-    <section className="mt-2" aria-label={`${GATE_LABELS[gate]} gate`}>
-      {/* Stays at the top of a long panel, so a gate can be approved from anywhere in it. */}
-      <div className="sticky top-0 z-10 -mx-2 flex flex-wrap items-center gap-x-4 gap-y-2 bg-page px-2 py-3">
+    <section aria-label={`${GATE_LABELS[gate]} gate`}>
+      <div className="mb-3 flex flex-wrap items-baseline gap-x-4 gap-y-1">
         <h2 className="font-bold text-lg">{GATE_LABELS[gate]}</h2>
-        <div className="ml-auto flex flex-wrap items-center justify-end gap-3">
-          {gate === project.gate ? (
-            next && (
-              <>
-                {blocked && <span className="text-muted text-sm">{blocked}</span>}
-                <button
-                  className="btn"
-                  type="button"
-                  onClick={approve}
-                  disabled={approving || blocked !== undefined}
-                >
-                  Approve and go to {GATE_LABELS[next]}
-                </button>
-              </>
-            )
-          ) : (
-            <p className="text-muted text-sm">
-              Approved. The project is at the{" "}
-              <a className="underline" href={`#/projects/${slug}/${project.gate}`}>
-                {GATE_LABELS[project.gate]}
-              </a>{" "}
-              gate.
-            </p>
-          )}
-        </div>
+        {gate !== project.gate && (
+          <p className="text-muted text-sm">
+            Approved. The project is at the{" "}
+            <a className="underline" href={`#/projects/${slug}/${project.gate}`}>
+              {GATE_LABELS[project.gate]}
+            </a>{" "}
+            gate.
+          </p>
+        )}
+        <p className="w-full text-muted">{GATE_PANELS[gate]}</p>
       </div>
-      <Errors errors={errors} />
-      <p className="mb-3 text-muted">{GATE_PANELS[gate]}</p>
       {gate === "graph" ? (
         <Suspense fallback={<Muted>Opening the graph editor…</Muted>}>
-          <GraphPanel opened={opened} blocked={setBlocked} />
+          <GraphPanel opened={opened} blocked={blocked} />
         </Suspense>
       ) : gate === "preview" ? (
         <Suspense fallback={<Muted>Opening the preview…</Muted>}>
@@ -224,12 +265,10 @@ const GatePanel = ({
         </Suspense>
       ) : gate === "style" ? (
         <Suspense fallback={<Muted>Opening the style…</Muted>}>
-          <StylePanel opened={opened} blocked={setBlocked} />
+          <StylePanel opened={opened} blocked={blocked} />
         </Suspense>
-      ) : gate === "script" ? (
-        <ScriptGate opened={opened} blocked={setBlocked} />
       ) : (
-        <Muted>This gate's panel comes in a later version.</Muted>
+        <ScriptGate opened={opened} blocked={blocked} />
       )}
       <Files opened={opened} />
     </section>

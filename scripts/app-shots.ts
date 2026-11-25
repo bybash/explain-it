@@ -53,7 +53,7 @@ const seed = (dir: string) => {
       said("assistant", "Approved the graph gate.", "graph", "step"),
       said(
         "assistant",
-        "Graph approved. Before the script, here is the story I'd tell: for developers new to the codebase, the one thing to remember is that the app never sees the password. Shall I go ahead?",
+        "Graph approved. Here is the story I'd tell:\n\n- **Audience:** developers new to the codebase\n- **To remember:** the app never sees the password\n- **Shape:** problem, how it works, outcome\n\n| Scene | Length |\n|---|---|\n| Sign in | 28 s |\n| Token exchange | 32 s |\n\nShall I go ahead and save it as `brief.json`?",
         "script",
       ),
     ].join("\n")}\n`,
@@ -237,6 +237,20 @@ const SHOTS: readonly {
       await p.getByText("Approved").first().waitFor();
       await diagramDrawn(p);
     },
+  },
+  ...(["Chat", "Panel"] as const).map((layout) => ({
+    name: `layout-${layout.toLowerCase()}`,
+    hash: "#/projects/oauth-example/script",
+    ready: async (p: Page) => {
+      await p.getByRole("button", { name: layout, exact: true }).click();
+      await p.waitForTimeout(300);
+    },
+  })),
+  {
+    name: "layout-phone",
+    hash: "#/projects/oauth-example/graph",
+    width: 390,
+    ready: (p) => p.getByText("Shall I go ahead").waitFor(),
   },
   {
     name: "chat-assistant",

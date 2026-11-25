@@ -40,8 +40,11 @@ in a pull request that edits this file.
 
 ## User flow
 
-The app is a chat on the left and a panel on the right. Work moves through
-five **gates**. Each gate shows its result in the panel; the user approves it
+The app is a chat on the left and a panel on the right, or either one alone:
+a switch (Chat, Split, Panel) at the top of the project chooses, and the
+browser keeps the choice. A narrow screen has no split. Messages show as
+Markdown; HTML in them is dropped and images are never loaded (decision
+037). Work moves through five **gates**. Each gate shows its result in the panel; the user approves it
 by chat or by button, or edits it, either through chat or directly in the panel.
 
 **Three ways through, one process** (decision 031). The gates, the files
@@ -86,8 +89,8 @@ Rules:
   hook. Hints show while the script is valid. A line already spoken is
   timed by its voice, as the checks time it; any other by its words. The
   script saves only when it is valid, as `set_storyboard` saves it.
-- A gate's Approve button is at the top right of its panel and stays there
-  as the panel scrolls. A graph saved by the assistant, or over MCP, shows
+- The gates and the Approve button are across the top, and stay there as
+  the panel scrolls. A graph saved by the assistant, or over MCP, shows
   at once unless the user has edits of their own, which are kept and the
   saved graph offered.
 - Style can be changed at any later gate without going back.

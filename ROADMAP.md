@@ -203,14 +203,17 @@ turned into slices; nothing here is scheduled yet.
 
 **The chat**
 
-- Replies should render Markdown (headings, bold, lists); the script
-  arrives as raw `**…**` today. A light Markdown editor for writing
-  messages too, for example Milkdown.
-- The chat should be bigger: the whole screen, or expandable; or a full
-  chat with a button that toggles to the gate's panel, to switch between
-  talking and changing things by hand.
-- Long replies (the whole script in the chat) are hard to read; the panel
-  is the place for the files, the chat for a short summary and a question.
+- ✅ Replies show as Markdown. Writing stays plain text: a rich editor
+  (Milkdown) was weighed and left out (decision 037).
+- ✅ Chat, Split or Panel: the chat alone on the page, beside the gate's
+  panel, or the panel alone.
+- ✅ Replies are short: the panel shows the files, so the assistant does not
+  paste the graph or the script.
+
+Left over:
+
+- The message box does not grow with what is typed.
+- A video playing in the Preview gate plays on when the layout hides it.
 
 ## Carried over
 
