@@ -8,7 +8,7 @@ import { Errors } from "./Errors.tsx";
 import { GATE_LABELS, GATE_PANELS, updatedLabel } from "./labels.ts";
 import { LAYOUT_LABELS } from "./layout.ts";
 import { ProjectFiles } from "./ProjectFiles.tsx";
-import { gateSteps } from "./route.ts";
+import { gateSteps, projectHref } from "./route.ts";
 import { ScriptGate } from "./ScriptGate.tsx";
 import { Muted, PageTitle } from "./ui.tsx";
 import { useLayout } from "./useLayout.ts";
@@ -31,7 +31,16 @@ const StylePanel = lazy(() => import("./StylePanel.tsx").then((m) => ({ default:
  * then the chat and the panel of the gate viewed, side by side or either
  * one alone, as the user chooses.
  */
-export const ProjectView = ({ slug, gate }: { slug: string; gate?: Gate | undefined }) => {
+export const ProjectView = ({
+  slug,
+  gate,
+  beat,
+}: {
+  slug: string;
+  gate?: Gate | undefined;
+  /** A beat to open in the Script gate's editor. */
+  beat?: string | undefined;
+}) => {
   const [opened, setOpened] = useState<OpenedProject | undefined>();
   const [errors, setErrors] = useState<readonly ValidationError[]>([]);
 
@@ -84,6 +93,7 @@ export const ProjectView = ({ slug, gate }: { slug: string; gate?: Gate | undefi
         <Opened
           opened={addressed}
           requested={gate}
+          beat={beat}
           approved={(project) => setOpened({ ...addressed, project })}
         />
       )}
@@ -98,10 +108,12 @@ const GATE_PILL_CLASS =
 const Opened = ({
   opened,
   requested,
+  beat,
   approved,
 }: {
   opened: OpenedProject;
   requested: Gate | undefined;
+  beat: string | undefined;
   approved: (project: Project) => void;
 }) => {
   const { slug, project } = opened;
@@ -110,9 +122,14 @@ const Opened = ({
   // An address naming a gate not reached yet shows the gate reached, and then names it.
   useEffect(() => {
     if (requested !== undefined && requested !== viewed)
-      location.replace(`#/projects/${slug}/${viewed}`);
+      location.replace(projectHref(slug, viewed));
   }, [requested, viewed, slug]);
   const { layout, choices, choose, showPanel } = useLayout();
+  // A link to a beat, as the chat's are, shows the panel it opens in.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: only a new beat asks for the panel.
+  useEffect(() => {
+    if (beat !== undefined) showPanel();
+  }, [beat]);
   /** Why a gate cannot be approved yet, as its panel says, and what approving it came to; said only at that gate. */
   const [blocked, setBlocked] = useState<{ gate: Gate; reason: string | undefined }>();
   const [failed, setFailed] = useState<{ gate: Gate; errors: readonly ValidationError[] }>();
@@ -135,7 +152,7 @@ const Opened = ({
     setFailed(undefined);
     // The approved project first, so the next gate is open before the address names it.
     approved(result.value.project);
-    location.hash = `#/projects/${slug}/${result.value.project.gate}`;
+    location.hash = projectHref(slug, result.value.project.gate);
   };
 
   return (
@@ -172,7 +189,7 @@ const Opened = ({
               {step.open ? (
                 <a
                   className={`${GATE_PILL_CLASS} inline-block hover:border-accent data-[viewed=true]:outline-2 data-[viewed=true]:outline-accent data-[viewed=true]:outline-offset-1`}
-                  href={`#/projects/${slug}/${step.gate}`}
+                  href={projectHref(slug, step.gate)}
                   data-state={step.state}
                   data-viewed={step.viewed}
                   aria-current={step.viewed ? "step" : undefined}
@@ -220,7 +237,14 @@ const Opened = ({
           full={layout === "chat"}
         />
         <div hidden={layout === "chat"}>
-          <GatePanel key={viewed} opened={opened} gate={viewed} blocked={block} />
+          <GatePanel
+            key={viewed}
+            opened={opened}
+            gate={viewed}
+            beat={beat}
+            hidden={layout === "chat"}
+            blocked={block}
+          />
         </div>
       </div>
     </div>
@@ -231,10 +255,15 @@ const Opened = ({
 const GatePanel = ({
   opened,
   gate,
+  beat,
+  hidden,
   blocked,
 }: {
   opened: OpenedProject;
   gate: Gate;
+  beat: string | undefined;
+  /** Out of sight, as when only the chat is shown: a playing preview stops. */
+  hidden: boolean;
   blocked: (reason: string | undefined) => void;
 }) => {
   const { slug, project } = opened;
@@ -245,7 +274,7 @@ const GatePanel = ({
         {gate !== project.gate && (
           <p className="text-muted text-sm">
             Approved. The project is at the{" "}
-            <a className="underline" href={`#/projects/${slug}/${project.gate}`}>
+            <a className="underline" href={projectHref(slug, project.gate)}>
               {GATE_LABELS[project.gate]}
             </a>{" "}
             gate.
@@ -259,7 +288,7 @@ const GatePanel = ({
         </Suspense>
       ) : gate === "preview" ? (
         <Suspense fallback={<Muted>Opening the preview…</Muted>}>
-          <PreviewPanel opened={opened} />
+          <PreviewPanel opened={opened} hidden={hidden} />
         </Suspense>
       ) : gate === "render" ? (
         <Suspense fallback={<Muted>Opening the renders…</Muted>}>
@@ -270,7 +299,7 @@ const GatePanel = ({
           <StylePanel opened={opened} blocked={blocked} />
         </Suspense>
       ) : (
-        <ScriptGate opened={opened} blocked={blocked} />
+        <ScriptGate opened={opened} beat={beat} blocked={blocked} />
       )}
       <ProjectFiles opened={opened} />
     </section>

@@ -24,7 +24,7 @@ import {
   type StyleEdit,
   StyleSavedSchema,
 } from "../schema/api.ts";
-import { type Chat, ChatSchema } from "../schema/chat.ts";
+import { type Chat, ChatMessageSchema, ChatSchema } from "../schema/chat.ts";
 import type { Config, VoiceConfig } from "../schema/config.ts";
 import { type AddContext, ContextFileSchema, ContextListSchema } from "../schema/context.ts";
 import { parseWith, type Validated, type ValidationError } from "../schema/errors.ts";
@@ -136,6 +136,14 @@ export const sendChat = (slug: string, text: string, gate: Gate) =>
     text,
     gate,
   });
+
+/** Applies a fix the chat offers, or undoes one it applied (decision 038). */
+export const applyFix = (slug: string, id: string, undo: boolean) =>
+  postJson(
+    ChatMessageSchema,
+    `/api/projects/${encodeURIComponent(slug)}/fixes/${encodeURIComponent(id)}${undo ? "/undo" : ""}`,
+    {},
+  );
 
 /** Reads edited Mermaid as the graph, without saving it. */
 export const readGraph = (slug: string, mermaid: string) =>

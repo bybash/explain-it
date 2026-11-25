@@ -80,6 +80,21 @@ describe("runAssistant", () => {
     expect(system).toContain("## Steps");
   });
 
+  it("marks a step that did not work, so it is not shown as done", async () => {
+    await appendChat(projectDir(projectsDir, "sign-in"), [said("user", "It looks good.")]);
+    const { client } = fakeLlm(
+      [],
+      [
+        { text: "", toolCalls: [{ id: "1", name: T.approveGate, input: { gate: "script" } }] },
+        { text: "The graph comes first.", toolCalls: [] },
+      ],
+    );
+    await runAssistant({ context, client, slug: "sign-in", gate: "graph" });
+    const step = (await chat()).find((m) => m.kind === "step");
+    expect(step?.text).toMatch(/^Could not approve the gate/);
+    expect(step?.failed).toBe(true);
+  });
+
   it("reads back the conversation without its step lines", async () => {
     await appendChat(projectDir(projectsDir, "sign-in"), [
       said("user", "Explain sign-in."),
