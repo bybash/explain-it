@@ -184,10 +184,10 @@ Open questions, settled before the milestone starts:
   the zod schemas, as every other limit does, so the LLM's drafts keep to
   them.
 
-## Feedback to plan (2026-11-24)
+## Feedback (2026-11-24)
 
-From using the app after 5.7, in the user's words where possible. To be
-turned into slices; nothing here is scheduled yet.
+From using the app after 5.7, in the user's words where possible. Built
+as three pull requests (decision 037) and one fix (decision 035).
 
 **The video**
 
@@ -209,11 +209,6 @@ turned into slices; nothing here is scheduled yet.
   panel, or the panel alone.
 - ✅ Replies are short: the panel shows the files, so the assistant does not
   paste the graph or the script.
-
-Left over:
-
-- The message box does not grow with what is typed.
-- A video playing in the Preview gate plays on when the layout hides it.
 
 ## Carried over
 
@@ -262,6 +257,13 @@ that finishes it.
   `src/server/assistant-conversation.ts`).
 - A personal Anthropic key that is not scoped to a workspace needs the
   `anthropic-workspace-id` header; the client does not send one.
+
+### For 5.8 (checks in the chat), from the page's feedback
+
+- The message box does not grow with what is typed.
+- A video playing in the Preview gate plays on when the layout hides it.
+- A step line that failed ("Could not approve the gate: …") shows the same ✓
+  as one that worked; a step says nothing of whether it did.
 
 ### For 5.3 and 5.4 (drafting), from 5.2
 

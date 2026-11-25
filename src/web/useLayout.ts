@@ -1,5 +1,13 @@
 import { useEffect, useState } from "react";
-import { LAYOUT_KEY, type Layout, layoutChoices, readLayout, shownLayout, WIDE } from "./layout.ts";
+import {
+  LAYOUT_KEY,
+  type Layout,
+  layoutChoices,
+  readLayout,
+  shownLayout,
+  WIDE,
+  withPanel,
+} from "./layout.ts";
 
 /** What the browser kept, or nothing where it keeps nothing (private windows, blocked storage). */
 const kept = (): string | null => {
@@ -28,5 +36,12 @@ export const useLayout = () => {
       // Kept for this page only.
     }
   };
-  return { layout: shownLayout(chosen, { wide }), choices: layoutChoices({ wide }), choose };
+  const layout = shownLayout(chosen, { wide });
+  return {
+    layout,
+    choices: layoutChoices({ wide }),
+    choose,
+    /** Shows the panel for now: going to a gate is not a choice of layout, so it is not kept. */
+    showPanel: () => setChosen(withPanel(layout, { wide })),
+  };
 };

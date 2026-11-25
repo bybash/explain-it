@@ -43,7 +43,7 @@ in a pull request that edits this file.
 The app is a chat on the left and a panel on the right, or either one alone:
 a switch (Chat, Split, Panel) at the top of the project chooses, and the
 browser keeps the choice. A narrow screen has no split. Messages show as
-Markdown; HTML in them is dropped and images are never loaded (decision
+Markdown; HTML in them shows as text and images are never loaded (decision
 037). Work moves through five **gates**. Each gate shows its result in the panel; the user approves it
 by chat or by button, or edits it, either through chat or directly in the panel.
 

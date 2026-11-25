@@ -12,7 +12,8 @@ fold.
 - **Chat, Split or Panel.** A switch shows the chat alone, both, or the
   gate's panel alone; the browser keeps the choice. Both stay mounted, so
   nothing typed in either is lost. A narrow screen has Chat and Panel only;
-  asking for a gate from the chat alone shows its panel.
+  clicking a gate from the chat alone shows its panel, without
+  changing the choice kept.
 - **The gates and Approve across the top**, sticky, at every gate.
 - **One graph view**: the diagram, fitted to its box, or the code behind it,
   with an icon button between them, and the diagram full screen in a modal
@@ -23,7 +24,7 @@ fold.
   shows the Mermaid and the script in its own chat; in the app it never
   pastes them, as the panel shows them.
 - **Markdown is rendered, not edited**: react-markdown 10.1.0 and remark-gfm
-  4.0.1 (MIT). HTML is dropped and images are not loaded, as a reply may
+  4.0.1 (MIT). HTML shows as text and images are not loaded, as a reply may
   repeat what it read in a user's files.
 
 ## Alternatives

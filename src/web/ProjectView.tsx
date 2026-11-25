@@ -7,9 +7,10 @@ import { Chat } from "./Chat.tsx";
 import { Errors } from "./Errors.tsx";
 import { GATE_LABELS, GATE_PANELS, updatedLabel } from "./labels.ts";
 import { LAYOUT_LABELS } from "./layout.ts";
+import { ProjectFiles } from "./ProjectFiles.tsx";
 import { gateSteps } from "./route.ts";
 import { ScriptGate } from "./ScriptGate.tsx";
-import { BoxList, Muted, PageTitle } from "./ui.tsx";
+import { Muted, PageTitle } from "./ui.tsx";
 import { useLayout } from "./useLayout.ts";
 
 /** The graph editor, loaded with the graph gate: CodeMirror and Mermaid are large, and only it needs them. */
@@ -111,7 +112,7 @@ const Opened = ({
     if (requested !== undefined && requested !== viewed)
       location.replace(`#/projects/${slug}/${viewed}`);
   }, [requested, viewed, slug]);
-  const { layout, choices, choose } = useLayout();
+  const { layout, choices, choose, showPanel } = useLayout();
   /** Why a gate cannot be approved yet, as its panel says, and what approving it came to; said only at that gate. */
   const [blocked, setBlocked] = useState<{ gate: Gate; reason: string | undefined }>();
   const [failed, setFailed] = useState<{ gate: Gate; errors: readonly ValidationError[] }>();
@@ -122,6 +123,9 @@ const Opened = ({
     [viewed],
   );
   const next = nextGate(viewed);
+  // Leaving a gate drops what approving it came to.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `viewed` is what leaving means.
+  useEffect(() => setFailed(undefined), [viewed]);
 
   const approve = async () => {
     setApproving(true);
@@ -173,9 +177,7 @@ const Opened = ({
                   data-viewed={step.viewed}
                   aria-current={step.viewed ? "step" : undefined}
                   // A gate asked for is there to be seen, beside the chat where there is room.
-                  onClick={() => {
-                    if (layout === "chat") choose(choices.includes("split") ? "split" : "panel");
-                  }}
+                  onClick={showPanel}
                 >
                   <span className="tabular-nums">{i + 1}</span> {GATE_LABELS[step.gate]}
                 </a>
@@ -208,7 +210,7 @@ const Opened = ({
       </div>
       {/* Both stay in the page whatever the layout, so nothing typed in either is lost. */}
       <div
-        className={`grid grid-cols-[minmax(0,1fr)] items-start gap-6 ${layout === "split" ? "min-[861px]:grid-cols-[minmax(300px,420px)_minmax(0,1fr)]" : ""}`}
+        className={`grid items-start gap-6 ${layout === "split" ? "grid-cols-[minmax(300px,420px)_minmax(0,1fr)]" : "grid-cols-[minmax(0,1fr)]"}`}
       >
         <Chat
           key={slug}
@@ -270,51 +272,7 @@ const GatePanel = ({
       ) : (
         <ScriptGate opened={opened} blocked={blocked} />
       )}
-      <Files opened={opened} />
+      <ProjectFiles opened={opened} />
     </section>
-  );
-};
-
-const Files = ({ opened }: { opened: OpenedProject }) => {
-  const { graph, storyboard, layout, config, problems } = opened;
-  const files = [
-    {
-      file: "graph.json",
-      summary: graph && `${graph.nodes.length} nodes, ${graph.edges.length} edges`,
-    },
-    {
-      file: "storyboard.json",
-      summary:
-        storyboard &&
-        `${storyboard.scenes.length} scenes, ${storyboard.scenes.flatMap((s) => s.beats).length} beats`,
-    },
-    { file: "brief.json", summary: opened.brief && "the story brief" },
-    { file: "layout.json", summary: layout && `${Object.keys(layout.positions).length} positions` },
-    { file: "config.json", summary: config && "style and output set" },
-  ];
-  return (
-    // Open by itself only when something in it needs the user.
-    <details className="mt-8" open={problems.length > 0}>
-      <summary className="mb-3 cursor-pointer font-semibold text-muted text-sm">
-        The project's files
-      </summary>
-      {problems.length > 0 && (
-        <>
-          <p className="my-4">Some files are broken:</p>
-          <Errors errors={problems} />
-        </>
-      )}
-      <BoxList>
-        {files.map(({ file, summary }) => (
-          <li key={file} className="flex justify-between gap-3 px-4 py-3">
-            <code className={summary === null ? "text-muted" : undefined}>{file}</code>
-            <span className="text-muted">
-              {summary ??
-                (problems.some((p) => p.path.startsWith(file)) ? "broken" : "not made yet")}
-            </span>
-          </li>
-        ))}
-      </BoxList>
-    </details>
   );
 };
