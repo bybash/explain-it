@@ -14,9 +14,9 @@ export const DiagramDialog = ({ text, close }: { text: string; close: () => void
   const [zoom, setZoom] = useState<number | "fit">("fit");
   const [shown, setShown] = useState(1);
   useEffect(() => {
-    const open = dialog.current;
-    open?.showModal();
-    return () => open?.close();
+    // Opened once: React's development mode runs this twice. Nothing closes it on the way out, as
+    // its `close` event is the user's, and the page drops a dialog that is taken out of it.
+    if (!dialog.current?.open) dialog.current?.showModal();
   }, []);
   return (
     <dialog
