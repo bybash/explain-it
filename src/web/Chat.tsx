@@ -1,5 +1,6 @@
 import { type FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { type ChatMessage, MAX_CHAT_MESSAGE } from "../schema/chat.ts";
+import { counted } from "../schema/context.ts";
 import type { ValidationError } from "../schema/errors.ts";
 import type { Gate } from "../schema/project.ts";
 import { getChat, onServerEvents, sendChat } from "./api.ts";
@@ -58,8 +59,14 @@ export const Chat = ({ slug, gate }: { slug: string; gate: Gate }) => {
     if (count > 0) end.current?.scrollIntoView?.({ block: "end" });
   }, [count]);
 
+  // The box takes any paste, which a cap would cut without a word; only sending is limited.
+  const tooLong = text.trim().length > MAX_CHAT_MESSAGE;
+  const canSend = !sending && !working && !tooLong && text.trim() !== "";
+
   const send = async (event: FormEvent) => {
     event.preventDefault();
+    // Enter submits whether or not the button can be pressed.
+    if (!canSend) return;
     setSending(true);
     const sent = await sendChat(slug, text, gate);
     if (!live.current) return;
@@ -129,7 +136,6 @@ export const Chat = ({ slug, gate }: { slug: string; gate: Gate }) => {
           id="chat-text"
           value={text}
           rows={3}
-          maxLength={MAX_CHAT_MESSAGE}
           placeholder="Write a message…"
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => {
@@ -146,15 +152,23 @@ export const Chat = ({ slug, gate }: { slug: string; gate: Gate }) => {
             disabled={text.trim() === ""}
             title="Save what is in the box as a file of context, instead of sending it"
             onClick={async () => {
-              if (await context.add([{ name: "pasted.md", text }])) setText("");
+              // What was typed while it was saved stays in the box.
+              if (await context.add([{ name: "pasted.md", text }]))
+                setText((now) => (now === text ? "" : now));
             }}
           >
             Add as context
           </button>
-          <button className="btn" type="submit" disabled={sending || working || text.trim() === ""}>
+          <button className="btn" type="submit" disabled={!canSend}>
             Send
           </button>
         </div>
+        {tooLong && (
+          <p className="col-span-full text-sm text-warn" role="status">
+            {counted(text.length)} characters is too long to send (at most{" "}
+            {counted(MAX_CHAT_MESSAGE)}): add it as context, and say what to do with it.
+          </p>
+        )}
         <Errors className="col-span-full" errors={errors} />
       </form>
     </aside>

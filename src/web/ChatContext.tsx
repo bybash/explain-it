@@ -1,17 +1,22 @@
 import { type ChangeEvent, useCallback, useEffect, useRef, useState } from "react";
-import { CONTEXT_EXTENSIONS, type ContextList } from "../schema/context.ts";
+import {
+  type AddContext,
+  CONTEXT_EXTENSIONS,
+  type ContextList,
+  counted,
+  MAX_CONTEXT_CHARS,
+  overLimitMessage,
+} from "../schema/context.ts";
 import type { ValidationError } from "../schema/errors.ts";
+import { fail } from "../schema/result.ts";
 import { addContextFile, getContext, removeContextFile } from "./api.ts";
 import { Errors } from "./Errors.tsx";
 
-/** A count as people read it: "12,345". */
-const counted = (n: number) => n.toLocaleString("en-GB");
-
 /**
  * The chat's context (SPEC, LLM; decision 036): the files the assistant
- * reads when it drafts, as chips with a button to remove each, and a
- * paperclip to attach more. `addText` gives the parent a way to add what
- * is in its message box as a file.
+ * reads when it drafts, how to add and remove them, and why the last change
+ * was refused. The chat calls `reload` on its own server events, so the
+ * files need no event stream of their own.
  */
 export const useChatContext = (slug: string) => {
   const [list, setList] = useState<ContextList | undefined>();
@@ -20,6 +25,7 @@ export const useChatContext = (slug: string) => {
   const load = useCallback(async () => {
     const read = await getContext(slug);
     if (read.ok) setList(read.value);
+    else setErrors(read.errors);
   }, [slug]);
   // Read once here; the chat reads it again on its own server events (one stream per page).
   useEffect(() => {
@@ -27,10 +33,20 @@ export const useChatContext = (slug: string) => {
   }, [load]);
 
   /** Adds files in turn; the first one refused stops the rest, and says why. */
-  const add = async (files: readonly { name: string; text: string }[]) => {
+  const add = async (files: readonly AddContext[]) => {
     for (const file of files) {
-      const added = await addContextFile(slug, file);
+      // One over the limit by itself is refused here: it may be too large for the API to read at all.
+      const added =
+        file.text.length > MAX_CONTEXT_CHARS
+          ? fail([
+              {
+                path: "text",
+                message: overLimitMessage(file.name, (list?.chars ?? 0) + file.text.length),
+              },
+            ])
+          : await addContextFile(slug, file);
       if (!added.ok) {
+        await load();
         setErrors(added.errors);
         return false;
       }
@@ -41,20 +57,35 @@ export const useChatContext = (slug: string) => {
   };
   const remove = async (name: string) => {
     const left = await removeContextFile(slug, name);
-    if (left.ok) setList(left.value);
-    else setErrors(left.errors);
+    if (!left.ok) return setErrors(left.errors);
+    // The user did what the refusal asked, so it goes.
+    setErrors([]);
+    setList(left.value);
   };
-  return { list, errors, add, remove, reload: load };
+  /** Reads the files chosen, as UTF-8; one that is not is refused rather than altered. */
+  const attach = async (chosen: readonly File[]) => {
+    const files: AddContext[] = [];
+    for (const file of chosen) {
+      try {
+        const text = new TextDecoder("utf-8", { fatal: true }).decode(await file.arrayBuffer());
+        files.push({ name: file.name, text });
+      } catch {
+        return setErrors([{ path: file.name, message: "not UTF-8 text, so it was not added" }]);
+      }
+    }
+    await add(files);
+  };
+  return { list, errors, add, attach, remove, reload: load };
 };
 
 /** The chips of the attached files and the paperclip, above the message box. */
 export const ChatContext = ({ context }: { context: ReturnType<typeof useChatContext> }) => {
   const picker = useRef<HTMLInputElement>(null);
-  const { list, errors, add, remove } = context;
-  const attach = async (event: ChangeEvent<HTMLInputElement>) => {
+  const { list, errors, attach, remove } = context;
+  const choose = (event: ChangeEvent<HTMLInputElement>) => {
     const chosen = [...(event.target.files ?? [])];
     event.target.value = "";
-    await add(await Promise.all(chosen.map(async (f) => ({ name: f.name, text: await f.text() }))));
+    void attach(chosen);
   };
   return (
     <section className="col-span-full flex flex-wrap items-center gap-1.5" aria-label="Context">
@@ -95,7 +126,7 @@ export const ChatContext = ({ context }: { context: ReturnType<typeof useChatCon
         multiple
         hidden
         accept={CONTEXT_EXTENSIONS.join(",")}
-        onChange={(e) => void attach(e)}
+        onChange={choose}
       />
       <Errors className="w-full" errors={errors} />
     </section>
