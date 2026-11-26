@@ -2,6 +2,8 @@ import { FONTS } from "../engine/theme/fonts.ts";
 import { PALETTES } from "../engine/theme/palettes.ts";
 import { type Config, type LogoMode, RESOLUTIONS, THEME_MODES } from "../schema/config.ts";
 import type { ValidationError } from "../schema/errors.ts";
+import type { Storyboard } from "../schema/storyboard.ts";
+import { CameraCard } from "./CameraCard.tsx";
 import { capitalised, THEME_MODE_LABELS } from "./labels.ts";
 import { CardFields, INPUT_CLASS, LABEL_CLASS, LogoFields, Section } from "./style-fields.tsx";
 
@@ -19,6 +21,8 @@ export const LookTab = ({
   fileErrors,
   pickLogo,
   removeLogo,
+  scenes,
+  framing,
 }: {
   draft: Config;
   change: (next: Config) => void;
@@ -28,6 +32,10 @@ export const LookTab = ({
   pickLogo: (mode: LogoMode, file: File | undefined) => void;
   /** Forgets the logo files picked and not saved yet. */
   removeLogo: () => void;
+  /** The script's scenes, each with a camera of its own; none before there is a script. */
+  scenes: Storyboard["scenes"];
+  /** The scene whose camera is being set, for the preview to show. */
+  framing: (scene: string) => void;
 }) => (
   <div className={CARDS_CLASS}>
     <Section title="Theme">
@@ -107,6 +115,18 @@ export const LookTab = ({
         change(rest);
       }}
     />
+
+    {scenes.length > 0 && (
+      <CameraCard
+        scenes={scenes}
+        cameras={draft.camera ?? {}}
+        editing={framing}
+        change={(cameras) => {
+          const { camera: _camera, ...rest } = draft;
+          change(Object.keys(cameras).length === 0 ? rest : { ...rest, camera: cameras });
+        }}
+      />
+    )}
 
     <Section title="Output">
       <label className={LABEL_CLASS} htmlFor="style-resolution">

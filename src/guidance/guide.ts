@@ -4,7 +4,7 @@ import { FONTS } from "../engine/theme/fonts.ts";
 import { KIND_STYLES } from "../engine/theme/kinds.ts";
 import { PALETTES } from "../engine/theme/palettes.ts";
 import { CATEGORIES } from "../schema/colours.ts";
-import { ConfigSchema } from "../schema/config.ts";
+import { ConfigSchema, TITLE_CARD_AUTO_TEXT } from "../schema/config.ts";
 import { DRAFT_TOOL_NAMES } from "../schema/drafts.ts";
 import {
   GraphEdgeSchema,
@@ -160,6 +160,7 @@ const STYLE = `## config.json: style (optional, \`${T.setStyle}\`)
 ${ts(schemaShape("Config", ConfigSchema))}
 
 - Settings merge into config.json: objects merge, \`null\` removes a setting, anything else replaces it.
+- A scene's \`camera\` (by scene id) zooms in and moves it from where it fits, so a scene with room around it can fill the frame; the layout checks (overlap, off-frame) say whether it still fits. Leave it out to fit the scene. A title card holds ${TITLE_CARD_AUTO_TEXT} by its text, or \`seconds\` when set.
 - A palette is one of ${union(Object.keys(PALETTES))}, or your own colours. A font is one of ${union(FONTS.map((f) => f.id))}.
 - Send a logo in \`${T.setStyle}\`'s \`logo\` argument, \`{ light?, dark?, corner?, show? }\`, each image as \`{ path }\` (an absolute path) or \`{ dataUrl }\`. It is checked and copied into the project; config.json then names its file.`;
 

@@ -1,4 +1,10 @@
-import type { Config, EndCard, Pace, TitleCard } from "../../schema/config.ts";
+import {
+  type Config,
+  type EndCard,
+  type Pace,
+  TITLE_CARD_AUTO,
+  type TitleCard,
+} from "../../schema/config.ts";
 import type { Graph } from "../../schema/graph.ts";
 import type { Narration } from "../../schema/narration.ts";
 import type { BADGE_TONES, Storyboard } from "../../schema/storyboard.ts";
@@ -165,7 +171,7 @@ export const buildBeats = (
   const cards: CardPlan[] = [];
   const tweens: TweenSpec[] = [];
   if (options.titleCard) {
-    const end = textHold(titleText(options.titleCard));
+    const end = titleHold(options.titleCard);
     cards.push({ id: "title", start: 0, end, until: end + transition });
     tweens.push(fadeOut(cardTarget("title"), end));
   }
@@ -242,7 +248,7 @@ export const buildBeats = (
       kind: "title",
       id: `title:${scene.id}`,
       scene: scene.id,
-      text: sceneTitleText(index, scene.title),
+      text: sceneTitleText(index, scene.title, storyboard.scenes.length),
       at: start,
       until: layerGoneAt,
     });
@@ -393,7 +399,16 @@ const textHold = (lines: readonly (string | undefined)[]): number =>
     lines.reduce((sum, line) => sum + (line?.length ?? 0), 0) / CAPTION_CHARS_PER_SECOND,
   );
 
-const titleText = (card: TitleCard) => [card.title, card.description];
+/** How long the title card holds: as long as the user set, or else by its text (decision 044). */
+const titleHold = (card: TitleCard): number =>
+  card.seconds ??
+  Math.min(
+    TITLE_CARD_AUTO.max,
+    Math.max(
+      TITLE_CARD_AUTO.min,
+      `${card.title}${card.description ?? ""}`.length / TITLE_CARD_AUTO.charsPerSecond,
+    ),
+  );
 const endText = (card: EndCard) => [card.headline, card.link, card.where, card.credit];
 
 /** The card that closes the video and how long it holds (SPEC, Opening and ending). */
@@ -403,7 +418,7 @@ const closingCard = ({
   logo,
 }: BuildOptions): { id: CardPlan["id"]; hold: number } | undefined => {
   if (endCard) return { id: "end", hold: textHold(endText(endCard)) };
-  if (titleCard) return { id: "title-again", hold: textHold(titleText(titleCard)) };
+  if (titleCard) return { id: "title-again", hold: titleHold(titleCard) };
   if (logo) return { id: "logo", hold: CARD_MIN_HOLD };
   return undefined;
 };

@@ -42,8 +42,9 @@ export type OverlayDrawing = { readonly shown?: Interval } & (
 /** Sets every overlay from the timeline's state; overlays missing from it stay hidden. */
 export type ApplyOverlays = (state: State) => void;
 
-/** How a scene's title reads on screen: "1 · Login" for the first scene. */
-export const sceneTitleText = (index: number, title: string): string => `${index + 1} · ${title}`;
+/** How a scene's title reads on screen: "1 · Login" for the first scene, or just "Login" when it is the only one. */
+export const sceneTitleText = (index: number, title: string, scenes: number): string =>
+  scenes === 1 ? title : `${index + 1} · ${title}`;
 
 /** The radius of the dot that marks a callout's anchor on the node. */
 const ANCHOR_DOT = 5;

@@ -170,7 +170,7 @@ type Storyboard = {
 
 type Scene = {
   id: string;
-  title: string;        // e.g. "Login"; shown as "1 · Login"
+  title: string;        // e.g. "Login"; shown as "1 · Login", or "Login" when it is the only scene
   nodes: string[];      // the subset of graph nodes in this scene, ≤ 12
   beats: Beat[];        // 3–10
 };
@@ -192,8 +192,12 @@ type Action =
   | { type: "badge"; node: string; text: string; tone: "info" | "ok" | "warn" | "error" };
 ```
 
-The camera is fixed within a scene and frames the scene's nodes. Scenes change
-with a short transition.
+The camera is fixed within a scene and frames the scene's nodes. A scene's
+camera in `config.json` zooms in (up to twice as close) and moves the scene
+from where it fits, by a share of the area it is framed in (below the
+titles and above the captions, up to half of it), so a scene
+with room around it can fill the frame; the layout checks say whether it
+still fits (decision 044). Scenes change with a short transition.
 
 ### Brief (`brief.json`)
 
@@ -229,7 +233,7 @@ type Config = {
   music: { enabled: boolean; mood: "calm" | "upbeat" | "technical"; seed: number; volumeDb: number }; // volumeDb: under the voice, −12 by default
   output: { resolution: "1080p" | "720p" };
   cards?: {
-    title?: { title: string; description?: string };   // ≤ 100 and ≤ 160 characters, wrapped
+    title?: { title: string; description?: string; seconds?: number }; // ≤ 100 and ≤ 160 characters, wrapped; seconds: 2–10
     end?: {
       headline: string;                 // ≤ 100 characters, wrapped
       link?: string;                    // an http(s) URL, ≤ 200 characters; also drawn as a QR code
@@ -244,6 +248,8 @@ type Config = {
     show?: "start" | "end" | "both" | "all";            // the title card, the end card, both (default), or every frame;
                                                         // the title card closing the video counts as the end card
   };
+  camera?: Record<string, { zoom: number; x: number; y: number }>;
+                                        // by scene id: zoom 1–2, x and y −0.5–0.5 (right and down positive)
 };
 
 type CustomPalette = {
@@ -383,8 +389,10 @@ for frame capture, so what the user approves is what gets rendered.
   off, a line is timed by reading it, at 15 characters per second; with the
   narration captions off as well, nothing carries it, and it does not time
   its beat. Decision 013 says why.
-- **Opening and ending.** A card holds for max(3 s, its text length ÷ 15
-  characters per second). The title card is on screen from the first frame,
+- **Opening and ending.** An end card holds for max(3 s, its text length ÷
+  15 characters per second). A title card is read with nothing else on
+  screen, so it holds for its text length ÷ 20 characters per second, 3 to
+  5 s, or as long as its `seconds` (decision 044). The title card is on screen from the first frame,
   and fades out over the scene transition (0.8 s) as the first scene fades
   in. The video ends the same way: the last scene fades out over the scene
   transition as the closing card fades in, and the card holds to the last
@@ -749,6 +757,9 @@ comes later.
   beat and the end. Save sends what changed as a JSON Merge Patch with any
   new logo files and writes `config.json` the way MCP's `set_style` does;
   the gate cannot be approved while changes are unsaved (decision 024).
+  Its Look tab sets how long the title card holds (Auto, or 2 to 10 s), and
+  has a Camera card: Zoom, Left or right and Up or down sliders for one
+  scene at a time, with Reset (decision 044).
   Its Colours tab lists the nodes, edges and areas (zones), each with the
   palette's category swatches, the default marked; a node's row can give its
   colour to every node of its kind. Save writes only the categories in

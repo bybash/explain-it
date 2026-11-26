@@ -64,10 +64,57 @@ export const CARD_LIMITS = {
   credit: 80,
 } as const;
 
+/** How far the camera zooms in, and moves, as a share of the area the scene is framed in (below the titles, above the captions). */
+export const CAMERA_LIMITS = { zoom: { min: 1, max: 2 }, move: 0.5 } as const;
+
+export const CameraSchema = z
+  .strictObject({
+    zoom: z
+      .number()
+      .min(CAMERA_LIMITS.zoom.min)
+      .max(CAMERA_LIMITS.zoom.max)
+      .describe("1 frames the scene as it fits; 2 is twice as close."),
+    x: z
+      .number()
+      .min(-CAMERA_LIMITS.move)
+      .max(CAMERA_LIMITS.move)
+      .describe("Moves the scene right (positive) or left, as a share of its area's width."),
+    y: z
+      .number()
+      .min(-CAMERA_LIMITS.move)
+      .max(CAMERA_LIMITS.move)
+      .describe("Moves the scene down (positive) or up, as a share of its area's height."),
+  })
+  .describe("How a scene is framed: zoomed in and moved from where it fits.");
+export type Camera = z.output<typeof CameraSchema>;
+
+/** The camera that changes nothing: the scene framed as it fits. A scene's camera is left out instead. */
+export const FITTED_CAMERA: Camera = { zoom: 1, x: 0, y: 0 };
+
+/** How long a title card may be set to hold, in whole seconds. */
+export const TITLE_CARD_SECONDS = { min: 2, max: 10 } as const;
+
+/**
+ * How long a title card holds when its \`seconds\` are not set: read with
+ * nothing else on screen, so faster than a caption, between these bounds.
+ */
+export const TITLE_CARD_AUTO = { charsPerSecond: 20, min: 3, max: 5 } as const;
+
+/** "3 to 5 s": the title card's automatic hold, as people read it. */
+export const TITLE_CARD_AUTO_TEXT = `${TITLE_CARD_AUTO.min} to ${TITLE_CARD_AUTO.max} s`;
+
 export const TitleCardSchema = z
   .strictObject({
     title: z.string().min(1).max(CARD_LIMITS.title),
     description: z.string().min(1).max(CARD_LIMITS.description).optional(),
+    seconds: z
+      .int()
+      .min(TITLE_CARD_SECONDS.min)
+      .max(TITLE_CARD_SECONDS.max)
+      .optional()
+      .describe(
+        `How long it holds, in seconds; by its text when missing (${TITLE_CARD_AUTO_TEXT}).`,
+      ),
   })
   .describe("Opens the video: the title in the middle, the description under it.");
 
@@ -234,6 +281,10 @@ export const ConfigSchema = z
       .optional()
       .describe("Cards that open and close the video; each can be left out."),
     logo: LogoSchema.optional(),
+    camera: z
+      .record(z.string(), CameraSchema)
+      .optional()
+      .describe("Each scene's camera, by scene id; a scene not named is framed as it fits."),
   })
   .describe("Style and output settings. Every field has a default.");
 

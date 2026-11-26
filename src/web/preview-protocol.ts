@@ -37,7 +37,12 @@ export const BeatSpanSchema = z.object({
 export type BeatSpan = z.output<typeof BeatSpanSchema>;
 
 /** A moment worth jumping to: the title card, a beat, the end. */
-export const MarkSchema = z.object({ label: z.string(), at: z.number().min(0) });
+/** A place to seek to: the title, a beat (with its scene) or the end. */
+export const MarkSchema = z.object({
+  label: z.string(),
+  at: z.number().min(0),
+  scene: z.string().optional(),
+});
 export type Mark = z.output<typeof MarkSchema>;
 
 /** The page answers each drawing with the video's length and its marks, or with what was wrong. */
