@@ -1,3 +1,4 @@
+import type { Camera } from "../../schema/config.ts";
 import type { ScreenPoint, View } from "./project.ts";
 
 /** The most pixels per grid unit a scene is framed at, so a scene of two nodes is not blown up. */
@@ -32,5 +33,21 @@ export const fitView = (points: readonly ScreenPoint[], region: Region): View =>
     scale,
     originX: region.x + region.width / 2 - ((minX + maxX) / 2) * scale,
     originY: region.y + region.height / 2 - ((minY + maxY) / 2) * scale,
+  };
+};
+
+/**
+ * A fitted view through the scene's camera: zoomed about the middle of
+ * `region`, then moved by a share of its width and height. No camera
+ * leaves the view as it is.
+ */
+export const withCamera = (view: View, region: Region, camera: Camera | undefined): View => {
+  if (!camera) return view;
+  const cx = region.x + region.width / 2;
+  const cy = region.y + region.height / 2;
+  return {
+    scale: view.scale * camera.zoom,
+    originX: cx + (view.originX - cx) * camera.zoom + camera.x * region.width,
+    originY: cy + (view.originY - cy) * camera.zoom + camera.y * region.height,
   };
 };

@@ -3,7 +3,7 @@ import { categoryStyle } from "../theme/kinds.ts";
 import type { State } from "../timeline.ts";
 import type { ScreenPoint } from "./project.ts";
 import type { Polygon, Scene } from "./scene.ts";
-import { NODE_TIMING } from "./tweens.ts";
+import { dimOpacity, NODE_TIMING } from "./tweens.ts";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 
@@ -85,10 +85,12 @@ export const renderScene = (
       label.textContent = zone.label;
     }
     const target = targets.zone(zone.id);
+    // `shown` raises the platform with its first node; `dim` fades it, label and all.
     return (state: State): void => {
-      const shown = state[target]?.shown ?? 1;
-      g.setAttribute("visibility", shown > 0 ? "visible" : "hidden");
-      g.setAttribute("opacity", shown.toFixed(3));
+      const s = state[target] ?? {};
+      const opacity = (s.shown ?? 1) * dimOpacity(s.dim);
+      g.setAttribute("visibility", opacity > 0 ? "visible" : "hidden");
+      g.setAttribute("opacity", opacity.toFixed(3));
     };
   });
 
@@ -133,7 +135,7 @@ const poseNode =
     const s = state[target] ?? {};
     const shown = s.shown ?? 1;
     const pulse = s.pulse ?? 0;
-    const opacity = shown * (1 - (s.dim ?? 0) * (1 - NODE_TIMING.dimmed));
+    const opacity = shown * dimOpacity(s.dim);
     g.setAttribute("visibility", opacity > 0 ? "visible" : "hidden");
     g.setAttribute("opacity", opacity.toFixed(3));
     const y = (1 - shown) * NODE_TIMING.rise - pulse * PULSE.lift;

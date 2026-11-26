@@ -44,7 +44,9 @@ Slices keep their IDs, but after Milestone 1 they are built in this order:
    built first so the chat works as soon as there is a client), **5.2**,
    **5.8** (checks in the chat), then **5.3**, **5.4** with
    **2.8** (story checks, which the agent runs on its own drafts), **5.5**
-   and **5.6**. Then **Milestone 6**.
+   and **5.6**. Then **Milestone 6**, with **3.15** (the Colours tab) and
+   **3.16** (framing: the scene number, the title card's length and the
+   camera) before 6.2, so the new examples can use them.
 6. **Milestone 7**, share outputs: not placed in the order yet. Its open
    questions (below the table) are settled first, in a decision record.
 
@@ -110,6 +112,8 @@ The goal: the CLI renders a hand-written example to an MP4, with no LLM and no v
 | ✅ 3.11 | **Style gate panel, the sound**: voice picker with a sample, voice speed, pacing, captions, music | A voice sample plays from the panel |
 | ✅ 3.13 | **Preview gate checks**: run the checks from the panel, warnings that jump to their beat, the contact sheet | A warning in the example jumps to its beat |
 | ✅ 3.10 | **App styles in Tailwind**: Tailwind v4 through its Vite plugin; the colour tokens and the dark set become `@theme` values; `app.css` moves to utility classes, keeping plain CSS only for CodeMirror's and Mermaid's own classes; the video's styles (`src/engine/`) are untouched; a decision record | Screenshots of each page, light and dark, look the same before and after |
+| ✅ 3.16 | **Framing**: no scene number when there is only one scene; a shorter title card (20 characters a second, 3 to 5 s) with a "How long" setting (`cards.title.seconds`, 2 to 10 s); a camera for each scene (`config.camera`, zoom 1 to 2, moved up to half the frame), set with sliders and Reset in the Look tab, and by agents with `set_style` | A one-scene video shows no number; a set title card holds as set; a zoomed and moved scene shows in the preview and the render, and stills without a camera are unchanged |
+| ✅ 3.15 | **Colours tab**: a Colours tab in the Style gate, a palette category for each node, edge and area with the default marked, "every node of this kind", saved to `graph.json` alone (`PUT /api/projects/:slug/colours`); a change of colour marks no beat stale; `get_project` and the chat's graph edits see what each category looks like, so "make it green" finds its category | A colour picked in the tab shows in the preview and is saved, with no beat stale; a recorded edit turns "make the identity provider pink" into its category |
 | ✅ 3.14 | **Story brief and rules**: an optional brief for the script (the audience, the one takeaway, the shape of the story from 4.5's list, the hook), the project's own notes and rules (what to stress, what to leave out), and house rules in Settings that every project follows (for example "no jargon", "end with the docs link"); all in the zod schemas with their limits, in `brief.json` (set with `set_brief` and the Script gate) and `house-rules.md`, and given to MCP agents in `get_project` and the `explain_flow` prompt | A brief and a house rule set in the app reach an agent through the prompt and `get_project` |
 
 3.14's open questions (where the brief and the house rules live, and how
@@ -150,8 +154,8 @@ user works by hand or over MCP.
 
 | ID | Slice | Done when |
 |---|---|---|
-| 6.1 | **Docker**: a slim image with Chromium and ffmpeg, volumes for projects and cache, a GHCR publish workflow on tags | `docker run` works on a clean machine |
-| 6.2 | **Examples**: `ci-pipeline` and `checkout`, approved and rendered | All three examples render without a key |
+| ✅ 6.1 | **Docker**: a slim image with Chromium and ffmpeg, volumes for projects and cache, a GHCR publish workflow on tags | `docker run` works on a clean machine |
+| ✅ 6.2 | **Examples**: `ci-pipeline` and `checkout`, approved and rendered | All three examples render without a key |
 | 6.3 | **Golden stills in CI**: stills of each example compared against stored images | CI fails on a visual regression |
 | 6.4 | **Docs**: README with a demo video, `docs/ARCHITECTURE.md`, final `CONTRIBUTING.md`, tested models list | A new contributor can run the app from the README alone |
 | 6.5 | **Release v0.1.0**: changelog, tag, image | The release is published |
@@ -213,15 +217,16 @@ as three pull requests (decision 037) and one fix (decision 035).
 ## Feedback (2026-11-26)
 
 From watching a one-scene video (a small neural network) in the Preview
-gate, in the user's words where possible. Not placed in the order yet.
+gate, in the user's words where possible. The first three are slice 3.16
+(decision 044); the angle and the beat list are not placed yet.
 
 **The video**
 
-- When there is only one scene, the scene label needs no number: "How
+- ✅ When there is only one scene, the scene label needs no number: "How
   neurons form a network", not "1 · How neurons form a network".
-- The title card stays on screen too long. Make it a little shorter, or let
+- ✅ The title card stays on screen too long. Make it a little shorter, or let
   the user set how long it stays (a card setting in the Style gate).
-- A camera the user can set: zoom in a little and move the graph left,
+- ✅ A camera the user can set: zoom in a little and move the graph left,
   right, up and down, so a graph fills the frame. In the neuron video the
   beat's title sits at the top left and the graph leaves space to the right
   and at the top; zoomed and moved, the graph could be larger.
@@ -294,29 +299,65 @@ that finishes it.
   chat's problems (`wordProblems`) read the same quick checks each their
   own way; a Fix in the editor beside a hint could share the chat's.
 
-### For 6.1 (Docker), from 3.1
+### For 6.3 (golden stills in CI), from 1.9 and 6.1
 
-- `npm start` serves `dist/web`, so the image must run `npm run build`.
-- The server listens on `127.0.0.1` unless `HOST` is set. Inside a
-  container it must listen on `0.0.0.0`, so the image sets `HOST=0.0.0.0`.
-  The `docker run` line in SPEC publishes the port on `127.0.0.1` only.
-- Projects live in `PROJECTS_DIR`, `./projects` by default. The image's
-  volume should mount there.
+- The end-to-end render test skips itself without Chrome or ffmpeg, and CI
+  has no ffmpeg, so it never runs there. Golden stills need both: install
+  ffmpeg in CI, or run the stills in the Docker image.
+- Not checked yet: that the image's Chromium gives identical videos with 1
+  and 4 pages (`src/render/render.test.ts` in the image). The example
+  rendered in the container looks right by eye.
 
-### For 6.1 (Docker), from 1.9
+### For 6.5 (release), from 6.1
 
-- Rendering launches the local Chrome (`channel: "chrome"`), or the Chromium
-  at `CHROME_PATH`; the image should set `CHROME_PATH`. `explain-it render`
-  rebuilds the render page only when Vite is installed, so the image must
-  run `npm run build:engine`.
-- A render starts four Chrome processes (decision 010); give the container
-  memory for them. Check that the image's Chromium still gives identical
-  videos with 1 and 4 pages (the render test does).
-- The end-to-end render test skips itself without Chrome or ffmpeg. Check
-  that CI has both, or it never runs there.
+- Before the first publish, check the image against the GPL and LGPL
+  parts it carries (`NOTICE.md`): that naming their upstream and Debian
+  sources is enough, or ship a written offer or the sources themselves.
+- The publish workflow (`.github/workflows/docker.yml`) has not run yet:
+  the first `v*` tag runs it. A new GHCR package is private; make
+  `ghcr.io/bybash/explain-it` public after the first publish.
+- No CI job builds the image before a release (6.1 checked it by hand). A
+  smoke test (build, run, answer, render the example) on PRs that change
+  the `Dockerfile` would catch a broken image earlier.
+
+### Not placed yet, from 3.16
+
+- The Camera card has no browser test of its own (3.16 agreed the pure,
+  schema and MCP seams, and stills by eye).
+- The camera's sliders show whole percents; a camera set more finely over
+  MCP shows rounded, and moving a slider rounds it.
+- The layout repair's recording (5.6) holds only for some answers: three
+  fresh recordings of the same prompt each left a zone label covered by
+  about 12 px. Record it again only with `repair.test.ts` run after.
+
+### Not placed yet, from 3.15
+
+- The Colours tab has no browser test of its own (3.15 agreed the pure,
+  API, MCP and recorded-LLM seams); it was checked by hand, with
+  screenshots. The e2e flow could pick a colour and save it.
+
+### Not placed yet, from 6.1
+
+- The image is about 1.65 GB: Chromium and ffmpeg with their libraries
+  are about 800 MB, and the runtime `node_modules` about 640 MB. Mermaid,
+  CodeMirror and React (about 200 MB) are only bundled into the web app,
+  but they are `dependencies`, which `npm ci --omit=dev` keeps; moving them
+  to `devDependencies` needs the dependency-cruiser rule against dev
+  dependencies in `src/` to allow the web app.
+- A render in the container uses about 2.5 GB of memory (four Chrome
+  pages, decision 010); Docker needs at least 4 GB.
 
 ### Found outside a slice
 
+- `explain-it check` once ended with "libc++abi: terminating due to
+  uncaught exception … mutex lock failed" after writing its report, on a
+  project whose voice it had just generated (6.2). The report and the
+  contact sheet were complete; the voice library's teardown at exit is the
+  likely cause.
+- `serves a part of a video, so a player can seek` in
+  `src/server/render-routes.test.ts` sometimes passes its 5-second timeout
+  under load (twice so far: locally in 5.8, on CI in 6.1), and passes when
+  run again.
 - The starter script (`starterScript`) makes one scene of at most 12
   nodes and 10 beats; a larger graph keeps its other nodes and edges out
   of the starter, for the user, or the assistant, to add as scenes.

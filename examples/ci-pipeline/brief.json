@@ -1,0 +1,7 @@
+{
+  "$schema": "../../schemas/brief.schema.json",
+  "version": 1,
+  "audience": "Developers new to the team",
+  "takeaway": "Nothing reaches staging unless the lint, the tests and the build all pass.",
+  "shape": "problem"
+}

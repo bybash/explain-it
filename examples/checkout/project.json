@@ -1,0 +1,10 @@
+{
+  "$schema": "../../schemas/project.schema.json",
+  "version": 1,
+  "name": "Checkout",
+  "gate": "render",
+  "staleBeats": [],
+  "origin": "web",
+  "createdAt": "2026-11-26T12:00:00.000Z",
+  "updatedAt": "2026-11-26T12:00:00.000Z"
+}

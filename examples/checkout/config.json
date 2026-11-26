@@ -1,0 +1,29 @@
+{
+  "$schema": "../../schemas/config.schema.json",
+  "theme": {
+    "palette": "sunset",
+    "mode": "light"
+  },
+  "font": "manrope",
+  "music": {
+    "mood": "calm",
+    "seed": 3
+  },
+  "cards": {
+    "title": {
+      "title": "Checkout in our shop",
+      "description": "Stock is held first, so a paid order never runs out."
+    },
+    "end": {
+      "headline": "See how orders are handled",
+      "link": "https://example.com/docs/checkout",
+      "where": "Help centre › Orders",
+      "credit": "Made with explAIn-it"
+    }
+  },
+  "logo": {
+    "light": "logo-light.svg",
+    "dark": "logo-dark.svg",
+    "corner": "bottom-right"
+  }
+}

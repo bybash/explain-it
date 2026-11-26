@@ -1,0 +1,7 @@
+{
+  "$schema": "../../schemas/brief.schema.json",
+  "version": 1,
+  "audience": "The support team",
+  "takeaway": "Stock is held before the payment is taken, so a paid order never runs out.",
+  "shape": "problem"
+}

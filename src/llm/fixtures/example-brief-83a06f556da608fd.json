@@ -35,7 +35,12 @@
         "shape": {
           "description": "The shape the story takes.",
           "type": "string",
-          "enum": ["problem", "before-after", "failure", "zoom"]
+          "enum": [
+            "problem",
+            "before-after",
+            "failure",
+            "zoom"
+          ]
         },
         "hook": {
           "description": "What the first beat says to make the viewer want the rest.",
@@ -50,12 +55,14 @@
           "maxLength": 2000
         }
       },
-      "required": ["version"],
+      "required": [
+        "version"
+      ],
       "additionalProperties": false,
       "description": "The story a project's script tells: who it is for, what to remember, its shape."
     }
   },
   "reply": {
-    "text": "{\"$schema\":\"https://explain-it.dev/schema/brief.json\",\"version\":1,\"audience\":\"people who use the app and have ever been locked out of their account\",\"takeaway\":\"Forgetting your password is recoverable: the app emails you a one-time link, and that link is the only way to set a new password.\",\"shape\":\"problem\",\"hook\":\"You've typed the wrong password three times and the login page is staring back at you. Here is what happens when you hit 'Forgot password'.\",\"notes\":\"Keep it to the user's view: request the reset, check email, open the one-time link, choose a new password. Stress that the link is single-use and that the app looks up the account before sending anything. Leave out server internals, token formats, and email delivery infrastructure.\"}"
+    "text": "{\"version\":1,\"audience\":\"people who use the app and have forgotten their password\",\"takeaway\":\"Forgetting your password is recoverable: the app emails you a one-time link, and that link is the only way in to set a new password.\",\"shape\":\"problem\",\"hook\":\"You're locked out, staring at the login screen, and you have no idea what happens next. Here's exactly how getting back in works.\",\"notes\":\"Keep it in the user's voice and language, not engineering terms. Walk through the steps in order: request a reset, check your email, open the one-time link, choose a new password. Stress that the link works once and that the app looks up the account before sending it. Leave out how tokens, email services, or the server are built.\"}"
   }
 }

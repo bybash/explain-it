@@ -1,6 +1,6 @@
+import { NUMBERED_CATEGORIES } from "../../schema/colours.ts";
 import type { CustomPalette } from "../../schema/config.ts";
 import { BADGE_TONES } from "../../schema/storyboard.ts";
-import { NUMBERED_CATEGORIES } from "./kinds.ts";
 
 type BadgeTone = (typeof BADGE_TONES)[number];
 

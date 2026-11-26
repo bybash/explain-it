@@ -1,7 +1,8 @@
 import { convexHull } from "../checks/geometry.ts";
 import type { Shape } from "../schema/checks.ts";
 import { STAGE } from "../schema/checks.ts";
-import type { Config, LogoImages } from "../schema/config.ts";
+import { DEFAULT_CATEGORY } from "../schema/colours.ts";
+import type { Camera, Config, LogoImages } from "../schema/config.ts";
 import { orThrow } from "../schema/errors.ts";
 import type { Graph } from "../schema/graph.ts";
 import type { Layout } from "../schema/layout.ts";
@@ -28,7 +29,7 @@ import { logoShowsOn } from "./cards/show.ts";
 import { edgeRoutes } from "./edges/fallback.ts";
 import { edgeGeometry } from "./edges/geometry.ts";
 import { renderEdges } from "./edges/svg.ts";
-import { fitView } from "./iso/frame.ts";
+import { fitView, withCamera } from "./iso/frame.ts";
 import { project, type View } from "./iso/project.ts";
 import { buildScene, type Scene } from "./iso/scene.ts";
 import { renderScene } from "./iso/svg.ts";
@@ -38,7 +39,6 @@ import { type StageRegions, stageRegions } from "./overlays/regions.ts";
 import { drawnShapes } from "./shapes.ts";
 import { applyTheme, loadFont } from "./theme/apply.ts";
 import { fontFor } from "./theme/fonts.ts";
-import { DEFAULT_CATEGORY } from "./theme/kinds.ts";
 import type { ThemeMode } from "./theme/palettes.ts";
 import { themeFor } from "./theme/theme.ts";
 import { type State, timeline } from "./timeline.ts";
@@ -94,7 +94,7 @@ export const mountPlayer = async (frame: HTMLElement, input: PlayerInput): Promi
   const plan = buildBeats(storyboard, graph, beatOptions(config, input.narration));
   frame.replaceChildren();
   const posers = plan.scenes.map((scene) =>
-    drawScene(frame, { graph, layout, routes, plan, regions }, scene),
+    drawScene(frame, { graph, layout, routes, plan, regions, cameras: config.camera ?? {} }, scene),
   );
   for (const card of plan.cards) posers.push(drawCard(frame, card.id, config, logo));
   if (onEveryFrame) posers.push(renderLogoLayer(frame, onEveryFrame));
@@ -141,6 +141,8 @@ type Drawing = {
   readonly routes: ReturnType<typeof edgeRoutes>;
   readonly plan: BeatPlan;
   readonly regions: StageRegions;
+  /** Each scene's camera, by scene id (decision 044). */
+  readonly cameras: Readonly<Record<string, Camera>>;
 };
 
 /** The graph cut down to one scene: its nodes, and the edges it flows. */
@@ -156,7 +158,7 @@ const sceneGraph = (graph: Graph, scene: ScenePlan): Graph => {
 
 /** Frames a scene's nodes, zones and routes into the content region. */
 const framed = (
-  { layout, routes, regions }: Drawing,
+  { layout, routes, regions, cameras }: Drawing,
   scene: ScenePlan,
   cut: Graph,
 ): { view: View; shape: Scene } => {
@@ -169,7 +171,7 @@ const framed = (
   const shapeAt = (view: View) => orThrow(buildScene(cut, positions, view), `scene ${scene.id}`);
   const unitView = { scale: 1, originX: 0, originY: 0 };
   const unit = shapeAt(unitView);
-  const view = fitView(
+  const fitted = fitView(
     [
       ...unit.nodes.flatMap((n) => [...n.faces.top, ...n.faces.left, ...n.faces.right]),
       ...unit.zones.flatMap((z) => z.polygon),
@@ -179,6 +181,7 @@ const framed = (
     ],
     regions.content,
   );
+  const view = withCamera(fitted, regions.content, cameras[scene.id]);
   return { view, shape: shapeAt(view) };
 };
 

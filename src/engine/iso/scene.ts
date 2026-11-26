@@ -1,8 +1,9 @@
+import { DEFAULT_CATEGORY } from "../../schema/colours.ts";
 import { referenceErrors } from "../../schema/common.ts";
 import type { Validated, ValidationError } from "../../schema/errors.ts";
 import type { Graph, NodeKind } from "../../schema/graph.ts";
 import { fail, ok } from "../../schema/result.ts";
-import { DEFAULT_CATEGORY, KIND_STYLES } from "../theme/kinds.ts";
+import { KIND_STYLES } from "../theme/kinds.ts";
 import { project, type ScreenPoint, type View } from "./project.ts";
 import { KIND_SIZES, ZONE_MARGIN } from "./sizes.ts";
 

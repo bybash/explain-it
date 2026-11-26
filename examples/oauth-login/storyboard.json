@@ -69,7 +69,7 @@
         {
           "id": "code",
           "caption": "The provider sends back a one-time code.",
-          "say": "The provider redirects back with a short-lived, one-time code.",
+          "say": "The provider sends the browser back with a code that works only once.",
           "actions": [
             {
               "type": "flow",

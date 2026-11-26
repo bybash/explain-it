@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { fakeTts } from "../audio/fake-tts.testing.ts";
 import { fakeLlm } from "../llm/fake-llm.testing.ts";
+import { RUSHED_LINE } from "../llm/recordings.ts";
 import type { CheckReport } from "../schema/checks.ts";
 import { orThrow } from "../schema/errors.ts";
 import { parseGraph } from "../schema/graph.ts";
@@ -16,13 +17,19 @@ import { laidOut } from "./graphs.ts";
 import { openProject } from "./projects.ts";
 
 const NOW = "2026-11-25T12:00:00.000Z";
-/** The example's line that the quick checks find goes by too fast (see RUSHED_LINE). */
+/** Shorter words for RUSHED_LINE, as the LLM proposes them. */
 const SHORTER = JSON.stringify({ text: "The provider sends back a one-time code." });
 
 let projectsDir: string;
 beforeEach(() => {
   projectsDir = mkdtempSync(join(tmpdir(), "explain-it-checks-chat-"));
   copyExample(projectsDir, "oauth");
+  // A line the quick checks find goes by too fast: the example's own, before 6.2 made it plainer.
+  const file = join(projectsDir, "oauth", "storyboard.json");
+  const storyboard = JSON.parse(readFileSync(file, "utf8"));
+  for (const scene of storyboard.scenes)
+    for (const beat of scene.beats) if (beat.id === RUSHED_LINE.beat) beat.say = RUSHED_LINE.text;
+  writeFileSync(file, JSON.stringify(storyboard));
 });
 afterEach(() => rmSync(projectsDir, { recursive: true, force: true }));
 

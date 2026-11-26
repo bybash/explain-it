@@ -77,8 +77,9 @@ Rules:
 - The user can go back to any gate. Editing the graph marks only the beats
   that reference changed nodes or edges as stale; the script gate lists them.
   A beat references what its actions name (a dim action names the nodes it
-  keeps); a scene's node list does not make its beats stale. A stale beat
-  stops being stale once it is rewritten.
+  keeps); a scene's node list does not make its beats stale, and nor does a
+  change of colour (a `category`), which no line depends on (decision 043).
+  A stale beat stops being stale once it is rewritten.
 - The Script gate's editor (decision 032) makes a starter script from the
   graph when there is none: one scene, a beat for each edge that shows its
   ends and sends its flow, captions from the labels, and no narration yet.
@@ -154,7 +155,10 @@ the platform's front-left edge, just outside it, where its own boxes cannot
 cover it. Categories are `accent`, `muted` and
 `c1` to `c6`; a palette with fewer than six category colours repeats them in
 order, and an unknown category draws in the accent colour. Edges and zones
-without a category use the accent.
+without a category use the accent. An edge's arrowhead takes its edge's
+colour. A colour is always a category, never a hex value, so it follows the
+palette in light and dark; a colour of one's own goes in a custom palette
+(decision 043).
 
 ### Storyboard (`storyboard.json`)
 
@@ -166,7 +170,7 @@ type Storyboard = {
 
 type Scene = {
   id: string;
-  title: string;        // e.g. "Login"; shown as "1 · Login"
+  title: string;        // e.g. "Login"; shown as "1 · Login", or "Login" when it is the only scene
   nodes: string[];      // the subset of graph nodes in this scene, ≤ 12
   beats: Beat[];        // 3–10
 };
@@ -188,8 +192,12 @@ type Action =
   | { type: "badge"; node: string; text: string; tone: "info" | "ok" | "warn" | "error" };
 ```
 
-The camera is fixed within a scene and frames the scene's nodes. Scenes change
-with a short transition.
+The camera is fixed within a scene and frames the scene's nodes. A scene's
+camera in `config.json` zooms in (up to twice as close) and moves the scene
+from where it fits, by a share of the area it is framed in (below the
+titles and above the captions, up to half of it), so a scene
+with room around it can fill the frame; the layout checks say whether it
+still fits (decision 044). Scenes change with a short transition.
 
 ### Brief (`brief.json`)
 
@@ -225,7 +233,7 @@ type Config = {
   music: { enabled: boolean; mood: "calm" | "upbeat" | "technical"; seed: number; volumeDb: number }; // volumeDb: under the voice, −12 by default
   output: { resolution: "1080p" | "720p" };
   cards?: {
-    title?: { title: string; description?: string };   // ≤ 100 and ≤ 160 characters, wrapped
+    title?: { title: string; description?: string; seconds?: number }; // ≤ 100 and ≤ 160 characters, wrapped; seconds: 2–10
     end?: {
       headline: string;                 // ≤ 100 characters, wrapped
       link?: string;                    // an http(s) URL, ≤ 200 characters; also drawn as a QR code
@@ -240,6 +248,8 @@ type Config = {
     show?: "start" | "end" | "both" | "all";            // the title card, the end card, both (default), or every frame;
                                                         // the title card closing the video counts as the end card
   };
+  camera?: Record<string, { zoom: number; x: number; y: number }>;
+                                        // by scene id: zoom 1–2, x and y −0.5–0.5 (right and down positive)
 };
 
 type CustomPalette = {
@@ -364,7 +374,9 @@ for frame capture, so what the user approves is what gets rendered.
      back, and what it keeps comes back, so a later dim moves the focus and
      a node both keep stays bright. A beat without a dim brings everything
      back as it starts; the last beat's focus holds through the scene's
-     fade-out (decision 035).
+     fade-out (decision 035). What belongs to a faded node fades with it:
+     its label and icon, the badges and callouts on it, and its zone, name
+     and all, once the focus keeps none of the zone's nodes (decision 042).
   4. Narration longer than the caption band's two lines is split into cues,
      between sentences, else clauses, else words; each cue is on screen for
      its share of the line's characters. The cues are `__cues` and the `.srt`.
@@ -379,8 +391,10 @@ for frame capture, so what the user approves is what gets rendered.
   off, a line is timed by reading it, at 15 characters per second; with the
   narration captions off as well, nothing carries it, and it does not time
   its beat. Decision 013 says why.
-- **Opening and ending.** A card holds for max(3 s, its text length ÷ 15
-  characters per second). The title card is on screen from the first frame,
+- **Opening and ending.** An end card holds for max(3 s, its text length ÷
+  15 characters per second). A title card is read with nothing else on
+  screen, so it holds for its text length ÷ 20 characters per second, 3 to
+  5 s, or as long as its `seconds` (decision 044). The title card is on screen from the first frame,
   and fades out over the scene transition (0.8 s) as the first scene fades
   in. The video ends the same way: the last scene fades out over the scene
   transition as the closing card fades in, and the card holds to the last
@@ -641,7 +655,7 @@ server validates, lays out, checks, previews and renders.
 |---|---|---|
 | `get_guide` | Reads the authoring guide | The guide as text, with the house rules, the same as `explain_flow` |
 | `list_projects` | Lists projects | Names, gates, last update |
-| `get_project` | Reads one project | Its files, the current gate and the house rules |
+| `get_project` | Reads one project | Its files, the current gate, the house rules, and what each colour category looks like in its palette (`colours`) |
 | `create_project` | Creates a project from a graph, with optional `sources` | Validation errors or the Mermaid, and a preview link |
 | `update_graph` | Replaces the graph or applies a JSON Patch | Errors or the Mermaid; stale beats |
 | `set_brief` | Replaces the story brief | Errors or the brief, and a preview link |
@@ -745,6 +759,13 @@ comes later.
   beat and the end. Save sends what changed as a JSON Merge Patch with any
   new logo files and writes `config.json` the way MCP's `set_style` does;
   the gate cannot be approved while changes are unsaved (decision 024).
+  Its Look tab sets how long the title card holds (Auto, or 2 to 10 s), and
+  has a Camera card: Zoom, Left or right and Up or down sliders for one
+  scene at a time, with Reset (decision 044).
+  Its Colours tab lists the nodes, edges and areas (zones), each with the
+  palette's category swatches, the default marked; a node's row can give its
+  colour to every node of its kind. Save writes only the categories in
+  `graph.json`, with nothing laid out again and no beat stale (decision 043).
   Its sound has samples: the voice speaks the script's first line (a
   sentence of its own when there is no narration yet) in the chosen voice
   and speed, cached with the video's lines, and the music plays 15 s of the
@@ -825,14 +846,28 @@ Creating and editing projects happens in the web UI.
 
 ### Docker
 
-A slim Node base with Chromium and ffmpeg, published to GHCR from CI. The
-voice model is not in the image.
+A slim Node base (Debian) with Chromium and ffmpeg, for Intel and Arm
+machines, published to GHCR from CI when a release is tagged (decision
+041). The voice model is not in the image: it downloads into the cache
+volume the first time a voice is generated.
 
 ```sh
 docker run -p 127.0.0.1:3000:3000 \
-  -v ./projects:/app/projects -v ./cache:/app/cache \
+  -v ./projects:/app/projects -v ./cache:/app/cache -v ./config:/app/config \
   -e OPENROUTER_API_KEY=... ghcr.io/bybash/explain-it
 ```
+
+- Inside the container the app listens on every interface (`HOST=0.0.0.0`);
+  publishing the port on `127.0.0.1` keeps it on this machine.
+- A key saved in the settings page goes to `/app/config/.env`
+  (`ENV_FILE`), its own volume, never beside the projects. A key passed
+  with `-e` needs no file.
+- It runs as the image's `node` user (uid 1000). On Linux, folders mounted
+  from the host and owned by another user need `--user "$(id -u):$(id -g)"`.
+- The image carries GPL and LGPL parts; `NOTICE.md`, copied into it, says
+  which and where their source is.
+- The CLI is in the image: `docker run … ghcr.io/bybash/explain-it
+  explain-it render projects/<name>`.
 
 Supported: macOS and Linux natively; Windows through Docker.
 
@@ -865,8 +900,16 @@ Three approved example projects in `examples/`, which render without an API
 key and also serve as test fixtures:
 
 - **OAuth login**: browser, app, identity provider, token exchange.
-- **CI pipeline**: commit, build, test, deploy, with a failure branch.
-- **Checkout**: cart, payment provider, inventory, confirmation email.
+- **CI pipeline**: push, lint, tests and build side by side, a gate with a
+  failure branch back to the pipeline, then the registry and staging. Dark,
+  with a camera on its second scene.
+- **Checkout**: shopper, order service, stock held before the payment
+  provider takes the money, confirmation email.
+
+OAuth login uses the default look. The CI pipeline and checkout examples
+each have their own palette and font, their own colours for some nodes,
+edges and areas, title and end cards, a logo and a brief, so the three show
+the range; they began as the assistant's recorded drafts, edited by hand.
 
 ## Milestones
 

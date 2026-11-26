@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { OpenedProject } from "../schema/api.ts";
 import type { Config, LogoImages } from "../schema/config.ts";
 import { clockTime } from "./preview-time.ts";
@@ -14,10 +14,13 @@ export const StylePreview = ({
   opened,
   config,
   logo,
+  showing,
 }: {
   opened: OpenedProject;
   config: Config;
   logo: LogoImages | undefined;
+  /** A scene being changed elsewhere in the form (its camera): shown, unless it already is. */
+  showing?: { readonly scene: string; readonly asked: number } | undefined;
 }) => {
   const [at, setAt] = useState(0);
   const [darkShown, setDarkShown] = useState(false);
@@ -29,6 +32,18 @@ export const StylePreview = ({
     setAt(t);
     preview.seek(t);
   };
+
+  // Each time a scene is asked for, the preview moves to its first beat unless one of its beats is on screen.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: only a new ask moves the preview.
+  useEffect(() => {
+    if (!showing) return;
+    const own = marks.filter((m) => m.scene === showing.scene);
+    const first = own[0];
+    const last = own.at(-1);
+    if (!first || !last) return;
+    const inside = at >= first.at - 0.5 && at <= last.at + 0.5;
+    if (!inside) seek(first.at);
+  }, [showing?.asked]);
 
   if (!preview.ready)
     return <p className="my-4 text-muted">The preview needs the graph and the script.</p>;

@@ -15,11 +15,11 @@ a palette, font and voice, shows a live preview, and renders an MP4.
 
 ## Status
 
-In development. Today an IDE's agent can make a video end to end over MCP:
-it reads your repository, writes the graph and the script, and renders an
-MP4 with captions, in a light or dark theme. The video is silent for now;
-voice, music and the checks come next, then the web app's own chat with
-your own LLM key, then Docker. The
+In development. In the web app, a chat with your own LLM key drafts the
+graph and the script with you; from your IDE, its agent can do the same
+over MCP. Either way the result is an MP4 with voice, music and captions,
+in a light or dark theme, made on your machine with `npm` or Docker. The
+first release comes next: more examples, the docs and golden stills. The
 design is in [`SPEC.md`](SPEC.md) and the plan, one pull request at a time,
 is in [`ROADMAP.md`](ROADMAP.md).
 
@@ -45,6 +45,29 @@ The app runs on <http://127.0.0.1:3000>, and only there: it listens on
 your own machine. Projects are kept in `projects/`. Keep it running while
 your IDE uses it. `HOST`, `PORT`, `PROJECTS_DIR` and `CACHE_DIR` change these; with
 another address, change the URL in your IDE's config to match.
+
+## Or run it with Docker
+
+The image carries Node, Chromium and ffmpeg, so Docker is all you need
+(on Windows, it is the way to run explAIn-it). Build it from this
+repository until the first release is published to GHCR:
+
+```sh
+docker build -t explain-it .
+docker run -p 127.0.0.1:3000:3000 \
+  -v ./projects:/app/projects -v ./cache:/app/cache -v ./config:/app/config \
+  -e OPENROUTER_API_KEY=... explain-it
+```
+
+Open <http://127.0.0.1:3000>. Give Docker at least 4 GB of memory: a render runs
+four Chrome pages. The voice model downloads into `cache/` the
+first time; a key saved in Settings is kept in `config/.env`. On Linux, add
+`--user "$(id -u):$(id -g)"` when the folders you mount belong to another
+user than uid 1000. Render from the command line with
+`docker run --rm -v ./projects:/app/projects -v ./cache:/app/cache explain-it explain-it render projects/<name>`.
+To reach an LLM on your own machine (Ollama, LM Studio), use
+`http://host.docker.internal:<port>` as its base URL (on Linux, also pass
+`--add-host=host.docker.internal:host-gateway`).
 
 ## Models
 

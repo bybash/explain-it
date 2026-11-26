@@ -218,6 +218,12 @@ describe("buildBeats: actions", () => {
     expect(at(beat("done").start, node("exchange", "idp")).dim).toBe(0);
   });
 
+  it("numbers no scene when there is only one", () => {
+    const one = { ...storyboard, scenes: storyboard.scenes.slice(0, 1) };
+    const titles = buildBeats(one, graph).overlays.filter((o) => o.kind === "title");
+    expect(titles.map((o) => o.text)).toEqual(["Sign in"]);
+  });
+
   it("shows each scene's title for the scene, and each step caption for its beat", () => {
     const titles = plan.overlays.filter((o) => o.kind === "title");
     expect(titles.map((o) => [o.scene, o.text])).toEqual([
@@ -366,8 +372,10 @@ describe("buildBeats: narration", () => {
 
 describe("buildBeats: title card", () => {
   const short = { title: "Signing in with OAuth" };
-  // 60 + 60 characters at 15 a second: 8 s, longer than the 3 s minimum.
-  const long = { title: "t".repeat(60), description: "d".repeat(60) };
+  // 40 + 40 characters at 20 a second: 4 s, longer than the 3 s minimum.
+  const longer = { title: "t".repeat(40), description: "d".repeat(40) };
+  // 60 + 100 characters: 8 s at that speed, held 5 s at most.
+  const long = { title: "t".repeat(60), description: "d".repeat(100) };
   const card = cardTarget("title");
 
   it("is fully shown from the first frame and held at least 3 s", () => {
@@ -378,9 +386,18 @@ describe("buildBeats: title card", () => {
     expect(at(2.99, card).opacity).toBe(1);
   });
 
-  it("holds longer when its text needs it, at 15 characters a second", () => {
-    const plan = buildBeats(storyboard, graph, { titleCard: long });
-    expect(spanOf(plan.cards, "title").end).toBeCloseTo(8);
+  it("holds longer when its text needs it, at 20 characters a second, and 5 s at most", () => {
+    expect(
+      spanOf(buildBeats(storyboard, graph, { titleCard: longer }).cards, "title").end,
+    ).toBeCloseTo(4);
+    expect(spanOf(buildBeats(storyboard, graph, { titleCard: long }).cards, "title").end).toBe(5);
+  });
+
+  it("holds as long as the user set, whatever its text", () => {
+    const set = buildBeats(storyboard, graph, { titleCard: { ...long, seconds: 8 } });
+    expect(spanOf(set.cards, "title").end).toBe(8);
+    const brief = buildBeats(storyboard, graph, { titleCard: { ...short, seconds: 2 } });
+    expect(spanOf(brief.cards, "title").end).toBe(2);
   });
 
   it("fades out over the transition as the first scene fades in", () => {
@@ -477,8 +494,10 @@ describe("buildBeats: ending", () => {
     expect(hold({ endCard: end })).toBeCloseTo(95 / 15);
     expect(hold({ endCard: { headline: "Thanks" } })).toBeCloseTo(3);
     expect(hold({ logo: true })).toBeCloseTo(3);
+    // The title card closing the video holds as it does at the start: 5 s at most, unless set.
     const long = { title: "t".repeat(60), description: "d".repeat(60) };
-    expect(hold({ titleCard: long })).toBeCloseTo(8);
+    expect(hold({ titleCard: long })).toBeCloseTo(5);
+    expect(hold({ titleCard: { ...long, seconds: 7 } })).toBeCloseTo(7);
   });
 
   it("leaves nothing of the last scene on screen once its layer has faded", () => {
@@ -619,6 +638,105 @@ describe("buildBeats: a dim is its beat's focus", () => {
     expect(dim(mid("four"), nodeOf("b"))).toBe(1);
     expect(dim(plan.duration, nodeOf("b"))).toBe(1);
     expect(dim(plan.duration, nodeOf("a"))).toBe(0);
+  });
+});
+
+describe("buildBeats: a dim fades what belongs to a faded node", () => {
+  const layerGraph = unwrap(
+    parseGraph({
+      version: 1,
+      title: "Layers",
+      nodes: [
+        { id: "a", label: "A", kind: "service" },
+        { id: "b", label: "B", kind: "service", zone: "z" },
+        { id: "c", label: "C", kind: "service", zone: "z" },
+      ],
+      edges: [
+        { id: "ab", from: "a", to: "b" },
+        { id: "ac", from: "a", to: "c" },
+      ],
+      zones: [{ id: "z", label: "Hidden layer" }],
+    }),
+  );
+  const layerBoard = unwrap(
+    parseStoryboard(
+      {
+        version: 1,
+        scenes: [
+          {
+            id: "s",
+            title: "Layers",
+            nodes: ["a", "b", "c"],
+            beats: [
+              {
+                id: "marked",
+                caption: "B gets a value.",
+                actions: [
+                  { type: "badge", node: "b", text: "0.45", tone: "ok" },
+                  { type: "callout", node: "c", text: "C weighs it." },
+                ],
+              },
+              {
+                id: "only_a",
+                caption: "Only A.",
+                actions: [
+                  { type: "dim", except: ["a"] },
+                  { type: "callout", node: "c", text: "C sits this one out." },
+                ],
+              },
+              {
+                id: "a_and_b",
+                caption: "A and B.",
+                actions: [{ type: "dim", except: ["a", "b"] }],
+              },
+              { id: "all", caption: "All of it.", actions: [{ type: "highlight", node: "a" }] },
+              { id: "end_on_a", caption: "A again.", actions: [{ type: "dim", except: ["a"] }] },
+            ],
+          },
+        ],
+      },
+      layerGraph,
+    ),
+  );
+  const plan = buildBeats(layerBoard, layerGraph);
+  const at = seeker(plan);
+  const dim = (t: number, target: string) => at(t, target).dim ?? 0;
+  const mid = (id: string) => {
+    const b = spanOf(plan.beats, id);
+    return (b.start + b.end) / 2;
+  };
+  const zone = zoneTarget(scoped("s", "z"));
+  const overlayOn = (kind: string, node: string) => {
+    const overlay = plan.overlays.find((o) => o.kind === kind && "node" in o && o.node === node);
+    if (!overlay) throw new Error(`no ${kind} on "${node}"`);
+    return overlayTarget(overlay.id);
+  };
+  const badge = overlayOn("badge", "b");
+
+  it("fades a zone, its area and its label, when the focus keeps none of its nodes", () => {
+    expect(dim(mid("only_a"), zone)).toBe(1);
+    expect(dim(plan.duration, zone)).toBe(1);
+  });
+
+  it("keeps a zone bright while the focus keeps one of its nodes, or there is no focus", () => {
+    expect(dim(mid("marked"), zone)).toBe(0);
+    expect(dim(mid("a_and_b"), zone)).toBe(0);
+    expect(dim(mid("all"), zone)).toBe(0);
+  });
+
+  it("fades a badge with the node it sits on, and brings it back with it", () => {
+    expect(dim(mid("marked"), badge)).toBe(0);
+    expect(dim(mid("only_a"), badge)).toBe(1);
+    expect(dim(mid("a_and_b"), badge)).toBe(0);
+    expect(dim(plan.duration, badge)).toBe(1);
+  });
+
+  it("fades a callout with the node it points at, and not before the node fades", () => {
+    const callouts = plan.overlays.filter((o) => o.kind === "callout");
+    const [early, during] = callouts.map((o) => ({ target: overlayTarget(o.id), until: o.until }));
+    if (!early || !during) throw new Error("two callouts");
+    expect(dim(mid("marked"), early.target)).toBe(0);
+    expect(dim(during.until - 0.01, during.target)).toBe(1);
   });
 });
 
