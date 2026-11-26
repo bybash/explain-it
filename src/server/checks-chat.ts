@@ -7,9 +7,10 @@ import {
   sayProblem,
   wordProblems,
 } from "../checks/chat-report.ts";
-import { describeFix, fixesFor } from "../checks/fixes.ts";
+import { canonical, describeFix, fixesFor } from "../checks/fixes.ts";
 import { projectBeats } from "../engine/beats/build.ts";
 import type { LlmClient } from "../llm/client.ts";
+import { repairLayout } from "../llm/drafting.ts";
 import { shorterWords } from "../llm/words.ts";
 import type { OpenedProject } from "../schema/api.ts";
 import type { ChatMessage } from "../schema/chat.ts";
@@ -35,8 +36,9 @@ const aboutBeat = (opened: OpenedProject, beat: string) => {
  * The quick checks run once the script rests after a change, and not while
  * the assistant works on it; the full checks' report is posted as it is
  * written. Only problems not reported yet are posted, each in plain words:
- * shorter words the LLM proposes are offered, and a layout fix is applied
- * and said, with Undo. What was reported is kept in memory, so a restart
+ * shorter words the LLM proposes are offered, a layout fix for a node put
+ * by hand is applied and said, with Undo, and what that does not cover is
+ * repaired by the LLM with labels and scenes, offered (5.6). What was reported is kept in memory, so a restart
  * may report a problem once more. While the assistant works, its changes,
  * and a report written meanwhile, wait for its turn to end.
  */
@@ -109,6 +111,32 @@ export const checksChat = ({
       const offer = { id: id(), label: describeFix(fix), fix };
       for (const { problem, warning } of layout)
         if (warning.nodes?.some((node) => node in fix.before)) offers.set(problem, offer);
+    }
+    // What laying hand-placed nodes out again does not cover goes to the LLM: labels and scenes (5.6).
+    const left = layout.filter(
+      ({ problem, warning }) =>
+        !offers.has(problem) && (warning.check === "overlap" || warning.check === "off-frame"),
+    );
+    const { graph, storyboard } = opened;
+    if (left.length > 0 && graph && storyboard) {
+      const repair = await repairLayout(llm, {
+        graph,
+        storyboard,
+        problems: left.map(({ problem }) => sayProblem(problem)),
+      });
+      if (repair.ok) {
+        const scenesChanged = canonical(repair.value.storyboard) !== canonical(storyboard);
+        const fix = {
+          kind: "rewrite" as const,
+          before: { graph, ...(scenesChanged ? { storyboard } : {}) },
+          after: {
+            graph: repair.value.graph,
+            ...(scenesChanged ? { storyboard: repair.value.storyboard } : {}),
+          },
+        };
+        const offer = { id: id(), label: repair.value.summary, fix };
+        for (const { problem } of left) offers.set(problem, offer);
+      }
     }
     return offers;
   };

@@ -5,12 +5,12 @@ import exampleStoryboardJson from "../../examples/oauth-login/storyboard.json" w
 import { graphSummary } from "../guidance/guide.ts";
 import { DEFAULT_CONFIG } from "../schema/config.ts";
 import { orThrow, type Validated } from "../schema/errors.ts";
-import { type Graph, GraphSchema, parseGraph } from "../schema/graph.ts";
+import { type Graph, GraphSchema, MAX_NODE_LABEL, parseGraph } from "../schema/graph.ts";
 import { ok } from "../schema/result.ts";
 import { BriefSchema } from "../schema/story.ts";
 import { parseStoryboard, type Storyboard } from "../schema/storyboard.ts";
 import type { LlmClient } from "./client.ts";
-import { draftGraph, draftScript, editFile } from "./drafting.ts";
+import { draftGraph, draftScript, editFile, repairLayout } from "./drafting.ts";
 import { type StructuredCall, structuredCall } from "./structured.ts";
 import { shorterWords } from "./words.ts";
 
@@ -143,6 +143,60 @@ export const EDITS = [
     ),
 }));
 
+/** Longer labels for the example's first nodes, at most as long as a label may be. */
+const LONG_LABELS = [
+  "The person signing in",
+  "Their web browser window",
+  "Our photo sharing app",
+  "Session store database",
+  "Photos storage API svc",
+  "Outside identity service",
+];
+
+/**
+ * A crowded project (5.6's "Done when"): the oauth-login example with long
+ * labels, and every node and beat in one scene. Chrome's layout checks find
+ * edge labels on badges and on a zone's label (`src/render/repair.test.ts`).
+ */
+export const crowded = (): { graph: Graph; storyboard: Storyboard } => {
+  const graph = orThrow(
+    parseGraph({
+      ...exampleGraph,
+      nodes: exampleGraph.nodes.map((n, i) => ({ ...n, label: LONG_LABELS[i] ?? n.label })),
+      edges: exampleGraph.edges.map((e) =>
+        e.label ? { ...e, label: `${e.label} with details`.slice(0, MAX_NODE_LABEL) } : e,
+      ),
+    }),
+    "the crowded graph",
+  );
+  const storyboard = orThrow(
+    parseStoryboard(
+      {
+        ...exampleScript,
+        scenes: [
+          {
+            ...exampleScript.scenes[0],
+            nodes: graph.nodes.map((n) => n.id),
+            beats: exampleScript.scenes.flatMap((s) => s.beats),
+          },
+        ],
+      },
+      graph,
+    ),
+    "the crowded script",
+  );
+  return { graph, storyboard };
+};
+
+/** What Chrome's layout checks found in the crowded project, as the chat says it. */
+export const CROWDED_PROBLEMS = [
+  'In beat "swap", zone "backend"\'s label is covered by the label of edge "exchange" by 11.9 px.',
+  'In beat "token", zone "backend"\'s label is covered by the label of edge "exchange" by 11.9 px.',
+  'In beat "session", the label of edge "callback" and badge on "app" overlap by 6.5 px.',
+  'In beat "fetch", the label of edge "fetch" and badge on "app" overlap by 26.2 px.',
+  'In beat "done", the label of edge "fetch" and badge on "app" overlap by 26.2 px.',
+];
+
 /** The recorded calls, each run with its own schema. */
 export const RECORDED_CALLS: readonly {
   readonly name: string;
@@ -157,4 +211,8 @@ export const RECORDED_CALLS: readonly {
   })),
   ...DRAFTED_SCRIPTS.map((flow) => ({ name: `draft-script: ${flow.name}`, run: flow.run })),
   ...EDITS.map((edit) => ({ name: `edit: ${edit.request}`, run: edit.run })),
+  {
+    name: "repair-layout: crowded",
+    run: (client: LlmClient) => repairLayout(client, { ...crowded(), problems: CROWDED_PROBLEMS }),
+  },
 ];

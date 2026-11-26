@@ -3,7 +3,7 @@ import graphJson from "../../examples/oauth-login/graph.json" with { type: "json
 import storyboardJson from "../../examples/oauth-login/storyboard.json" with { type: "json" };
 import type { BeatWarning } from "../schema/checks.ts";
 import { orThrow } from "../schema/errors.ts";
-import { parseGraph } from "../schema/graph.ts";
+import { type Graph, parseGraph } from "../schema/graph.ts";
 import { parseStoryboard, type Storyboard } from "../schema/storyboard.ts";
 import { applyFix, describeFix, fixesFor, invert } from "./fixes.ts";
 
@@ -22,6 +22,7 @@ const storyboard = (caption: string): Storyboard => ({
 });
 
 const files = (caption: string) => ({
+  graph,
   storyboard: storyboard(caption),
   overrides: { app: { x: 1, y: 0 } },
 });
@@ -112,5 +113,33 @@ describe("describeFix", () => {
     expect(describeFix({ kind: "layout", before: { a: { x: 0, y: 0 } }, after: {} })).toBe(
       'Lay out node "a" again, in place of where it was put by hand',
     );
+  });
+});
+
+describe("a rewrite", () => {
+  const relabelled = (label: string): Graph => ({
+    ...graph,
+    nodes: graph.nodes.map((n, i) => (i === 0 ? { ...n, label } : n)),
+  });
+  const rewrite = {
+    kind: "rewrite" as const,
+    before: { graph: relabelled("The person signing in") },
+    after: { graph: relabelled("User") },
+  };
+
+  it("puts the files it rewrites in place, and its inverse puts them back", () => {
+    const now = { ...files(LONG), graph: relabelled("The person signing in") };
+    const fixed = applyFix(now, rewrite);
+    expect(fixed.ok && fixed.value.graph?.nodes[0]?.label).toBe("User");
+    const undone = applyFix({ ...now, graph: relabelled("User") }, invert(rewrite));
+    expect(undone.ok && undone.value.graph?.nodes[0]?.label).toBe("The person signing in");
+  });
+
+  it("refuses once a file it rewrites has changed since", () => {
+    expect(applyFix({ ...files(LONG), graph: relabelled("Someone") }, rewrite).ok).toBe(false);
+  });
+
+  it("says what it does as the repair proposed it", () => {
+    expect(describeFix(rewrite)).toBe("Rewrite graph.json");
   });
 });

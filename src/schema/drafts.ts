@@ -46,6 +46,19 @@ export const ScriptDraftSchema = z.strictObject({
 });
 export type ScriptDraft = z.output<typeof ScriptDraftSchema>;
 
+/** A JSON Patch step whose value is JSON text, as structured output takes no field of any type. */
+const PatchStepSchema = z.strictObject({
+  op: z.enum(["add", "remove", "replace", "move", "copy", "test"]),
+  path: z.string().describe('A JSON Pointer, such as "/nodes/2/label".'),
+  from: z.string().optional().describe("For move and copy: where from."),
+  value: z
+    .string()
+    .optional()
+    .describe(
+      'For add, replace and test: the value as JSON text, such as "\\"Google\\"" or "{\\"id\\": \\"retry\\"}".',
+    ),
+});
+
 /**
  * An edit the user asked for (5.5): a JSON Patch on the file, and what it
  * changed in a sentence. Each value is JSON text, as structured output takes
@@ -53,19 +66,7 @@ export type ScriptDraft = z.output<typeof ScriptDraftSchema>;
  */
 export const EditSchema = z.strictObject({
   patch: z
-    .array(
-      z.strictObject({
-        op: z.enum(["add", "remove", "replace", "move", "copy", "test"]),
-        path: z.string().describe('A JSON Pointer, such as "/nodes/2/label".'),
-        from: z.string().optional().describe("For move and copy: where from."),
-        value: z
-          .string()
-          .optional()
-          .describe(
-            'For add, replace and test: the value as JSON text, such as "\\"Google\\"" or "{\\"id\\": \\"retry\\"}".',
-          ),
-      }),
-    )
+    .array(PatchStepSchema)
     .min(1)
     .describe("An RFC 6902 JSON Patch on the current file, each value written as JSON text."),
   summary: z.string().min(1).max(200).describe("What the patch changes, in a sentence."),
@@ -82,6 +83,30 @@ export const EditArgsSchema = z.strictObject({
       'The change, as the user asked it: "rename X", "add a retry step", "shorten beat 3".',
     ),
 });
+
+/**
+ * A repair of the layout (5.6) for what the layout engine could not fix: new
+ * labels by id, and a patch on the script's scenes, so fewer things share a
+ * frame. Labels are all it may change in the graph: never an id, never a
+ * box's place.
+ */
+export const LayoutRepairSchema = z.strictObject({
+  labels: z
+    .array(
+      z.strictObject({
+        id: z.string().describe("A node, edge or zone id, as it is."),
+        label: z.string().min(1).describe("Its new, shorter label."),
+      }),
+    )
+    .describe("Shorter labels, by id; none when the scenes alone fix it."),
+  storyboardPatch: z
+    .array(PatchStepSchema)
+    .describe(
+      "A JSON Patch on storyboard.json moving nodes or beats to another scene or a new one; empty when the labels alone fix it.",
+    ),
+  summary: z.string().min(1).max(200).describe("What the repair changes, in a sentence."),
+});
+export type LayoutRepair = z.output<typeof LayoutRepairSchema>;
 
 /** What the assistant asks a drafting tool for: the user's description, and the context files that bear on it. */
 export const DraftArgsSchema = z.strictObject({

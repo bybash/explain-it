@@ -1,11 +1,11 @@
-import { applyFix, invert } from "../checks/fixes.ts";
+import { applyFix, CHANGED_SINCE, invert } from "../checks/fixes.ts";
 import type { OpenedProject } from "../schema/api.ts";
 import { type ChatMessage, isFixApplied } from "../schema/chat.ts";
 import type { ValidationError } from "../schema/errors.ts";
 import type { Fix, FixOffer } from "../schema/fixes.ts";
 import { appendChat, readChat } from "./chat.ts";
-import { laidOut } from "./graphs.ts";
-import { projectDir, writeProjectFile } from "./projects.ts";
+import { laidOut, saveGraph } from "./graphs.ts";
+import { openProject, projectDir, writeProjectFile } from "./projects.ts";
 import { saveStoryboard } from "./storyboards.ts";
 
 /**
@@ -36,10 +36,25 @@ export const fixProject = async (
   const { graph, storyboard, layout } = opened;
   if (!graph || !storyboard)
     return invalid([{ path: "storyboard.json", message: "missing; there is no script to fix" }]);
-  const fixed = applyFix({ storyboard, overrides: layout?.overrides ?? {} }, fix);
-  if (!fixed.ok) return { ok: false, why: "conflict", errors: fixed.errors };
+  const fixed = applyFix({ graph, storyboard, overrides: layout?.overrides ?? {} }, fix);
+  if (!fixed.ok)
+    return {
+      ok: false,
+      // A rewrite whose files no longer read is not a conflict: they would not fit.
+      why: fixed.errors.some((e) => e.message === CHANGED_SINCE) ? "conflict" : "invalid",
+      errors: fixed.errors,
+    };
+  let current = opened;
+  if (fixed.value.graph) {
+    // Saved as the Graph gate saves it: laid out again, keeping what was put by hand.
+    const saved = await saveGraph(projectsDir, opened.slug, opened, fixed.value.graph, now);
+    if (!saved.ok) return invalid(saved.errors);
+    const reopened = await openProject(projectsDir, opened.slug);
+    if (!reopened?.ok) return invalid(reopened?.errors ?? []);
+    current = reopened.value;
+  }
   if (fixed.value.storyboard) {
-    const saved = await saveStoryboard(projectsDir, opened, fixed.value.storyboard, now);
+    const saved = await saveStoryboard(projectsDir, current, fixed.value.storyboard, now);
     if (!saved.ok) return invalid(saved.errors);
   }
   if (fixed.value.overrides) {

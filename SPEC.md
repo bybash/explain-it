@@ -578,7 +578,10 @@ Decision 018 says why.
   only problems it has not reported yet. A fix that changes the user's
   words (a shorter caption or line, which the LLM proposes) is offered
   first; a layout fix (a box put by hand laid out again) is applied and
-  said. Every fix can be undone, unless what it changed has changed since
+  said. A layout problem that does not cover goes to the LLM (5.6), which
+  may shorten labels or move nodes to another scene, never a box by
+  coordinates; its repair is offered, as it changes the user's words, and
+  the next checks say whether it worked (decision 040). Every fix can be undone, unless what it changed has changed since
   (decision 038).
   The assistant runs the checks on its own drafts and repairs them before
   showing them, so most problems never reach the user.

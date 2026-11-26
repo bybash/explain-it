@@ -39,6 +39,16 @@ export const FixSchema = z.discriminatedUnion("kind", [
    * node missing from `after` is laid out again. Other nodes are left as
    * they are, and do not stop it being undone.
    */
+  /**
+   * A repair of the layout (5.6): files rewritten whole, before and after, as
+   * the LLM proposed (shorter labels, a crowded scene split). Never a box
+   * moved by coordinates.
+   */
+  z.strictObject({
+    kind: z.literal("rewrite"),
+    before: z.strictObject({ graph: z.unknown().optional(), storyboard: z.unknown().optional() }),
+    after: z.strictObject({ graph: z.unknown().optional(), storyboard: z.unknown().optional() }),
+  }),
   z.strictObject({
     kind: z.literal("layout"),
     before: z.record(IdSchema, FloorPointSchema),

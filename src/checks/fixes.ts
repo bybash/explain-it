@@ -1,24 +1,32 @@
 import type { BeatWarning } from "../schema/checks.ts";
-import type { Validated } from "../schema/errors.ts";
+import { under, type Validated } from "../schema/errors.ts";
 import { type Fix, WORD_FIELD_NAMES } from "../schema/fixes.ts";
+import { type Graph, parseGraph } from "../schema/graph.ts";
 import type { FloorPoint } from "../schema/layout.ts";
 import { fail, ok } from "../schema/result.ts";
-import type { Storyboard } from "../schema/storyboard.ts";
+import { parseStoryboard, type Storyboard } from "../schema/storyboard.ts";
 
 type Overrides = Readonly<Record<string, FloorPoint>>;
 
-/** What a fix can change: the script and the positions set by hand. */
+/** What a fix can change: the graph, the script and the positions set by hand. */
 export type Fixable = {
+  readonly graph: Graph;
   readonly storyboard: Storyboard;
   readonly overrides: Overrides;
 };
 
 /** The same fix the other way round: what undoing it applies. */
-export const invert = (fix: Fix): Fix =>
+export const invert = (fix: Fix): Fix => {
   // Each kind on its own, so its before and after keep their own type.
-  fix.kind === "words"
-    ? { ...fix, before: fix.after, after: fix.before }
-    : { ...fix, before: fix.after, after: fix.before };
+  switch (fix.kind) {
+    case "words":
+      return { ...fix, before: fix.after, after: fix.before };
+    case "layout":
+      return { ...fix, before: fix.after, after: fix.before };
+    case "rewrite":
+      return { ...fix, before: fix.after, after: fix.before };
+  }
+};
 
 const nodeList = (ids: readonly string[]) => ids.map((id) => `node "${id}"`).join(", ");
 
@@ -27,6 +35,10 @@ export const describeFix = (fix: Fix): string => {
   switch (fix.kind) {
     case "words":
       return `Shorten the ${WORD_FIELD_NAMES[fix.field]} of beat "${fix.beat}"`;
+    case "rewrite":
+      return `Rewrite ${Object.keys(fix.after)
+        .map((file) => `${file}.json`)
+        .join(" and ")}`;
     case "layout":
       return `Lay out ${nodeList(dropped(fix))} again, in place of where it was put by hand`;
   }
@@ -71,8 +83,42 @@ export const fixesFor = (warnings: readonly BeatWarning[], overrides: Overrides)
       ];
 };
 
-const changed = (path: string) =>
-  fail([{ path, message: "changed since the fix was offered; nothing was done" }]);
+/** A document as text whose keys are in order, so two that hold the same are the same text. */
+export const canonical = (value: unknown): string =>
+  JSON.stringify(value, (_, v: unknown) =>
+    v !== null && typeof v === "object" && !Array.isArray(v)
+      ? Object.fromEntries(Object.entries(v).sort(([a], [b]) => a.localeCompare(b)))
+      : v,
+  );
+
+/**
+ * The files a rewrite puts in place, read as the files are (the script
+ * against the graph it will have), once each is as the rewrite found it.
+ */
+const rewritten = (
+  files: Fixable,
+  fix: Extract<Fix, { kind: "rewrite" }>,
+): Validated<Partial<Fixable>> => {
+  for (const file of ["graph", "storyboard"] as const)
+    if (file in fix.before && canonical(files[file]) !== canonical(fix.before[file]))
+      return changed(`${file}.json`);
+  const graph = fix.after.graph === undefined ? undefined : parseGraph(fix.after.graph);
+  if (graph && !graph.ok) return fail(under("graph.json", graph.errors));
+  const storyboard =
+    fix.after.storyboard === undefined
+      ? undefined
+      : parseStoryboard(fix.after.storyboard, graph?.value ?? files.graph);
+  if (storyboard && !storyboard.ok) return fail(under("storyboard.json", storyboard.errors));
+  return ok({
+    ...(graph ? { graph: graph.value } : {}),
+    ...(storyboard ? { storyboard: storyboard.value } : {}),
+  });
+};
+
+/** Why a fix, or its undo, was refused: what it changes is no longer as it was. */
+export const CHANGED_SINCE = "changed since the fix was offered; nothing was done";
+
+const changed = (path: string) => fail([{ path, message: CHANGED_SINCE }]);
 
 /**
  * A fix applied to what it changes: only the part it changes comes back,
@@ -106,6 +152,8 @@ export const applyFix = (files: Fixable, fix: Fix): Validated<Partial<Fixable>> 
         }
       return fail([{ path: "beat", message: `no beat "${fix.beat}" in the script any more` }]);
     }
+    case "rewrite":
+      return rewritten(files, fix);
     case "layout": {
       if (!asBefore(files.overrides, fix)) return changed("layout.overrides");
       const kept = Object.entries(files.overrides).filter(([id]) => !(id in fix.before));
