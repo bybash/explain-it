@@ -11,7 +11,9 @@ import { readChat } from "./chat.ts";
 import { checksChat } from "./checks-chat.ts";
 import { createEvents } from "./events.ts";
 import { copyExample } from "./example.testing.ts";
+import { fixFromChat } from "./fixes.ts";
 import { laidOut } from "./graphs.ts";
+import { openProject } from "./projects.ts";
 
 const NOW = "2026-11-25T12:00:00.000Z";
 /** The example's line that the quick checks find goes by too fast (see RUSHED_LINE). */
@@ -194,5 +196,50 @@ describe("checksChat: the full checks", () => {
     expect(messages.at(-1)).toMatchObject({ kind: "fix", fix: { done: "applied" } });
     expect(messages.at(-1)?.text).toMatch(/^Done: lay out node/);
     expect(read("layout.json").overrides).toEqual({});
+  });
+
+  it("offers the LLM's repair for a layout problem no hand-placed node is in, and it can be undone", async () => {
+    const repair = JSON.stringify({
+      labels: [{ id: "exchange", label: "swap code" }],
+      storyboardPatch: [],
+      summary: "Shortened the exchange's label.",
+    });
+    const { checks } = make([SHORTER, repair]);
+    const report = {
+      warnings: [
+        {
+          check: "overlap",
+          scene: "exchange",
+          beat: "swap",
+          at: 30,
+          px: 12,
+          message: 'zone "backend"\'s label is covered by the label of edge "exchange" by 12 px',
+        },
+      ],
+    } as unknown as CheckReport;
+    await checks.full("oauth", report);
+    const offered = (await chat())
+      .flatMap((m) => m.fixes ?? [])
+      .find((f) => f.fix.kind === "rewrite");
+    expect(offered?.label).toBe("Shortened the exchange's label.");
+    const label = () =>
+      read("graph.json").edges.find((e: { id: string }) => e.id === "exchange").label;
+    const before = label();
+    // Offered, not applied: it changes the user's labels.
+    expect(before).not.toBe("swap code");
+    const apply = async (undo: boolean) => {
+      const opened = await openProject(projectsDir, "oauth");
+      if (!opened?.ok || !offered) throw new Error("no project");
+      return fixFromChat(
+        projectsDir,
+        opened.value,
+        { id: offered.id, undo, gate: "preview" },
+        new Date(NOW),
+      );
+    };
+    expect((await apply(false)).kind).toBe("done");
+    expect(label()).toBe("swap code");
+    expect((await apply(true)).kind).toBe("done");
+    expect(label()).toBe(before);
   });
 });

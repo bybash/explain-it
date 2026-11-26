@@ -2,15 +2,17 @@ import exampleGraphJson from "../../examples/oauth-login/graph.json" with { type
 import exampleStoryboardJson from "../../examples/oauth-login/storyboard.json" with {
   type: "json",
 };
+import { canonical } from "../checks/fixes.ts";
 import { graphSummary } from "../guidance/guide.ts";
 import { DEFAULT_CONFIG } from "../schema/config.ts";
 import { orThrow, type Validated } from "../schema/errors.ts";
-import { type Graph, GraphSchema, parseGraph } from "../schema/graph.ts";
+import { type Graph, GraphSchema, MAX_NODE_LABEL, parseGraph } from "../schema/graph.ts";
 import { ok } from "../schema/result.ts";
 import { BriefSchema } from "../schema/story.ts";
 import { parseStoryboard, type Storyboard } from "../schema/storyboard.ts";
 import type { LlmClient } from "./client.ts";
-import { draftGraph, draftScript, editFile } from "./drafting.ts";
+import { draftGraph, draftScript } from "./drafting.ts";
+import { editFile, repairLayout } from "./editing.ts";
 import { type StructuredCall, structuredCall } from "./structured.ts";
 import { shorterWords } from "./words.ts";
 
@@ -54,20 +56,42 @@ export const RUSHED_ABOUT = 'the scene "Sign in" of the video "Signing in with O
 
 /** Three described flows, each drafted into a graph (5.3's "Done when"). */
 export const DRAFTED_FLOWS = [
-  { name: "password reset", request: FLOW },
+  {
+    name: "password reset",
+    request: FLOW,
+    brief: {
+      version: 1,
+      audience: "People who use the app",
+      takeaway: "A reset link works once, and only for a short time.",
+      shape: "problem",
+      hook: "You forgot your password. Here is how you get back in.",
+    },
+  },
   {
     name: "a CI pipeline",
     request:
       "Explain our CI pipeline: a developer pushes a branch to GitHub, GitHub Actions runs the lint, the tests and a build in parallel, and when all pass it publishes a Docker image to the registry and deploys it to staging.",
+    brief: {
+      version: 1,
+      audience: "Developers new to the team",
+      takeaway: "Nothing reaches staging unless the lint, the tests and the build all pass.",
+      shape: "zoom",
+    },
   },
   {
     name: "checkout",
     request:
       "Show how checkout works in our shop: the shopper pays in the web app, the order service reserves the stock, the payment provider takes the payment, and the shopper gets an email when the order is confirmed.",
+    brief: {
+      version: 1,
+      audience: "The support team",
+      takeaway: "Stock is held before the payment is taken, so a paid order never runs out.",
+      shape: "problem",
+    },
   },
 ] as const;
 
-/** The script drafted for each of those graphs, with no brief (5.4's "Done when"). */
+/** The script drafted for each of those graphs, following a brief agreed first (5.4's "Done when"). */
 export const DRAFTED_SCRIPTS = DRAFTED_FLOWS.map((flow) => ({
   name: flow.name,
   run: async (client: LlmClient) => {
@@ -77,7 +101,7 @@ export const DRAFTED_SCRIPTS = DRAFTED_FLOWS.map((flow) => ({
       request: `Write the script for this flow: ${flow.request}`,
       context: [],
       graph: drafted.value.graph,
-      brief: null,
+      brief: flow.brief,
       config: DEFAULT_CONFIG,
     });
     return script.ok ? ok({ graph: drafted.value.graph, script: script.value }) : script;
@@ -123,7 +147,7 @@ export const EDITS = [
         (b?.say ?? "").length + (b?.caption ?? "").length;
       return (
         length(after[2]) < length(before[2]) &&
-        before.every((b, i) => i === 2 || JSON.stringify(b) === JSON.stringify(after[i]))
+        before.every((b, i) => i === 2 || canonical(b) === canonical(after[i]))
       );
     },
   },
@@ -143,6 +167,60 @@ export const EDITS = [
     ),
 }));
 
+/** Longer labels for the example's first nodes, at most as long as a label may be. */
+const LONG_LABELS = [
+  "The person signing in",
+  "Their web browser window",
+  "Our photo sharing app",
+  "Session store database",
+  "Photos storage API svc",
+  "Outside identity service",
+];
+
+/**
+ * A crowded project (5.6's "Done when"): the oauth-login example with long
+ * labels, and every node and beat in one scene. Chrome's layout checks find
+ * edge labels on badges and on a zone's label (`src/render/repair.test.ts`).
+ */
+export const crowded = (): { graph: Graph; storyboard: Storyboard } => {
+  const graph = orThrow(
+    parseGraph({
+      ...exampleGraph,
+      nodes: exampleGraph.nodes.map((n, i) => ({ ...n, label: LONG_LABELS[i] ?? n.label })),
+      edges: exampleGraph.edges.map((e) =>
+        e.label ? { ...e, label: `${e.label} with details`.slice(0, MAX_NODE_LABEL) } : e,
+      ),
+    }),
+    "the crowded graph",
+  );
+  const storyboard = orThrow(
+    parseStoryboard(
+      {
+        ...exampleScript,
+        scenes: [
+          {
+            ...exampleScript.scenes[0],
+            nodes: graph.nodes.map((n) => n.id),
+            beats: exampleScript.scenes.flatMap((s) => s.beats),
+          },
+        ],
+      },
+      graph,
+    ),
+    "the crowded script",
+  );
+  return { graph, storyboard };
+};
+
+/** What Chrome's layout checks found in the crowded project, as the chat says it. */
+export const CROWDED_PROBLEMS = [
+  'In beat "swap", zone "backend"\'s label is covered by the label of edge "exchange" by 11.9 px.',
+  'In beat "token", zone "backend"\'s label is covered by the label of edge "exchange" by 11.9 px.',
+  'In beat "session", the label of edge "callback" and badge on "app" overlap by 6.5 px.',
+  'In beat "fetch", the label of edge "fetch" and badge on "app" overlap by 26.2 px.',
+  'In beat "done", the label of edge "fetch" and badge on "app" overlap by 26.2 px.',
+];
+
 /** The recorded calls, each run with its own schema. */
 export const RECORDED_CALLS: readonly {
   readonly name: string;
@@ -157,4 +235,8 @@ export const RECORDED_CALLS: readonly {
   })),
   ...DRAFTED_SCRIPTS.map((flow) => ({ name: `draft-script: ${flow.name}`, run: flow.run })),
   ...EDITS.map((edit) => ({ name: `edit: ${edit.request}`, run: edit.run })),
+  {
+    name: "repair-layout: crowded",
+    run: (client: LlmClient) => repairLayout(client, { ...crowded(), problems: CROWDED_PROBLEMS }),
+  },
 ];

@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 
 /** The prompts in `prompts/`, by name: Markdown, with `{{place}}` for what each call fills in (SPEC, LLM). */
-const PROMPTS = ["draft-graph", "draft-script", "edit"] as const;
+const PROMPTS = ["draft-graph", "draft-script", "edit", "repair-layout"] as const;
 export type PromptName = (typeof PROMPTS)[number];
 
 const read = (name: PromptName) =>
@@ -20,3 +20,6 @@ export const prompt = (name: PromptName, values: Readonly<Record<string, string>
       return value;
     })
     .trim();
+
+/** The parts of a prompt's message (context files, the files to work on, what to do), each set apart. */
+export const promptParts = (parts: readonly string[]): string => parts.join("\n\n---\n\n");

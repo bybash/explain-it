@@ -6,10 +6,11 @@ import { MAX_QUESTIONS } from "../schema/drafts.ts";
 import { formatErrors, orThrow } from "../schema/errors.ts";
 import { parseGraph } from "../schema/graph.ts";
 import { parseStoryboard } from "../schema/storyboard.ts";
-import { draftGraph, draftScript, editFile } from "./drafting.ts";
+import { draftGraph, draftScript } from "./drafting.ts";
+import { editFile, repairLayout } from "./editing.ts";
 import { fakeLlm } from "./fake-llm.testing.ts";
 import { FIXTURES_DIR, fixtureClient } from "./fixtures.ts";
-import { DRAFTED_FLOWS, DRAFTED_SCRIPTS, EDITS } from "./recordings.ts";
+import { CROWDED_PROBLEMS, crowded, DRAFTED_FLOWS, DRAFTED_SCRIPTS, EDITS } from "./recordings.ts";
 
 const { $schema: _, ...graph } = graphJson;
 const answer = (over: Record<string, unknown> = {}) =>
@@ -92,7 +93,7 @@ describe("draftScript", () => {
     request: "Write the script.",
     context: [],
     graph: parsedGraph,
-    brief: null,
+    brief: { version: 1 as const, shape: "problem" as const },
     config: DEFAULT_CONFIG,
   };
 
@@ -181,4 +182,42 @@ describe("editFile", () => {
       if (edited.ok) expect(edit.holds(edited.value.result)).toBe(true);
     },
   );
+});
+
+describe("repairLayout", () => {
+  it("sends back a repair that names what is not there, and takes shorter labels", async () => {
+    const { client, asked } = fakeLlm([
+      JSON.stringify({ labels: [{ id: "nobody", label: "X" }], storyboardPatch: [], summary: "?" }),
+      JSON.stringify({ labels: [], storyboardPatch: [], summary: "Nothing." }),
+      JSON.stringify({
+        labels: [{ id: "exchange", label: "swap code" }],
+        storyboardPatch: [],
+        summary: "Shortened the exchange's label.",
+      }),
+    ]);
+    const repaired = await repairLayout(client, { ...crowded(), problems: CROWDED_PROBLEMS });
+    expect(repaired.ok && repaired.value.graph.edges.find((e) => e.id === "exchange")?.label).toBe(
+      "swap code",
+    );
+    expect(asked[1]?.messages.at(-1)?.content).toMatch(/no node, edge or zone "nobody"/);
+    expect(asked[2]?.messages.at(-1)?.content).toMatch(/changes nothing/);
+    expect(asked[0]?.messages[0]?.content).toContain(CROWDED_PROBLEMS[0]);
+  });
+
+  it("repairs the crowded project with labels and scenes only, as recorded with a real model", async () => {
+    const before = crowded();
+    const repaired = await repairLayout(fixtureClient({ dir: FIXTURES_DIR }), {
+      ...before,
+      problems: CROWDED_PROBLEMS,
+    });
+    expect(repaired.ok ? [] : formatErrors(repaired.errors)).toEqual([]);
+    if (!repaired.ok) return;
+    // Nothing but labels changes in the graph: every id, kind and zone stays.
+    const shape = (g: typeof before.graph) =>
+      JSON.stringify([
+        g.nodes.map(({ label: _, ...n }) => n),
+        g.edges.map(({ label: _, ...e }) => e),
+      ]);
+    expect(shape(repaired.value.graph)).toBe(shape(before.graph));
+  });
 });

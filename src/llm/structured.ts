@@ -67,8 +67,8 @@ type Outcome<T> =
  * The loop under both calls: an answer that does not fit, or (with
  * `improve`) could be better, goes back with its problems, each named by its
  * place, at most `MAX_REPAIRS` times. An answer that fits but could still be
- * better is kept, so the last of those is the outcome when the repairs run
- * out.
+ * better is kept, so the one with the fewest problems left is the outcome
+ * when the repairs run out.
  */
 const repairing = async <S extends z.ZodType>(
   client: LlmClient,
@@ -92,7 +92,9 @@ const repairing = async <S extends z.ZodType>(
     if (!reply.ok) return { kind: "failed", errors: reply.errors };
     const answer = read(reply.value.text, call);
     problems = answer.ok ? improve(answer.value) : answer.errors;
-    if (answer.ok) kept = { value: answer.value, remaining: problems };
+    // The answer with the fewest problems left is kept: a repair can make things worse.
+    if (answer.ok && (!kept || problems.length <= kept.remaining.length))
+      kept = { value: answer.value, remaining: problems };
     if (problems.length === 0 && kept) return { kind: "done", ...kept };
     messages.push(
       { role: "assistant", content: reply.value.text },
@@ -128,7 +130,7 @@ export const structuredCall = async <S extends z.ZodType>(
 /**
  * A draft (5.4): a structured call whose answer is also sent back for what
  * `improve` finds (the checks), within the same repairs. When they run out,
- * the last answer that fits is kept, with what is left to improve, so a
+ * the answer that fits with the fewest problems is kept, with what is left, so a
  * good draft is not lost over a beat a second too long.
  */
 export const structuredDraft = async <S extends z.ZodType>(

@@ -450,8 +450,8 @@ built from it, so narration fit guards that rule. Title cards, end cards
 and scene titles hold their text long enough by design and are not
 reading-checked. A check that cannot run (no Chrome for the layout, no
 ffmpeg for loudness, no voice for narration fit and loudness) is listed in
-the report as skipped, with the reason; the others still run. `explain-it check` exits 1 when it finds problems and 2
-when it cannot check. Layout warnings do not stop a render; the layout engine keeps
+the report as skipped, with the reason; the others still run. `explain-it check` exits 1 when it finds problems (the story
+checks are advice, and do not count) and 2 when it cannot check. Layout warnings do not stop a render; the layout engine keeps
 routes in sight of boxes and places edge labels and badges clear of boxes and
 of each other. Decision 016 says why.
 
@@ -578,7 +578,10 @@ Decision 018 says why.
   only problems it has not reported yet. A fix that changes the user's
   words (a shorter caption or line, which the LLM proposes) is offered
   first; a layout fix (a box put by hand laid out again) is applied and
-  said. Every fix can be undone, unless what it changed has changed since
+  said. A layout problem that does not cover goes to the LLM (5.6), which
+  may shorten labels or move nodes to another scene, never a box by
+  coordinates; its repair is offered, as it changes the user's words, and
+  the next checks say whether it worked (decision 040). Every fix can be undone, unless what it changed has changed since
   (decision 038).
   The assistant runs the checks on its own drafts and repairs them before
   showing them, so most problems never reach the user.

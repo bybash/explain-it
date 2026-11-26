@@ -1,8 +1,4 @@
 #!/usr/bin/env node
-// The explain-it command line. Usage:
-//   explain-it render <project> [--theme light|dark|both] [--resolution 1080p|720p]
-//   explain-it check  <project>   every check into <project>/checks.json; exits 1 on problems, 2 when it cannot check
-//   CACHE_DIR   the cache folder, for the voice model; ./cache by default
 import { join, resolve } from "node:path";
 import { kokoroProvider } from "../audio/kokoro.ts";
 import { checkProjectFolder, skippedChecks } from "../render/check.ts";
@@ -11,6 +7,11 @@ import { missingRenderTools } from "../render/environment.ts";
 import { loadProject } from "../render/load.ts";
 import { renderProjectFolder, withNarration } from "../render/run.ts";
 import { renderSettings } from "../render/settings.ts";
+// The explain-it command line. Usage:
+//   explain-it render <project> [--theme light|dark|both] [--resolution 1080p|720p]
+//   explain-it check  <project>   every check into <project>/checks.json; exits 1 on problems, 2 when it cannot check
+//   CACHE_DIR   the cache folder, for the voice model; ./cache by default
+import { STORY_CHECKS } from "../schema/checks.ts";
 import { formatErrors } from "../schema/errors.ts";
 import { parseRenderArgs } from "./args.ts";
 import { parseCheckArgs } from "./check-args.ts";
@@ -107,7 +108,11 @@ const check = async (argv: readonly string[]): Promise<void> => {
     return fail([`the checks could not run: ${reason}`], 2);
   });
   for (const line of checkLines(report, join(dir, CHECK_REPORT))) console.log(line);
-  if (report.warnings.length > 0) process.exit(1);
+  // The story checks are advice: they are reported, but only the others fail the check.
+  const failing = report.warnings.filter(
+    (w) => !(STORY_CHECKS as readonly string[]).includes(w.check),
+  );
+  if (failing.length > 0) process.exit(1);
 };
 
 const [command, ...rest] = process.argv.slice(2);

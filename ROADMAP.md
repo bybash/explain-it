@@ -142,7 +142,7 @@ user works by hand or over MCP.
 | ✅ 5.3 | **Graph drafting**, through the chat agent (5.7): chat and context to `graph.json`, shown in the Mermaid view once saved, at most two questions | Fixtures: three described flows give valid graphs |
 | ✅ 5.4 | **Script drafting**, through the chat agent (5.7): the story brief first (3.14), for approval, keeping to the project's and the house rules; then graph to scenes and beats, and a suggested title card, validated by the schema, the quick checks and 2.8's story checks, and repaired before the user sees it | Fixtures: the three graphs give valid storyboards |
 | ✅ 5.5 | **Edits through chat**: JSON Patches for the graph and the storyboard | Fixtures: "rename X", "add a retry step", "shorten beat 3" |
-| 5.6 | **Layout repair**: check failures the layout engine cannot fix go back to the LLM | A crowded fixture is fixed |
+| ✅ 5.6 | **Layout repair**: check failures the layout engine cannot fix go back to the LLM | A crowded fixture is fixed |
 | ✅ 5.7 | **Chat agent**: the in-app LLM calls the same tools as MCP agents, in-process (the graph, the brief, the storyboard, the style, the checks, the render), following the guide with the house rules; it works gate by gate and waits for the user's approval in the chat; the panel follows each change; without a key, the chat points at the panel and Settings | Fixtures: a described flow goes from the first message to an approved graph and script through tools alone |
 | ✅ 5.8 | **Checks in the chat**: the quick checks after every script change, the full checks when the Preview gate opens and when a render is asked for; the assistant reports them in plain words, each with a Fix. A fix that changes the user's words is offered first; a layout fix is applied and said. Every fix can be undone | Fixtures: a beat that reads too fast is fixed with one click, then undone |
 
@@ -215,7 +215,7 @@ as three pull requests (decision 037) and one fix (decision 035).
 Work a finished slice left for a later one. Each list is removed by the slice
 that finishes it.
 
-### For 5.6 (layout repair), from 2.5
+### Not placed yet, from 2.5
 
 - The layout engine now keeps routes in sight of boxes and places edge
   labels and badges clear of boxes and of each other; the example passes
@@ -251,11 +251,12 @@ that finishes it.
   the chat rather than converted. PDFs and images are not context.
 - Characters are counted as JavaScript counts them, so an emoji is two.
 
-### For 5.6 (layout repair), from 5.8
+### Not placed yet, from 5.6 and 5.8
 
-- The chat offers a layout fix only for a problem a hand-placed node is in
-  (`fixesFor` in `src/checks/fixes.ts`): it lays that node out again. Any
-  other layout problem is said with no fix; 5.6's repair can offer one.
+- A layout repair is offered once, from what the full checks found; it is
+  not checked again in Chrome before it is offered (decision 040). The
+  next checks say whether it worked, and a problem already reported is not
+  said again, so a repair that falls short leaves it to the user.
 - Loudness has no fix in the chat; the mix is made to the target, so a
   miss means a bug in `src/audio/`, not something to fix by hand.
 

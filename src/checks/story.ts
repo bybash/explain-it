@@ -1,11 +1,10 @@
 import type { BeatPlan } from "../engine/beats/build.ts";
+import { tenth } from "../engine/beats/timing.ts";
 import { type CheckWarning, ONE_THING } from "../schema/checks.ts";
 import type { ValidationError } from "../schema/errors.ts";
 import { HOOK_SECONDS, TARGET_SECONDS } from "../schema/story.ts";
 import type { Storyboard } from "../schema/storyboard.ts";
 import { wordProblems } from "./chat-report.ts";
-
-const seconds = (n: number) => String(Math.round(n * 10) / 10);
 
 /** Sentences in a line: each ends with a full stop, a question or an exclamation. */
 const sentences = (text: string) =>
@@ -43,7 +42,7 @@ export const storyWarnings = (plan: BeatPlan, storyboard: Storyboard): CheckWarn
       warnings.push({
         check: "hook",
         ...where,
-        message: `the first beat takes ${seconds(length)} s; a hook lands within ${HOOK_SECONDS} s`,
+        message: `the first beat takes ${tenth(length)} s; a hook lands within ${HOOK_SECONDS} s`,
       });
   }
 
@@ -75,7 +74,7 @@ export const storyWarnings = (plan: BeatPlan, storyboard: Storyboard): CheckWarn
   if (plan.duration < TARGET_SECONDS.min || plan.duration > TARGET_SECONDS.max)
     warnings.push({
       check: "length",
-      message: `the video runs ${seconds(plan.duration)} s; it is best kept to ${TARGET_SECONDS.min} to ${TARGET_SECONDS.max} s`,
+      message: `the video runs ${tenth(plan.duration)} s; it is best kept to ${TARGET_SECONDS.min} to ${TARGET_SECONDS.max} s`,
     });
   return warnings;
 };

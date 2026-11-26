@@ -2,17 +2,10 @@ import { z } from "zod";
 import { graphSummary, storyboardSummary } from "../guidance/guide.ts";
 import type { AgentTool } from "../llm/agent.ts";
 import type { LlmClient } from "../llm/client.ts";
-import { type ContextText, draftGraph, draftScript, editFile } from "../llm/drafting.ts";
 import { ApproveSchema } from "../schema/api.ts";
-import { DEFAULT_CONFIG } from "../schema/config.ts";
 import { ReadContextArgsSchema } from "../schema/context.ts";
-import {
-  DRAFT_TOOL_NAMES,
-  DraftArgsSchema,
-  EditArgsSchema,
-  MAX_QUESTIONS,
-} from "../schema/drafts.ts";
-import { formatErrors, parseWith, type Validated } from "../schema/errors.ts";
+import { DRAFT_TOOL_NAMES } from "../schema/drafts.ts";
+import { formatErrors, parseWith } from "../schema/errors.ts";
 import { GraphSchema } from "../schema/graph.ts";
 import {
   RenderArgsSchema,
@@ -23,13 +16,13 @@ import {
   UpdateGraphArgsSchema,
 } from "../schema/mcp.ts";
 import { GATES } from "../schema/project.ts";
-import { ok } from "../schema/result.ts";
 import { BriefSchema } from "../schema/story.ts";
 import { StoryboardSchema } from "../schema/storyboard.ts";
 import { readContext } from "../server/context.ts";
 import { approveGate } from "../server/gates.ts";
-import { openProject, projectDir } from "../server/projects.ts";
-import { readHouseRules } from "../server/stories.ts";
+import { projectDir } from "../server/projects.ts";
+import { inputOf, output } from "./agent-results.ts";
+import { draftTools } from "./draft-tools.ts";
 import { cancelRenderTool, checkTool, renderStatusTool, renderTool } from "./render-tools.ts";
 import {
   getProjectTool,
@@ -58,30 +51,6 @@ export const AGENT_TOOL_NAMES = {
 const T = AGENT_TOOL_NAMES;
 
 /**
- * Fields the in-app agent never needs: links into the app it is in, the
- * Mermaid the panel already draws, and times that change on every run.
- */
-const NOT_FOR_THE_AGENT = new Set(["preview", "mermaid", "createdAt", "updatedAt"]);
-
-/** A tool's result with those fields taken out, at any depth. */
-const forTheAgent = (value: unknown): unknown => {
-  if (Array.isArray(value)) return value.map(forTheAgent);
-  if (value === null || typeof value !== "object") return value;
-  return Object.fromEntries(
-    Object.entries(value)
-      .filter(([key]) => !NOT_FOR_THE_AGENT.has(key))
-      .map(([key, v]) => [key, forTheAgent(v)]),
-  );
-};
-
-/** What the model reads back from a tool: its result, or its errors named by place. */
-const output = (result: Validated<unknown>): unknown =>
-  result.ok ? forTheAgent(result.value) : { errors: formatErrors(result.errors) };
-
-const inputOf = (schema: z.ZodType) =>
-  z.toJSONSchema(schema, { io: "input" }) as Record<string, unknown>;
-
-/**
  * An MCP tool's arguments (without the slug, which is the chat's own) with
  * each document in its real shape. The
  * MCP arguments take documents as anything, so the tool names their errors
@@ -91,26 +60,6 @@ const argsFor = (args: z.ZodObject, documents: Record<string, z.ZodType>) =>
   inputOf(
     args.extend(Object.fromEntries(Object.entries(documents).map(([k, v]) => [k, v.optional()]))),
   );
-
-/** The context files a draft names, with their text; an error names one that is not there. */
-const contextTexts = async (
-  dir: string,
-  names: readonly string[],
-): Promise<Validated<ContextText[]>> => {
-  const texts: ContextText[] = [];
-  for (const name of names) {
-    const text = await readContext(dir, name);
-    if (!text.ok) return text;
-    texts.push({ name, text: text.value });
-  }
-  return ok(texts);
-};
-
-/** The user's house rules for a draft; none when the file is missing or cannot be read. */
-const houseRulesOf = async (context: ToolContext) => {
-  const rules = await readHouseRules(context.projectsDir);
-  return rules.ok ? rules.value : null;
-};
 
 /** The model's input as an object of arguments, as every tool takes. */
 const argsOf = (input: unknown): Record<string, unknown> =>
@@ -124,125 +73,15 @@ const withSlug = (slug: string, input: unknown) => ({ ...argsOf(input), slug });
  * called in-process on the project the chat belongs to, so the app and an
  * IDE's agent do the same things, plus a few only
  * the app has: `approve_gate` (in the IDE, approval stays in its chat),
- * `read_context` (an IDE's agent reads the repository itself), and
- * and the drafting tools, `draft_graph`, `draft_script`, `edit_graph` and
+ * `read_context` (an IDE's agent reads the repository itself), and the
+ * drafting tools, `draft_graph`, `draft_script`, `edit_graph` and
  * `edit_script`, which draft or edit in one checked call with `client` (an
  * IDE's agent is the LLM, and drafts itself). Results leave out links and
  * times, which the agent has no use for, so a recorded conversation replays
  * exactly.
  */
 export const agentTools = (context: ToolContext, slug: string, client: LlmClient): AgentTool[] => [
-  {
-    name: T.draftGraph,
-    description: `Drafts the project's graph.json from the user's description and the context files you name, in one call that checks and repairs its own answer, then saves it as ${T.updateGraph} does. Returns what it assumed and at most ${MAX_QUESTIONS} questions to put to the user. Use it for a new graph, or to start one again; change a graph with ${T.editGraph}.`,
-    inputSchema: inputOf(DraftArgsSchema),
-    run: async (input) => {
-      const asked = parseWith(DraftArgsSchema, input);
-      if (!asked.ok) return { errors: formatErrors(asked.errors) };
-      const texts = await contextTexts(projectDir(context.projectsDir, slug), asked.value.context);
-      if (!texts.ok) return { errors: formatErrors(texts.errors) };
-      const drafted = await draftGraph(client, {
-        request: asked.value.request,
-        context: texts.value,
-        houseRules: await houseRulesOf(context),
-      });
-      if (!drafted.ok) return { errors: formatErrors(drafted.errors) };
-      const { graph, assumptions, questions } = drafted.value;
-      const saved = await updateGraphTool(context, { slug, graph });
-      return saved.ok
-        ? { ...(forTheAgent(saved.value) as object), assumptions, questions }
-        : output(saved);
-    },
-  },
-  {
-    name: T.editGraph,
-    description: `Changes the project's graph.json as the user asked ("rename X", "add a retry step"), in one call that writes a JSON Patch, checks it and repairs it, so the rest stays as it was; then saves it as ${T.updateGraph} does. Returns what changed in a sentence, and the beats it made stale.`,
-    inputSchema: inputOf(EditArgsSchema),
-    run: async (input) => {
-      const asked = parseWith(EditArgsSchema, input);
-      if (!asked.ok) return { errors: formatErrors(asked.errors) };
-      const opened = await openProject(context.projectsDir, slug);
-      if (!opened?.ok) return { errors: [`slug: no project "${slug}" to open`] };
-      const { graph } = opened.value;
-      if (!graph) return { errors: [`graph.json: missing; draft the graph with ${T.draftGraph}`] };
-      const edit = await editFile(client, {
-        file: "graph",
-        request: asked.value.request,
-        graph,
-        houseRules: await houseRulesOf(context),
-      });
-      if (!edit.ok) return { errors: formatErrors(edit.errors) };
-      const saved = await updateGraphTool(context, { slug, patch: edit.value.patch });
-      return saved.ok
-        ? { ...(forTheAgent(saved.value) as object), summary: edit.value.summary }
-        : output(saved);
-    },
-  },
-  {
-    name: T.editScript,
-    description: `Changes the project's storyboard.json as the user asked ("shorten beat 3", "add a beat on retries"), in one call that writes a JSON Patch, checks it against the graph and repairs it, so the rest stays as it was; then saves it as ${T.setStoryboard} does. Returns what changed in a sentence, and the video's length.`,
-    inputSchema: inputOf(EditArgsSchema),
-    run: async (input) => {
-      const asked = parseWith(EditArgsSchema, input);
-      if (!asked.ok) return { errors: formatErrors(asked.errors) };
-      const opened = await openProject(context.projectsDir, slug);
-      if (!opened?.ok) return { errors: [`slug: no project "${slug}" to open`] };
-      const { graph, storyboard } = opened.value;
-      if (!graph || !storyboard)
-        return { errors: [`storyboard.json: missing; draft the script with ${T.draftScript}`] };
-      const edit = await editFile(client, {
-        file: "storyboard",
-        request: asked.value.request,
-        graph,
-        storyboard,
-        houseRules: await houseRulesOf(context),
-      });
-      if (!edit.ok) return { errors: formatErrors(edit.errors) };
-      const saved = await setStoryboardTool(context, { slug, patch: edit.value.patch });
-      return saved.ok
-        ? { ...(forTheAgent(saved.value) as object), summary: edit.value.summary }
-        : output(saved);
-    },
-  },
-  {
-    name: T.draftScript,
-    description: `Drafts the project's storyboard.json for its graph, following its brief (save the brief with ${T.setBrief} first), from the context files you name, in one call that checks its own answer (the graph, the hook, the outcome, the length, one thing per beat, words read and said in time) and repairs it; then saves it as ${T.setStoryboard} does. Returns what it assumed, a title card to suggest, and any problem it could not repair. Change a script with ${T.editScript}.`,
-    inputSchema: inputOf(DraftArgsSchema),
-    run: async (input) => {
-      const asked = parseWith(DraftArgsSchema, input);
-      if (!asked.ok) return { errors: formatErrors(asked.errors) };
-      const opened = await openProject(context.projectsDir, slug);
-      if (!opened?.ok) return { errors: [`slug: no project "${slug}" to open`] };
-      const { graph, brief, config } = opened.value;
-      if (!graph) return { errors: ["graph.json: missing; draft the graph first"] };
-      if (!brief)
-        return {
-          errors: [
-            `brief.json: missing; agree the story with the user, and save it with ${T.setBrief}, first`,
-          ],
-        };
-      const texts = await contextTexts(projectDir(context.projectsDir, slug), asked.value.context);
-      if (!texts.ok) return { errors: formatErrors(texts.errors) };
-      const drafted = await draftScript(client, {
-        request: asked.value.request,
-        context: texts.value,
-        houseRules: await houseRulesOf(context),
-        graph,
-        brief,
-        config: config ?? DEFAULT_CONFIG,
-      });
-      if (!drafted.ok) return { errors: formatErrors(drafted.errors) };
-      const { draft, remaining } = drafted.value;
-      const saved = await setStoryboardTool(context, { slug, storyboard: draft.storyboard });
-      if (!saved.ok) return output(saved);
-      return {
-        ...(forTheAgent(saved.value) as object),
-        assumptions: draft.assumptions,
-        suggestedTitleCard: draft.titleCard,
-        ...(remaining.length ? { notRepaired: formatErrors(remaining) } : {}),
-      };
-    },
-  },
+  ...draftTools(context, slug, client),
   {
     name: T.getProject,
     description:

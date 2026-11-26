@@ -14,7 +14,7 @@ const FixPreview = ({ offer }: { offer: FixOffer }) =>
       <span className="text-muted">Shorter: </span>“{offer.fix.after}”
     </span>
   ) : (
-    <span className="block text-muted text-sm">{offer.label}.</span>
+    <span className="block text-muted text-sm">{offer.label.replace(/[.!?]?$/, ".")}</span>
   );
 
 /**
