@@ -7,6 +7,7 @@ import { makeSoundtrack } from "../audio/soundtrack.ts";
 import type { VoiceLine } from "../audio/voice.ts";
 import { layoutWarnings } from "../checks/layout.ts";
 import { stillAt } from "../checks/sheet.ts";
+import { storyWarnings } from "../checks/story.ts";
 import { loudnessWarnings, narrationFitWarnings, readingWarnings } from "../checks/timing.ts";
 import { projectBeats } from "../engine/beats/build.ts";
 import {
@@ -245,6 +246,7 @@ export const checkProjectFolder = async ({
   const warnings = [
     ...layout.warnings,
     ...readingWarnings(plan),
+    ...storyWarnings(plan, project.storyboard),
     ...(skipped.has("narration-fit") ? [] : narrationFitWarnings(plan, project.narration ?? {})),
     ...(skipped.has("loudness") ? [] : await checkSoundtrack({ project, lines, soundtrack })),
   ];

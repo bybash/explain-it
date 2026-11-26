@@ -1,12 +1,15 @@
 import { describe, expect, it } from "vitest";
 import graphJson from "../../examples/oauth-login/graph.json" with { type: "json" };
+import storyboardJson from "../../examples/oauth-login/storyboard.json" with { type: "json" };
+import { DEFAULT_CONFIG } from "../schema/config.ts";
 import { MAX_QUESTIONS } from "../schema/drafts.ts";
-import { formatErrors } from "../schema/errors.ts";
+import { formatErrors, orThrow } from "../schema/errors.ts";
 import { parseGraph } from "../schema/graph.ts";
-import { draftGraph } from "./drafting.ts";
+import { parseStoryboard } from "../schema/storyboard.ts";
+import { draftGraph, draftScript } from "./drafting.ts";
 import { fakeLlm } from "./fake-llm.testing.ts";
 import { FIXTURES_DIR, fixtureClient } from "./fixtures.ts";
-import { DRAFTED_FLOWS } from "./recordings.ts";
+import { DRAFTED_FLOWS, DRAFTED_SCRIPTS } from "./recordings.ts";
 
 const { $schema: _, ...graph } = graphJson;
 const answer = (over: Record<string, unknown> = {}) =>
@@ -61,6 +64,86 @@ describe("draftGraph", () => {
       expect(parseGraph(drafted.value.graph).ok).toBe(true);
       expect(drafted.value.graph.nodes.length).toBeGreaterThanOrEqual(3);
       expect(drafted.value.questions.length).toBeLessThanOrEqual(MAX_QUESTIONS);
+    },
+  );
+});
+
+describe("draftScript", () => {
+  const parsedGraph = orThrow(parseGraph(graph), "graph.json");
+  const { $schema: _s, ...example } = storyboardJson;
+  type Script = typeof example;
+  /** The script with one beat's line replaced, by its place in the first scene. */
+  const saying = (from: Script, beat: number, say: string): Script => ({
+    ...from,
+    scenes: from.scenes.map((scene, i) =>
+      i === 0
+        ? { ...scene, beats: scene.beats.map((b, j) => (j === beat ? { ...b, say } : b)) }
+        : scene,
+    ),
+  });
+  // The example's fourth line reads a little fast by an estimate of its voice; this one fits.
+  const storyboard = saying(example, 3, "The provider sends back a one-time code.");
+  const LONG_HOOK =
+    "A user opens the app on their phone, taps Sign in, and waits while the app gets ready to send them to the provider.";
+  const titleCard = { title: "Signing in with OAuth" };
+  const script = (over: Record<string, unknown> = {}) =>
+    JSON.stringify({ storyboard, titleCard, assumptions: [], ...over });
+  const input = {
+    request: "Write the script.",
+    context: [],
+    graph: parsedGraph,
+    brief: null,
+    config: DEFAULT_CONFIG,
+  };
+
+  it("sends back a script that names what the graph lacks, or a hook too long, then takes the repaired one", async () => {
+    const strayed = {
+      ...storyboard,
+      scenes: storyboard.scenes.map((scene, i) =>
+        i === 0 ? { ...scene, nodes: [...scene.nodes, "nobody"] } : scene,
+      ),
+    };
+    const slow = saying(storyboard, 0, LONG_HOOK);
+    const { client, asked } = fakeLlm([
+      script({ storyboard: strayed }),
+      script({ storyboard: slow }),
+      script(),
+    ]);
+    const drafted = await draftScript(client, input);
+    expect(drafted.ok && drafted.value.remaining).toEqual([]);
+    expect(drafted.ok && drafted.value.draft.titleCard).toEqual(titleCard);
+    expect(asked[1]?.messages.at(-1)?.content).toMatch(/nobody/);
+    expect(asked[2]?.messages.at(-1)?.content).toMatch(
+      /storyboard\.scenes\[0\]\.beats\[0\]: the first beat takes/,
+    );
+    // The graph and the guide's part on the script reach the model.
+    expect(asked[0]?.messages[0]?.content).toContain('"title":"Signing in with OAuth"');
+    expect(asked[0]?.system).toContain("Telling the story");
+  });
+
+  it("keeps a script that fits the graph when the repairs run out, with what is left", async () => {
+    const slow = saying(storyboard, 0, LONG_HOOK);
+    const { client } = fakeLlm([
+      script({ storyboard: slow }),
+      script({ storyboard: slow }),
+      script({ storyboard: slow }),
+    ]);
+    const drafted = await draftScript(client, input);
+    expect(drafted.ok && drafted.value.remaining.map((e) => e.path)).toEqual([
+      "storyboard.scenes[0].beats[0]",
+    ]);
+  });
+
+  it.each(DRAFTED_SCRIPTS.map((flow) => [flow.name, flow] as const))(
+    "drafts a valid script for the graph of %s, as recorded with a real model",
+    async (_name, flow) => {
+      const client = fixtureClient({ dir: FIXTURES_DIR });
+      const drafted = await flow.run(client);
+      expect(drafted.ok ? [] : formatErrors(drafted.errors)).toEqual([]);
+      if (!drafted.ok) return;
+      const { graph: drafts, script: written } = drafted.value;
+      expect(parseStoryboard(written.draft.storyboard, drafts).ok).toBe(true);
+      expect(written.remaining).toEqual([]);
     },
   );
 });

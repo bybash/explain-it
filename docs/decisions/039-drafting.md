@@ -9,7 +9,8 @@ to fix what a tool sent back.
 
 ## Decision
 
-- **A drafting tool per file**, only in the app: `draft_graph` (5.3). It
+- **A drafting tool per file**, only in the app: `draft_graph` (5.3) and
+  `draft_script` (5.4), which waits for an agreed brief. Each
   makes one structured call (`structuredCall`, with the repair loop) and
   saves the result as the MCP tool does. The agent still decides when to
   call it and talks to the user; an IDE's agent is the LLM, so it drafts
@@ -22,6 +23,17 @@ to fix what a tool sent back.
   (`GraphDraftSchema`): an answer with more is sent back by the repair loop.
 - **The tool reads the context files the agent names**, so the drafting
   call sees them whole, without the agent reading them first.
+- **A script is checked before the user sees it**: against the graph, then
+  by the story checks (2.8) and the quick checks, each problem named by its
+  place. Within the two repairs it is sent back; when they run out, the last
+  script that fits the graph is kept with what is left (`structuredDraft`),
+  as a script a second too long is better than none.
+- **A narration line read too fast asks for plainer words**, not fewer: its
+  captions go at the voice's pace, so the length of its words counts, not
+  the length of the line.
+- **Discriminated unions are sent as `anyOf`.** Claude's structured output
+  refuses `oneOf`, which zod writes for a beat's actions; the answer is still
+  checked against the real schema.
 - **Nothing is streamed.** The graph shows in the Graph gate once it is
   saved. Streaming moved to Later: a partial graph draws badly, and the
   saved one arrives within seconds.

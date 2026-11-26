@@ -92,7 +92,7 @@ The goal: the CLI renders a hand-written example to an MP4, with no LLM and no v
 | ✅ 2.5 | **Layout checks**: overlap (polygons) and off-frame at each beat's midpoint, including boxes moved onto each other or onto another zone by manual overrides; a JSON report; `explain-it check` | A broken fixture is caught; an overlapping override is reported; the example passes |
 | ✅ 2.6 | **Timing and audio checks**: reading speed, narration fit, loudness | Same as 2.5 |
 | ✅ 2.7 | **Contact sheet**: one still per beat on one image | A contact sheet of the example in the PR |
-| 2.8 | **Story checks**: pure checks on the script's shape: the first beat is narrated and short (the hook), the last shows the outcome, the video's length is within a target, and no narrated beat does more than one thing. The assistant runs them on its own drafts and repairs what they find before the user sees the script (5.4); the Script gate's editor shows them as hints beside each beat, and `check` reports them. Judgement calls (jargon, tone) stay with the LLM | A broken fixture is caught; the example passes |
+| ✅ 2.8 | **Story checks**: pure checks on the script's shape: the first beat is narrated and short (the hook), the last shows the outcome, the video's length is within a target, and no narrated beat does more than one thing. The assistant runs them on its own drafts and repairs what they find before the user sees the script (5.4); the Script gate's editor shows them as hints beside each beat, and `check` reports them. Judgement calls (jargon, tone) stay with the LLM | A broken fixture is caught; the example passes |
 
 ## Milestone 3: web app
 
@@ -140,7 +140,7 @@ user works by hand or over MCP.
 | ✅ 5.1 | **LLM client**: AI SDK with OpenRouter, Anthropic's own API (a Claude key) and OpenAI-compatible providers, structured calls, the repair loop, fixture recording and replay | Tests replay fixtures without a key |
 | ✅ 5.2 | **Context**: pasted text and file upload, the 100k-character limit, storing files in `context/` | Oversized context is refused with a clear message |
 | ✅ 5.3 | **Graph drafting**, through the chat agent (5.7): chat and context to `graph.json`, shown in the Mermaid view once saved, at most two questions | Fixtures: three described flows give valid graphs |
-| 5.4 | **Script drafting**, through the chat agent (5.7): the story brief first (3.14), for approval, keeping to the project's and the house rules; then graph to scenes and beats, and a suggested title card, validated by the schema, the quick checks and 2.8's story checks, and repaired before the user sees it | Fixtures: the three graphs give valid storyboards |
+| ✅ 5.4 | **Script drafting**, through the chat agent (5.7): the story brief first (3.14), for approval, keeping to the project's and the house rules; then graph to scenes and beats, and a suggested title card, validated by the schema, the quick checks and 2.8's story checks, and repaired before the user sees it | Fixtures: the three graphs give valid storyboards |
 | 5.5 | **Edits through chat**: JSON Patches for the graph and the storyboard | Fixtures: "rename X", "add a retry step", "shorten beat 3" |
 | 5.6 | **Layout repair**: check failures the layout engine cannot fix go back to the LLM | A crowded fixture is fixed |
 | ✅ 5.7 | **Chat agent**: the in-app LLM calls the same tools as MCP agents, in-process (the graph, the brief, the storyboard, the style, the checks, the render), following the guide with the house rules; it works gate by gate and waits for the user's approval in the chat; the panel follows each change; without a key, the chat points at the panel and Settings | Fixtures: a described flow goes from the first message to an approved graph and script through tools alone |
@@ -215,22 +215,6 @@ as three pull requests (decision 037) and one fix (decision 035).
 Work a finished slice left for a later one. Each list is removed by the slice
 that finishes it.
 
-### For 5.4 (script drafting), from 2.6, 3.13 and 5.8
-
-- `set_storyboard` and the script drafting's repair loop could use the
-  quick checks without Chrome, as the chat does after a change (5.8):
-  `wordProblems` in `src/checks/chat-report.ts` gives each beat's words
-  read too fast, or too long to say, with the most characters that fit,
-  and `shorterWords` (`src/llm/words.ts`) writes them again. The layout
-  checks need Chrome and loudness a mix.
-- The starter script (`starterScript`) makes one scene of at most 12
-  nodes and 10 beats; a larger graph keeps its other nodes and edges out
-  of the starter, for the user, or the assistant, to add as scenes.
-- 3.6 has no browser test of its own (the seams agreed were the API, the
-  editor's pure functions and MCP), and 5.8 added none: the e2e flow can
-  add the Script gate's steps, and a fix applied from the chat, when 5.4
-  changes the gate.
-
 ### For 5.6 (layout repair), from 2.5
 
 - The layout engine now keeps routes in sight of boxes and places edge
@@ -240,13 +224,8 @@ that finishes it.
   heights off its line (the example's "save session").
 - Not checked yet: the title and end cards, and edges against zone labels.
 
-### For 5.4 and 5.5, from 5.1, 5.3 and 5.7
+### For 5.5 and later, from 5.1, 5.3, 5.4 and 5.7
 
-- The assistant drafts the graph with `draft_graph` (5.3): one structured
-  call (`draftGraph`, `src/llm/drafting.ts`), its prompt in
-  `src/llm/prompts/draft-graph.md`, filled by `prompt()` from the guide's
-  `graphGuide()`. 5.4's `draft_script` can follow it, with a
-  `storyboardGuide()`, and add the models it tests to the README's list.
 - Every step sends the whole guide as the system prompt; prompt caching
   (Claude's own API) would cut the cost of a long turn.
 - A turn cannot be cancelled from the chat, and a message sent while the
@@ -263,7 +242,7 @@ that finishes it.
 - A personal Anthropic key that is not scoped to a workspace needs the
   `anthropic-workspace-id` header; the client does not send one.
 
-### For 5.4 (script drafting), from 5.2
+### For 5.5 and later, from 5.2
 
 - Once the assistant has read a context file, its text is sent again on
   every later step of that turn (and read again on the next turn, as earlier
@@ -287,8 +266,8 @@ that finishes it.
   not hold it: the render starts with them.
 - The Preview gate's Checks tab still jumps to a warning in the player;
   its beat list has an Edit link to the beat in the Script gate.
-- The hook and length checks of the story (2.8) are hints in the Script
-  gate, not in the chat.
+- The story checks (2.8) reach the chat with the full checks (when the
+  Preview gate opens), not after each script change, and have no fix.
 - The Script gate's hints (`beatHints` in `src/web/script-model.ts`) and the
   chat's problems (`wordProblems`) read the same quick checks each their
   own way; a Fix in the editor beside a hint could share the chat's.
@@ -322,6 +301,18 @@ that finishes it.
   that CI has both, or it never runs there.
 
 ### Found outside a slice
+
+- The starter script (`starterScript`) makes one scene of at most 12
+  nodes and 10 beats; a larger graph keeps its other nodes and edges out
+  of the starter, for the user, or the assistant, to add as scenes.
+- The Script gate has no browser test of its own (3.6, 5.8 and 5.4 agreed
+  other seams): the e2e flow could add its steps and a fix applied from the
+  chat.
+- Under an estimated voice, a narration caption goes at about the voice's
+  pace whatever the line's length (4 words a second against 17 characters a
+  second), so a line of long words reads too fast however short it is. The
+  chat's shorter-words fix (5.8) asks for fewer characters; plainer words
+  would help more.
 
 - Edge labels can overlap each other: in the example, the `authorization
   code` and `authorize` pills (label placement from 1.5).

@@ -1,9 +1,11 @@
 import { graphSummary } from "../guidance/guide.ts";
+import { DEFAULT_CONFIG } from "../schema/config.ts";
 import type { Validated } from "../schema/errors.ts";
 import { GraphSchema, parseGraph } from "../schema/graph.ts";
+import { ok } from "../schema/result.ts";
 import { BriefSchema } from "../schema/story.ts";
 import type { LlmClient } from "./client.ts";
-import { draftGraph } from "./drafting.ts";
+import { draftGraph, draftScript } from "./drafting.ts";
 import { type StructuredCall, structuredCall } from "./structured.ts";
 import { shorterWords } from "./words.ts";
 
@@ -60,6 +62,23 @@ export const DRAFTED_FLOWS = [
   },
 ] as const;
 
+/** The script drafted for each of those graphs, with no brief (5.4's "Done when"). */
+export const DRAFTED_SCRIPTS = DRAFTED_FLOWS.map((flow) => ({
+  name: flow.name,
+  run: async (client: LlmClient) => {
+    const drafted = await draftGraph(client, { request: flow.request, context: [] });
+    if (!drafted.ok) return drafted;
+    const script = await draftScript(client, {
+      request: `Write the script for this flow: ${flow.request}`,
+      context: [],
+      graph: drafted.value.graph,
+      brief: null,
+      config: DEFAULT_CONFIG,
+    });
+    return script.ok ? ok({ graph: drafted.value.graph, script: script.value }) : script;
+  },
+}));
+
 /** The recorded calls, each run with its own schema. */
 export const RECORDED_CALLS: readonly {
   readonly name: string;
@@ -72,4 +91,5 @@ export const RECORDED_CALLS: readonly {
     name: `draft-graph: ${flow.name}`,
     run: (client: LlmClient) => draftGraph(client, { request: flow.request, context: [] }),
   })),
+  ...DRAFTED_SCRIPTS.map((flow) => ({ name: `draft-script: ${flow.name}`, run: flow.run })),
 ];

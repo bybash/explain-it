@@ -1,9 +1,11 @@
 import { z } from "zod";
 import { MAX_CHAT_MESSAGE } from "./chat.ts";
+import { TitleCardSchema } from "./config.ts";
 import { GraphSchema } from "./graph.ts";
+import { StoryboardSchema } from "./storyboard.ts";
 
 /** The drafting tools only the app's assistant has: an IDE's agent is the LLM, and drafts itself. */
-export const DRAFT_TOOL_NAMES = { draftGraph: "draft_graph" } as const;
+export const DRAFT_TOOL_NAMES = { draftGraph: "draft_graph", draftScript: "draft_script" } as const;
 
 /** The most questions a draft may ask: it drafts right away and states what it assumed (SPEC, User flow). */
 export const MAX_QUESTIONS = 2;
@@ -28,6 +30,16 @@ export const GraphDraftSchema = z.strictObject({
   questions: Questions,
 });
 export type GraphDraft = z.output<typeof GraphDraftSchema>;
+
+/** A drafted script (5.4): the storyboard, a title card to suggest, and what it assumed. */
+export const ScriptDraftSchema = z.strictObject({
+  storyboard: StoryboardSchema,
+  titleCard: TitleCardSchema.describe(
+    "A title card to suggest: the video's name, and a line under it.",
+  ),
+  assumptions: Assumptions,
+});
+export type ScriptDraft = z.output<typeof ScriptDraftSchema>;
 
 /** What the assistant asks a drafting tool for: the user's description, and the context files that bear on it. */
 export const DraftArgsSchema = z.strictObject({

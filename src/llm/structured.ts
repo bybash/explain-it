@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { formatErrors, parseWith, type Validated, type ValidationError } from "../schema/errors.ts";
 import type { LlmMessage } from "../schema/llm.ts";
-import { fail } from "../schema/result.ts";
+import { fail, ok } from "../schema/result.ts";
 import type { LlmClient } from "./client.ts";
 
 /** How often a call is asked again after its answer did not fit (SPEC, LLM: "at most twice"). */
@@ -43,6 +43,73 @@ const repairPrompt = (errors: readonly ValidationError[]) =>
   ].join("\n");
 
 /**
+ * A JSON Schema as structured output takes it: Claude's refuses `oneOf`,
+ * which zod writes for a discriminated union (a beat's actions), so it is
+ * sent as `anyOf`. The answer is still checked against the real schema.
+ */
+export const forStructuredOutput = (schema: unknown): unknown => {
+  if (Array.isArray(schema)) return schema.map(forStructuredOutput);
+  if (schema === null || typeof schema !== "object") return schema;
+  return Object.fromEntries(
+    Object.entries(schema).map(([key, value]) => [
+      key === "oneOf" ? "anyOf" : key,
+      forStructuredOutput(value),
+    ]),
+  );
+};
+
+/** What a structured call came to: the answer, or the last answer that fitted and what it could still improve. */
+type Outcome<T> =
+  | { readonly kind: "done"; readonly value: T; readonly remaining: readonly ValidationError[] }
+  | { readonly kind: "failed"; readonly errors: readonly ValidationError[] };
+
+/**
+ * The loop under both calls: an answer that does not fit, or (with
+ * `improve`) could be better, goes back with its problems, each named by its
+ * place, at most `MAX_REPAIRS` times. An answer that fits but could still be
+ * better is kept, so the last of those is the outcome when the repairs run
+ * out.
+ */
+const repairing = async <S extends z.ZodType>(
+  client: LlmClient,
+  call: StructuredCall<S>,
+  improve: (value: z.output<S>) => readonly ValidationError[] = () => [],
+): Promise<Outcome<z.output<S>>> => {
+  const schema = forStructuredOutput(z.toJSONSchema(call.schema, { io: "output" })) as Record<
+    string,
+    unknown
+  >;
+  const messages: LlmMessage[] = [{ role: "user", content: call.prompt }];
+  let problems: readonly ValidationError[] = [];
+  let kept: { value: z.output<S>; remaining: readonly ValidationError[] } | undefined;
+  for (let attempt = 0; attempt <= MAX_REPAIRS; attempt++) {
+    const reply = await client.generate({
+      name: call.name,
+      system: call.system,
+      messages: [...messages],
+      schema,
+    });
+    if (!reply.ok) return { kind: "failed", errors: reply.errors };
+    const answer = read(reply.value.text, call);
+    problems = answer.ok ? improve(answer.value) : answer.errors;
+    if (answer.ok) kept = { value: answer.value, remaining: problems };
+    if (problems.length === 0 && kept) return { kind: "done", ...kept };
+    messages.push(
+      { role: "assistant", content: reply.value.text },
+      { role: "user", content: repairPrompt(problems) },
+    );
+  }
+  if (kept) return { kind: "done", ...kept };
+  return {
+    kind: "failed",
+    errors: [
+      { path: "llm", message: `the answer still did not fit after ${MAX_REPAIRS} repairs` },
+      ...problems,
+    ],
+  };
+};
+
+/**
  * One structured call with its repair loop (SPEC, LLM): the model is asked
  * for JSON in the schema's shape; an answer that is not JSON, does not fit
  * the schema or fails the check is sent back with its problems, each named
@@ -54,27 +121,24 @@ export const structuredCall = async <S extends z.ZodType>(
   client: LlmClient,
   call: StructuredCall<S>,
 ): Promise<Validated<z.output<S>>> => {
-  const schema = z.toJSONSchema(call.schema, { io: "output" }) as Record<string, unknown>;
-  const messages: LlmMessage[] = [{ role: "user", content: call.prompt }];
-  let problems: readonly ValidationError[] = [];
-  for (let attempt = 0; attempt <= MAX_REPAIRS; attempt++) {
-    const reply = await client.generate({
-      name: call.name,
-      system: call.system,
-      messages: [...messages],
-      schema,
-    });
-    if (!reply.ok) return reply;
-    const answer = read(reply.value.text, call);
-    if (answer.ok) return answer;
-    problems = answer.errors;
-    messages.push(
-      { role: "assistant", content: reply.value.text },
-      { role: "user", content: repairPrompt(problems) },
-    );
-  }
-  return fail([
-    { path: "llm", message: `the answer still did not fit after ${MAX_REPAIRS} repairs` },
-    ...problems,
-  ]);
+  const outcome = await repairing(client, call);
+  return outcome.kind === "done" ? ok(outcome.value) : fail(outcome.errors);
+};
+
+/**
+ * A draft (5.4): a structured call whose answer is also sent back for what
+ * `improve` finds (the checks), within the same repairs. When they run out,
+ * the last answer that fits is kept, with what is left to improve, so a
+ * good draft is not lost over a beat a second too long.
+ */
+export const structuredDraft = async <S extends z.ZodType>(
+  client: LlmClient,
+  call: StructuredCall<S> & {
+    readonly improve: (value: z.output<S>) => readonly ValidationError[];
+  },
+): Promise<Validated<{ value: z.output<S>; remaining: readonly ValidationError[] }>> => {
+  const outcome = await repairing(client, call, call.improve);
+  return outcome.kind === "done"
+    ? ok({ value: outcome.value, remaining: outcome.remaining })
+    : fail(outcome.errors);
 };
