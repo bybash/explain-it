@@ -18,7 +18,8 @@
       "id": "order_service",
       "label": "Order service",
       "kind": "service",
-      "zone": "shop"
+      "zone": "shop",
+      "category": "c3"
     },
     {
       "id": "stock",
@@ -88,7 +89,8 @@
   "zones": [
     {
       "id": "shop",
-      "label": "Our shop"
+      "label": "Our shop",
+      "category": "c3"
     }
   ]
 }

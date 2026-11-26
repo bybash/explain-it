@@ -898,16 +898,16 @@ Three approved example projects in `examples/`, which render without an API
 key and also serve as test fixtures:
 
 - **OAuth login**: browser, app, identity provider, token exchange.
-- **CI pipeline**: push, lint, tests and build side by side, a gate that
-  stops the release when one fails, then the registry and staging. Dark,
-  with a camera on each scene.
+- **CI pipeline**: push, lint, tests and build side by side, a gate with a
+  failure branch back to the pipeline, then the registry and staging. Dark,
+  with a camera on its second scene.
 - **Checkout**: shopper, order service, stock held before the payment
   provider takes the money, confirmation email.
 
-Each has its own palette and font, its own colours for some nodes and
-edges, title and end cards and a logo, so the three show the range. The
-CI pipeline and checkout examples began as the assistant's recorded
-drafts, edited by hand.
+OAuth login uses the default look. The CI pipeline and checkout examples
+each have their own palette and font, their own colours for some nodes,
+edges and areas, title and end cards, a logo and a brief, so the three show
+the range; they began as the assistant's recorded drafts, edited by hand.
 
 ## Milestones
 

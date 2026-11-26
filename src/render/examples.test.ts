@@ -16,29 +16,26 @@ const json = (dir: string, file: string): unknown =>
   JSON.parse(readFileSync(join(EXAMPLES, dir, file), "utf8"));
 
 describe("the examples (6.2)", () => {
-  it("are the three the roadmap names", () => {
+  it("are the three SPEC names", () => {
     expect(examples.sort()).toEqual(["checkout", "ci-pipeline", "oauth-login"]);
   });
 
-  it.each(examples)("%s is a valid project, with its brief and its logos", async (name) => {
-    const project = await loadProject(join(EXAMPLES, name));
-    expect(project.ok ? [] : formatErrors(project.errors)).toEqual([]);
-    expect(parseProject(json(name, "project.json")).ok).toBe(true);
-    if (existsSync(join(EXAMPLES, name, "brief.json")))
-      expect(parseWith(BriefSchema, json(name, "brief.json")).ok).toBe(true);
-    const logo = project.ok ? project.value.config.logo : undefined;
-    for (const file of [logo?.light, logo?.dark].filter((f) => f !== undefined))
-      expect(existsSync(join(EXAMPLES, name, "assets", file))).toBe(true);
-  });
-
+  // Loading checks every file against its schema and the others, and that each logo it names is in assets/.
   it.each(examples)(
-    "%s tells its story with nothing to fix: the story checks, and words read and said in time",
+    "%s is a valid project with nothing to fix by the story checks or words read and said in time",
     async (name) => {
       const project = await loadProject(join(EXAMPLES, name));
       if (!project.ok) throw new Error(formatErrors(project.errors).join("\n"));
+      expect(parseProject(json(name, "project.json")).ok).toBe(true);
       // Timed by the estimated voice, as a fresh checkout without the voice model times it.
       const plan = projectBeats(project.value);
       expect(formatErrors(scriptProblems(plan, project.value.storyboard))).toEqual([]);
     },
   );
+
+  // A brief is optional (SPEC, Brief); the two drafted examples keep the one their script followed.
+  it.each(["ci-pipeline", "checkout"])("%s keeps the brief its script follows", (name) => {
+    expect(existsSync(join(EXAMPLES, name, "brief.json"))).toBe(true);
+    expect(parseWith(BriefSchema, json(name, "brief.json")).ok).toBe(true);
+  });
 });

@@ -17,7 +17,7 @@
     "end": {
       "headline": "Read how our pipeline is set up",
       "link": "https://example.com/docs/ci",
-      "where": "Docs \u203a Engineering \u203a CI",
+      "where": "Docs › Engineering › CI",
       "credit": "Made with explAIn-it"
     }
   },
@@ -26,15 +26,10 @@
     "dark": "logo-dark.svg"
   },
   "camera": {
-    "to_checks": {
-      "zoom": 1.15,
-      "x": 0.12,
-      "y": 0.0
-    },
     "the_gate": {
-      "zoom": 1.1,
+      "zoom": 1.15,
       "x": 0,
-      "y": 0
+      "y": -0.04
     }
   }
 }

@@ -131,6 +131,13 @@
       "from": "registry",
       "to": "staging",
       "label": "deploy image"
+    },
+    {
+      "id": "report_failure",
+      "from": "gate",
+      "to": "actions",
+      "label": "failed",
+      "category": "c4"
     }
   ],
   "zones": [
