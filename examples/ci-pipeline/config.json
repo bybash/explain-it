@@ -1,0 +1,35 @@
+{
+  "$schema": "../../schemas/config.schema.json",
+  "theme": {
+    "palette": "forest",
+    "mode": "dark"
+  },
+  "font": "space-grotesk",
+  "music": {
+    "mood": "upbeat",
+    "seed": 11
+  },
+  "cards": {
+    "title": {
+      "title": "Nothing reaches staging unless every check passes",
+      "description": "How our CI pipeline guards each deploy."
+    },
+    "end": {
+      "headline": "Read how our pipeline is set up",
+      "link": "https://example.com/docs/ci",
+      "where": "Docs › Engineering › CI",
+      "credit": "Made with explAIn-it"
+    }
+  },
+  "logo": {
+    "light": "logo-light.svg",
+    "dark": "logo-dark.svg"
+  },
+  "camera": {
+    "the_gate": {
+      "zoom": 1.15,
+      "x": 0,
+      "y": -0.04
+    }
+  }
+}

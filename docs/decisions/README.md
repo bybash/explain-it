@@ -47,4 +47,10 @@ later record supersedes an earlier one and says so.
 | [035](035-dim-focus.md) | A dim is its beat's focus |
 | [036](036-context.md) | Context for the assistant |
 | [037](037-project-page.md) | The project page |
+| [038](038-checks-in-the-chat.md) | Checks in the chat |
+| [039](039-drafting.md) | Drafting tools |
+| [040](040-layout-repair.md) | Layout repair |
+| [041](041-docker.md) | The Docker image |
 | [042](042-dim-what-belongs-to-a-node.md) | A dim fades what belongs to the nodes it fades |
+| [043](043-colours.md) | Colours for nodes, edges and areas |
+| [044](044-framing.md) | Framing: the scene number, the title card and the camera |

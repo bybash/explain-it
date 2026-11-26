@@ -41,7 +41,8 @@ export type GraphDraft = z.output<typeof GraphDraftSchema>;
 /** A drafted script (5.4): the storyboard, a title card to suggest, and what it assumed. */
 export const ScriptDraftSchema = z.strictObject({
   storyboard: StoryboardSchema,
-  titleCard: TitleCardSchema.describe(
+  // How long it holds is the user's to set, so a draft suggests only its words.
+  titleCard: TitleCardSchema.omit({ seconds: true }).describe(
     "A title card to suggest: the video's name, and a line under it.",
   ),
   assumptions: Assumptions,

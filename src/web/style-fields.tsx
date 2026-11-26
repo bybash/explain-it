@@ -8,6 +8,8 @@ import {
   LOGO_SHOWS,
   type Logo,
   type LogoMode,
+  TITLE_CARD_AUTO_TEXT,
+  TITLE_CARD_SECONDS,
 } from "../schema/config.ts";
 import type { ValidationError } from "../schema/errors.ts";
 import { Errors } from "./Errors.tsx";
@@ -124,6 +126,34 @@ export const CardFields = ({
                 change({ ...cards, title: withField(title, "description", text) })
               }
             />
+            <label className={LABEL_CLASS} htmlFor="style-title-seconds">
+              How long
+            </label>
+            <select
+              id="style-title-seconds"
+              className={INPUT_CLASS}
+              value={title.seconds ?? ""}
+              onChange={(e) =>
+                change({
+                  ...cards,
+                  title: withField(
+                    title,
+                    "seconds",
+                    e.target.value === "" ? undefined : Number(e.target.value),
+                  ),
+                })
+              }
+            >
+              <option value="">Auto ({TITLE_CARD_AUTO_TEXT}, by its text)</option>
+              {Array.from(
+                { length: TITLE_CARD_SECONDS.max - TITLE_CARD_SECONDS.min + 1 },
+                (_, i) => TITLE_CARD_SECONDS.min + i,
+              ).map((seconds) => (
+                <option key={seconds} value={seconds}>
+                  {seconds} s
+                </option>
+              ))}
+            </select>
           </>
         )}
       </Section>

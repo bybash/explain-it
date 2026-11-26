@@ -42,7 +42,11 @@ const marksOf = (player: Player): Mark[] => {
   const title = cards.find((c) => c.id === "title");
   return [
     ...(title ? [{ label: "Title", at: title.start + 0.5 }] : []),
-    ...beats.map((beat, i) => ({ label: `Beat ${i + 1}`, at: (beat.start + beat.end) / 2 })),
+    ...beats.map((beat, i) => ({
+      label: `Beat ${i + 1}`,
+      at: (beat.start + beat.end) / 2,
+      scene: beat.scene,
+    })),
     { label: "End", at: Math.max(0, duration - 0.5) },
   ];
 };

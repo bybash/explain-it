@@ -1,0 +1,208 @@
+{
+  "$schema": "../../schemas/storyboard.schema.json",
+  "version": 1,
+  "scenes": [
+    {
+      "id": "to_checks",
+      "title": "From push to checks",
+      "nodes": ["dev", "github", "actions", "lint", "tests", "build"],
+      "beats": [
+        {
+          "id": "push",
+          "caption": "A developer pushes a branch.",
+          "say": "How does a pushed change reach staging safely?",
+          "actions": [
+            {
+              "type": "appear",
+              "node": "dev"
+            },
+            {
+              "type": "appear",
+              "node": "github"
+            },
+            {
+              "type": "flow",
+              "edge": "push"
+            }
+          ]
+        },
+        {
+          "id": "trigger",
+          "caption": "GitHub starts the pipeline.",
+          "say": "GitHub sends a webhook, and GitHub Actions starts the pipeline.",
+          "actions": [
+            {
+              "type": "appear",
+              "node": "actions"
+            },
+            {
+              "type": "flow",
+              "edge": "trigger"
+            }
+          ]
+        },
+        {
+          "id": "checks",
+          "caption": "Lint and the tests start.",
+          "say": "Actions starts the lint and the tests side by side.",
+          "actions": [
+            {
+              "type": "appear",
+              "node": "lint"
+            },
+            {
+              "type": "appear",
+              "node": "tests"
+            },
+            {
+              "type": "flow",
+              "edge": "run_lint"
+            },
+            {
+              "type": "flow",
+              "edge": "run_tests"
+            }
+          ]
+        },
+        {
+          "id": "build",
+          "caption": "The build runs alongside them.",
+          "say": "At the same time, it builds the app.",
+          "actions": [
+            {
+              "type": "appear",
+              "node": "build"
+            },
+            {
+              "type": "flow",
+              "edge": "run_build"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "the_gate",
+      "title": "The gate",
+      "nodes": ["actions", "lint", "tests", "build", "gate", "registry", "staging"],
+      "beats": [
+        {
+          "id": "report",
+          "caption": "Each check reports to the gate.",
+          "say": "Lint and the tests report their results to one gate.",
+          "actions": [
+            {
+              "type": "appear",
+              "node": "gate"
+            },
+            {
+              "type": "flow",
+              "edge": "lint_done"
+            },
+            {
+              "type": "flow",
+              "edge": "tests_done"
+            },
+            {
+              "type": "callout",
+              "node": "gate",
+              "title": "All three",
+              "text": "Every check must pass before the gate opens."
+            }
+          ]
+        },
+        {
+          "id": "build_done",
+          "caption": "The build reports last.",
+          "say": "The build reports too, and the gate asks: did all three pass?",
+          "actions": [
+            {
+              "type": "flow",
+              "edge": "build_done"
+            }
+          ]
+        },
+        {
+          "id": "one_failure",
+          "caption": "One failure stops the release.",
+          "say": "If any check fails, the gate stays shut, and the run fails in GitHub Actions.",
+          "actions": [
+            {
+              "type": "appear",
+              "node": "actions"
+            },
+            {
+              "type": "dim",
+              "except": ["gate", "lint", "tests", "build", "actions"]
+            },
+            {
+              "type": "flow",
+              "edge": "report_failure"
+            },
+            {
+              "type": "badge",
+              "node": "gate",
+              "text": "blocked",
+              "tone": "error"
+            }
+          ]
+        },
+        {
+          "id": "full_pass",
+          "caption": "A full pass publishes the image.",
+          "say": "When all three pass, the image goes to the registry.",
+          "actions": [
+            {
+              "type": "appear",
+              "node": "registry"
+            },
+            {
+              "type": "dim",
+              "except": ["gate", "registry"]
+            },
+            {
+              "type": "flow",
+              "edge": "publish"
+            }
+          ]
+        },
+        {
+          "id": "deploy",
+          "caption": "The image is deployed to staging.",
+          "say": "The registry hands the image to staging.",
+          "actions": [
+            {
+              "type": "appear",
+              "node": "staging"
+            },
+            {
+              "type": "dim",
+              "except": ["registry", "staging"]
+            },
+            {
+              "type": "flow",
+              "edge": "deploy"
+            }
+          ]
+        },
+        {
+          "id": "live",
+          "caption": "Staging runs the new version.",
+          "say": "Only a change that passed every check reaches staging.",
+          "actions": [
+            {
+              "type": "dim",
+              "except": ["staging"]
+            },
+            {
+              "type": "badge",
+              "node": "staging",
+              "text": "live",
+              "tone": "ok"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

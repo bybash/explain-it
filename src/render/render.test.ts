@@ -116,8 +116,8 @@ describe.skipIf(!hasFfmpeg || !hasChrome)("renderProject (Chrome and ffmpeg)", (
       nb_frames: String(frameTimes(plan.duration).length),
     });
 
-    // The example's title card holds 8 s (120 characters) and fades over 0.8 s before the first scene.
-    expect(readFileSync(light.captions, "utf8")).toBe("1\n00:00:09,100 --> 00:00:09,500\nGo.\n");
+    // The example's title card holds 5 s (120 characters at 20 a second, 5 s at most) and fades over 0.8 s before the first scene.
+    expect(readFileSync(light.captions, "utf8")).toBe("1\n00:00:06,100 --> 00:00:06,500\nGo.\n");
 
     // The contact sheet: the short project's three beats, one tile each, on one row.
     const sheet = readFileSync(light.contactSheet);
@@ -142,7 +142,7 @@ describe.skipIf(!hasFfmpeg || !hasChrome)("renderProject (Chrome and ffmpeg)", (
       pageUrl: server.url,
     });
     if (!light) throw new Error("no result");
-    expect(readFileSync(light.captions, "utf8")).toBe("1\n00:00:09,100 --> 00:00:11,600\nGo.\n");
+    expect(readFileSync(light.captions, "utf8")).toBe("1\n00:00:06,100 --> 00:00:08,600\nGo.\n");
     const frames = execFileSync("ffprobe", [
       ...["-v", "error", "-select_streams", "v:0", "-count_frames"],
       ...["-show_entries", "stream=nb_frames", "-of", "csv=p=0", light.video],
@@ -193,10 +193,10 @@ describe.skipIf(!hasFfmpeg || !hasChrome)("renderProject (Chrome and ffmpeg)", (
     expect(streams(light.video)).toEqual(["h264", "aac"]);
     expect(streams(light.clean)).toEqual(["h264", "aac"]);
 
-    // While "Go." is on screen (9.1 to 9.5 s), the two differ only in the narration band at the bottom.
+    // While "Go." is on screen (6.1 to 6.5 s), the two differ only in the narration band at the bottom.
     const frame = (file: string) =>
       execFileSync("ffmpeg", [
-        ...["-v", "error", "-ss", "9.3", "-i", file, "-frames:v", "1"],
+        ...["-v", "error", "-ss", "6.3", "-i", file, "-frames:v", "1"],
         ...["-f", "rawvideo", "-pix_fmt", "gray", "-"],
       ]);
     const [captioned, clean] = [frame(light.video), frame(light.clean)];

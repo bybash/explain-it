@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { CATEGORIES } from "../engine/theme/kinds.ts";
 import { PALETTES } from "../engine/theme/palettes.ts";
+import { CATEGORIES } from "../schema/colours.ts";
 import { ConfigSchema } from "../schema/config.ts";
 import { orThrow, parseWith } from "../schema/errors.ts";
 import { GraphSchema, MERMAID_KEYWORDS, NODE_KINDS, parseGraph } from "../schema/graph.ts";

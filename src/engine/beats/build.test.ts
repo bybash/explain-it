@@ -218,6 +218,12 @@ describe("buildBeats: actions", () => {
     expect(at(beat("done").start, node("exchange", "idp")).dim).toBe(0);
   });
 
+  it("numbers no scene when there is only one", () => {
+    const one = { ...storyboard, scenes: storyboard.scenes.slice(0, 1) };
+    const titles = buildBeats(one, graph).overlays.filter((o) => o.kind === "title");
+    expect(titles.map((o) => o.text)).toEqual(["Sign in"]);
+  });
+
   it("shows each scene's title for the scene, and each step caption for its beat", () => {
     const titles = plan.overlays.filter((o) => o.kind === "title");
     expect(titles.map((o) => [o.scene, o.text])).toEqual([
@@ -366,8 +372,10 @@ describe("buildBeats: narration", () => {
 
 describe("buildBeats: title card", () => {
   const short = { title: "Signing in with OAuth" };
-  // 60 + 60 characters at 15 a second: 8 s, longer than the 3 s minimum.
-  const long = { title: "t".repeat(60), description: "d".repeat(60) };
+  // 40 + 40 characters at 20 a second: 4 s, longer than the 3 s minimum.
+  const longer = { title: "t".repeat(40), description: "d".repeat(40) };
+  // 60 + 100 characters: 8 s at that speed, held 5 s at most.
+  const long = { title: "t".repeat(60), description: "d".repeat(100) };
   const card = cardTarget("title");
 
   it("is fully shown from the first frame and held at least 3 s", () => {
@@ -378,9 +386,18 @@ describe("buildBeats: title card", () => {
     expect(at(2.99, card).opacity).toBe(1);
   });
 
-  it("holds longer when its text needs it, at 15 characters a second", () => {
-    const plan = buildBeats(storyboard, graph, { titleCard: long });
-    expect(spanOf(plan.cards, "title").end).toBeCloseTo(8);
+  it("holds longer when its text needs it, at 20 characters a second, and 5 s at most", () => {
+    expect(
+      spanOf(buildBeats(storyboard, graph, { titleCard: longer }).cards, "title").end,
+    ).toBeCloseTo(4);
+    expect(spanOf(buildBeats(storyboard, graph, { titleCard: long }).cards, "title").end).toBe(5);
+  });
+
+  it("holds as long as the user set, whatever its text", () => {
+    const set = buildBeats(storyboard, graph, { titleCard: { ...long, seconds: 8 } });
+    expect(spanOf(set.cards, "title").end).toBe(8);
+    const brief = buildBeats(storyboard, graph, { titleCard: { ...short, seconds: 2 } });
+    expect(spanOf(brief.cards, "title").end).toBe(2);
   });
 
   it("fades out over the transition as the first scene fades in", () => {
@@ -477,8 +494,10 @@ describe("buildBeats: ending", () => {
     expect(hold({ endCard: end })).toBeCloseTo(95 / 15);
     expect(hold({ endCard: { headline: "Thanks" } })).toBeCloseTo(3);
     expect(hold({ logo: true })).toBeCloseTo(3);
+    // The title card closing the video holds as it does at the start: 5 s at most, unless set.
     const long = { title: "t".repeat(60), description: "d".repeat(60) };
-    expect(hold({ titleCard: long })).toBeCloseTo(8);
+    expect(hold({ titleCard: long })).toBeCloseTo(5);
+    expect(hold({ titleCard: { ...long, seconds: 7 } })).toBeCloseTo(7);
   });
 
   it("leaves nothing of the last scene on screen once its layer has faded", () => {

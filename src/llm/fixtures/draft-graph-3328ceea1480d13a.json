@@ -1,0 +1,201 @@
+{
+  "name": "draft-graph",
+  "request": {
+    "system": "You draft graph.json for explAIn-it, which turns a flow into a short isometric explainer video. The graph is the cast of the video: who and what takes part (nodes), what passes between them (edges, in the order of the flow), and where they live (zones).\n\nDraft right away from what you are given. Where the description leaves something open, choose what is most likely, and say so in `assumptions`. Ask in `questions` only what would change the graph, and at most two things; ask nothing when nothing would.\n\nKeep the graph small enough to read on one screen: the parts the story needs, not every service. Use the words the user and the context use, and keep labels short.\n\nAnswer with one JSON object, `{ \"graph\", \"assumptions\", \"questions\" }`, and nothing else.\n\n## graph.json: the structure\n\n```ts\ntype Graph = {\n  version: 1;\n  title: string;   // ≤ 80 characters\n  nodes: Node[];   // 1–36 items\n  edges: Edge[];\n  zones: Zone[];   // Groups of nodes; Mermaid subgraphs.\n};\ntype Node = {\n  id: string;   // Stable id, used by edges, zones and the storyboard. ≤ 40 characters; matches ^[a-z][a-z0-9_]*$\n  label: string;   // Shown on the node top. ≤ 24 characters\n  kind: \"actor\" | \"service\" | \"database\" | \"queue\" | \"document\" | \"decision\" | \"external\";   // Sets the default size, height and colour.\n  icon?: string;   // A Lucide icon name.\n  zone?: string;   // The id of the zone the node sits in. ≤ 40 characters; matches ^[a-z][a-z0-9_]*$\n  category?: string;   // A palette category name; a node's defaults by its kind, an edge's and a zone's to the accent. matches ^[a-z][a-z0-9_-]*$\n};\ntype Edge = {\n  id: string;   // ≤ 40 characters; matches ^[a-z][a-z0-9_]*$\n  from: string;   // A node id. ≤ 40 characters; matches ^[a-z][a-z0-9_]*$\n  to: string;   // A node id. ≤ 40 characters; matches ^[a-z][a-z0-9_]*$\n  label?: string;   // ≤ 24 characters\n  category?: string;   // A palette category name; a node's defaults by its kind, an edge's and a zone's to the accent. matches ^[a-z][a-z0-9_-]*$\n};\ntype Zone = {\n  id: string;   // ≤ 40 characters; matches ^[a-z][a-z0-9_]*$\n  label: string;   // ≤ 24 characters\n  category?: string;   // A palette category name; a node's defaults by its kind, an edge's and a zone's to the accent. matches ^[a-z][a-z0-9_-]*$\n};\n```\n\n- Every id in graph.json is unique across nodes, edges and zones together.\n- Node and zone ids may not be one of Mermaid's words: \"end\", \"graph\", \"flowchart\", \"subgraph\", \"direction\", \"style\", \"class\", \"classdef\", \"click\", \"linkstyle\", \"default\", \"call\", \"href\", \"callback\". Edge ids may not be \"end\", \"graph\", \"flowchart\", \"subgraph\", \"style\", \"class\", \"default\".\n- An edge's `from` and `to` and a node's `zone` name ids in the graph. Edges carry the flow, so their direction matters.\n- An icon is a Lucide name as lucide.dev shows it (kebab-case, such as \"shield-check\"); an unknown one is an error.\n- A category is one of \"accent\", \"muted\", \"c1\", \"c2\", \"c3\", \"c4\", \"c5\", \"c6\". The palette decides what each looks like; to colour something by name (\"make it green\"), pick the category whose colour is nearest (`get_project` lists them, as `colours`). A change of colour alone marks no beat stale.\n- Each kind has a size, colour and icon of its own; give an icon or category only to change them:\n  - \"actor\": icon \"user\", category \"c1\"\n  - \"service\": icon \"server\", category \"accent\"\n  - \"database\": icon \"database\", category \"c2\"\n  - \"queue\": icon \"layers\", category \"c3\"\n  - \"document\": icon \"file-text\", category \"muted\"\n  - \"decision\": icon \"split\", category \"c4\"\n  - \"external\": icon \"globe\", category \"c5\"\n\nKeep ids stable across edits: the storyboard refers to them. Keep labels short; put the detail in the storyboard.\n\nAn example graph.json:\n\n```json\n{\n  \"version\": 1,\n  \"title\": \"Resetting a password\",\n  \"nodes\": [\n    {\n      \"id\": \"user\",\n      \"label\": \"User\",\n      \"kind\": \"actor\",\n      \"icon\": \"user\"\n    },\n    {\n      \"id\": \"app\",\n      \"label\": \"Web app\",\n      \"kind\": \"service\",\n      \"icon\": \"app-window\",\n      \"zone\": \"backend\"\n    },\n    {\n      \"id\": \"users\",\n      \"label\": \"Users\",\n      \"kind\": \"database\",\n      \"icon\": \"database\",\n      \"zone\": \"backend\"\n    },\n    {\n      \"id\": \"mailer\",\n      \"label\": \"Email service\",\n      \"kind\": \"external\",\n      \"icon\": \"mail\"\n    }\n  ],\n  \"edges\": [\n    {\n      \"id\": \"ask\",\n      \"from\": \"user\",\n      \"to\": \"app\",\n      \"label\": \"Forgot password\"\n    },\n    {\n      \"id\": \"lookup\",\n      \"from\": \"app\",\n      \"to\": \"users\",\n      \"label\": \"find the account\"\n    },\n    {\n      \"id\": \"send_link\",\n      \"from\": \"app\",\n      \"to\": \"mailer\",\n      \"label\": \"reset link\"\n    },\n    {\n      \"id\": \"deliver\",\n      \"from\": \"mailer\",\n      \"to\": \"user\",\n      \"label\": \"email\"\n    },\n    {\n      \"id\": \"set_password\",\n      \"from\": \"user\",\n      \"to\": \"app\",\n      \"label\": \"new password\"\n    }\n  ],\n  \"zones\": [\n    {\n      \"id\": \"backend\",\n      \"label\": \"Your app\"\n    }\n  ]\n}\n```",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Draft graph.json for this:\n\nExplain our CI pipeline: a developer pushes a branch to GitHub, GitHub Actions runs the lint, the tests and a build in parallel, and when all pass it publishes a Docker image to the registry and deploys it to staging."
+      }
+    ],
+    "schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "graph": {
+          "type": "object",
+          "properties": {
+            "$schema": {
+              "description": "The JSON Schema for this file, for editors. Ignored by explAIn-it.",
+              "type": "string"
+            },
+            "version": {
+              "type": "number",
+              "const": 1
+            },
+            "title": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "nodes": {
+              "minItems": 1,
+              "maxItems": 36,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "maxLength": 40,
+                    "pattern": "^[a-z][a-z0-9_]*$",
+                    "description": "Stable id, used by edges, zones and the storyboard."
+                  },
+                  "label": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 24,
+                    "description": "Shown on the node top."
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "actor",
+                      "service",
+                      "database",
+                      "queue",
+                      "document",
+                      "decision",
+                      "external"
+                    ],
+                    "description": "Sets the default size, height and colour."
+                  },
+                  "icon": {
+                    "description": "A Lucide icon name.",
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "zone": {
+                    "description": "The id of the zone the node sits in.",
+                    "type": "string",
+                    "maxLength": 40,
+                    "pattern": "^[a-z][a-z0-9_]*$"
+                  },
+                  "category": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9_-]*$",
+                    "description": "A palette category name; a node's defaults by its kind, an edge's and a zone's to the accent."
+                  }
+                },
+                "required": [
+                  "id",
+                  "label",
+                  "kind"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "edges": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "maxLength": 40,
+                    "pattern": "^[a-z][a-z0-9_]*$"
+                  },
+                  "from": {
+                    "type": "string",
+                    "maxLength": 40,
+                    "pattern": "^[a-z][a-z0-9_]*$",
+                    "description": "A node id."
+                  },
+                  "to": {
+                    "type": "string",
+                    "maxLength": 40,
+                    "pattern": "^[a-z][a-z0-9_]*$",
+                    "description": "A node id."
+                  },
+                  "label": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 24
+                  },
+                  "category": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9_-]*$",
+                    "description": "A palette category name; a node's defaults by its kind, an edge's and a zone's to the accent."
+                  }
+                },
+                "required": [
+                  "id",
+                  "from",
+                  "to"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "zones": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "maxLength": 40,
+                    "pattern": "^[a-z][a-z0-9_]*$"
+                  },
+                  "label": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 24
+                  },
+                  "category": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9_-]*$",
+                    "description": "A palette category name; a node's defaults by its kind, an edge's and a zone's to the accent."
+                  }
+                },
+                "required": [
+                  "id",
+                  "label"
+                ],
+                "additionalProperties": false
+              },
+              "description": "Groups of nodes; Mermaid subgraphs."
+            }
+          },
+          "required": [
+            "version",
+            "title",
+            "nodes",
+            "edges",
+            "zones"
+          ],
+          "additionalProperties": false,
+          "description": "The structure of a flow. Mermaid is generated from it."
+        },
+        "assumptions": {
+          "maxItems": 5,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "description": "What you assumed where the description left it open, each in a sentence."
+        },
+        "questions": {
+          "maxItems": 2,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "description": "At most 2 questions whose answers would change the draft; none when nothing would."
+        }
+      },
+      "required": [
+        "graph",
+        "assumptions",
+        "questions"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "reply": {
+    "text": "{\"graph\":{\"version\":1,\"title\":\"CI pipeline: push to staging\",\"nodes\":[{\"id\":\"dev\",\"label\":\"Developer\",\"kind\":\"actor\",\"icon\":\"user\"},{\"id\":\"github\",\"label\":\"GitHub\",\"kind\":\"external\",\"icon\":\"globe\"},{\"id\":\"actions\",\"label\":\"GitHub Actions\",\"kind\":\"service\",\"icon\":\"server\",\"zone\":\"ci\"},{\"id\":\"lint\",\"label\":\"Lint\",\"kind\":\"service\",\"icon\":\"server\",\"zone\":\"ci\"},{\"id\":\"tests\",\"label\":\"Tests\",\"kind\":\"service\",\"icon\":\"server\",\"zone\":\"ci\"},{\"id\":\"build\",\"label\":\"Build\",\"kind\":\"service\",\"icon\":\"server\",\"zone\":\"ci\"},{\"id\":\"gate\",\"label\":\"All passed?\",\"kind\":\"decision\",\"zone\":\"ci\"},{\"id\":\"registry\",\"label\":\"Image registry\",\"kind\":\"database\",\"icon\":\"package\"},{\"id\":\"staging\",\"label\":\"Staging\",\"kind\":\"service\",\"icon\":\"cloud\"}],\"edges\":[{\"id\":\"push\",\"from\":\"dev\",\"to\":\"github\",\"label\":\"push branch\"},{\"id\":\"trigger\",\"from\":\"github\",\"to\":\"actions\",\"label\":\"webhook\"},{\"id\":\"run_lint\",\"from\":\"actions\",\"to\":\"lint\",\"label\":\"run\"},{\"id\":\"run_tests\",\"from\":\"actions\",\"to\":\"tests\",\"label\":\"run\"},{\"id\":\"run_build\",\"from\":\"actions\",\"to\":\"build\",\"label\":\"run\"},{\"id\":\"lint_done\",\"from\":\"lint\",\"to\":\"gate\",\"label\":\"pass\"},{\"id\":\"tests_done\",\"from\":\"tests\",\"to\":\"gate\",\"label\":\"pass\"},{\"id\":\"build_done\",\"from\":\"build\",\"to\":\"gate\",\"label\":\"pass\"},{\"id\":\"publish\",\"from\":\"gate\",\"to\":\"registry\",\"label\":\"push image\"},{\"id\":\"deploy\",\"from\":\"registry\",\"to\":\"staging\",\"label\":\"deploy image\"}],\"zones\":[{\"id\":\"ci\",\"label\":\"CI pipeline\"}]},\"assumptions\":[\"Lint, tests and build run on GitHub-hosted runners inside GitHub Actions, so they sit in one zone.\",\"The image is published only after all three checks pass, and staging pulls that image from the registry.\",\"The pipeline runs on every pushed branch, as the description does not limit it to main.\"],\"questions\":[]}"
+  }
+}
