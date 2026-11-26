@@ -2,6 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { fakeMix } from "../audio/fake-mix.testing.ts";
 import { fakeTts } from "../audio/fake-tts.testing.ts";
 import type { RenderRun } from "../render/queue.ts";
 import { RendersViewSchema } from "../schema/api.ts";
@@ -57,6 +58,12 @@ beforeEach(() => {
     tts: fakeTts().tts,
     renderRun: heldRender,
     missingRenderTools: async () => [],
+    // A render starts the checks too (5.8), and they make the voice and the music first: real
+    // ones would launch Chrome and mix for seconds in the background, stalling the next test.
+    mixSoundtrack: fakeMix().mix,
+    runChecks: async () => {
+      throw new Error("not checking");
+    },
     settings: settingsStore({ envFile: join(projectsDir, ".env"), environment: {} }),
   });
 });
