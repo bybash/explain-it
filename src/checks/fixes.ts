@@ -1,6 +1,6 @@
 import type { BeatWarning } from "../schema/checks.ts";
 import type { Validated } from "../schema/errors.ts";
-import type { Fix } from "../schema/fixes.ts";
+import { type Fix, WORD_FIELD_NAMES } from "../schema/fixes.ts";
 import type { FloorPoint } from "../schema/layout.ts";
 import { fail, ok } from "../schema/result.ts";
 import type { Storyboard } from "../schema/storyboard.ts";
@@ -14,9 +14,11 @@ export type Fixable = {
 };
 
 /** The same fix the other way round: what undoing it applies. */
-export const invert = (fix: Fix): Fix => ({ ...fix, before: fix.after, after: fix.before }) as Fix;
-
-const FIELD_NAMES = { caption: "caption", say: "line" } as const;
+export const invert = (fix: Fix): Fix =>
+  // Each kind on its own, so its before and after keep their own type.
+  fix.kind === "words"
+    ? { ...fix, before: fix.after, after: fix.before }
+    : { ...fix, before: fix.after, after: fix.before };
 
 const nodeList = (ids: readonly string[]) => ids.map((id) => `node "${id}"`).join(", ");
 
@@ -24,7 +26,7 @@ const nodeList = (ids: readonly string[]) => ids.map((id) => `node "${id}"`).joi
 export const describeFix = (fix: Fix): string => {
   switch (fix.kind) {
     case "words":
-      return `Shorten the ${FIELD_NAMES[fix.field]} of beat "${fix.beat}"`;
+      return `Shorten the ${WORD_FIELD_NAMES[fix.field]} of beat "${fix.beat}"`;
     case "layout":
       return `Lay out ${nodeList(dropped(fix))} again, in place of where it was put by hand`;
   }
@@ -34,9 +36,15 @@ export const describeFix = (fix: Fix): string => {
 const dropped = (fix: Extract<Fix, { kind: "layout" }>) =>
   Object.keys(fix.before).filter((id) => !(id in fix.after));
 
-const samePlaces = (a: Overrides, b: Overrides) =>
-  Object.keys(a).length === Object.keys(b).length &&
-  Object.entries(a).every(([id, p]) => b[id]?.x === p.x && b[id]?.y === p.y);
+/** Whether the nodes a layout fix changes are where its `before` has them, put by hand or not. */
+const asBefore = (overrides: Overrides, fix: Extract<Fix, { kind: "layout" }>) =>
+  [...new Set([...Object.keys(fix.before), ...Object.keys(fix.after)])].every((id) => {
+    const now = overrides[id];
+    const then = fix.before[id];
+    return now === undefined || then === undefined
+      ? now === then
+      : now.x === then.x && now.y === then.y;
+  });
 
 /**
  * The fixes the code can work out for what the checks found (decision 038),
@@ -57,8 +65,8 @@ export const fixesFor = (warnings: readonly BeatWarning[], overrides: Overrides)
     : [
         {
           kind: "layout",
-          before: overrides,
-          after: Object.fromEntries(Object.entries(overrides).filter(([id]) => !placed.has(id))),
+          before: Object.fromEntries(Object.entries(overrides).filter(([id]) => placed.has(id))),
+          after: {},
         },
       ];
 };
@@ -98,9 +106,10 @@ export const applyFix = (files: Fixable, fix: Fix): Validated<Partial<Fixable>> 
         }
       return fail([{ path: "beat", message: `no beat "${fix.beat}" in the script any more` }]);
     }
-    case "layout":
-      return samePlaces(files.overrides, fix.before)
-        ? ok({ overrides: fix.after })
-        : changed("layout.overrides");
+    case "layout": {
+      if (!asBefore(files.overrides, fix)) return changed("layout.overrides");
+      const kept = Object.entries(files.overrides).filter(([id]) => !(id in fix.before));
+      return ok({ overrides: { ...Object.fromEntries(kept), ...fix.after } });
+    }
   }
 };

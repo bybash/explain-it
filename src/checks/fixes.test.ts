@@ -45,8 +45,8 @@ describe("fixesFor", () => {
     expect(fixesFor(warnings, overrides)).toEqual([
       {
         kind: "layout",
-        before: { app: { x: 1, y: 0 }, user: { x: 5, y: 5 } },
-        after: { user: { x: 5, y: 5 } },
+        before: { app: { x: 1, y: 0 } },
+        after: {},
       },
     ]);
   });
@@ -91,6 +91,16 @@ describe("applyFix", () => {
     const fixed = applyFix(files(LONG), layout);
     expect(fixed.ok && fixed.value.overrides).toEqual({});
     expect(applyFix({ ...files(LONG), overrides: { app: { x: 2, y: 0 } } }, layout).ok).toBe(false);
+  });
+
+  it("undoes a layout fix after another node was put by hand, and keeps that one", () => {
+    const layout = { kind: "layout" as const, before: { app: { x: 1, y: 0 } }, after: {} };
+    const moved = { user: { x: 4, y: 4 } };
+    const undone = applyFix({ ...files(LONG), overrides: moved }, invert(layout));
+    expect(undone.ok && undone.value.overrides).toEqual({
+      user: { x: 4, y: 4 },
+      app: { x: 1, y: 0 },
+    });
   });
 });
 

@@ -8,15 +8,27 @@ import { FloorPointSchema } from "./layout.ts";
  * undone, each as its state before and after. A fix to the user's words is
  * offered; one to the layout is applied at once.
  */
+/** The words of a beat a fix can shorten, and what the chat calls each. */
+export const WORD_FIELDS = ["caption", "say"] as const;
+export type WordField = (typeof WORD_FIELDS)[number];
+export const WORD_FIELD_NAMES: Readonly<Record<WordField, string>> = {
+  caption: "caption",
+  say: "line",
+};
+
 export const FixSchema = z.discriminatedUnion("kind", [
   z.strictObject({
     kind: z.literal("words"),
     beat: IdSchema,
-    field: z.enum(["caption", "say"]),
+    field: z.enum(WORD_FIELDS),
     before: z.string(),
     after: z.string(),
   }),
-  /** The hand-placed positions, before and after: dropping some lays those nodes out again. */
+  /**
+   * The hand-placed positions of the nodes it changes, before and after; a
+   * node missing from `after` is laid out again. Other nodes are left as
+   * they are, and do not stop it being undone.
+   */
   z.strictObject({
     kind: z.literal("layout"),
     before: z.record(IdSchema, FloorPointSchema),

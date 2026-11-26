@@ -43,10 +43,10 @@ export const fixProject = async (
     if (!saved.ok) return invalid(saved.errors);
   }
   if (fixed.value.overrides) {
-    const next = await laidOut(graph, {
-      ...(layout ?? { version: 1, positions: {}, routes: {} }),
-      overrides: fixed.value.overrides,
-    });
+    // A layout fix is only offered for positions in layout.json.
+    if (!layout)
+      return invalid([{ path: "layout.json", message: "missing; nothing was put by hand" }]);
+    const next = await laidOut(graph, { ...layout, overrides: fixed.value.overrides });
     if (!next.ok) return invalid(next.errors);
     await writeProjectFile(projectsDir, opened.slug, "layout.json", next.value);
   }
