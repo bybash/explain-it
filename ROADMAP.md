@@ -210,6 +210,27 @@ as three pull requests (decision 037) and one fix (decision 035).
 - ✅ Replies are short: the panel shows the files, so the assistant does not
   paste the graph or the script.
 
+## Feedback (2026-11-26)
+
+From watching a one-scene video (a small neural network) in the Preview
+gate, in the user's words where possible. Not placed in the order yet.
+
+**The video**
+
+- When there is only one scene, the scene label needs no number: "How
+  neurons form a network", not "1 · How neurons form a network".
+- The title card stays on screen too long. Make it a little shorter, or let
+  the user set how long it stays (a card setting in the Style gate).
+- A camera the user can set: zoom in a little and move the graph left,
+  right, up and down, so a graph fills the frame. In the neuron video the
+  beat's title sits at the top left and the graph leaves space to the right
+  and at the top; zoomed and moved, the graph could be larger.
+- Another angle as an option: a steeper view, about 60°, could fit a 16:9
+  frame better than isometric and leave room to zoom in.
+- Or keep the angle and use the empty left side for the beat titles, listed
+  from top to bottom: the current beat's title solid, the ones before it
+  semi-dimmed.
+
 ## Carried over
 
 Work a finished slice left for a later one. Each list is removed by the slice
