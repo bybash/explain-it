@@ -144,7 +144,7 @@ user works by hand or over MCP.
 | 5.5 | **Edits through chat**: JSON Patches for the graph and the storyboard | Fixtures: "rename X", "add a retry step", "shorten beat 3" |
 | 5.6 | **Layout repair**: check failures the layout engine cannot fix go back to the LLM | A crowded fixture is fixed |
 | ✅ 5.7 | **Chat agent**: the in-app LLM calls the same tools as MCP agents, in-process (the graph, the brief, the storyboard, the style, the checks, the render), following the guide with the house rules; it works gate by gate and waits for the user's approval in the chat; the panel follows each change; without a key, the chat points at the panel and Settings | Fixtures: a described flow goes from the first message to an approved graph and script through tools alone |
-| 5.8 | **Checks in the chat**: the quick checks after every script change, the full checks when the Preview gate opens and before a render; the assistant reports them in plain words, each with a Fix. A fix that changes the user's words is offered first; a timing or layout fix is applied and said. Every fix can be undone | Fixtures: a beat that reads too fast is fixed with one click, then undone |
+| ✅ 5.8 | **Checks in the chat**: the quick checks after every script change, the full checks when the Preview gate opens and when a render is asked for; the assistant reports them in plain words, each with a Fix. A fix that changes the user's words is offered first; a layout fix is applied and said. Every fix can be undone | Fixtures: a beat that reads too fast is fixed with one click, then undone |
 
 ## Milestone 6: ship
 
@@ -215,13 +215,21 @@ as three pull requests (decision 037) and one fix (decision 035).
 Work a finished slice left for a later one. Each list is removed by the slice
 that finishes it.
 
-### For 5.4 (script drafting) and 5.8 (checks in the chat), from 2.6 and 3.13
+### For 5.4 (script drafting), from 2.6, 3.13 and 5.8
 
-- `set_storyboard`, the script drafting's repair loop, and 5.8's checks
-  after every script change could use the
-  quick checks (reading speed and narration fit, pure, in
-  `src/checks/timing.ts`) without Chrome; the layout checks need Chrome and
-  loudness a mix. The Preview gate runs them all from its Checks tab.
+- `set_storyboard` and the script drafting's repair loop could use the
+  quick checks without Chrome, as the chat does after a change (5.8):
+  `wordProblems` in `src/checks/chat-report.ts` gives each beat's words
+  read too fast, or too long to say, with the most characters that fit,
+  and `shorterWords` (`src/llm/words.ts`) writes them again. The layout
+  checks need Chrome and loudness a mix.
+- The starter script (`starterScript`) makes one scene of at most 12
+  nodes and 10 beats; a larger graph keeps its other nodes and edges out
+  of the starter, for the user, or the assistant, to add as scenes.
+- 3.6 has no browser test of its own (the seams agreed were the API, the
+  editor's pure functions and MCP), and 5.8 added none: the e2e flow can
+  add the Script gate's steps, and a fix applied from the chat, when 5.4
+  changes the gate.
 
 ### For 5.6 (layout repair), from 2.5
 
@@ -258,13 +266,6 @@ that finishes it.
 - A personal Anthropic key that is not scoped to a workspace needs the
   `anthropic-workspace-id` header; the client does not send one.
 
-### For 5.8 (checks in the chat), from the page's feedback
-
-- The message box does not grow with what is typed.
-- A video playing in the Preview gate plays on when the layout hides it.
-- A step line that failed ("Could not approve the gate: …") shows the same ✓
-  as one that worked; a step says nothing of whether it did.
-
 ### For 5.3 and 5.4 (drafting), from 5.2
 
 - Once the assistant has read a context file, its text is sent again on
@@ -274,21 +275,26 @@ that finishes it.
   the chat rather than converted. PDFs and images are not context.
 - Characters are counted as JavaScript counts them, so an emoji is two.
 
-### For 5.8 (checks in the chat), from 3.6 and 3.13
+### For 5.6 (layout repair), from 5.8
 
-- SPEC's preview gate says "jump to a beat and edit it": the Preview
-  gate's beat list (`src/web/PreviewBeats.tsx`) and a warning in its
-  Checks tab jump to the beat in the player, not to the Script gate's
-  editor (`src/web/ScriptPanel.tsx`, `BeatCard.tsx`). A Fix there can open
-  the beat it changed.
-- The editor's hints (`beatHints` in `src/web/script-model.ts`) are the
-  quick checks in the browser; the chat's Fix can act on the same hints.
-- The starter script (`starterScript`) makes one scene of at most 12
-  nodes and 10 beats; a larger graph keeps its other nodes and edges out
-  of the starter, for the user, or the assistant, to add as scenes.
-- 3.6 has no browser test of its own (the seams agreed were the API, the
-  editor's pure functions and MCP); the e2e flow can add the Script
-  gate's steps when 5.8 changes it.
+- The chat offers a layout fix only for a problem a hand-placed node is in
+  (`fixesFor` in `src/checks/fixes.ts`): it lays that node out again. Any
+  other layout problem is said with no fix; 5.6's repair can offer one.
+- Loudness has no fix in the chat; the mix is made to the target, so a
+  miss means a bug in `src/audio/`, not something to fix by hand.
+
+### For 5.5 (edits through chat), from 5.8
+
+- What the chat reported is kept in memory (`checksChat`), so a restart
+  may report a problem once more. The checks that run before a render do
+  not hold it: the render starts with them.
+- The Preview gate's Checks tab still jumps to a warning in the player;
+  its beat list has an Edit link to the beat in the Script gate.
+- The hook and length checks of the story (2.8) are hints in the Script
+  gate, not in the chat.
+- The Script gate's hints (`beatHints` in `src/web/script-model.ts`) and the
+  chat's problems (`wordProblems`) read the same quick checks each their
+  own way; a Fix in the editor beside a hint could share the chat's.
 
 ### For 5.5 (edits through chat), from 3.3
 

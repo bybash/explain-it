@@ -33,7 +33,7 @@ export const App = () => {
         className={`mx-auto px-6 ${current.page === "project" ? "max-w-[1600px] pt-4 pb-8" : "max-w-[880px] pt-8 pb-16"}`}
       >
         {current.page === "project" ? (
-          <ProjectView slug={current.slug} gate={current.gate} />
+          <ProjectView slug={current.slug} gate={current.gate} beat={current.beat} />
         ) : current.page === "settings" ? (
           <Settings />
         ) : (

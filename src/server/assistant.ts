@@ -57,17 +57,21 @@ const STEP_LINES: Readonly<Record<string, { readonly done: string; readonly fail
   [T.cancelRender]: { done: "Cancelled the render.", failed: "Could not cancel the render" },
 };
 
-/** What a tool's result says, as the chat shows it; nothing for a tool that only reads. */
-const stepLine = ({ call, output }: AgentStep): string | undefined => {
+/** What a tool's result says, as the chat shows it, and whether it worked; nothing for a tool that only reads. */
+const stepLine = ({ call, output }: AgentStep): { text: string; failed: boolean } | undefined => {
   const result = (output ?? {}) as { errors?: readonly string[]; approved?: string };
   const problem = result.errors?.[0];
+  const failed = problem !== undefined;
   if (call.name === T.approveGate)
-    return problem
-      ? `Could not approve the gate: ${problem}`
-      : `Approved the ${result.approved} gate.`;
+    return {
+      text: failed
+        ? `Could not approve the gate: ${problem}`
+        : `Approved the ${result.approved} gate.`,
+      failed,
+    };
   const line = STEP_LINES[call.name];
   if (!line) return undefined;
-  return problem ? `${line.failed}: ${problem}` : line.done;
+  return { text: failed ? `${line.failed}: ${problem}` : line.done, failed };
 };
 
 /** The reply when the turn could not finish: what went wrong, and where to look. */
@@ -98,14 +102,15 @@ export const runAssistant = async ({
   readonly gate: Gate;
 }): Promise<void> => {
   const dir = projectDir(context.projectsDir, slug);
-  const add = async (text: string, kind?: ChatMessage["kind"]) => {
+  const add = async (text: string, step?: { readonly failed: boolean }) => {
     await appendChat(dir, [
       {
         role: "assistant",
         text,
         gate,
         at: context.now().toISOString(),
-        ...(kind ? { kind } : {}),
+        ...(step ? { kind: "step" as const } : {}),
+        ...(step?.failed ? { failed: true as const } : {}),
       },
     ]);
     context.events.publish({ type: "chat", slug });
@@ -128,7 +133,7 @@ export const runAssistant = async ({
     tools: agentTools(context, slug),
     onStep: async (step) => {
       const line = stepLine(step);
-      if (line) await add(line, "step");
+      if (line) await add(line.text, line);
     },
   });
   await add(result.ok ? result.value.reply : failed(result.errors));

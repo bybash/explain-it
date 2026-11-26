@@ -1,6 +1,6 @@
 import { applyFix, invert } from "../checks/fixes.ts";
 import type { OpenedProject } from "../schema/api.ts";
-import type { ChatMessage } from "../schema/chat.ts";
+import { type ChatMessage, isFixApplied } from "../schema/chat.ts";
 import type { ValidationError } from "../schema/errors.ts";
 import type { Fix, FixOffer } from "../schema/fixes.ts";
 import { appendChat, readChat } from "./chat.ts";
@@ -60,8 +60,7 @@ export const findFix = (
 ): { readonly offer: FixOffer; readonly applied: boolean } | undefined => {
   const offer = messages.flatMap((m) => m.fixes ?? []).find((f) => f.id === id);
   if (!offer) return undefined;
-  const last = messages.findLast((m) => m.fix?.id === id);
-  return { offer, applied: last?.fix?.done === "applied" };
+  return { offer, applied: isFixApplied(messages, id) };
 };
 
 /** What applying or undoing a fix from the chat came to; the API answers each with its status. */

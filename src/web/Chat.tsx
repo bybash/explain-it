@@ -1,10 +1,11 @@
-import { type FormEvent, useCallback, useEffect, useRef, useState } from "react";
+import { type FormEvent, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { type ChatMessage, MAX_CHAT_MESSAGE } from "../schema/chat.ts";
 import { counted } from "../schema/context.ts";
 import type { ValidationError } from "../schema/errors.ts";
 import type { Gate } from "../schema/project.ts";
 import { getChat, onServerEvents, sendChat } from "./api.ts";
 import { ChatContext, useChatContext } from "./ChatContext.tsx";
+import { CheckMessage } from "./CheckMessage.tsx";
 import { Errors } from "./Errors.tsx";
 import { GATE_LABELS } from "./labels.ts";
 import { Markdown } from "./Markdown.tsx";
@@ -31,6 +32,15 @@ export const Chat = ({
   /** Whether the assistant is still answering, as the server last said. */
   const [working, setWorking] = useState(false);
   const scroller = useRef<HTMLDivElement>(null);
+  const box = useRef<HTMLTextAreaElement>(null);
+  // The box grows with what is typed: by CSS where the browser can, else by its height here.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: each new text may change the height.
+  useLayoutEffect(() => {
+    const area = box.current;
+    if (!area || CSS.supports("field-sizing", "content")) return;
+    area.style.height = "auto";
+    area.style.height = `${area.scrollHeight + 2}px`;
+  }, [text, full]);
   const context = useChatContext(slug);
   const reloadContext = context.reload;
 
@@ -110,15 +120,27 @@ export const Chat = ({
                 // biome-ignore lint/suspicious/noArrayIndexKey: chat.jsonl is append-only.
                 key={i}
                 className={
-                  m.kind === "step"
-                    ? "-mt-1 mb-2 px-3 text-muted text-sm"
+                  m.kind === "step" || m.kind === "fix"
+                    ? `-mt-1 mb-2 px-3 text-sm ${m.failed ? "text-error" : "text-muted"}`
                     : "mb-3 rounded-box bg-page px-3 py-2.5 data-[role=user]:bg-accent-soft"
                 }
                 data-role={m.role}
                 {...(m.kind ? { "data-kind": m.kind } : {})}
               >
-                {m.kind === "step" ? (
-                  `✓ ${m.text}`
+                {m.kind === "step" || m.kind === "fix" ? (
+                  <>
+                    <span aria-hidden="true">
+                      {m.failed ? "✗ " : m.fix?.done === "undone" ? "↶ " : "✓ "}
+                    </span>
+                    {m.text}
+                  </>
+                ) : m.kind === "checks" ? (
+                  <>
+                    <span className="font-semibold text-muted text-xs">
+                      Checks · {GATE_LABELS[m.gate]}
+                    </span>
+                    <CheckMessage slug={slug} message={m} messages={messages} />
+                  </>
                 ) : (
                   <>
                     <span className="font-semibold text-muted text-xs">
@@ -151,11 +173,12 @@ export const Chat = ({
           <label htmlFor="chat-text" className="sr-only">
             Message
           </label>
+          {/* It grows with what is typed, up to a few lines, then scrolls. */}
           <textarea
-            className="field resize-none bg-page"
+            className={`field max-h-60 resize-none bg-page [field-sizing:content] ${full ? "min-h-26" : "min-h-21"}`}
             id="chat-text"
+            ref={box}
             value={text}
-            rows={full ? 4 : 3}
             placeholder="Write a message…"
             onChange={(e) => setText(e.target.value)}
             onKeyDown={(e) => {

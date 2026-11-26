@@ -19,6 +19,7 @@ export const PreviewBeats = ({
   warningsOutOfDate,
   revealed,
   seek,
+  edit,
 }: {
   storyboard: Storyboard;
   beats: readonly BeatSpan[];
@@ -31,6 +32,8 @@ export const PreviewBeats = ({
   /** The warning last jumped to: a new one each jump, even to the same place. */
   revealed: WarningPlace | undefined;
   seek: (t: number) => void;
+  /** Where a beat is edited: the Script gate, at that beat. */
+  edit: (beat: string) => string;
 }) => {
   const list = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -55,13 +58,13 @@ export const PreviewBeats = ({
               const playing = current === beat.id;
               const warned = warnings.get(beat.id) ?? 0;
               return (
-                <li key={beat.id}>
+                <li key={beat.id} className="flex items-baseline">
                   <button
                     type="button"
                     aria-current={playing ? "step" : undefined}
                     data-beat={beat.id}
                     data-starts-at={startsAt}
-                    className="grid w-full cursor-pointer grid-cols-[2rem_1fr_auto] items-baseline gap-2 px-2 py-2 text-left hover:bg-accent-soft aria-[current=step]:bg-accent-soft"
+                    className="grid min-w-0 flex-1 cursor-pointer grid-cols-[2rem_1fr_auto] items-baseline gap-2 px-2 py-2 text-left hover:bg-accent-soft aria-[current=step]:bg-accent-soft"
                     onClick={() => startsAt !== undefined && seek(startsAt)}
                   >
                     <span className="text-muted text-sm tabular-nums">{b + 1}</span>
@@ -91,6 +94,13 @@ export const PreviewBeats = ({
                       {startsAt === undefined ? "" : clockTime(startsAt)}
                     </span>
                   </button>
+                  <a
+                    className="px-2 text-muted text-sm underline hover:text-ink"
+                    href={edit(beat.id)}
+                    aria-label={`Edit beat ${b + 1} of ${scene.title} in the script`}
+                  >
+                    Edit
+                  </a>
                 </li>
               );
             })}

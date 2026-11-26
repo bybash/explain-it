@@ -47,6 +47,10 @@ export const ChatMessageSchema = z.strictObject({
 });
 export type ChatMessage = z.output<typeof ChatMessageSchema>;
 
+/** Whether a fix the chat offered is applied now, from the chat's own record of it. */
+export const isFixApplied = (messages: readonly ChatMessage[], id: string): boolean =>
+  messages.findLast((m) => m.fix?.id === id)?.fix?.done === "applied";
+
 /** `POST /api/projects/:slug/chat`: what the user typed. */
 export const NewChatMessageSchema = z.strictObject({
   text: z.string().trim().min(1, "must not be empty").max(MAX_CHAT_MESSAGE),
