@@ -1,0 +1,150 @@
+{
+  "$schema": "../../schemas/graph.schema.json",
+  "version": 1,
+  "title": "CI pipeline: push to staging",
+  "nodes": [
+    {
+      "id": "dev",
+      "label": "Developer",
+      "kind": "actor",
+      "icon": "user"
+    },
+    {
+      "id": "github",
+      "label": "GitHub",
+      "kind": "external",
+      "icon": "globe"
+    },
+    {
+      "id": "actions",
+      "label": "GitHub Actions",
+      "kind": "service",
+      "icon": "server",
+      "zone": "ci"
+    },
+    {
+      "id": "lint",
+      "label": "Lint",
+      "kind": "service",
+      "icon": "server",
+      "zone": "ci",
+      "category": "c3"
+    },
+    {
+      "id": "tests",
+      "label": "Tests",
+      "kind": "service",
+      "icon": "server",
+      "zone": "ci",
+      "category": "c3"
+    },
+    {
+      "id": "build",
+      "label": "Build",
+      "kind": "service",
+      "icon": "server",
+      "zone": "ci",
+      "category": "c3"
+    },
+    {
+      "id": "gate",
+      "label": "All passed?",
+      "kind": "decision",
+      "zone": "ci"
+    },
+    {
+      "id": "registry",
+      "label": "Image registry",
+      "kind": "database",
+      "icon": "package"
+    },
+    {
+      "id": "staging",
+      "label": "Staging",
+      "kind": "service",
+      "icon": "cloud"
+    }
+  ],
+  "edges": [
+    {
+      "id": "push",
+      "from": "dev",
+      "to": "github",
+      "label": "push branch"
+    },
+    {
+      "id": "trigger",
+      "from": "github",
+      "to": "actions",
+      "label": "webhook"
+    },
+    {
+      "id": "run_lint",
+      "from": "actions",
+      "to": "lint",
+      "label": "run",
+      "category": "c3"
+    },
+    {
+      "id": "run_tests",
+      "from": "actions",
+      "to": "tests",
+      "label": "run",
+      "category": "c3"
+    },
+    {
+      "id": "run_build",
+      "from": "actions",
+      "to": "build",
+      "label": "run",
+      "category": "c3"
+    },
+    {
+      "id": "lint_done",
+      "from": "lint",
+      "to": "gate",
+      "label": "pass",
+      "category": "c3"
+    },
+    {
+      "id": "tests_done",
+      "from": "tests",
+      "to": "gate",
+      "label": "pass",
+      "category": "c3"
+    },
+    {
+      "id": "build_done",
+      "from": "build",
+      "to": "gate",
+      "label": "pass",
+      "category": "c3"
+    },
+    {
+      "id": "publish",
+      "from": "gate",
+      "to": "registry",
+      "label": "push image"
+    },
+    {
+      "id": "deploy",
+      "from": "registry",
+      "to": "staging",
+      "label": "deploy image"
+    },
+    {
+      "id": "report_failure",
+      "from": "gate",
+      "to": "actions",
+      "label": "failed",
+      "category": "c4"
+    }
+  ],
+  "zones": [
+    {
+      "id": "ci",
+      "label": "CI pipeline",
+      "category": "muted"
+    }
+  ]
+}

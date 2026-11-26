@@ -1,0 +1,154 @@
+{
+  "$schema": "../../schemas/storyboard.schema.json",
+  "version": 1,
+  "scenes": [
+    {
+      "id": "checkout",
+      "title": "Checkout",
+      "nodes": [
+        "shopper",
+        "web_app",
+        "order_service",
+        "stock",
+        "payment_provider",
+        "email_service"
+      ],
+      "beats": [
+        {
+          "id": "start",
+          "caption": "The shopper clicks pay in the web app.",
+          "say": "Can a paid order run out of stock?",
+          "actions": [
+            {
+              "type": "appear",
+              "node": "shopper"
+            },
+            {
+              "type": "appear",
+              "node": "web_app"
+            },
+            {
+              "type": "flow",
+              "edge": "pay",
+              "label": "Pay"
+            }
+          ]
+        },
+        {
+          "id": "place",
+          "caption": "The web app passes the order on.",
+          "say": "The web app sends the shopper's order to the order service, which runs the checkout from here on.",
+          "actions": [
+            {
+              "type": "appear",
+              "node": "order_service"
+            },
+            {
+              "type": "flow",
+              "edge": "place_order",
+              "label": "Place order"
+            }
+          ]
+        },
+        {
+          "id": "hold_stock",
+          "caption": "The order service reserves the stock.",
+          "say": "First, the order service holds the items in stock. Nothing is charged yet, so no money moves until the stock is safe.",
+          "actions": [
+            {
+              "type": "appear",
+              "node": "stock"
+            },
+            {
+              "type": "flow",
+              "edge": "reserve_stock",
+              "label": "Reserve stock"
+            },
+            {
+              "type": "callout",
+              "node": "stock",
+              "title": "Held first",
+              "text": "Stock is held before any payment is taken."
+            },
+            {
+              "type": "badge",
+              "node": "stock",
+              "text": "Held",
+              "tone": "ok"
+            }
+          ]
+        },
+        {
+          "id": "take_payment",
+          "caption": "Only then is the payment taken.",
+          "say": "Once the stock is held, the payment provider takes the money. The shopper's card is charged once for this order.",
+          "actions": [
+            {
+              "type": "appear",
+              "node": "payment_provider"
+            },
+            {
+              "type": "flow",
+              "edge": "take_payment",
+              "label": "Take payment"
+            },
+            {
+              "type": "highlight",
+              "node": "payment_provider"
+            }
+          ]
+        },
+        {
+          "id": "confirm",
+          "caption": "The payment comes back and the order is confirmed.",
+          "say": "With payment taken, the order service confirms the order, and the stock stays reserved for it.",
+          "actions": [
+            {
+              "type": "flow",
+              "edge": "payment_taken",
+              "label": "Payment taken"
+            },
+            {
+              "type": "appear",
+              "node": "email_service"
+            },
+            {
+              "type": "flow",
+              "edge": "confirm_order",
+              "label": "Order confirmed"
+            }
+          ]
+        },
+        {
+          "id": "email",
+          "caption": "The shopper gets a confirmation email.",
+          "say": "The email service sends the shopper a confirmation email with the order details and a receipt.",
+          "actions": [
+            {
+              "type": "flow",
+              "edge": "confirmation_email",
+              "label": "Confirmation email"
+            }
+          ]
+        },
+        {
+          "id": "outcome",
+          "caption": "The shopper has a paid, confirmed order.",
+          "say": "The shopper now has a paid, confirmed order. The stock is already theirs, so it will not run out.",
+          "actions": [
+            {
+              "type": "dim",
+              "except": ["shopper", "email_service"]
+            },
+            {
+              "type": "badge",
+              "node": "shopper",
+              "text": "Order placed",
+              "tone": "ok"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
