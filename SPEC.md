@@ -366,7 +366,7 @@ for frame capture, so what the user approves is what gets rendered.
      back as it starts; the last beat's focus holds through the scene's
      fade-out (decision 035). What belongs to a faded node fades with it:
      its label and icon, the badges and callouts on it, and its zone, name
-     and all, once the focus keeps none of the zone's nodes (decision 041).
+     and all, once the focus keeps none of the zone's nodes (decision 042).
   4. Narration longer than the caption band's two lines is split into cues,
      between sentences, else clauses, else words; each cue is on screen for
      its share of the line's characters. The cues are `__cues` and the `.srt`.

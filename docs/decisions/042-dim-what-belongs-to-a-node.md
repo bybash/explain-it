@@ -1,4 +1,4 @@
-# 041: A dim fades what belongs to the nodes it fades
+# 042: A dim fades what belongs to the nodes it fades
 
 ## Context
 

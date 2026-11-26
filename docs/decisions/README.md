@@ -47,4 +47,4 @@ later record supersedes an earlier one and says so.
 | [035](035-dim-focus.md) | A dim is its beat's focus |
 | [036](036-context.md) | Context for the assistant |
 | [037](037-project-page.md) | The project page |
-| [041](041-dim-what-belongs-to-a-node.md) | A dim fades what belongs to the nodes it fades |
+| [042](042-dim-what-belongs-to-a-node.md) | A dim fades what belongs to the nodes it fades |
