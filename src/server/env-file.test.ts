@@ -56,6 +56,11 @@ describe("updateEnvFile", () => {
     );
   });
 
+  it("reads back a value holding Unicode's line and paragraph separators", () => {
+    const value = "a b c";
+    expect(parseEnvFile(updateEnvFile("", { LLM_API_KEY: value })).get("LLM_API_KEY")).toBe(value);
+  });
+
   it("changes every line of a variable set twice, so the change is the one read", () => {
     const text = "LLM_MODEL=a\nOTHER=1\nLLM_MODEL=b\n";
     expect(updateEnvFile(text, { LLM_MODEL: "c" })).toBe("LLM_MODEL=c\nOTHER=1\n");
