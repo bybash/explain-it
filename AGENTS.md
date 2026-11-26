@@ -67,6 +67,7 @@ npm run llm:record                                 # record the LLM fixtures in 
 npm run build:engine                               # build the render page into dist/render
 npx explain-it render examples/oauth-login         # render a project to out/ (needs Chrome and ffmpeg)
 npx explain-it check examples/oauth-login          # all checks into checks.json, and contact-sheet.png (needs Chrome and ffmpeg)
+docker build -t explain-it .                       # the image: the app and the CLI with Chromium and ffmpeg (README, Docker)
 ```
 
 After changing anything in `src/schema/`, run `npm run schemas` and commit

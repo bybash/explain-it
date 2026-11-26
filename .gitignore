@@ -2,6 +2,8 @@ node_modules/
 dist/
 coverage/
 .env
+# The Docker image's settings volume, which holds a key.
+config/
 .env.*
 !.env.example
 projects/

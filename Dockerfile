@@ -1,9 +1,6 @@
 # explAIn-it in one image: the app, the CLI, Chromium and ffmpeg (SPEC, Docker).
 # The voice model is not in it: the voice downloads it into /app/cache on first use.
-#
-#   docker build -t explain-it .
-#   docker run -p 127.0.0.1:3000:3000 -v ./projects:/app/projects -v ./cache:/app/cache \
-#     -e OPENROUTER_API_KEY=... explain-it
+# How to run it: README, "Or run it with Docker". Licences: NOTICE.md.
 
 # The web app and the render page, built with the dev dependencies (Vite).
 FROM node:24-bookworm-slim AS build
@@ -31,6 +28,7 @@ COPY --from=build /app/dist ./dist
 COPY src ./src
 COPY assets ./assets
 COPY examples ./examples
+COPY LICENSE NOTICE.md ./
 RUN ln -s /app/src/cli/main.ts /usr/local/bin/explain-it \
   && mkdir projects cache config \
   && chown node:node projects cache config
@@ -49,6 +47,6 @@ EXPOSE 3000
 VOLUME ["/app/projects", "/app/cache", "/app/config"]
 LABEL org.opencontainers.image.source="https://github.com/bybash/explain-it" \
   org.opencontainers.image.description="Turn any flow into an isometric explainer video." \
-  org.opencontainers.image.licenses="MIT"
+  org.opencontainers.image.licenses="MIT AND GPL-3.0-or-later AND LGPL-3.0-or-later AND GPL-2.0-or-later"
 ENTRYPOINT ["/usr/bin/tini", "--"]
 CMD ["node", "src/server/main.ts"]

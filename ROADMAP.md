@@ -284,6 +284,9 @@ that finishes it.
 
 ### For 6.5 (release), from 6.1
 
+- Before the first publish, check the image against the GPL and LGPL
+  parts it carries (`NOTICE.md`): that naming their upstream and Debian
+  sources is enough, or ship a written offer or the sources themselves.
 - The publish workflow (`.github/workflows/docker.yml`) has not run yet:
   the first `v*` tag runs it. A new GHCR package is private; make
   `ghcr.io/bybash/explain-it` public after the first publish.

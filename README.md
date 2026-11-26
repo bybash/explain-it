@@ -62,8 +62,8 @@ docker run -p 127.0.0.1:3000:3000 \
 Open <http://127.0.0.1:3000>. Give Docker at least 4 GB of memory: a render runs
 four Chrome pages. The voice model downloads into `cache/` the
 first time; a key saved in Settings is kept in `config/.env`. On Linux, add
-`--user "$(id -u):$(id -g)"` when your folders belong to another user than
-uid 1000. Render from the command line with
+`--user "$(id -u):$(id -g)"` when the folders you mount belong to another
+user than uid 1000. Render from the command line with
 `docker run --rm -v ./projects:/app/projects -v ./cache:/app/cache explain-it explain-it render projects/<name>`.
 To reach an LLM on your own machine (Ollama, LM Studio), use
 `http://host.docker.internal:<port>` as its base URL (on Linux, also pass

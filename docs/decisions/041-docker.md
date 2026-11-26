@@ -27,7 +27,13 @@ projects out of the image.
   names, as without Docker.
 - **It runs as `node`**, not root, under `tini`, which passes on `docker
   stop` and reaps the Chrome processes a render leaves.
-- **Published on `v*` tags only**, to `ghcr.io/bybash/explain-it` with the
+- **Its licences are stated, not assumed MIT.** eSpeak NG (GPL-3.0+) and
+  libvips (LGPL-3.0+) run in the app's process, and Debian's ffmpeg is a
+  GPL build. `NOTICE.md` is copied into the image and names each with its
+  source; each package's own licence file stays in the image; the image's
+  licence label lists them. Nothing in them is changed. A check of this
+  against the licences comes before the first publish (6.5).
+- **Published on version tags only** (`v*.*.*`), to `ghcr.io/bybash/explain-it` with the
   version, the minor version and `latest`. Nothing is published before the
   release (6.5).
 - **Checked by hand for this slice**: built and run here, the page and API

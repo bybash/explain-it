@@ -1,7 +1,9 @@
 # Only what the image builds from. Never keys, projects, caches or renders.
-.env
-.env.*
+**/.env
+**/.env.*
 !.env.example
+# The settings page's key file, when ./config is mounted from here.
+config/
 .git/
 .github/
 .cursor/
