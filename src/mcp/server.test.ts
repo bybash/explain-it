@@ -361,7 +361,10 @@ describe("set_style", () => {
     expect(
       await fails("set_style", {
         slug,
-        config: { camera: { sign_in: { zoom: 3, x: 0, y: 0.9 } }, cards: { title: { seconds: 1 } } },
+        config: {
+          camera: { sign_in: { zoom: 3, x: 0, y: 0.9 } },
+          cards: { title: { seconds: 1 } },
+        },
       }),
     ).toEqual(
       expect.arrayContaining([

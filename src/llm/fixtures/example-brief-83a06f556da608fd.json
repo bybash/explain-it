@@ -63,6 +63,6 @@
     }
   },
   "reply": {
-    "text": "{\"version\":1,\"audience\":\"people who use the app and have forgotten their password\",\"takeaway\":\"Forgetting your password is recoverable: the app emails you a one-time link, and that link is the only way to set a new password.\",\"shape\":\"problem\",\"hook\":\"You're locked out, the login form keeps rejecting you, and the only way back in is an email you have to trust.\",\"notes\":\"Keep it in plain user language with no jargon. Walk through the steps in order: request a reset, get the email, open the one-time link, choose a new password. Stress that the link works once and is what proves it's really you. Leave out how accounts are stored, how tokens are generated, and any server internals.\"}"
+    "text": "{\"version\":1,\"audience\":\"people who use the app and have forgotten their password\",\"takeaway\":\"Forgetting your password is recoverable: the app emails you a one-time link, and that link is the only way in to set a new password.\",\"shape\":\"problem\",\"hook\":\"You're locked out, staring at the login screen, and you have no idea what happens next. Here's exactly how getting back in works.\",\"notes\":\"Keep it in the user's voice and language, not engineering terms. Walk through the steps in order: request a reset, check your email, open the one-time link, choose a new password. Stress that the link works once and that the app looks up the account before sending it. Leave out how tokens, email services, or the server are built.\"}"
   }
 }

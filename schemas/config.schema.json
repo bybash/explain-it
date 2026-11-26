@@ -278,7 +278,7 @@
             },
             "seconds": {
               "description": "How long it holds, in seconds; by its text when missing (3 to 5 s).",
-              "type": "number",
+              "type": "integer",
               "minimum": 2,
               "maximum": 10
             }
@@ -390,13 +390,13 @@
             "type": "number",
             "minimum": -0.5,
             "maximum": 0.5,
-            "description": "Moves the scene right (positive) or left, as a share of the frame's width."
+            "description": "Moves the scene right (positive) or left, as a share of its area's width."
           },
           "y": {
             "type": "number",
             "minimum": -0.5,
             "maximum": 0.5,
-            "description": "Moves the scene down (positive) or up, as a share of the frame's height."
+            "description": "Moves the scene down (positive) or up, as a share of its area's height."
           }
         },
         "required": [

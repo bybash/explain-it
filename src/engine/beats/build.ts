@@ -1,4 +1,10 @@
-import type { Config, EndCard, Pace, TitleCard } from "../../schema/config.ts";
+import {
+  type Config,
+  type EndCard,
+  type Pace,
+  TITLE_CARD_AUTO,
+  type TitleCard,
+} from "../../schema/config.ts";
 import type { Graph } from "../../schema/graph.ts";
 import type { Narration } from "../../schema/narration.ts";
 import type { BADGE_TONES, Storyboard } from "../../schema/storyboard.ts";
@@ -22,12 +28,6 @@ export const SCENE_TIMING = { transition: 0.8, tail: 1.2 } as const;
 
 /** A card holds at least this long, in seconds, and longer when its text needs it (SPEC, Opening and ending). */
 export const CARD_MIN_HOLD = 3;
-
-/**
- * A title card is read with nothing else to follow, so faster than a
- * caption, and held no longer than this unless the user sets how long.
- */
-const TITLE_CARD = { charsPerSecond: 20, maxHold: 5 } as const;
 
 /** The timeline target that holds one card's state: its `opacity`. */
 export const cardTarget = (id: string): string => `card:${id}`;
@@ -399,14 +399,14 @@ const textHold = (lines: readonly (string | undefined)[]): number =>
     lines.reduce((sum, line) => sum + (line?.length ?? 0), 0) / CAPTION_CHARS_PER_SECOND,
   );
 
-/** How long the title card holds: as long as the user set, or else by its text, 3 to 5 s. */
+/** How long the title card holds: as long as the user set, or else by its text (decision 044). */
 const titleHold = (card: TitleCard): number =>
   card.seconds ??
   Math.min(
-    TITLE_CARD.maxHold,
+    TITLE_CARD_AUTO.max,
     Math.max(
-      CARD_MIN_HOLD,
-      `${card.title}${card.description ?? ""}`.length / TITLE_CARD.charsPerSecond,
+      TITLE_CARD_AUTO.min,
+      `${card.title}${card.description ?? ""}`.length / TITLE_CARD_AUTO.charsPerSecond,
     ),
   );
 const endText = (card: EndCard) => [card.headline, card.link, card.where, card.credit];

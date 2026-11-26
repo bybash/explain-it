@@ -88,6 +88,6 @@
     }
   },
   "reply": {
-    "text": "{\"labels\":[{\"id\":\"exchange\",\"label\":\"code + secret\"},{\"id\":\"callback\",\"label\":\"callback + code\"},{\"id\":\"fetch\",\"label\":\"GET /photos\"}],\"storyboardPatch\":[],\"summary\":\"Shortened the labels of edges exchange, callback and fetch so that they no longer cover the backend zone label or the badge on app; the scenes are unchanged.\"}"
+    "text": "{\"labels\":[{\"id\":\"exchange\",\"label\":\"code + secret\"},{\"id\":\"callback\",\"label\":\"send code\"},{\"id\":\"fetch\",\"label\":\"GET /photos\"}],\"storyboardPatch\":[],\"summary\":\"Shortened the edge labels for exchange, callback and fetch so they no longer cover the backend zone label or the badge on the app node; the storyboard is unchanged.\"}"
   }
 }

@@ -65,6 +65,6 @@
     }
   },
   "reply": {
-    "text": "{\"patch\":[{\"op\":\"add\",\"path\":\"/nodes/5/category\",\"value\":\"\\\"c4\\\"\"}],\"summary\":\"Sets the identity provider node's category to c4, the palette's pink, so it renders pink.\"}"
+    "text": "{\"patch\":[{\"op\":\"add\",\"path\":\"/nodes/5/category\",\"value\":\"\\\"c4\\\"\"}],\"summary\":\"Sets the identity provider node's category to c4, the pink in the palette.\"}"
   }
 }

@@ -194,7 +194,8 @@ type Action =
 
 The camera is fixed within a scene and frames the scene's nodes. A scene's
 camera in `config.json` zooms in (up to twice as close) and moves the scene
-from where it fits, by a share of the frame (up to half of it), so a scene
+from where it fits, by a share of the area it is framed in (below the
+titles and above the captions, up to half of it), so a scene
 with room around it can fill the frame; the layout checks say whether it
 still fits (decision 044). Scenes change with a short transition.
 

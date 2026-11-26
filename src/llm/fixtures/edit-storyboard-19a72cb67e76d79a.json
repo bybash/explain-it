@@ -65,6 +65,6 @@
     }
   },
   "reply": {
-    "text": "{\"patch\":[{\"op\":\"replace\",\"path\":\"/scenes/0/beats/2/say\",\"value\":\"\\\"The user signs in there, and agrees to share photos.\\\"\"}],\"summary\":\"Shortens the narration of beat 3 (consent) by dropping \\\"their\\\" and \\\"with the app\\\"; the caption and actions are unchanged.\"}"
+    "text": "{\"patch\":[{\"op\":\"replace\",\"path\":\"/scenes/0/beats/2/say\",\"value\":\"\\\"The user signs in there and agrees to share their photos.\\\"\"}],\"summary\":\"Shortens the narration for beat 3 (consent) by cutting it to one short sentence; the caption, callout and other beats are unchanged.\"}"
   }
 }

@@ -22,6 +22,7 @@ export const LookTab = ({
   pickLogo,
   removeLogo,
   scenes,
+  framing,
 }: {
   draft: Config;
   change: (next: Config) => void;
@@ -33,6 +34,8 @@ export const LookTab = ({
   removeLogo: () => void;
   /** The script's scenes, each with a camera of its own; none before there is a script. */
   scenes: Storyboard["scenes"];
+  /** The scene whose camera is being set, for the preview to show. */
+  framing: (scene: string) => void;
 }) => (
   <div className={CARDS_CLASS}>
     <Section title="Theme">
@@ -117,6 +120,7 @@ export const LookTab = ({
       <CameraCard
         scenes={scenes}
         cameras={draft.camera ?? {}}
+        editing={framing}
         change={(cameras) => {
           const { camera: _camera, ...rest } = draft;
           change(Object.keys(cameras).length === 0 ? rest : { ...rest, camera: cameras });

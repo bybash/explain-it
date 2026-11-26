@@ -62,6 +62,8 @@ export const StylePanel = ({
   const player = useSamplePlayer();
   const [tab, setTab] = useState<"look" | "sound" | "colours">("look");
   const colours = useColours(opened.graph);
+  /** The scene whose camera was last set, for the preview to show. */
+  const [showing, setShowing] = useState<{ scene: string; asked: number }>();
   const broken = configBroken(opened);
   const edit = styleEdit(saved, draft, pending);
   const styleChanged = Object.keys(edit.config ?? {}).length > 0 || edit.logo !== undefined;
@@ -172,6 +174,7 @@ export const StylePanel = ({
           opened={colours.preview ? { ...opened, graph: colours.preview } : opened}
           config={checked.ok ? checked.value : saved}
           logo={previewLogo(draft, savedLogo, pending)}
+          showing={showing}
         />
       </section>
       <form
@@ -204,6 +207,7 @@ export const StylePanel = ({
                   pickLogo={pickLogo}
                   removeLogo={() => setPending({})}
                   scenes={opened.storyboard?.scenes ?? []}
+                  framing={(scene) => setShowing((s) => ({ scene, asked: (s?.asked ?? 0) + 1 }))}
                 />
               ),
             },

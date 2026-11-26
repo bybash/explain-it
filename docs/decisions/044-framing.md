@@ -18,19 +18,21 @@ fill it.
   5 s. `cards.title.seconds` (2 to 10 s) sets it outright, in the Look tab's
   "How long" (Auto or a number of seconds). The title card closing the
   video holds as it opens it. End cards keep their timing: a link and a
-  place to find it take longer to read.
+  place to find it take longer to read. A drafted script suggests only the
+  title card's words: how long it holds is the user's to set.
 - **A camera per scene, in `config.json`.** `camera` maps a scene id to a
   zoom (1 to 2) and a move (`x` right, `y` down, each up to half the
-  frame's width or height). The scene is fitted first, then zoomed about
+  width or height of the area the scene is framed in, below the titles and
+  above the captions). The scene is fitted first, then zoomed about
   the middle of its area and moved; a scene without a camera is framed as
   before, so existing videos only change by the shorter title card. It is
   per scene because scenes frame different nodes, and in `config.json`
   because it is how the video looks, like the palette, saved by the style
-  gate and `set_style`. A camera for a scene that is gone is kept and
-  unused.
+  gate and `set_style`. A camera for a
+  scene that is gone is dropped the next time a camera changes.
 - **Sliders, not dragging.** The Look tab's Camera card has Zoom, Left or
-  right and Up or down sliders for one scene at a time, the preview drawing
-  each move, and Reset. A camera that changes nothing is left out of the
+  right and Up or down sliders for one scene at a time, the preview moving
+  to that scene and drawing each move, and Reset. A camera that changes nothing is left out of the
   file.
 - **The checks judge the result.** A scene moved under a caption or out of
   the frame is caught by the overlap and off-frame checks, as any layout

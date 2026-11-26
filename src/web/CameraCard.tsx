@@ -1,15 +1,16 @@
 import { useState } from "react";
-import { CAMERA_LIMITS, type Camera } from "../schema/config.ts";
+import { sceneTitleText } from "../engine/overlays/html.ts";
+import { CAMERA_LIMITS, type Camera, FITTED_CAMERA } from "../schema/config.ts";
 import type { Storyboard } from "../schema/storyboard.ts";
 import { INPUT_CLASS, LABEL_CLASS, Section } from "./style-fields.tsx";
 
 type Cameras = Readonly<Record<string, Camera>>;
 
-/** Where a scene's camera starts: framed as it fits. */
-const FITTED: Camera = { zoom: 1, x: 0, y: 0 };
-
 /** A camera that changes nothing is left out, so it compares equal to one never set. */
-const isFitted = (camera: Camera) => camera.zoom === 1 && camera.x === 0 && camera.y === 0;
+const isFitted = (camera: Camera) =>
+  camera.zoom === FITTED_CAMERA.zoom &&
+  camera.x === FITTED_CAMERA.x &&
+  camera.y === FITTED_CAMERA.y;
 
 /** One slider, in percent of the value it sets. */
 const Slider = ({
@@ -21,13 +22,13 @@ const Slider = ({
   set,
   show,
 }: {
-  id: string;
-  label: string;
-  value: number;
-  min: number;
-  max: number;
-  set: (value: number) => void;
-  show: (value: number) => string;
+  readonly id: string;
+  readonly label: string;
+  readonly value: number;
+  readonly min: number;
+  readonly max: number;
+  readonly set: (value: number) => void;
+  readonly show: (value: number) => string;
 }) => (
   <>
     <label className={LABEL_CLASS} htmlFor={id}>
@@ -55,20 +56,27 @@ export const CameraCard = ({
   scenes,
   cameras,
   change,
+  editing,
 }: {
-  scenes: Storyboard["scenes"];
-  cameras: Cameras;
+  readonly scenes: Storyboard["scenes"];
+  readonly cameras: Cameras;
   /** The cameras as they now are; empty when every scene fits. */
-  change: (cameras: Cameras) => void;
+  readonly change: (cameras: Cameras) => void;
+  /** The scene being framed, so the preview can show it. */
+  readonly editing: (scene: string) => void;
 }) => {
   const [picked, setPicked] = useState(scenes[0]?.id);
   const scene = scenes.find((s) => s.id === picked) ?? scenes[0];
   if (!scene) return null;
-  const camera = cameras[scene.id] ?? FITTED;
+  const camera = cameras[scene.id] ?? FITTED_CAMERA;
   const set = (next: Partial<Camera>) => {
-    const { [scene.id]: _old, ...others } = cameras;
+    // Cameras for scenes the script no longer has go with the change: nothing else could clear them.
+    const others = Object.fromEntries(
+      Object.entries(cameras).filter(([id]) => id !== scene.id && scenes.some((s) => s.id === id)),
+    );
     const moved = { ...camera, ...next };
     change(isFitted(moved) ? others : { ...others, [scene.id]: moved });
+    editing(scene.id);
   };
   const { zoom, move } = CAMERA_LIMITS;
   const percent = (value: number) => `${Math.round(value * 100)}%`;
@@ -89,11 +97,14 @@ export const CameraCard = ({
             id="style-camera-scene"
             className={INPUT_CLASS}
             value={scene.id}
-            onChange={(e) => setPicked(e.target.value)}
+            onChange={(e) => {
+              setPicked(e.target.value);
+              editing(e.target.value);
+            }}
           >
             {scenes.map((s, i) => (
               <option key={s.id} value={s.id}>
-                {i + 1} · {s.title}
+                {sceneTitleText(i, s.title, scenes.length)}
               </option>
             ))}
           </select>
@@ -130,7 +141,7 @@ export const CameraCard = ({
         type="button"
         className="mt-3 text-muted text-sm underline hover:text-ink disabled:no-underline disabled:opacity-50"
         disabled={isFitted(camera)}
-        onClick={() => set(FITTED)}
+        onClick={() => set(FITTED_CAMERA)}
       >
         Reset
       </button>

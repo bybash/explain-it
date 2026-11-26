@@ -8,6 +8,7 @@ import {
   LOGO_SHOWS,
   type Logo,
   type LogoMode,
+  TITLE_CARD_AUTO_TEXT,
   TITLE_CARD_SECONDS,
 } from "../schema/config.ts";
 import type { ValidationError } from "../schema/errors.ts";
@@ -143,7 +144,7 @@ export const CardFields = ({
                 })
               }
             >
-              <option value="">Auto (3 to 5 s, by its text)</option>
+              <option value="">Auto ({TITLE_CARD_AUTO_TEXT}, by its text)</option>
               {Array.from(
                 { length: TITLE_CARD_SECONDS.max - TITLE_CARD_SECONDS.min + 1 },
                 (_, i) => TITLE_CARD_SECONDS.min + i,
