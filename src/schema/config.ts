@@ -64,10 +64,43 @@ export const CARD_LIMITS = {
   credit: 80,
 } as const;
 
+/** How far the camera zooms in, and moves, as a share of the area the scene is framed in. */
+export const CAMERA_LIMITS = { zoom: { min: 1, max: 2 }, move: 0.5 } as const;
+
+export const CameraSchema = z
+  .strictObject({
+    zoom: z
+      .number()
+      .min(CAMERA_LIMITS.zoom.min)
+      .max(CAMERA_LIMITS.zoom.max)
+      .describe("1 frames the scene as it fits; 2 is twice as close."),
+    x: z
+      .number()
+      .min(-CAMERA_LIMITS.move)
+      .max(CAMERA_LIMITS.move)
+      .describe("Moves the scene right (positive) or left, as a share of the frame's width."),
+    y: z
+      .number()
+      .min(-CAMERA_LIMITS.move)
+      .max(CAMERA_LIMITS.move)
+      .describe("Moves the scene down (positive) or up, as a share of the frame's height."),
+  })
+  .describe("How a scene is framed: zoomed in and moved from where it fits.");
+export type Camera = z.output<typeof CameraSchema>;
+
+/** How long a title card may be set to hold, in seconds. */
+export const TITLE_CARD_SECONDS = { min: 2, max: 10 } as const;
+
 export const TitleCardSchema = z
   .strictObject({
     title: z.string().min(1).max(CARD_LIMITS.title),
     description: z.string().min(1).max(CARD_LIMITS.description).optional(),
+    seconds: z
+      .number()
+      .min(TITLE_CARD_SECONDS.min)
+      .max(TITLE_CARD_SECONDS.max)
+      .optional()
+      .describe("How long it holds, in seconds; by its text when missing (3 to 5 s)."),
   })
   .describe("Opens the video: the title in the middle, the description under it.");
 
@@ -234,6 +267,10 @@ export const ConfigSchema = z
       .optional()
       .describe("Cards that open and close the video; each can be left out."),
     logo: LogoSchema.optional(),
+    camera: z
+      .record(z.string(), CameraSchema)
+      .optional()
+      .describe("Each scene's camera, by scene id; a scene not named is framed as it fits."),
   })
   .describe("Style and output settings. Every field has a default.");
 

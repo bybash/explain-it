@@ -25,6 +25,6 @@
     }
   },
   "reply": {
-    "text": "{\"text\": \"The provider sends back a short-lived, one-time code.\"}"
+    "text": "{\"text\":\"The provider sends back a short-lived, one-time code.\"}"
   }
 }

@@ -65,6 +65,6 @@
     }
   },
   "reply": {
-    "text": "{\"patch\":[{\"op\":\"replace\",\"path\":\"/nodes/5/label\",\"value\":\"\\\"Google\\\"\"}],\"summary\":\"Renames the identity provider node's label from \\\"Identity provider\\\" to \\\"Google\\\", leaving its id and other fields unchanged.\"}"
+    "text": "{\"patch\":[{\"op\":\"replace\",\"path\":\"/nodes/5/label\",\"value\":\"\\\"Google\\\"\"}],\"summary\":\"Renamed the identity provider node's label to Google, keeping its id idp.\"}"
   }
 }

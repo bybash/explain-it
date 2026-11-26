@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fitView, MAX_SCALE } from "./frame.ts";
+import { fitView, MAX_SCALE, withCamera } from "./frame.ts";
 import { project, type ScreenPoint, type View } from "./project.ts";
 
 const content = { x: 100, y: 200, width: 1600, height: 600 };
@@ -58,5 +58,28 @@ describe("fitView", () => {
       x: expect.closeTo(900),
       y: expect.closeTo(500),
     });
+  });
+});
+
+describe("withCamera", () => {
+  const points = [
+    { x: -10, y: 0 },
+    { x: 10, y: 5 },
+  ];
+  const fitted = fitView(points, content);
+
+  it("zooms about the middle of the content region, and moves by a share of it", () => {
+    const view = withCamera(fitted, content, { zoom: 1.5, x: 0.1, y: -0.2 });
+    expect(view.scale).toBeCloseTo(120);
+    // The points' middle sat in the region's middle (900, 500); it moves right 160 and up 120.
+    expect(under(view, { x: 0, y: 2.5 })).toEqual({
+      x: expect.closeTo(1060),
+      y: expect.closeTo(380),
+    });
+  });
+
+  it("leaves the view as it is without a camera, or with the one that changes nothing", () => {
+    expect(withCamera(fitted, content, undefined)).toEqual(fitted);
+    expect(withCamera(fitted, content, { zoom: 1, x: 0, y: 0 })).toEqual(fitted);
   });
 });

@@ -65,6 +65,6 @@
     }
   },
   "reply": {
-    "text": "{\"patch\":[{\"op\":\"add\",\"path\":\"/nodes/-\",\"value\":\"{\\\"id\\\":\\\"retry\\\",\\\"label\\\":\\\"Retry\\\",\\\"kind\\\":\\\"decision\\\",\\\"zone\\\":\\\"backend\\\"}\"},{\"op\":\"add\",\"path\":\"/edges/-\",\"value\":\"{\\\"id\\\":\\\"token_failed\\\",\\\"from\\\":\\\"idp\\\",\\\"to\\\":\\\"retry\\\",\\\"label\\\":\\\"error\\\"}\"},{\"op\":\"add\",\"path\":\"/edges/-\",\"value\":\"{\\\"id\\\":\\\"retry_exchange\\\",\\\"from\\\":\\\"retry\\\",\\\"to\\\":\\\"idp\\\",\\\"label\\\":\\\"code + client secret\\\"}\"}],\"summary\":\"Adds a Retry decision node in the backend zone, with an edge for the failed token exchange from the identity provider to Retry and an edge from Retry back to the identity provider to ask again.\"}"
+    "text": "{\"patch\":[{\"op\":\"add\",\"path\":\"/nodes/-\",\"value\":\"{\\\"id\\\": \\\"retry\\\", \\\"label\\\": \\\"Retry?\\\", \\\"kind\\\": \\\"decision\\\", \\\"zone\\\": \\\"backend\\\"}\"},{\"op\":\"add\",\"path\":\"/edges/-\",\"value\":\"{\\\"id\\\": \\\"exchange_failed\\\", \\\"from\\\": \\\"app\\\", \\\"to\\\": \\\"retry\\\", \\\"label\\\": \\\"exchange failed\\\"}\"},{\"op\":\"add\",\"path\":\"/edges/-\",\"value\":\"{\\\"id\\\": \\\"retry_exchange\\\", \\\"from\\\": \\\"retry\\\", \\\"to\\\": \\\"idp\\\", \\\"label\\\": \\\"try again\\\"}\"}],\"summary\": \"Adds a backend decision node \\\"Retry?\\\" that the web app reaches when the code exchange fails, with an edge back to the identity provider to try again.\"}"
   }
 }

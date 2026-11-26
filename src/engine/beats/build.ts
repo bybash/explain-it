@@ -23,6 +23,12 @@ export const SCENE_TIMING = { transition: 0.8, tail: 1.2 } as const;
 /** A card holds at least this long, in seconds, and longer when its text needs it (SPEC, Opening and ending). */
 export const CARD_MIN_HOLD = 3;
 
+/**
+ * A title card is read with nothing else to follow, so faster than a
+ * caption, and held no longer than this unless the user sets how long.
+ */
+const TITLE_CARD = { charsPerSecond: 20, maxHold: 5 } as const;
+
 /** The timeline target that holds one card's state: its `opacity`. */
 export const cardTarget = (id: string): string => `card:${id}`;
 
@@ -165,7 +171,7 @@ export const buildBeats = (
   const cards: CardPlan[] = [];
   const tweens: TweenSpec[] = [];
   if (options.titleCard) {
-    const end = textHold(titleText(options.titleCard));
+    const end = titleHold(options.titleCard);
     cards.push({ id: "title", start: 0, end, until: end + transition });
     tweens.push(fadeOut(cardTarget("title"), end));
   }
@@ -242,7 +248,7 @@ export const buildBeats = (
       kind: "title",
       id: `title:${scene.id}`,
       scene: scene.id,
-      text: sceneTitleText(index, scene.title),
+      text: sceneTitleText(index, scene.title, storyboard.scenes.length),
       at: start,
       until: layerGoneAt,
     });
@@ -393,7 +399,16 @@ const textHold = (lines: readonly (string | undefined)[]): number =>
     lines.reduce((sum, line) => sum + (line?.length ?? 0), 0) / CAPTION_CHARS_PER_SECOND,
   );
 
-const titleText = (card: TitleCard) => [card.title, card.description];
+/** How long the title card holds: as long as the user set, or else by its text, 3 to 5 s. */
+const titleHold = (card: TitleCard): number =>
+  card.seconds ??
+  Math.min(
+    TITLE_CARD.maxHold,
+    Math.max(
+      CARD_MIN_HOLD,
+      `${card.title}${card.description ?? ""}`.length / TITLE_CARD.charsPerSecond,
+    ),
+  );
 const endText = (card: EndCard) => [card.headline, card.link, card.where, card.credit];
 
 /** The card that closes the video and how long it holds (SPEC, Opening and ending). */
@@ -403,7 +418,7 @@ const closingCard = ({
   logo,
 }: BuildOptions): { id: CardPlan["id"]; hold: number } | undefined => {
   if (endCard) return { id: "end", hold: textHold(endText(endCard)) };
-  if (titleCard) return { id: "title-again", hold: textHold(titleText(titleCard)) };
+  if (titleCard) return { id: "title-again", hold: titleHold(titleCard) };
   if (logo) return { id: "logo", hold: CARD_MIN_HOLD };
   return undefined;
 };

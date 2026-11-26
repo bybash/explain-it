@@ -346,6 +346,32 @@ describe("set_style", () => {
     expect(again.logo?.light).toBe("logo-light.png");
   });
 
+  it("sets a scene's camera and how long the title card holds, and names what is out of range", async () => {
+    const slug = await exampleProject();
+    await succeeds("set_style", {
+      slug,
+      config: {
+        camera: { sign_in: { zoom: 1.4, x: 0.1, y: -0.05 } },
+        cards: { title: { title: "Sign in", seconds: 4 } },
+      },
+    });
+    const { config } = await succeeds("get_project", { slug });
+    expect(config.camera).toEqual({ sign_in: { zoom: 1.4, x: 0.1, y: -0.05 } });
+    expect(config.cards.title.seconds).toBe(4);
+    expect(
+      await fails("set_style", {
+        slug,
+        config: { camera: { sign_in: { zoom: 3, x: 0, y: 0.9 } }, cards: { title: { seconds: 1 } } },
+      }),
+    ).toEqual(
+      expect.arrayContaining([
+        "config.camera.sign_in.zoom: must be at most 2",
+        "config.camera.sign_in.y: must be at most 0.5",
+        "config.cards.title.seconds: must be at least 2",
+      ]),
+    );
+  });
+
   it("names a bad setting or logo, and changes nothing", async () => {
     const slug = await exampleProject();
     const lines = await fails("set_style", {
