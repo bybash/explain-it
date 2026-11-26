@@ -48,6 +48,7 @@ const historyOf = (messages: readonly ChatMessage[]): AgentMessage[] =>
 
 /** The chat's line for each tool that changes the project: when it worked, and when it did not. */
 const STEP_LINES: Readonly<Record<string, { readonly done: string; readonly failed: string }>> = {
+  [T.draftGraph]: { done: "Drafted the graph.", failed: "Could not draft the graph" },
   [T.updateGraph]: { done: "Saved the graph.", failed: "Could not save the graph" },
   [T.setBrief]: { done: "Saved the story brief.", failed: "Could not save the story brief" },
   [T.setStoryboard]: { done: "Saved the script.", failed: "Could not save the script" },
@@ -130,7 +131,7 @@ export const runAssistant = async ({
     name: `chat-${slug}`,
     system,
     history: historyOf((await readChat(dir)).messages),
-    tools: agentTools(context, slug),
+    tools: agentTools(context, slug, client),
     onStep: async (step) => {
       const line = stepLine(step);
       if (line) await add(line.text, line);

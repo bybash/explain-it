@@ -544,8 +544,16 @@ Decision 018 says why.
   `get_project`. Its tool results leave out links and times, so a recorded
   conversation replays exactly. A turn stops at `MAX_AGENT_STEPS` steps (16). It has every MCP project
   tool but `create_project`, `list_projects` and `get_guide`, which a chat on
-  one project has no use for. Drafting a gate's
-  file is one of its tools.
+  one project has no use for.
+- **Drafting tools.** Drafting a gate's file is one of the assistant's
+  tools, which only the app has (an IDE's agent drafts itself): one
+  structured call with the repair loop, its prompt in `src/llm/prompts/` as
+  Markdown, built from the authoring guide's part on that file and the house
+  rules, never written again. `draft_graph` (5.3) drafts graph.json from the
+  user's description and the context files the assistant names, with what
+  it assumed and at most two questions, and saves it as `update_graph`
+  does; a change after that is a JSON Patch. Nothing is streamed: the graph
+  shows in the Graph gate once it is saved (decision 039).
 - **Checks become fixes.** The quick checks run after every script change,
   and the full checks when the Preview gate opens and before a render. The
   assistant reports what they find in plain words, each with a Fix, and

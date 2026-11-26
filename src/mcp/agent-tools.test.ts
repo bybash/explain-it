@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -10,7 +10,7 @@ import { fakeLlm } from "../llm/fake-llm.testing.ts";
 import { RenderQueue } from "../render/queue.ts";
 import type { ServerEvent } from "../schema/api.ts";
 import { createEvents } from "../server/events.ts";
-import { makeProject } from "../server/projects.ts";
+import { makeProject, projectDir } from "../server/projects.ts";
 import { agentTools, AGENT_TOOL_NAMES as T } from "./agent-tools.ts";
 import type { ToolContext } from "./tools.ts";
 
@@ -49,6 +49,11 @@ afterEach(() => rmSync(projectsDir, { recursive: true, force: true }));
 
 const read = (file: string) => JSON.parse(readFileSync(join(projectsDir, "sign-in", file), "utf8"));
 const call = (id: string, name: string, input: unknown) => ({ id, name, input });
+/** A file of context, as the user adds it. */
+const addContext = (dir: string, name: string, text: string) => {
+  mkdirSync(join(dir, "context"), { recursive: true });
+  writeFileSync(join(dir, "context", name), text);
+};
 
 describe("agentTools", () => {
   it("lets the agent draft the graph, the brief and the script, and approve each gate, on its own project", async () => {
@@ -72,7 +77,7 @@ describe("agentTools", () => {
       name: "chat",
       system: "",
       history: [{ role: "user", content: "Go." }],
-      tools: agentTools(context, "sign-in"),
+      tools: agentTools(context, "sign-in", client),
       onStep: ({ call, output }) => {
         outputs[call.id] = output;
       },
@@ -112,7 +117,7 @@ describe("agentTools", () => {
       name: "chat",
       system: "",
       history: [],
-      tools: agentTools(context, "sign-in"),
+      tools: agentTools(context, "sign-in", client),
       onStep: ({ call, output }) => {
         outputs[call.id] = output;
       },
@@ -124,5 +129,72 @@ describe("agentTools", () => {
     const project = JSON.stringify(outputs.read);
     expect(project).toContain('"gate":"graph"');
     for (const field of ["preview", "createdAt", "updatedAt"]) expect(project).not.toContain(field);
+  });
+
+  it("drafts the graph from the description and the context it names, saves it, and says what it assumed", async () => {
+    addContext(projectDir(projectsDir, "sign-in"), "idp.md", "We use Google.");
+    const outputs: Record<string, unknown> = {};
+    const { client, asked } = fakeLlm(
+      [
+        JSON.stringify({
+          graph,
+          assumptions: ["Google is the identity provider."],
+          questions: ["Web or mobile?"],
+        }),
+      ],
+      [
+        {
+          text: "",
+          toolCalls: [
+            call("d", T.draftGraph, { request: "Explain OAuth login.", context: ["idp.md"] }),
+          ],
+        },
+        { text: "Drafted.", toolCalls: [] },
+      ],
+    );
+    await runAgent({
+      client,
+      name: "chat",
+      system: "",
+      history: [],
+      tools: agentTools(context, "sign-in", client),
+      onStep: ({ call, output }) => {
+        outputs[call.id] = output;
+      },
+    });
+    expect(asked[0]?.messages[0]?.content).toContain("We use Google.");
+    expect(read("graph.json").title).toBe(graph.title);
+    expect(outputs.d).toMatchObject({
+      assumptions: ["Google is the identity provider."],
+      questions: ["Web or mobile?"],
+    });
+    expect(JSON.stringify(outputs.d)).not.toContain("mermaid");
+    expect(published).toContainEqual({ type: "project-updated", slug: "sign-in" });
+  });
+
+  it("refuses to draft from a context file that is not there, and drafts nothing", async () => {
+    const outputs: Record<string, unknown> = {};
+    const { client, asked } = fakeLlm(
+      [],
+      [
+        {
+          text: "",
+          toolCalls: [call("d", T.draftGraph, { request: "Go.", context: ["nope.md"] })],
+        },
+        { text: "Sorry.", toolCalls: [] },
+      ],
+    );
+    await runAgent({
+      client,
+      name: "chat",
+      system: "",
+      history: [],
+      tools: agentTools(context, "sign-in", client),
+      onStep: ({ call, output }) => {
+        outputs[call.id] = output;
+      },
+    });
+    expect(outputs.d).toEqual({ errors: ['name: no context file "nope.md"'] });
+    expect(asked).toHaveLength(0);
   });
 });

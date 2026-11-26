@@ -3,6 +3,7 @@ import type { Validated } from "../schema/errors.ts";
 import { GraphSchema, parseGraph } from "../schema/graph.ts";
 import { BriefSchema } from "../schema/story.ts";
 import type { LlmClient } from "./client.ts";
+import { draftGraph } from "./drafting.ts";
 import { type StructuredCall, structuredCall } from "./structured.ts";
 import { shorterWords } from "./words.ts";
 
@@ -44,6 +45,21 @@ export const RUSHED_LINE = {
 } as const;
 export const RUSHED_ABOUT = 'the scene "Sign in" of the video "Signing in with OAuth"';
 
+/** Three described flows, each drafted into a graph (5.3's "Done when"). */
+export const DRAFTED_FLOWS = [
+  { name: "password reset", request: FLOW },
+  {
+    name: "a CI pipeline",
+    request:
+      "Explain our CI pipeline: a developer pushes a branch to GitHub, GitHub Actions runs the lint, the tests and a build in parallel, and when all pass it publishes a Docker image to the registry and deploys it to staging.",
+  },
+  {
+    name: "checkout",
+    request:
+      "Show how checkout works in our shop: the shopper pays in the web app, the order service reserves the stock, the payment provider takes the payment, and the shopper gets an email when the order is confirmed.",
+  },
+] as const;
+
 /** The recorded calls, each run with its own schema. */
 export const RECORDED_CALLS: readonly {
   readonly name: string;
@@ -52,4 +68,8 @@ export const RECORDED_CALLS: readonly {
   { name: graphCall.name, run: (client) => structuredCall(client, graphCall) },
   { name: briefCall.name, run: (client) => structuredCall(client, briefCall) },
   { name: "shorter-words", run: (client) => shorterWords(client, RUSHED_LINE, RUSHED_ABOUT) },
+  ...DRAFTED_FLOWS.map((flow) => ({
+    name: `draft-graph: ${flow.name}`,
+    run: (client: LlmClient) => draftGraph(client, { request: flow.request, context: [] }),
+  })),
 ];

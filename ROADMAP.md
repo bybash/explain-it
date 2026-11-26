@@ -139,7 +139,7 @@ user works by hand or over MCP.
 |---|---|---|
 | ✅ 5.1 | **LLM client**: AI SDK with OpenRouter, Anthropic's own API (a Claude key) and OpenAI-compatible providers, structured calls, the repair loop, fixture recording and replay | Tests replay fixtures without a key |
 | ✅ 5.2 | **Context**: pasted text and file upload, the 100k-character limit, storing files in `context/` | Oversized context is refused with a clear message |
-| 5.3 | **Graph drafting**, through the chat agent (5.7): chat and context to `graph.json`, streamed into the Mermaid view, at most two questions | Fixtures: three described flows give valid graphs |
+| ✅ 5.3 | **Graph drafting**, through the chat agent (5.7): chat and context to `graph.json`, shown in the Mermaid view once saved, at most two questions | Fixtures: three described flows give valid graphs |
 | 5.4 | **Script drafting**, through the chat agent (5.7): the story brief first (3.14), for approval, keeping to the project's and the house rules; then graph to scenes and beats, and a suggested title card, validated by the schema, the quick checks and 2.8's story checks, and repaired before the user sees it | Fixtures: the three graphs give valid storyboards |
 | 5.5 | **Edits through chat**: JSON Patches for the graph and the storyboard | Fixtures: "rename X", "add a retry step", "shorten beat 3" |
 | 5.6 | **Layout repair**: check failures the layout engine cannot fix go back to the LLM | A crowded fixture is fixed |
@@ -240,16 +240,13 @@ that finishes it.
   heights off its line (the example's "save session").
 - Not checked yet: the title and end cards, and edges against zone labels.
 
-### For 5.3, 5.4 and 5.8, from 5.1 and 5.7
+### For 5.4 and 5.5, from 5.1, 5.3 and 5.7
 
-- The assistant (`runAssistant` in `src/server/assistant.ts`) drafts with
-  its tools today, in whole files, as an MCP agent does. 5.3 and 5.4 can
-  add drafting tools that make one structured call each
-  (`structuredCall`, `src/llm/structured.ts`, with the repair loop), with
-  prompts in `src/llm/prompts/` as Markdown (SPEC, LLM), and add the
-  models they test to the README's list.
-- Nothing is streamed: the chat gets a line per change, then the reply.
-  5.3 streams the graph into the Mermaid view.
+- The assistant drafts the graph with `draft_graph` (5.3): one structured
+  call (`draftGraph`, `src/llm/drafting.ts`), its prompt in
+  `src/llm/prompts/draft-graph.md`, filled by `prompt()` from the guide's
+  `graphGuide()`. 5.4's `draft_script` can follow it, with a
+  `storyboardGuide()`, and add the models it tests to the README's list.
 - Every step sends the whole guide as the system prompt; prompt caching
   (Claude's own API) would cut the cost of a long turn.
 - A turn cannot be cancelled from the chat, and a message sent while the
@@ -266,7 +263,7 @@ that finishes it.
 - A personal Anthropic key that is not scoped to a workspace needs the
   `anthropic-workspace-id` header; the client does not send one.
 
-### For 5.3 and 5.4 (drafting), from 5.2
+### For 5.4 (script drafting), from 5.2
 
 - Once the assistant has read a context file, its text is sent again on
   every later step of that turn (and read again on the next turn, as earlier
@@ -302,14 +299,6 @@ that finishes it.
   `STUB_REPLY` (`src/server/chat.ts`). The LLM replaces the stub; approving
   by chat ("looks good") waits for it too, since only the LLM can tell what
   the user means.
-
-### For 5.3 (graph drafting), from 4.2
-
-- The authoring guide is `authoringGuide()` in `src/guidance/guide.ts`,
-  with every limit and list taken from the schemas, and a worked example
-  in `src/guidance/example.ts` that a test validates. The in-app LLM's
-  prompts for graph and script drafting (5.3, 5.4) should be built from
-  it, not written again.
 
 ### For 6.1 (Docker), from 3.1
 
@@ -347,6 +336,8 @@ that finishes it.
 ## Later
 
 - Sequence diagrams; images as input.
+- Streaming a draft into the Mermaid view as it is written (left out of 5.3,
+  decision 039): the graph shows once it is saved.
 - Git repository exploration inside the web app (the place where an agent
   framework such as LangGraph may fit).
 - MCP: exporting a project into the user's repository, a stdio shim that

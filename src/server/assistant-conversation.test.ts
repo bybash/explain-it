@@ -40,7 +40,11 @@ describe("the recorded conversation", () => {
       expect(said.filter((line) => reply.text.includes(line)).length).toBeLessThan(3);
     }
     expect(chat.filter((m) => m.kind === "step").map((m) => m.text)).toEqual(
-      expect.arrayContaining(["Approved the graph gate.", "Approved the script gate."]),
+      expect.arrayContaining([
+        "Drafted the graph.",
+        "Approved the graph gate.",
+        "Approved the script gate.",
+      ]),
     );
   }, 60_000);
 });
