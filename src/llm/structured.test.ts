@@ -3,7 +3,13 @@ import { z } from "zod";
 import { formatErrors } from "../schema/errors.ts";
 import { fail, ok } from "../schema/result.ts";
 import { fakeLlm } from "./fake-llm.testing.ts";
-import { MAX_REPAIRS, type StructuredCall, structuredCall } from "./structured.ts";
+import {
+  forStructuredOutput,
+  MAX_REPAIRS,
+  type StructuredCall,
+  structuredCall,
+  structuredDraft,
+} from "./structured.ts";
 
 const Greeting = z.strictObject({ greeting: z.string().min(1).max(20), to: z.string() });
 const call = (
@@ -81,5 +87,59 @@ describe("structuredCall", () => {
     expect(answer.ok ? [] : formatErrors(answer.errors)).toEqual([
       "llm: the key was refused by openrouter.ai; check it in Settings",
     ]);
+  });
+});
+
+describe("structuredDraft", () => {
+  const short = (value: z.output<typeof Greeting>) =>
+    value.greeting.length <= 3 ? [] : [{ path: "greeting", message: "too long; 3 at most" }];
+
+  it("sends an answer back for what could be better, and takes it once it is", async () => {
+    const { client, asked } = fakeLlm([
+      '{"greeting":"Hello","to":"Ada"}',
+      '{"greeting":"Hi","to":"Ada"}',
+    ]);
+    const drafted = await structuredDraft(client, {
+      name: "greeting",
+      system: "",
+      prompt: "Greet Ada.",
+      schema: Greeting,
+      improve: short,
+    });
+    expect(drafted).toEqual(ok({ value: { greeting: "Hi", to: "Ada" }, remaining: [] }));
+    expect(asked[1]?.messages.at(-1)?.content).toContain("greeting: too long");
+  });
+
+  it("keeps the last answer that fits, with what is left to improve, rather than none", async () => {
+    const { client } = fakeLlm(
+      Array.from({ length: MAX_REPAIRS + 1 }, () => '{"greeting":"Hello","to":"Ada"}'),
+    );
+    const drafted = await structuredDraft(client, {
+      name: "greeting",
+      system: "",
+      prompt: "Greet Ada.",
+      schema: Greeting,
+      improve: short,
+    });
+    expect(drafted).toEqual(
+      ok({
+        value: { greeting: "Hello", to: "Ada" },
+        remaining: [{ path: "greeting", message: "too long; 3 at most" }],
+      }),
+    );
+  });
+});
+
+describe("forStructuredOutput", () => {
+  it("sends a discriminated union as anyOf, which every structured output takes", () => {
+    const Action = z.discriminatedUnion("type", [
+      z.strictObject({ type: z.literal("a"), x: z.number() }),
+      z.strictObject({ type: z.literal("b") }),
+    ]);
+    const sent = JSON.stringify(
+      forStructuredOutput(z.toJSONSchema(z.strictObject({ actions: z.array(Action) }))),
+    );
+    expect(sent).not.toContain("oneOf");
+    expect(sent).toContain("anyOf");
   });
 });

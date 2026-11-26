@@ -68,14 +68,26 @@ export const ShapeSchema = z.discriminatedUnion("kind", [
 ]);
 
 /** The checks that find a problem at a beat. */
-export const BEAT_CHECKS = ["overlap", "off-frame", "reading-speed", "narration-fit"] as const;
+export const BEAT_CHECKS = [
+  "overlap",
+  "off-frame",
+  "reading-speed",
+  "narration-fit",
+  "hook",
+  "outcome",
+  "one-thing",
+] as const;
 /** The checks that need no browser and no sound, which the chat runs after every change (decision 038). */
 export const QUICK_CHECKS = [
   "reading-speed",
   "narration-fit",
 ] as const satisfies readonly (typeof BEAT_CHECKS)[number][];
 /** The checks that judge the whole video. */
-export const VIDEO_CHECKS = ["loudness"] as const;
+export const VIDEO_CHECKS = ["loudness", "length"] as const;
+/** The story checks (2.8): the script's shape, which the assistant repairs in its own drafts. */
+export const STORY_CHECKS = ["hook", "outcome", "one-thing", "length"] as const;
+/** A narrated beat does more than one thing past this many flows, or sentences. */
+export const ONE_THING = { flows: 2, sentences: 2 } as const;
 export const CHECKS = [...BEAT_CHECKS, ...VIDEO_CHECKS] as const;
 
 /** One problem the checks found: at the beat it shows in, or (loudness) for the whole video. */

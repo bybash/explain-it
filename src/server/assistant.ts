@@ -51,6 +51,7 @@ const STEP_LINES: Readonly<Record<string, { readonly done: string; readonly fail
   [T.draftGraph]: { done: "Drafted the graph.", failed: "Could not draft the graph" },
   [T.updateGraph]: { done: "Saved the graph.", failed: "Could not save the graph" },
   [T.setBrief]: { done: "Saved the story brief.", failed: "Could not save the story brief" },
+  [T.draftScript]: { done: "Drafted the script.", failed: "Could not draft the script" },
   [T.setStoryboard]: { done: "Saved the script.", failed: "Could not save the script" },
   [T.setStyle]: { done: "Saved the style.", failed: "Could not save the style" },
   [T.check]: { done: "Ran the checks.", failed: "Could not run the checks" },

@@ -2,8 +2,9 @@ import { z } from "zod";
 import { graphSummary, storyboardSummary } from "../guidance/guide.ts";
 import type { AgentTool } from "../llm/agent.ts";
 import type { LlmClient } from "../llm/client.ts";
-import { type ContextText, draftGraph } from "../llm/drafting.ts";
+import { type ContextText, draftGraph, draftScript } from "../llm/drafting.ts";
 import { ApproveSchema } from "../schema/api.ts";
+import { DEFAULT_CONFIG } from "../schema/config.ts";
 import { ReadContextArgsSchema } from "../schema/context.ts";
 import { DRAFT_TOOL_NAMES, DraftArgsSchema, MAX_QUESTIONS } from "../schema/drafts.ts";
 import { formatErrors, parseWith, type Validated } from "../schema/errors.ts";
@@ -17,11 +18,12 @@ import {
   UpdateGraphArgsSchema,
 } from "../schema/mcp.ts";
 import { GATES } from "../schema/project.ts";
+import { ok } from "../schema/result.ts";
 import { BriefSchema } from "../schema/story.ts";
 import { StoryboardSchema } from "../schema/storyboard.ts";
 import { readContext } from "../server/context.ts";
 import { approveGate } from "../server/gates.ts";
-import { projectDir } from "../server/projects.ts";
+import { openProject, projectDir } from "../server/projects.ts";
 import { readHouseRules } from "../server/stories.ts";
 import { cancelRenderTool, checkTool, renderStatusTool, renderTool } from "./render-tools.ts";
 import {
@@ -85,6 +87,26 @@ const argsFor = (args: z.ZodObject, documents: Record<string, z.ZodType>) =>
     args.extend(Object.fromEntries(Object.entries(documents).map(([k, v]) => [k, v.optional()]))),
   );
 
+/** The context files a draft names, with their text; an error names one that is not there. */
+const contextTexts = async (
+  dir: string,
+  names: readonly string[],
+): Promise<Validated<ContextText[]>> => {
+  const texts: ContextText[] = [];
+  for (const name of names) {
+    const text = await readContext(dir, name);
+    if (!text.ok) return text;
+    texts.push({ name, text: text.value });
+  }
+  return ok(texts);
+};
+
+/** The user's house rules for a draft; none when the file is missing or cannot be read. */
+const houseRulesOf = async (context: ToolContext) => {
+  const rules = await readHouseRules(context.projectsDir);
+  return rules.ok ? rules.value : null;
+};
+
 /** The model's input as an object of arguments, as every tool takes. */
 const argsOf = (input: unknown): Record<string, unknown> =>
   input !== null && typeof input === "object" ? (input as Record<string, unknown>) : {};
@@ -95,11 +117,12 @@ const withSlug = (slug: string, input: unknown) => ({ ...argsOf(input), slug });
 /**
  * The in-app assistant's tools (SPEC, LLM: the assistant): the MCP tools,
  * called in-process on the project the chat belongs to, so the app and an
- * IDE's agent do the same things, plus three only
+ * IDE's agent do the same things, plus a few only
  * the app has: `approve_gate` (in the IDE, approval stays in its chat),
  * `read_context` (an IDE's agent reads the repository itself), and
- * `draft_graph`, which drafts in one checked call with `client` (an IDE's
- * agent is the LLM, and drafts itself). Results leave out links and
+ * and the drafting tools, `draft_graph` and `draft_script`, which draft in
+ * one checked call with `client` (an IDE's agent is the LLM, and drafts
+ * itself). Results leave out links and
  * times, which the agent has no use for, so a recorded conversation replays
  * exactly.
  */
@@ -111,18 +134,12 @@ export const agentTools = (context: ToolContext, slug: string, client: LlmClient
     run: async (input) => {
       const asked = parseWith(DraftArgsSchema, input);
       if (!asked.ok) return { errors: formatErrors(asked.errors) };
-      const dir = projectDir(context.projectsDir, slug);
-      const texts: ContextText[] = [];
-      for (const name of asked.value.context) {
-        const text = await readContext(dir, name);
-        if (!text.ok) return { errors: formatErrors(text.errors) };
-        texts.push({ name, text: text.value });
-      }
-      const rules = await readHouseRules(context.projectsDir);
+      const texts = await contextTexts(projectDir(context.projectsDir, slug), asked.value.context);
+      if (!texts.ok) return { errors: formatErrors(texts.errors) };
       const drafted = await draftGraph(client, {
         request: asked.value.request,
-        context: texts,
-        houseRules: rules.ok ? rules.value : null,
+        context: texts.value,
+        houseRules: await houseRulesOf(context),
       });
       if (!drafted.ok) return { errors: formatErrors(drafted.errors) };
       const { graph, assumptions, questions } = drafted.value;
@@ -130,6 +147,45 @@ export const agentTools = (context: ToolContext, slug: string, client: LlmClient
       return saved.ok
         ? { ...(forTheAgent(saved.value) as object), assumptions, questions }
         : output(saved);
+    },
+  },
+  {
+    name: T.draftScript,
+    description: `Drafts the project's storyboard.json for its graph, following its brief (save the brief with ${T.setBrief} first), from the context files you name, in one call that checks its own answer (the graph, the hook, the outcome, the length, one thing per beat, words read and said in time) and repairs it; then saves it as ${T.setStoryboard} does. Returns what it assumed, a title card to suggest, and any problem it could not repair. Change a script with ${T.setStoryboard} and a JSON Patch.`,
+    inputSchema: inputOf(DraftArgsSchema),
+    run: async (input) => {
+      const asked = parseWith(DraftArgsSchema, input);
+      if (!asked.ok) return { errors: formatErrors(asked.errors) };
+      const opened = await openProject(context.projectsDir, slug);
+      if (!opened?.ok) return { errors: [`slug: no project "${slug}" to open`] };
+      const { graph, brief, config } = opened.value;
+      if (!graph) return { errors: ["graph.json: missing; draft the graph first"] };
+      if (!brief)
+        return {
+          errors: [
+            `brief.json: missing; agree the story with the user, and save it with ${T.setBrief}, first`,
+          ],
+        };
+      const texts = await contextTexts(projectDir(context.projectsDir, slug), asked.value.context);
+      if (!texts.ok) return { errors: formatErrors(texts.errors) };
+      const drafted = await draftScript(client, {
+        request: asked.value.request,
+        context: texts.value,
+        houseRules: await houseRulesOf(context),
+        graph,
+        brief,
+        config: config ?? DEFAULT_CONFIG,
+      });
+      if (!drafted.ok) return { errors: formatErrors(drafted.errors) };
+      const { draft, remaining } = drafted.value;
+      const saved = await setStoryboardTool(context, { slug, storyboard: draft.storyboard });
+      if (!saved.ok) return output(saved);
+      return {
+        ...(forTheAgent(saved.value) as object),
+        assumptions: draft.assumptions,
+        suggestedTitleCard: draft.titleCard,
+        ...(remaining.length ? { notRepaired: formatErrors(remaining) } : {}),
+      };
     },
   },
   {

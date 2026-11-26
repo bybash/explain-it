@@ -10,6 +10,10 @@ const CHECK_LABELS: Readonly<Record<Check, string>> = {
   "reading-speed": "Reading speed",
   "narration-fit": "Narration fit",
   loudness: "Loudness",
+  hook: "Hook",
+  outcome: "Outcome",
+  "one-thing": "One thing per beat",
+  length: "Length",
 };
 
 /** Where a warning shows: its beat, and the moment in it. */

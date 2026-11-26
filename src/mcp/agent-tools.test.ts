@@ -197,4 +197,43 @@ describe("agentTools", () => {
     expect(outputs.d).toEqual({ errors: ['name: no context file "nope.md"'] });
     expect(asked).toHaveLength(0);
   });
+
+  it("drafts the script only once a brief is agreed, then saves it with a title card to suggest", async () => {
+    const outputs: Record<string, unknown> = {};
+    const script = JSON.stringify({
+      storyboard,
+      titleCard: { title: "Signing in with OAuth" },
+      assumptions: [],
+    });
+    const { client } = fakeLlm(
+      [script, script, script],
+      [
+        { text: "", toolCalls: [call("g", T.updateGraph, { graph })] },
+        { text: "", toolCalls: [call("early", T.draftScript, { request: "Write it." })] },
+        {
+          text: "",
+          toolCalls: [call("b", T.setBrief, { brief: { version: 1, shape: "problem" } })],
+        },
+        { text: "", toolCalls: [call("s", T.draftScript, { request: "Write it." })] },
+        { text: "Drafted.", toolCalls: [] },
+      ],
+    );
+    await runAgent({
+      client,
+      name: "chat",
+      system: "",
+      history: [],
+      tools: agentTools(context, "sign-in", client),
+      onStep: ({ call, output }) => {
+        outputs[call.id] = output;
+      },
+    });
+    expect(outputs.early).toEqual({
+      errors: [
+        `brief.json: missing; agree the story with the user, and save it with ${T.setBrief}, first`,
+      ],
+    });
+    expect(read("storyboard.json").scenes).toHaveLength(storyboard.scenes.length);
+    expect(outputs.s).toMatchObject({ suggestedTitleCard: { title: "Signing in with OAuth" } });
+  });
 });

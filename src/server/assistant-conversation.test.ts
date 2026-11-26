@@ -42,6 +42,7 @@ describe("the recorded conversation", () => {
     expect(chat.filter((m) => m.kind === "step").map((m) => m.text)).toEqual(
       expect.arrayContaining([
         "Drafted the graph.",
+        "Drafted the script.",
         "Approved the graph gate.",
         "Approved the script gate.",
       ]),

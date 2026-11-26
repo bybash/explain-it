@@ -85,8 +85,9 @@ Rules:
   Actions are picked from the scene's own nodes and edges. Beside each
   beat it shows its length and hints, worked out in the browser as the
   user types: from the reading-speed check, a line or caption that goes by
-  too fast to read; from 4.5's hook rule, a first beat too long for a
-  hook. Hints show while the script is valid. A line already spoken is
+  too fast to read; from the story checks (2.8), a hook that is not said or
+  too long, an ending on another step, and a beat that does more than one
+  thing. Hints show while the script is valid. A line already spoken is
   timed by its voice, as the checks time it; any other by its words. The
   script saves only when it is valid, as `set_storyboard` saves it.
 - The gates and the Approve button are across the top, and stay there as
@@ -476,6 +477,15 @@ than hiding it. Decision 027 says why.
 | Reading speed | Caption characters ÷ seconds on screen | Above 15 characters per second for a step caption, or 17 for a narration caption (a subtitle of speech also heard) |
 | Narration fit | Voice length against the room its beat leaves it, from the lead-in to the beat's end | A line would need speeding up by more than 1.05× |
 | Loudness | ffmpeg `ebur128` on the final mix, made by the check as a render would | Outside −16 ± 1 LUFS or true peak above −1 dBTP |
+| Hook (story) | The first beat, timed as it plays | It has no narration, or takes more than 5 s |
+| Outcome (story) | The last beat's actions | It flows another edge, rather than showing where the flow ends |
+| One thing (story) | Each narrated beat | More than two flows, or more than two sentences |
+| Length (story) | The whole video | Outside 45 to 90 s |
+
+The story checks (2.8) are pure, on the script and its plan: the Script
+gate shows them as hints, `check` reports them, and the assistant's
+`draft_script` repairs its own script against them. Judgement calls
+(jargon, tone) stay with the LLM.
 
 Layout problems go back to the layout engine first and to the LLM second.
 
@@ -552,7 +562,12 @@ Decision 018 says why.
   rules, never written again. `draft_graph` (5.3) drafts graph.json from the
   user's description and the context files the assistant names, with what
   it assumed and at most two questions, and saves it as `update_graph`
-  does; a change after that is a JSON Patch. Nothing is streamed: the graph
+  does. `draft_script` (5.4) drafts storyboard.json for the graph once a
+  brief is agreed, following it and the house rules; the story checks and
+  the quick checks send its answer back for repair, and when the repairs run
+  out the last script that fits the graph is kept, with what is left, for
+  the assistant to say. It suggests a title card. A change after either is
+  a JSON Patch. Nothing is streamed: the graph
   shows in the Graph gate once it is saved (decision 039).
 - **Checks become fixes.** The quick checks run after every script change,
   and the full checks when the Preview gate opens and before a render. The

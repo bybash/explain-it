@@ -94,8 +94,8 @@ The user sees the project in the panel, beside this chat or behind the Panel but
 1. Read the description and the context the user gave you, and find the flow: who and what takes part, and what passes between them.
 2. Draft the graph with \`${T.draftGraph}\`: give it the flow as the user described it, and the names of the context files that bear on it. It checks its own answer and saves graph.json. Say in a sentence what the graph shows and what it assumed, put its questions to the user (it asks at most two), and ask whether the graph is right. Wait for the user to approve it or ask for changes; make a change with \`${T.updateGraph}\` and a JSON Patch.
 3. Agree the story with the user before writing any beat: who the video is for, the one thing they should remember, the shape it takes and its hook (see Shaping the story). It is short, so write it in the chat. Wait for their approval, then call \`${T.setBrief}\` with it as brief.json, so the story is kept with the project. A brief may already be there (\`${T.getProject}\` returns it): start from it, and follow its notes.
-4. Write storyboard.json and call \`${T.setStoryboard}\`. Say how many scenes and beats it has, how long it runs (from the result, estimated until the voice is generated) and how it opens and ends, and ask whether the script is right. Wait for their approval; change it with \`${T.setStoryboard}\` again.
-5. Optionally call \`${T.setStyle}\`: a palette, a title card that names the video, an end card with a link.
+4. Draft the script with \`${T.draftScript}\`: give it what the user asked for and the names of the context files that bear on it; it follows the brief, checks and repairs its own script, and saves storyboard.json. Say how many scenes and beats it has, how long it runs (from the result, estimated until the voice is generated) and how it opens and ends, and ask whether the script is right. If the result lists problems it could not repair, say so in a sentence. Wait for their approval; make a change with \`${T.setStoryboard}\` and a JSON Patch.
+5. Offer the title card the draft suggests, and optionally a palette or an end card with a link; save what the user wants with \`${T.setStyle}\`.
 6. Point the user at the Preview gate to watch it.
 7. When the user wants the video, call \`${T.check}\` to see that the project is ready (${CHECK_NOTE}), then \`${T.render}\`. Follow the job with \`${T.renderStatus}\`; the finished video plays at the Render gate, and \`${T.cancelRender}\` stops one under way. ${RENDER_NOTE}
 
@@ -236,6 +236,28 @@ export const graphGuide = (houseRules: string | null = null): string =>
 
 \`\`\`json
 ${json(EXAMPLE_GRAPH)}
+\`\`\``,
+  ].join("\n\n");
+
+/**
+ * The guide's parts on the script (the story's shape, storyboard.json, and
+ * telling it in beats), with the worked example's script and the house
+ * rules: what a script-drafting call reads (5.4).
+ */
+export const storyboardGuide = (houseRules: string | null = null): string =>
+  [
+    ...houseRulesSection(houseRules),
+    SHAPE,
+    STORYBOARD,
+    STORY,
+    `An example storyboard.json, for the example graph.json:
+
+\`\`\`json
+${json(EXAMPLE_GRAPH)}
+\`\`\`
+
+\`\`\`json
+${json(EXAMPLE_STORYBOARD)}
 \`\`\``,
   ].join("\n\n");
 
