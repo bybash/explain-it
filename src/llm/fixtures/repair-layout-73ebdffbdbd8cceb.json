@@ -88,6 +88,6 @@
     }
   },
   "reply": {
-    "text": "{\"labels\":[{\"id\":\"exchange\",\"label\":\"code + secret\"},{\"id\":\"callback\",\"label\":\"send code\"},{\"id\":\"fetch\",\"label\":\"GET /photos\"}],\"storyboardPatch\":[],\"summary\":\"Shortened the edge labels for exchange, callback and fetch so they no longer cover the backend zone label or the badge on the app node; the storyboard is unchanged.\"}"
+    "text": "{\"labels\":[{\"id\":\"backend\",\"label\":\"Backend\"},{\"id\":\"exchange\",\"label\":\"code + client secret\"},{\"id\":\"callback\",\"label\":\"code back\"},{\"id\":\"fetch\",\"label\":\"GET /photos\"}],\"storyboardPatch\":[],\"summary\":\"Shortened the backend zone label and the exchange edge label so they no longer collide, and shortened the callback and fetch edge labels so they clear the badge on the app node.\"}"
   }
 }
