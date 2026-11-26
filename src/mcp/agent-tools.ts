@@ -1,8 +1,11 @@
 import { z } from "zod";
 import { graphSummary, storyboardSummary } from "../guidance/guide.ts";
 import type { AgentTool } from "../llm/agent.ts";
+import type { LlmClient } from "../llm/client.ts";
+import { type ContextText, draftGraph } from "../llm/drafting.ts";
 import { ApproveSchema } from "../schema/api.ts";
 import { ReadContextArgsSchema } from "../schema/context.ts";
+import { DRAFT_TOOL_NAMES, DraftArgsSchema, MAX_QUESTIONS } from "../schema/drafts.ts";
 import { formatErrors, parseWith, type Validated } from "../schema/errors.ts";
 import { GraphSchema } from "../schema/graph.ts";
 import {
@@ -19,6 +22,7 @@ import { StoryboardSchema } from "../schema/storyboard.ts";
 import { readContext } from "../server/context.ts";
 import { approveGate } from "../server/gates.ts";
 import { projectDir } from "../server/projects.ts";
+import { readHouseRules } from "../server/stories.ts";
 import { cancelRenderTool, checkTool, renderStatusTool, renderTool } from "./render-tools.ts";
 import {
   getProjectTool,
@@ -42,6 +46,7 @@ export const AGENT_TOOL_NAMES = {
   renderStatus: "render_status",
   cancelRender: "cancel_render",
   readContext: "read_context",
+  ...DRAFT_TOOL_NAMES,
 } as const;
 const T = AGENT_TOOL_NAMES;
 
@@ -90,13 +95,43 @@ const withSlug = (slug: string, input: unknown) => ({ ...argsOf(input), slug });
 /**
  * The in-app assistant's tools (SPEC, LLM: the assistant): the MCP tools,
  * called in-process on the project the chat belongs to, so the app and an
- * IDE's agent do the same things, plus two only
- * the app has: `approve_gate` (in the IDE, approval stays in its chat) and
- * `read_context` (an IDE's agent reads the repository itself). Results leave out links and
+ * IDE's agent do the same things, plus three only
+ * the app has: `approve_gate` (in the IDE, approval stays in its chat),
+ * `read_context` (an IDE's agent reads the repository itself), and
+ * `draft_graph`, which drafts in one checked call with `client` (an IDE's
+ * agent is the LLM, and drafts itself). Results leave out links and
  * times, which the agent has no use for, so a recorded conversation replays
  * exactly.
  */
-export const agentTools = (context: ToolContext, slug: string): AgentTool[] => [
+export const agentTools = (context: ToolContext, slug: string, client: LlmClient): AgentTool[] => [
+  {
+    name: T.draftGraph,
+    description: `Drafts the project's graph.json from the user's description and the context files you name, in one call that checks and repairs its own answer, then saves it as ${T.updateGraph} does. Returns what it assumed and at most ${MAX_QUESTIONS} questions to put to the user. Use it for a new graph, or to start one again; change a graph with ${T.updateGraph} and a JSON Patch.`,
+    inputSchema: inputOf(DraftArgsSchema),
+    run: async (input) => {
+      const asked = parseWith(DraftArgsSchema, input);
+      if (!asked.ok) return { errors: formatErrors(asked.errors) };
+      const dir = projectDir(context.projectsDir, slug);
+      const texts: ContextText[] = [];
+      for (const name of asked.value.context) {
+        const text = await readContext(dir, name);
+        if (!text.ok) return { errors: formatErrors(text.errors) };
+        texts.push({ name, text: text.value });
+      }
+      const rules = await readHouseRules(context.projectsDir);
+      const drafted = await draftGraph(client, {
+        request: asked.value.request,
+        context: texts,
+        houseRules: rules.ok ? rules.value : null,
+      });
+      if (!drafted.ok) return { errors: formatErrors(drafted.errors) };
+      const { graph, assumptions, questions } = drafted.value;
+      const saved = await updateGraphTool(context, { slug, graph });
+      return saved.ok
+        ? { ...(forTheAgent(saved.value) as object), assumptions, questions }
+        : output(saved);
+    },
+  },
   {
     name: T.getProject,
     description:

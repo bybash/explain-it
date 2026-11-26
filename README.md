@@ -54,7 +54,7 @@ Studio. Models tested for structured output:
 
 | Model | Endpoint | Tested |
 |---|---|---|
-| `anthropic/claude-haiku-5.5` | OpenRouter | The recorded fixtures in `src/llm/fixtures/` (5.1) |
+| `anthropic/claude-haiku-5.5` | OpenRouter | The recorded fixtures in `src/llm/fixtures/`: structured calls, drafting and the assistant (5.1 to 5.8) |
 
 ## Use it from your IDE
 

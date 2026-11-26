@@ -4,6 +4,7 @@ import { FONTS } from "../engine/theme/fonts.ts";
 import { CATEGORIES, KIND_STYLES } from "../engine/theme/kinds.ts";
 import { PALETTES } from "../engine/theme/palettes.ts";
 import { ConfigSchema } from "../schema/config.ts";
+import { DRAFT_TOOL_NAMES } from "../schema/drafts.ts";
 import {
   GraphEdgeSchema,
   GraphNodeSchema,
@@ -33,7 +34,7 @@ const union = (words: readonly string[]) => words.map((w) => `"${w}"`).join(" | 
 const commaList = (words: readonly string[]) => words.map((w) => `"${w}"`).join(", ");
 const json = (value: unknown) => JSON.stringify(value, null, 2);
 const ts = (code: string) => `\`\`\`ts\n${code}\n\`\`\``;
-const T = TOOL_NAMES;
+const T = { ...TOOL_NAMES, ...DRAFT_TOOL_NAMES };
 
 export const GRAPH_SHAPE_NAMES = { nodes: "Node", edges: "Edge", zones: "Zone" } as const;
 export const STORYBOARD_SHAPE_NAMES = {
@@ -91,7 +92,7 @@ const APP_STEPS = `## Steps
 The user sees the project in the panel, beside this chat or behind the Panel button at the top of the page when only the chat is shown. It changes as you save: the graph as a diagram, the story, the script beat by beat, the style, the preview and the renders. Never paste the graph, its Mermaid or the script into the chat: say in a sentence or two what you made or changed, then ask what you need to know. If they ask to see one of these, say which gate of the panel shows it.
 
 1. Read the description and the context the user gave you, and find the flow: who and what takes part, and what passes between them.
-2. Write graph.json and call \`${T.updateGraph}\` (a whole graph, or a JSON Patch to change it). Say what the graph shows, and ask whether the graph is right. Wait for the user to approve it or ask for changes.
+2. Draft the graph with \`${T.draftGraph}\`: give it the flow as the user described it, and the names of the context files that bear on it. It checks its own answer and saves graph.json. Say in a sentence what the graph shows and what it assumed, put its questions to the user (it asks at most two), and ask whether the graph is right. Wait for the user to approve it or ask for changes; make a change with \`${T.updateGraph}\` and a JSON Patch.
 3. Agree the story with the user before writing any beat: who the video is for, the one thing they should remember, the shape it takes and its hook (see Shaping the story). It is short, so write it in the chat. Wait for their approval, then call \`${T.setBrief}\` with it as brief.json, so the story is kept with the project. A brief may already be there (\`${T.getProject}\` returns it): start from it, and follow its notes.
 4. Write storyboard.json and call \`${T.setStoryboard}\`. Say how many scenes and beats it has, how long it runs (from the result, estimated until the voice is generated) and how it opens and ends, and ask whether the script is right. Wait for their approval; change it with \`${T.setStoryboard}\` again.
 5. Optionally call \`${T.setStyle}\`: a palette, a title card that names the video, an end card with a link.
@@ -221,6 +222,22 @@ export const authoringGuide = ({
   ].join("\n\n");
 
 const SEE_GUIDE = `Call ${T.getGuide} first for the full formats, how to tell the story, and a worked example.`;
+
+/**
+ * The guide's part on graph.json, with the worked example's graph and the
+ * user's house rules: what a graph-drafting call reads (5.3), so its prompt
+ * is built from the guide and never written again.
+ */
+export const graphGuide = (houseRules: string | null = null): string =>
+  [
+    ...houseRulesSection(houseRules),
+    GRAPH,
+    `An example graph.json:
+
+\`\`\`json
+${json(EXAMPLE_GRAPH)}
+\`\`\``,
+  ].join("\n\n");
 
 /** A few lines on graph.json for the tool descriptions; the guide has the rest. */
 export const graphSummary = (): string =>
