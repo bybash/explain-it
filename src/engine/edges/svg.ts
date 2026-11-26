@@ -1,5 +1,5 @@
 import type { ScreenPoint } from "../iso/project.ts";
-import { NODE_TIMING } from "../iso/tweens.ts";
+import { dimOpacity } from "../iso/tweens.ts";
 import { categoryStyle } from "../theme/kinds.ts";
 import type { State } from "../timeline.ts";
 import { edgeTarget } from "./flow.ts";
@@ -71,7 +71,7 @@ export const renderEdges = (
       g.setAttribute("visibility", visibility);
       pill?.setAttribute("visibility", visibility);
       if (draw <= 0) return;
-      const faded = 1 - (s.dim ?? 0) * (1 - NODE_TIMING.dimmed);
+      const faded = dimOpacity(s.dim);
       g.setAttribute("opacity", faded.toFixed(3));
       const points = pointList(geometry.drawn(draw));
       line.setAttribute("points", points);

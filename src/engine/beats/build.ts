@@ -336,7 +336,16 @@ export const buildBeats = (
       }
     }
     tweens.push(...zoneAppears(scene.nodes, zoneOf, appears, inScene));
-    tweens.push(...focusTweens({ nodes: scene.nodes, edges, edgeEnds, inScene }, focuses));
+    const onNode = new Map(
+      overlays.flatMap((o) =>
+        o.scene === scene.id && (o.kind === "badge" || o.kind === "callout")
+          ? [[o.id, o.node] as const]
+          : [],
+      ),
+    );
+    tweens.push(
+      ...focusTweens({ nodes: scene.nodes, edges, edgeEnds, zoneOf, onNode, inScene }, focuses),
+    );
   }
   return { duration, cards, scenes, beats, overlays, cues, tweens };
 };

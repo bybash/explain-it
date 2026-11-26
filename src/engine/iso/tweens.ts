@@ -9,7 +9,7 @@ export const NODE_TIMING = {
   highlight: 1.2,
   swell: 0.4,
   dim: 0.6,
-  /** The opacity a dimmed node or edge fades back to. */
+  /** The opacity a dimmed node, zone, edge or overlay fades back to. */
   dimmed: 0.22,
 } as const;
 
@@ -47,10 +47,14 @@ export const highlightTweens = (target: string, at: number): TweenSpec[] => {
   ];
 };
 
-/** `dim`: 0 in full colour, 1 faded back. Used on node and edge targets alike. */
+/** How opaque a `dim` leaves what it fades: 1 in full colour, `NODE_TIMING.dimmed` faded back. */
+export const dimOpacity = (dim: number | undefined): number =>
+  1 - (dim ?? 0) * (1 - NODE_TIMING.dimmed);
+
+/** `dim`: 0 in full colour, 1 faded back. Used on node, zone, edge and overlay targets alike. */
 export const dimTweens = (target: string, at: number): TweenSpec[] => fadeDim(target, at, 0, 1);
 
-/** Brings a dimmed node or edge back to full colour, when the focus moves off it. */
+/** Brings a dimmed node, zone, edge or overlay back to full colour, when the focus moves off it. */
 export const undimTweens = (target: string, at: number): TweenSpec[] => fadeDim(target, at, 1, 0);
 
 const fadeDim = (target: string, at: number, from: number, to: number): TweenSpec[] => [
