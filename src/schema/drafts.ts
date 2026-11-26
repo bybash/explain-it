@@ -14,15 +14,17 @@ export const DRAFT_TOOL_NAMES = {
 
 /** The most questions a draft may ask: it drafts right away and states what it assumed (SPEC, User flow). */
 export const MAX_QUESTIONS = 2;
+/** The longest a draft's note may be: an assumption, a question, what an edit or a repair changed. */
+export const MAX_NOTE = 200;
 /** The most assumptions a draft lists, so the user reads them all. */
 export const MAX_ASSUMPTIONS = 5;
 
 const Assumptions = z
-  .array(z.string().min(1).max(200))
+  .array(z.string().min(1).max(MAX_NOTE))
   .max(MAX_ASSUMPTIONS)
   .describe("What you assumed where the description left it open, each in a sentence.");
 const Questions = z
-  .array(z.string().min(1).max(200))
+  .array(z.string().min(1).max(MAX_NOTE))
   .max(MAX_QUESTIONS)
   .describe(
     `At most ${MAX_QUESTIONS} questions whose answers would change the draft; none when nothing would.`,
@@ -69,7 +71,7 @@ export const EditSchema = z.strictObject({
     .array(PatchStepSchema)
     .min(1)
     .describe("An RFC 6902 JSON Patch on the current file, each value written as JSON text."),
-  summary: z.string().min(1).max(200).describe("What the patch changes, in a sentence."),
+  summary: z.string().min(1).max(MAX_NOTE).describe("What the patch changes, in a sentence."),
 });
 export type Edit = z.output<typeof EditSchema>;
 
@@ -104,7 +106,7 @@ export const LayoutRepairSchema = z.strictObject({
     .describe(
       "A JSON Patch on storyboard.json moving nodes or beats to another scene or a new one; empty when the labels alone fix it.",
     ),
-  summary: z.string().min(1).max(200).describe("What the repair changes, in a sentence."),
+  summary: z.string().min(1).max(MAX_NOTE).describe("What the repair changes, in a sentence."),
 });
 export type LayoutRepair = z.output<typeof LayoutRepairSchema>;
 

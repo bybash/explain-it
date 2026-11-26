@@ -9,6 +9,7 @@ import type { OpenedProject } from "../schema/api.ts";
 import { type Config, DEFAULT_CONFIG } from "../schema/config.ts";
 import { parseWith, under, type Validated } from "../schema/errors.ts";
 import { parseGraph } from "../schema/graph.ts";
+import { edited } from "../schema/json-patch.ts";
 import {
   CreateProjectArgsSchema,
   GetProjectArgsSchema,
@@ -33,7 +34,7 @@ import {
 import { readHouseRules, saveBrief } from "../server/stories.ts";
 import { saveStoryboard } from "../server/storyboards.ts";
 import { saveStyle } from "../server/styles.ts";
-import { allOf, edited, timingOf } from "./edits.ts";
+import { allOf, timingOf } from "./edits.ts";
 
 /** What the tools work with: the projects folder, the clock, the event hub and preview links. */
 export type ToolContext = {

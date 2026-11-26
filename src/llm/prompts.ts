@@ -20,3 +20,6 @@ export const prompt = (name: PromptName, values: Readonly<Record<string, string>
       return value;
     })
     .trim();
+
+/** The parts of a prompt's message (context files, the files to work on, what to do), each set apart. */
+export const promptParts = (parts: readonly string[]): string => parts.join("\n\n---\n\n");

@@ -1,6 +1,7 @@
 import { storyWarnings } from "../checks/story.ts";
 import { readingProblems } from "../checks/timing.ts";
 import { beatOptions, buildBeats } from "../engine/beats/build.ts";
+import { tenth } from "../engine/beats/timing.ts";
 import type { Config } from "../schema/config.ts";
 import type { Graph } from "../schema/graph.ts";
 import {
@@ -279,7 +280,6 @@ export const beatHints = (
       const hint = `${warning.message.charAt(0).toUpperCase()}${warning.message.slice(1)}.`;
       said.set(warning.beat, [...(said.get(warning.beat) ?? []), hint]);
     }
-  const tenth = (seconds: number) => Math.round(seconds * 10) / 10;
   return new Map(
     plan.beats.map((beat) => [
       beat.id,

@@ -28,6 +28,14 @@ to fix what a tool sent back.
   place. Within the two repairs it is sent back; when they run out, the last
   script that fits the graph is kept with what is left (`structuredDraft`),
   as a script a second too long is better than none.
+- **The story checks are pure proxies, and advice.** "One thing per beat"
+  counts flows and sentences (more than two of either), as the example's
+  second beat has two of each and does one thing; "the last shows the
+  outcome" means it flows no further edge. Jargon, tone and whether the
+  outcome is the right one stay with the LLM. `check` reports them but does
+  not fail on them: a 40 s video is not broken.
+- **A draft keeps its best answer**: when the repairs run out, the answer
+  that fits with the fewest problems left, not the last.
 - **A narration line read too fast asks for plainer words**, not fewer: its
   captions go at the voice's pace, so the length of its words counts, not
   the length of the line.

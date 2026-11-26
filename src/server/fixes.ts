@@ -1,4 +1,4 @@
-import { applyFix, CHANGED_SINCE, invert } from "../checks/fixes.ts";
+import { applyFix, invert } from "../checks/fixes.ts";
 import type { OpenedProject } from "../schema/api.ts";
 import { type ChatMessage, isFixApplied } from "../schema/chat.ts";
 import type { ValidationError } from "../schema/errors.ts";
@@ -40,8 +40,7 @@ export const fixProject = async (
   if (!fixed.ok)
     return {
       ok: false,
-      // A rewrite whose files no longer read is not a conflict: they would not fit.
-      why: fixed.errors.some((e) => e.message === CHANGED_SINCE) ? "conflict" : "invalid",
+      why: fixed.conflict ? "conflict" : "invalid",
       errors: fixed.errors,
     };
   let current = opened;

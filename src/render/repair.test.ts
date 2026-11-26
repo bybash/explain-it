@@ -4,7 +4,7 @@ import { join, resolve } from "node:path";
 import { chromium } from "playwright-core";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { problemKey, sayProblem } from "../checks/chat-report.ts";
-import { repairLayout } from "../llm/drafting.ts";
+import { repairLayout } from "../llm/editing.ts";
 import { FIXTURES_DIR, fixtureClient } from "../llm/fixtures.ts";
 import { CROWDED_PROBLEMS, crowded } from "../llm/recordings.ts";
 import type { CheckWarning } from "../schema/checks.ts";

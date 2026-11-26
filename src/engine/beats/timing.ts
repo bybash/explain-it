@@ -22,6 +22,9 @@ export const CAPTION_CHARS_PER_SECOND = READING_SPEED.step;
 /** Seconds into a beat before its narration and actions start. */
 export const LEAD_IN = 0.3;
 
+/** Seconds to a tenth, as lengths are said to the user and the agent. */
+export const tenth = (seconds: number): number => Math.round(seconds * 10) / 10;
+
 /**
  * How a beat's narration line is timed: spoken (measured, or estimated
  * until the voice exists), read on screen when the voice is off, or unseen

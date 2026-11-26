@@ -10,17 +10,18 @@ import {
 import { canonical, describeFix, fixesFor } from "../checks/fixes.ts";
 import { projectBeats } from "../engine/beats/build.ts";
 import type { LlmClient } from "../llm/client.ts";
-import { repairLayout } from "../llm/drafting.ts";
+import { repairLayout } from "../llm/editing.ts";
 import { shorterWords } from "../llm/words.ts";
 import type { OpenedProject } from "../schema/api.ts";
 import type { ChatMessage } from "../schema/chat.ts";
-import { type CheckReport, QUICK_CHECKS } from "../schema/checks.ts";
+import { type CheckReport, LAYOUT_CHECKS, QUICK_CHECKS } from "../schema/checks.ts";
 import { DEFAULT_CONFIG } from "../schema/config.ts";
 import { type FixOffer, isAutomatic } from "../schema/fixes.ts";
 import { appendChat } from "./chat.ts";
 import type { Events } from "./events.ts";
 import { fixFromChat } from "./fixes.ts";
 import { openProject, projectDir, withProjectLock } from "./projects.ts";
+import { readHouseRules } from "./stories.ts";
 
 /** How long the script rests after a change before the quick checks run, so typing is not checked at each save. */
 const WAIT_MS = 1500;
@@ -115,14 +116,16 @@ export const checksChat = ({
     // What laying hand-placed nodes out again does not cover goes to the LLM: labels and scenes (5.6).
     const left = layout.filter(
       ({ problem, warning }) =>
-        !offers.has(problem) && (warning.check === "overlap" || warning.check === "off-frame"),
+        !offers.has(problem) && (LAYOUT_CHECKS as readonly string[]).includes(warning.check),
     );
     const { graph, storyboard } = opened;
     if (left.length > 0 && graph && storyboard) {
+      const rules = await readHouseRules(projectsDir);
       const repair = await repairLayout(llm, {
         graph,
         storyboard,
         problems: left.map(({ problem }) => sayProblem(problem)),
+        houseRules: rules.ok ? rules.value : null,
       });
       if (repair.ok) {
         const scenesChanged = canonical(repair.value.storyboard) !== canonical(storyboard);

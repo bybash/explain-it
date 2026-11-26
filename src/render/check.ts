@@ -15,6 +15,7 @@ import {
   type BeatWarning,
   type CheckReport,
   type CheckWarning,
+  LAYOUT_CHECKS,
   ShapeSchema,
   type SkippedChecks,
 } from "../schema/checks.ts";
@@ -140,7 +141,7 @@ export const skippedChecks = (
   const lacks = (tool: MissingTool["tool"]) => missing.some((m) => m.tool === tool);
   const skipped: SkippedChecks[] = [];
   if (lacks("chrome"))
-    skipped.push({ checks: ["overlap", "off-frame"], reason: "Chrome is not available" });
+    skipped.push({ checks: [...LAYOUT_CHECKS], reason: "Chrome is not available" });
   if (voiceFailed)
     skipped.push({ checks: ["narration-fit", "loudness"], reason: "the voice did not generate" });
   else if (lacks("ffmpeg"))

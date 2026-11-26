@@ -450,8 +450,8 @@ built from it, so narration fit guards that rule. Title cards, end cards
 and scene titles hold their text long enough by design and are not
 reading-checked. A check that cannot run (no Chrome for the layout, no
 ffmpeg for loudness, no voice for narration fit and loudness) is listed in
-the report as skipped, with the reason; the others still run. `explain-it check` exits 1 when it finds problems and 2
-when it cannot check. Layout warnings do not stop a render; the layout engine keeps
+the report as skipped, with the reason; the others still run. `explain-it check` exits 1 when it finds problems (the story
+checks are advice, and do not count) and 2 when it cannot check. Layout warnings do not stop a render; the layout engine keeps
 routes in sight of boxes and places edge labels and badges clear of boxes and
 of each other. Decision 016 says why.
 

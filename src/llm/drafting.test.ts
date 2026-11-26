@@ -6,7 +6,8 @@ import { MAX_QUESTIONS } from "../schema/drafts.ts";
 import { formatErrors, orThrow } from "../schema/errors.ts";
 import { parseGraph } from "../schema/graph.ts";
 import { parseStoryboard } from "../schema/storyboard.ts";
-import { draftGraph, draftScript, editFile, repairLayout } from "./drafting.ts";
+import { draftGraph, draftScript } from "./drafting.ts";
+import { editFile, repairLayout } from "./editing.ts";
 import { fakeLlm } from "./fake-llm.testing.ts";
 import { FIXTURES_DIR, fixtureClient } from "./fixtures.ts";
 import { CROWDED_PROBLEMS, crowded, DRAFTED_FLOWS, DRAFTED_SCRIPTS, EDITS } from "./recordings.ts";
@@ -92,7 +93,7 @@ describe("draftScript", () => {
     request: "Write the script.",
     context: [],
     graph: parsedGraph,
-    brief: null,
+    brief: { version: 1 as const, shape: "problem" as const },
     config: DEFAULT_CONFIG,
   };
 

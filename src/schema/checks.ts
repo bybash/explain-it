@@ -67,25 +67,18 @@ export const ShapeSchema = z.discriminatedUnion("kind", [
   }),
 ]);
 
-/** The checks that find a problem at a beat. */
-export const BEAT_CHECKS = [
-  "overlap",
-  "off-frame",
-  "reading-speed",
-  "narration-fit",
-  "hook",
-  "outcome",
-  "one-thing",
-] as const;
+/** The checks of what Chrome draws: boxes, labels and overlays that overlap, or leave the frame. */
+export const LAYOUT_CHECKS = ["overlap", "off-frame"] as const;
 /** The checks that need no browser and no sound, which the chat runs after every change (decision 038). */
-export const QUICK_CHECKS = [
-  "reading-speed",
-  "narration-fit",
-] as const satisfies readonly (typeof BEAT_CHECKS)[number][];
-/** The checks that judge the whole video. */
+export const QUICK_CHECKS = ["reading-speed", "narration-fit"] as const;
+/** The story checks at a beat (2.8): the hook, the outcome, one thing per beat. */
+export const STORY_BEAT_CHECKS = ["hook", "outcome", "one-thing"] as const;
+/** The checks that find a problem at a beat. */
+export const BEAT_CHECKS = [...LAYOUT_CHECKS, ...QUICK_CHECKS, ...STORY_BEAT_CHECKS] as const;
+/** The checks that judge the whole video: the mix, and the story's length. */
 export const VIDEO_CHECKS = ["loudness", "length"] as const;
-/** The story checks (2.8): the script's shape, which the assistant repairs in its own drafts. */
-export const STORY_CHECKS = ["hook", "outcome", "one-thing", "length"] as const;
+/** The story checks (2.8): the script's shape, which the assistant repairs in its own drafts. Advice: `check` reports them, but does not fail on them. */
+export const STORY_CHECKS = [...STORY_BEAT_CHECKS, VIDEO_CHECKS[1]] as const;
 /** A narrated beat does more than one thing past this many flows, or sentences. */
 export const ONE_THING = { flows: 2, sentences: 2 } as const;
 export const CHECKS = [...BEAT_CHECKS, ...VIDEO_CHECKS] as const;

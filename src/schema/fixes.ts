@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { IdSchema } from "./common.ts";
+import { GraphSchema } from "./graph.ts";
 import { FloorPointSchema } from "./layout.ts";
 import { MAX_CAPTION, MAX_SAY } from "./storyboard.ts";
 
@@ -46,8 +47,9 @@ export const FixSchema = z.discriminatedUnion("kind", [
    */
   z.strictObject({
     kind: z.literal("rewrite"),
-    before: z.strictObject({ graph: z.unknown().optional(), storyboard: z.unknown().optional() }),
-    after: z.strictObject({ graph: z.unknown().optional(), storyboard: z.unknown().optional() }),
+    // The script is read against the graph it goes with, so its shape is checked where it is applied.
+    before: z.strictObject({ graph: GraphSchema.optional(), storyboard: z.unknown().optional() }),
+    after: z.strictObject({ graph: GraphSchema.optional(), storyboard: z.unknown().optional() }),
   }),
   z.strictObject({
     kind: z.literal("layout"),

@@ -1,9 +1,9 @@
-import type { BeatWarning } from "../schema/checks.ts";
-import { under, type Validated } from "../schema/errors.ts";
+import { type BeatWarning, LAYOUT_CHECKS } from "../schema/checks.ts";
+import { under, type ValidationError } from "../schema/errors.ts";
 import { type Fix, WORD_FIELD_NAMES } from "../schema/fixes.ts";
 import { type Graph, parseGraph } from "../schema/graph.ts";
 import type { FloorPoint } from "../schema/layout.ts";
-import { fail, ok } from "../schema/result.ts";
+import { ok } from "../schema/result.ts";
 import { parseStoryboard, type Storyboard } from "../schema/storyboard.ts";
 
 type Overrides = Readonly<Record<string, FloorPoint>>;
@@ -68,7 +68,7 @@ const asBefore = (overrides: Overrides, fix: Extract<Fix, { kind: "layout" }>) =
 export const fixesFor = (warnings: readonly BeatWarning[], overrides: Overrides): Fix[] => {
   const placed = new Set(
     warnings
-      .filter((w) => w.check === "overlap" || w.check === "off-frame")
+      .filter((w) => (LAYOUT_CHECKS as readonly string[]).includes(w.check))
       .flatMap((w) => w.nodes ?? [])
       .filter((id) => id in overrides),
   );
@@ -95,30 +95,42 @@ export const canonical = (value: unknown): string =>
  * The files a rewrite puts in place, read as the files are (the script
  * against the graph it will have), once each is as the rewrite found it.
  */
-const rewritten = (
-  files: Fixable,
-  fix: Extract<Fix, { kind: "rewrite" }>,
-): Validated<Partial<Fixable>> => {
+const rewritten = (files: Fixable, fix: Extract<Fix, { kind: "rewrite" }>): Applied => {
   for (const file of ["graph", "storyboard"] as const)
     if (file in fix.before && canonical(files[file]) !== canonical(fix.before[file]))
       return changed(`${file}.json`);
   const graph = fix.after.graph === undefined ? undefined : parseGraph(fix.after.graph);
-  if (graph && !graph.ok) return fail(under("graph.json", graph.errors));
+  if (graph && !graph.ok) return invalid(under("graph.json", graph.errors));
   const storyboard =
     fix.after.storyboard === undefined
       ? undefined
       : parseStoryboard(fix.after.storyboard, graph?.value ?? files.graph);
-  if (storyboard && !storyboard.ok) return fail(under("storyboard.json", storyboard.errors));
+  if (storyboard && !storyboard.ok) return invalid(under("storyboard.json", storyboard.errors));
   return ok({
     ...(graph ? { graph: graph.value } : {}),
     ...(storyboard ? { storyboard: storyboard.value } : {}),
   });
 };
 
-/** Why a fix, or its undo, was refused: what it changes is no longer as it was. */
-export const CHANGED_SINCE = "changed since the fix was offered; nothing was done";
+/**
+ * What a fix came to: what it changes, or why it was refused. A conflict
+ * means what it changes is no longer as it was (the user, or the
+ * assistant, changed it since); otherwise its result would not hold.
+ */
+export type Applied =
+  | { readonly ok: true; readonly value: Partial<Fixable> }
+  | { readonly ok: false; readonly conflict: boolean; readonly errors: readonly ValidationError[] };
 
-const changed = (path: string) => fail([{ path, message: CHANGED_SINCE }]);
+const changed = (path: string): Applied => ({
+  ok: false,
+  conflict: true,
+  errors: [{ path, message: "changed since the fix was offered; nothing was done" }],
+});
+const invalid = (errors: readonly ValidationError[]): Applied => ({
+  ok: false,
+  conflict: false,
+  errors,
+});
 
 /**
  * A fix applied to what it changes: only the part it changes comes back,
@@ -126,7 +138,7 @@ const changed = (path: string) => fail([{ path, message: CHANGED_SINCE }]);
  * is refused, as the user, or the assistant, changed it since, and the fix
  * (or the undo) would undo their change.
  */
-export const applyFix = (files: Fixable, fix: Fix): Validated<Partial<Fixable>> => {
+export const applyFix = (files: Fixable, fix: Fix): Applied => {
   switch (fix.kind) {
     case "words": {
       for (const [i, scene] of files.storyboard.scenes.entries())
@@ -150,7 +162,12 @@ export const applyFix = (files: Fixable, fix: Fix): Validated<Partial<Fixable>> 
             },
           });
         }
-      return fail([{ path: "beat", message: `no beat "${fix.beat}" in the script any more` }]);
+      // The beat is gone: the script changed since.
+      return {
+        ok: false,
+        conflict: true,
+        errors: [{ path: "beat", message: `no beat "${fix.beat}" in the script any more` }],
+      };
     }
     case "rewrite":
       return rewritten(files, fix);
