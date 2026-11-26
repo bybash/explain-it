@@ -186,6 +186,16 @@ describe("list_projects and get_project", () => {
     expect(body.preview).toBe(preview(slug));
   });
 
+  it("says what each colour category looks like in the project's palette, to pick one by its colour", async () => {
+    const slug = await exampleProject();
+    expect((await succeeds("get_project", { slug })).colours.c2).toEqual({
+      light: "#0f766e",
+      dark: "#2dd4bf",
+    });
+    await succeeds("set_style", { slug, config: { theme: { palette: "ocean" } } });
+    expect((await succeeds("get_project", { slug })).colours.c1.light).toBe("#7b3fe4");
+  });
+
   it("names a project that does not exist", async () => {
     expect(await fails("get_project", { slug: "nope" })).toEqual(['slug: no project "nope"']);
     expect(await fails("get_project", {})).toEqual(["slug: required"]);

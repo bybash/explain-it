@@ -44,7 +44,8 @@ Slices keep their IDs, but after Milestone 1 they are built in this order:
    built first so the chat works as soon as there is a client), **5.2**,
    **5.8** (checks in the chat), then **5.3**, **5.4** with
    **2.8** (story checks, which the agent runs on its own drafts), **5.5**
-   and **5.6**. Then **Milestone 6**.
+   and **5.6**. Then **Milestone 6**, with **3.15** (the Colours tab)
+   before 6.2, so the new examples can use it.
 6. **Milestone 7**, share outputs: not placed in the order yet. Its open
    questions (below the table) are settled first, in a decision record.
 
@@ -110,6 +111,7 @@ The goal: the CLI renders a hand-written example to an MP4, with no LLM and no v
 | ✅ 3.11 | **Style gate panel, the sound**: voice picker with a sample, voice speed, pacing, captions, music | A voice sample plays from the panel |
 | ✅ 3.13 | **Preview gate checks**: run the checks from the panel, warnings that jump to their beat, the contact sheet | A warning in the example jumps to its beat |
 | ✅ 3.10 | **App styles in Tailwind**: Tailwind v4 through its Vite plugin; the colour tokens and the dark set become `@theme` values; `app.css` moves to utility classes, keeping plain CSS only for CodeMirror's and Mermaid's own classes; the video's styles (`src/engine/`) are untouched; a decision record | Screenshots of each page, light and dark, look the same before and after |
+| ✅ 3.15 | **Colours tab**: a Colours tab in the Style gate, a palette category for each node, edge and area with the default marked, "every node of this kind", saved to `graph.json` alone (`PUT /api/projects/:slug/colours`); a change of colour marks no beat stale; `get_project` and the chat's graph edits see what each category looks like, so "make it green" finds its category | A colour picked in the tab shows in the preview and is saved, with no beat stale; a recorded edit turns "make the identity provider pink" into its category |
 | ✅ 3.14 | **Story brief and rules**: an optional brief for the script (the audience, the one takeaway, the shape of the story from 4.5's list, the hook), the project's own notes and rules (what to stress, what to leave out), and house rules in Settings that every project follows (for example "no jargon", "end with the docs link"); all in the zod schemas with their limits, in `brief.json` (set with `set_brief` and the Script gate) and `house-rules.md`, and given to MCP agents in `get_project` and the `explain_flow` prompt | A brief and a house rule set in the app reach an agent through the prompt and `get_project` |
 
 3.14's open questions (where the brief and the house rules live, and how
@@ -293,6 +295,12 @@ that finishes it.
 - No CI job builds the image before a release (6.1 checked it by hand). A
   smoke test (build, run, answer, render the example) on PRs that change
   the `Dockerfile` would catch a broken image earlier.
+
+### Not placed yet, from 3.15
+
+- The Colours tab has no browser test of its own (3.15 agreed the pure,
+  API, MCP and recorded-LLM seams); it was checked by hand, with
+  screenshots. The e2e flow could pick a colour and save it.
 
 ### Not placed yet, from 6.1
 

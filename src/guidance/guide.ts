@@ -1,8 +1,9 @@
 import { z } from "zod";
 import { CAPTION_CHARS_PER_SECOND, WORDS_PER_SECOND } from "../engine/beats/timing.ts";
 import { FONTS } from "../engine/theme/fonts.ts";
-import { CATEGORIES, KIND_STYLES } from "../engine/theme/kinds.ts";
+import { KIND_STYLES } from "../engine/theme/kinds.ts";
 import { PALETTES } from "../engine/theme/palettes.ts";
+import { CATEGORIES } from "../schema/colours.ts";
 import { ConfigSchema } from "../schema/config.ts";
 import { DRAFT_TOOL_NAMES } from "../schema/drafts.ts";
 import {
@@ -113,7 +114,7 @@ ${ts(schemaShape("Graph", GraphSchema, GRAPH_SHAPE_NAMES))}
 - Node and zone ids may not be one of Mermaid's words: ${commaList(MERMAID_KEYWORDS)}. Edge ids may not be ${commaList(MERMAID_EDGE_KEYWORDS)}.
 - An edge's \`from\` and \`to\` and a node's \`zone\` name ids in the graph. Edges carry the flow, so their direction matters.
 - An icon is a Lucide name as lucide.dev shows it (kebab-case, such as "shield-check"); an unknown one is an error.
-- A category is one of ${commaList(CATEGORIES)}.
+- A category is one of ${commaList(CATEGORIES)}. The palette decides what each looks like; to colour something by name ("make it green"), pick the category whose colour is nearest (\`${T.getProject}\` lists them, as \`colours\`). A change of colour alone marks no beat stale.
 - Each kind has a size, colour and icon of its own; give an icon or category only to change them:
 ${NODE_KINDS.map((kind) => `  - "${kind}": icon "${KIND_STYLES[kind].icon}", category "${KIND_STYLES[kind].category}"`).join("\n")}
 

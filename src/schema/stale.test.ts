@@ -37,6 +37,15 @@ describe("staleBeats", () => {
     expect(beatsNaming("idp").length).toBeGreaterThan(0);
   });
 
+  it("finds nothing stale when only colours change: the script does not depend on them", () => {
+    const recoloured: Graph = {
+      ...graph,
+      nodes: graph.nodes.map((n) => (n.id === "idp" ? { ...n, category: "c3" } : n)),
+      edges: graph.edges.map((e, i) => (i === 0 ? { ...e, category: "muted" } : e)),
+    };
+    expect(staleBeats(graph, recoloured, storyboard)).toEqual([]);
+  });
+
   it("marks the beats that flow an edge that changed or was removed", () => {
     const edge = storyboard.scenes[0]?.beats
       .flatMap((b) => b.actions)
