@@ -150,7 +150,7 @@ user works by hand or over MCP.
 
 | ID | Slice | Done when |
 |---|---|---|
-| 6.1 | **Docker**: a slim image with Chromium and ffmpeg, volumes for projects and cache, a GHCR publish workflow on tags | `docker run` works on a clean machine |
+| ✅ 6.1 | **Docker**: a slim image with Chromium and ffmpeg, volumes for projects and cache, a GHCR publish workflow on tags | `docker run` works on a clean machine |
 | 6.2 | **Examples**: `ci-pipeline` and `checkout`, approved and rendered | All three examples render without a key |
 | 6.3 | **Golden stills in CI**: stills of each example compared against stored images | CI fails on a visual regression |
 | 6.4 | **Docs**: README with a demo video, `docs/ARCHITECTURE.md`, final `CONTRIBUTING.md`, tested models list | A new contributor can run the app from the README alone |
@@ -273,29 +273,44 @@ that finishes it.
   chat's problems (`wordProblems`) read the same quick checks each their
   own way; a Fix in the editor beside a hint could share the chat's.
 
-### For 6.1 (Docker), from 3.1
+### For 6.3 (golden stills in CI), from 1.9 and 6.1
 
-- `npm start` serves `dist/web`, so the image must run `npm run build`.
-- The server listens on `127.0.0.1` unless `HOST` is set. Inside a
-  container it must listen on `0.0.0.0`, so the image sets `HOST=0.0.0.0`.
-  The `docker run` line in SPEC publishes the port on `127.0.0.1` only.
-- Projects live in `PROJECTS_DIR`, `./projects` by default. The image's
-  volume should mount there.
+- The end-to-end render test skips itself without Chrome or ffmpeg, and CI
+  has no ffmpeg, so it never runs there. Golden stills need both: install
+  ffmpeg in CI, or run the stills in the Docker image.
+- Not checked yet: that the image's Chromium gives identical videos with 1
+  and 4 pages (`src/render/render.test.ts` in the image). The example
+  rendered in the container looks right by eye.
 
-### For 6.1 (Docker), from 1.9
+### For 6.5 (release), from 6.1
 
-- Rendering launches the local Chrome (`channel: "chrome"`), or the Chromium
-  at `CHROME_PATH`; the image should set `CHROME_PATH`. `explain-it render`
-  rebuilds the render page only when Vite is installed, so the image must
-  run `npm run build:engine`.
-- A render starts four Chrome processes (decision 010); give the container
-  memory for them. Check that the image's Chromium still gives identical
-  videos with 1 and 4 pages (the render test does).
-- The end-to-end render test skips itself without Chrome or ffmpeg. Check
-  that CI has both, or it never runs there.
+- Before the first publish, check the image against the GPL and LGPL
+  parts it carries (`NOTICE.md`): that naming their upstream and Debian
+  sources is enough, or ship a written offer or the sources themselves.
+- The publish workflow (`.github/workflows/docker.yml`) has not run yet:
+  the first `v*` tag runs it. A new GHCR package is private; make
+  `ghcr.io/bybash/explain-it` public after the first publish.
+- No CI job builds the image before a release (6.1 checked it by hand). A
+  smoke test (build, run, answer, render the example) on PRs that change
+  the `Dockerfile` would catch a broken image earlier.
+
+### Not placed yet, from 6.1
+
+- The image is about 1.65 GB: Chromium and ffmpeg with their libraries
+  are about 800 MB, and the runtime `node_modules` about 640 MB. Mermaid,
+  CodeMirror and React (about 200 MB) are only bundled into the web app,
+  but they are `dependencies`, which `npm ci --omit=dev` keeps; moving them
+  to `devDependencies` needs the dependency-cruiser rule against dev
+  dependencies in `src/` to allow the web app.
+- A render in the container uses about 2.5 GB of memory (four Chrome
+  pages, decision 010); Docker needs at least 4 GB.
 
 ### Found outside a slice
 
+- `serves a part of a video, so a player can seek` in
+  `src/server/render-routes.test.ts` sometimes passes its 5-second timeout
+  under load (twice so far: locally in 5.8, on CI in 6.1), and passes when
+  run again.
 - The starter script (`starterScript`) makes one scene of at most 12
   nodes and 10 beats; a larger graph keeps its other nodes and edges out
   of the starter, for the user, or the assistant, to add as scenes.

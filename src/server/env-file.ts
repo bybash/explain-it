@@ -4,7 +4,8 @@
  * input and output.
  */
 
-const LINE = /^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=(.*)$/;
+// `s`: a value may hold U+2028 and U+2029, which `.` would not match otherwise.
+const LINE = /^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=(.*)$/s;
 
 const nameOf = (line: string): string | undefined =>
   line.trimStart().startsWith("#") ? undefined : LINE.exec(line)?.[1];

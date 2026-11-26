@@ -825,14 +825,28 @@ Creating and editing projects happens in the web UI.
 
 ### Docker
 
-A slim Node base with Chromium and ffmpeg, published to GHCR from CI. The
-voice model is not in the image.
+A slim Node base (Debian) with Chromium and ffmpeg, for Intel and Arm
+machines, published to GHCR from CI when a release is tagged (decision
+041). The voice model is not in the image: it downloads into the cache
+volume the first time a voice is generated.
 
 ```sh
 docker run -p 127.0.0.1:3000:3000 \
-  -v ./projects:/app/projects -v ./cache:/app/cache \
+  -v ./projects:/app/projects -v ./cache:/app/cache -v ./config:/app/config \
   -e OPENROUTER_API_KEY=... ghcr.io/bybash/explain-it
 ```
+
+- Inside the container the app listens on every interface (`HOST=0.0.0.0`);
+  publishing the port on `127.0.0.1` keeps it on this machine.
+- A key saved in the settings page goes to `/app/config/.env`
+  (`ENV_FILE`), its own volume, never beside the projects. A key passed
+  with `-e` needs no file.
+- It runs as the image's `node` user (uid 1000). On Linux, folders mounted
+  from the host and owned by another user need `--user "$(id -u):$(id -g)"`.
+- The image carries GPL and LGPL parts; `NOTICE.md`, copied into it, says
+  which and where their source is.
+- The CLI is in the image: `docker run … ghcr.io/bybash/explain-it
+  explain-it render projects/<name>`.
 
 Supported: macOS and Linux natively; Windows through Docker.
 

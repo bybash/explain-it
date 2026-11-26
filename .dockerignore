@@ -1,0 +1,25 @@
+# Only what the image builds from. Never keys, projects, caches or renders.
+**/.env
+**/.env.*
+!.env.example
+# The settings page's key file, when ./config is mounted from here.
+config/
+.git/
+.github/
+.cursor/
+.vitest/
+node_modules/
+dist/
+projects/
+cache/
+out/
+shots/
+coverage/
+docs/
+dev/
+**/out/
+**/cache/
+**/checks.json
+**/contact-sheet.*
+*.log
+.DS_Store
