@@ -1,4 +1,4 @@
-import { type FormEvent, useCallback, useEffect, useRef, useState } from "react";
+import { type FormEvent, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { type ChatMessage, MAX_CHAT_MESSAGE } from "../schema/chat.ts";
 import { counted } from "../schema/context.ts";
 import type { ValidationError } from "../schema/errors.ts";
@@ -32,6 +32,15 @@ export const Chat = ({
   /** Whether the assistant is still answering, as the server last said. */
   const [working, setWorking] = useState(false);
   const scroller = useRef<HTMLDivElement>(null);
+  const box = useRef<HTMLTextAreaElement>(null);
+  // The box grows with what is typed: by CSS where the browser can, else by its height here.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: each new text may change the height.
+  useLayoutEffect(() => {
+    const area = box.current;
+    if (!area || CSS.supports("field-sizing", "content")) return;
+    area.style.height = "auto";
+    area.style.height = `${area.scrollHeight + 2}px`;
+  }, [text, full]);
   const context = useChatContext(slug);
   const reloadContext = context.reload;
 
@@ -168,6 +177,7 @@ export const Chat = ({
           <textarea
             className={`field max-h-60 resize-none bg-page [field-sizing:content] ${full ? "min-h-26" : "min-h-21"}`}
             id="chat-text"
+            ref={box}
             value={text}
             placeholder="Write a message…"
             onChange={(e) => setText(e.target.value)}

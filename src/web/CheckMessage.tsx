@@ -1,15 +1,11 @@
 import { useState } from "react";
-import type { ChatMessage } from "../schema/chat.ts";
+import { type ChatMessage, isFixApplied } from "../schema/chat.ts";
 import type { ValidationError } from "../schema/errors.ts";
 import type { FixOffer } from "../schema/fixes.ts";
 import { applyFix } from "./api.ts";
 import { Errors } from "./Errors.tsx";
 import { projectHref } from "./route.ts";
 import { Pill } from "./ui.tsx";
-
-/** Whether a fix is applied now, from the chat's own record of it. */
-const isApplied = (messages: readonly ChatMessage[], id: string) =>
-  messages.findLast((m) => m.fix?.id === id)?.fix?.done === "applied";
 
 /** What a fix would change, in a few words: the new words, or what it does. */
 const FixPreview = ({ offer }: { offer: FixOffer }) =>
@@ -53,7 +49,7 @@ export const CheckMessage = ({
     <ul className="mt-1 flex flex-col gap-2" aria-label="What the checks found">
       {found.map((item) => {
         const offer = message.fixes?.find((f) => f.id === item.fix);
-        const applied = offer ? isApplied(messages, offer.id) : false;
+        const applied = offer ? isFixApplied(messages, offer.id) : false;
         return (
           <li key={item.key} className="flex flex-col gap-1">
             <span>{item.text}</span>

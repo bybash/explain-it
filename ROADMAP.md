@@ -144,7 +144,7 @@ user works by hand or over MCP.
 | 5.5 | **Edits through chat**: JSON Patches for the graph and the storyboard | Fixtures: "rename X", "add a retry step", "shorten beat 3" |
 | 5.6 | **Layout repair**: check failures the layout engine cannot fix go back to the LLM | A crowded fixture is fixed |
 | ✅ 5.7 | **Chat agent**: the in-app LLM calls the same tools as MCP agents, in-process (the graph, the brief, the storyboard, the style, the checks, the render), following the guide with the house rules; it works gate by gate and waits for the user's approval in the chat; the panel follows each change; without a key, the chat points at the panel and Settings | Fixtures: a described flow goes from the first message to an approved graph and script through tools alone |
-| ✅ 5.8 | **Checks in the chat**: the quick checks after every script change, the full checks when the Preview gate opens and before a render; the assistant reports them in plain words, each with a Fix. A fix that changes the user's words is offered first; a timing or layout fix is applied and said. Every fix can be undone | Fixtures: a beat that reads too fast is fixed with one click, then undone |
+| ✅ 5.8 | **Checks in the chat**: the quick checks after every script change, the full checks when the Preview gate opens and when a render is asked for; the assistant reports them in plain words, each with a Fix. A fix that changes the user's words is offered first; a layout fix is applied and said. Every fix can be undone | Fixtures: a beat that reads too fast is fixed with one click, then undone |
 
 ## Milestone 6: ship
 
@@ -292,6 +292,9 @@ that finishes it.
   its beat list has an Edit link to the beat in the Script gate.
 - The hook and length checks of the story (2.8) are hints in the Script
   gate, not in the chat.
+- The Script gate's hints (`beatHints` in `src/web/script-model.ts`) and the
+  chat's problems (`wordProblems`) read the same quick checks each their
+  own way; a Fix in the editor beside a hint could share the chat's.
 
 ### For 5.5 (edits through chat), from 3.3
 
