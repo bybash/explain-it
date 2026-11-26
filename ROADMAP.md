@@ -320,6 +320,16 @@ that finishes it.
   smoke test (build, run, answer, render the example) on PRs that change
   the `Dockerfile` would catch a broken image earlier.
 
+### Not placed yet, from 3.16
+
+- The Camera card has no browser test of its own (3.16 agreed the pure,
+  schema and MCP seams, and stills by eye).
+- The camera's sliders show whole percents; a camera set more finely over
+  MCP shows rounded, and moving a slider rounds it.
+- The layout repair's recording (5.6) holds only for some answers: three
+  fresh recordings of the same prompt each left a zone label covered by
+  about 12 px. Record it again only with `repair.test.ts` run after.
+
 ### Not placed yet, from 3.15
 
 - The Colours tab has no browser test of its own (3.15 agreed the pure,
