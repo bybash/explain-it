@@ -25,6 +25,8 @@ describe("layoutWarnings: overlaps", () => {
         check: "overlap",
         ...where,
         px: 50,
+        // For a fix to lay them out again.
+        nodes: ["app", "idp"],
         message: 'node "app" and node "idp" overlap by 50 px',
       },
     ]);

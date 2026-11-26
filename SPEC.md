@@ -548,9 +548,12 @@ Decision 018 says why.
   file is one of its tools.
 - **Checks become fixes.** The quick checks run after every script change,
   and the full checks when the Preview gate opens and before a render. The
-  assistant reports what they find in plain words, each with a Fix. A fix
-  that changes the user's words is offered first; a timing or layout fix
-  (a slower beat, a moved box) is applied and said. Every fix can be undone.
+  assistant reports what they find in plain words, each with a Fix, and
+  only problems it has not reported yet. A fix that changes the user's
+  words (a shorter caption or line, which the LLM proposes) is offered
+  first; a layout fix (a box put by hand laid out again) is applied and
+  said. Every fix can be undone, unless what it changed has changed since
+  (decision 038).
   The assistant runs the checks on its own drafts and repairs them before
   showing them, so most problems never reach the user.
 - Vercel AI SDK. Providers: OpenRouter (default), Anthropic's own API for a

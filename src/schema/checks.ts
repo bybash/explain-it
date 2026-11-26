@@ -83,6 +83,8 @@ export const CheckWarningSchema = z.union([
     at: z.number(),
     /** For a layout problem, by how many pixels: overlap depth, line inside a box, or distance past the safe area. */
     px: z.number().optional(),
+    /** The nodes a layout problem involves, for a fix to move. */
+    nodes: z.array(IdSchema).optional(),
     message: z.string(),
   }),
   z.strictObject({ check: z.enum(VIDEO_CHECKS), message: z.string() }),
