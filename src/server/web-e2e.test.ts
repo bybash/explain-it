@@ -468,8 +468,8 @@ const flow = (
     "checks the video from the preview: a warning jumps to its beat, and the contact sheet shows",
     async () => {
       // The tone voice speaks faster than a reader reads, so the example's captions get warnings.
+      // Opening the gate ran the checks, as their report was out of date (decision 038).
       await page.getByRole("tab", { name: /^Checks/ }).click();
-      await page.getByRole("button", { name: "Run the checks" }).click();
       const warnings = page.getByRole("list", { name: "Warnings at beats" });
       await warnings.waitFor({ timeout: 120_000 });
       await expect.poll(() => page.getByRole("tab", { name: /^Checks \(\d+\)$/ }).count()).toBe(1);
