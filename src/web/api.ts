@@ -26,6 +26,7 @@ import {
 } from "../schema/api.ts";
 import { type Chat, ChatSchema } from "../schema/chat.ts";
 import type { Config, VoiceConfig } from "../schema/config.ts";
+import { type AddContext, ContextFileSchema, ContextListSchema } from "../schema/context.ts";
 import { parseWith, type Validated, type ValidationError } from "../schema/errors.ts";
 import type { Gate } from "../schema/project.ts";
 import { RenderJobSchema } from "../schema/render.ts";
@@ -163,6 +164,21 @@ export const saveBrief = (slug: string, brief: Brief) =>
     headers: { "content-type": "application/json" },
     body: JSON.stringify(brief),
   });
+
+/** The project's context: the files the assistant reads, and how much of the limit they use. */
+export const getContext = (slug: string) =>
+  fetchChecked(ContextListSchema, `/api/projects/${encodeURIComponent(slug)}/context`);
+
+/** Adds a file of context, from an upload or a paste. */
+export const addContextFile = (slug: string, file: AddContext) =>
+  postJson(ContextFileSchema, `/api/projects/${encodeURIComponent(slug)}/context`, file);
+
+export const removeContextFile = (slug: string, name: string) =>
+  fetchChecked(
+    ContextListSchema,
+    `/api/projects/${encodeURIComponent(slug)}/context/${encodeURIComponent(name)}`,
+    { method: "DELETE" },
+  );
 
 /** Saves the script from the Script gate's editor. */
 export const saveStoryboard = (slug: string, storyboard: Storyboard) =>

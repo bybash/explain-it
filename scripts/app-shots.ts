@@ -58,6 +58,12 @@ const seed = (dir: string) => {
       ),
     ].join("\n")}\n`,
   );
+  // Context the user gave, so the chat shows its files.
+  mkdirSync(join(example, "context"), { recursive: true });
+  writeFileSync(
+    join(example, "context", "login-notes.md"),
+    "# Sign-in\n\nWe use Google as the identity provider. Sessions last 30 days.\n",
+  );
   // The example's story, so the Script gate shows a brief filled in.
   writeFileSync(
     join(example, "brief.json"),

@@ -1,8 +1,10 @@
 import { type FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { type ChatMessage, MAX_CHAT_MESSAGE } from "../schema/chat.ts";
+import { counted } from "../schema/context.ts";
 import type { ValidationError } from "../schema/errors.ts";
 import type { Gate } from "../schema/project.ts";
 import { getChat, onServerEvents, sendChat } from "./api.ts";
+import { ChatContext, useChatContext } from "./ChatContext.tsx";
 import { Errors } from "./Errors.tsx";
 import { GATE_LABELS } from "./labels.ts";
 
@@ -16,6 +18,8 @@ export const Chat = ({ slug, gate }: { slug: string; gate: Gate }) => {
   /** Whether the assistant is still answering, as the server last said. */
   const [working, setWorking] = useState(false);
   const end = useRef<HTMLDivElement>(null);
+  const context = useChatContext(slug);
+  const reloadContext = context.reload;
 
   // An answer that arrives after the column is gone, or after another project opened, is dropped.
   // Set on every mount, since React's strict mode mounts twice in development.
@@ -44,9 +48,10 @@ export const Chat = ({ slug, gate }: { slug: string; gate: Gate }) => {
       connected: () => void load(),
       event: (event) => {
         if (event.type === "chat" && event.slug === slug) void load();
+        if (event.type === "project-updated" && event.slug === slug) void reloadContext();
       },
     });
-  }, [load, slug]);
+  }, [load, reloadContext, slug]);
 
   // The newest message stays in sight.
   const count = messages.length + (working ? 1 : 0);
@@ -54,8 +59,14 @@ export const Chat = ({ slug, gate }: { slug: string; gate: Gate }) => {
     if (count > 0) end.current?.scrollIntoView?.({ block: "end" });
   }, [count]);
 
+  // The box takes any paste, which a cap would cut without a word; only sending is limited.
+  const tooLong = text.trim().length > MAX_CHAT_MESSAGE;
+  const canSend = !sending && !working && !tooLong && text.trim() !== "";
+
   const send = async (event: FormEvent) => {
     event.preventDefault();
+    // Enter submits whether or not the button can be pressed.
+    if (!canSend) return;
     setSending(true);
     const sent = await sendChat(slug, text, gate);
     if (!live.current) return;
@@ -116,6 +127,7 @@ export const Chat = ({ slug, gate }: { slug: string; gate: Gate }) => {
         <div ref={end} />
       </div>
       <form className="grid grid-cols-[1fr_auto] gap-2 border-line border-t p-3" onSubmit={send}>
+        <ChatContext context={context} />
         <label htmlFor="chat-text" className="sr-only">
           Message
         </label>
@@ -124,7 +136,6 @@ export const Chat = ({ slug, gate }: { slug: string; gate: Gate }) => {
           id="chat-text"
           value={text}
           rows={3}
-          maxLength={MAX_CHAT_MESSAGE}
           placeholder="Write a message…"
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => {
@@ -134,13 +145,30 @@ export const Chat = ({ slug, gate }: { slug: string; gate: Gate }) => {
             }
           }}
         />
-        <button
-          className="btn self-end"
-          type="submit"
-          disabled={sending || working || text.trim() === ""}
-        >
-          Send
-        </button>
+        <div className="flex flex-col gap-1.5 self-end">
+          <button
+            type="button"
+            className="text-muted text-xs underline hover:text-ink disabled:no-underline disabled:opacity-50"
+            disabled={text.trim() === ""}
+            title="Save what is in the box as a file of context, instead of sending it"
+            onClick={async () => {
+              // What was typed while it was saved stays in the box.
+              if (await context.add([{ name: "pasted.md", text }]))
+                setText((now) => (now === text ? "" : now));
+            }}
+          >
+            Add as context
+          </button>
+          <button className="btn" type="submit" disabled={!canSend}>
+            Send
+          </button>
+        </div>
+        {tooLong && (
+          <p className="col-span-full text-sm text-warn" role="status">
+            {counted(text.length)} characters is too long to send (at most{" "}
+            {counted(MAX_CHAT_MESSAGE)}): add it as context, and say what to do with it.
+          </p>
+        )}
         <Errors className="col-span-full" errors={errors} />
       </form>
     </aside>
