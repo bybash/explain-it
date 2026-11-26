@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { IdSchema } from "./common.ts";
 import { FloorPointSchema } from "./layout.ts";
+import { MAX_CAPTION, MAX_SAY } from "./storyboard.ts";
 
 /**
  * Fixes for what the checks find (SPEC, LLM: checks become fixes; decision
@@ -15,6 +16,15 @@ export const WORD_FIELD_NAMES: Readonly<Record<WordField, string>> = {
   caption: "caption",
   say: "line",
 };
+
+/** The LLM's answer when asked for shorter words: the words again, within the field's own limit. */
+export const shorterWordsSchema = (field: WordField) =>
+  z.strictObject({
+    text: z
+      .string()
+      .min(1)
+      .max(field === "caption" ? MAX_CAPTION : MAX_SAY),
+  });
 
 export const FixSchema = z.discriminatedUnion("kind", [
   z.strictObject({

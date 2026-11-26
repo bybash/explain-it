@@ -70,29 +70,31 @@ export const readingWarnings = (plan: BeatPlan): BeatWarning[] =>
     message: `${kind === "step" ? "the step caption" : "a narration caption"} of beat "${beat.id}" needs ${said(speed)} characters a second to read; ${READING_SPEED[kind]} is the most`,
   }));
 
+/** A line longer than the room its beat leaves it: by how much faster it would have to be said. */
+export type FitProblem = { readonly beat: BeatPlan["beats"][number]; readonly ratio: number };
+
 /**
  * Lines longer than the room their beat leaves them, from the lead-in to the
- * beat's end (SPEC, Checks): by how much faster they would have to be said.
- * Narration-first timing makes every line fit the plan built from it, so in
- * a check this guards that rule; a plan timed by estimates may not fit.
+ * beat's end (SPEC, Checks), as data. Narration-first timing makes every
+ * line fit the plan built from it, so in a check this guards that rule; a
+ * plan timed by estimates may not fit.
  */
-export const narrationFitWarnings = (plan: BeatPlan, narration: Narration): BeatWarning[] =>
-  plan.beats.flatMap((beat): BeatWarning[] => {
+export const fitProblems = (plan: BeatPlan, narration: Narration): FitProblem[] =>
+  plan.beats.flatMap((beat): FitProblem[] => {
     const measured = narration[beat.id];
     if (measured === undefined) return [];
     const ratio = measured / (beat.end - beat.start - LEAD_IN);
-    return ratio > NARRATION_FIT + EPSILON
-      ? [
-          {
-            check: "narration-fit",
-            scene: beat.scene,
-            beat: beat.id,
-            at: beat.start,
-            message: `the narration of beat "${beat.id}" would have to be said ${said(ratio, 2)} times faster to fit; ${NARRATION_FIT} is the most`,
-          },
-        ]
-      : [];
+    return ratio > NARRATION_FIT + EPSILON ? [{ beat, ratio }] : [];
   });
+
+export const narrationFitWarnings = (plan: BeatPlan, narration: Narration): BeatWarning[] =>
+  fitProblems(plan, narration).map(({ beat, ratio }) => ({
+    check: "narration-fit",
+    scene: beat.scene,
+    beat: beat.id,
+    at: beat.start,
+    message: `the narration of beat "${beat.id}" would have to be said ${said(ratio, 2)} times faster to fit; ${NARRATION_FIT} is the most`,
+  }));
 
 /** The final mix against SPEC's loudness (`LOUDNESS`): its integrated level and its true peak. */
 export const loudnessWarnings = ({

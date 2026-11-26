@@ -69,6 +69,11 @@ export const ShapeSchema = z.discriminatedUnion("kind", [
 
 /** The checks that find a problem at a beat. */
 export const BEAT_CHECKS = ["overlap", "off-frame", "reading-speed", "narration-fit"] as const;
+/** The checks that need no browser and no sound, which the chat runs after every change (decision 038). */
+export const QUICK_CHECKS = [
+  "reading-speed",
+  "narration-fit",
+] as const satisfies readonly (typeof BEAT_CHECKS)[number][];
 /** The checks that judge the whole video. */
 export const VIDEO_CHECKS = ["loudness"] as const;
 export const CHECKS = [...BEAT_CHECKS, ...VIDEO_CHECKS] as const;
