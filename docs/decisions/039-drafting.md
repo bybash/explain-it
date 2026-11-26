@@ -34,6 +34,12 @@ to fix what a tool sent back.
 - **Discriminated unions are sent as `anyOf`.** Claude's structured output
   refuses `oneOf`, which zod writes for a beat's actions; the answer is still
   checked against the real schema.
+- **Edits are patches** (5.5): `edit_graph` and `edit_script` answer what
+  the user asked in the chat with a JSON Patch on the current file, applied
+  and checked as the file is, and sent back when it breaks it. Drafting
+  again would rewrite what the user never asked to change. A patch step's
+  value is JSON text in the answer, as structured output takes no field of
+  any type (nor an object left open); the code reads it back.
 - **Nothing is streamed.** The graph shows in the Graph gate once it is
   saved. Streaming moved to Later: a partial graph draws badly, and the
   saved one arrives within seconds.

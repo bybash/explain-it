@@ -6,10 +6,10 @@ import { MAX_QUESTIONS } from "../schema/drafts.ts";
 import { formatErrors, orThrow } from "../schema/errors.ts";
 import { parseGraph } from "../schema/graph.ts";
 import { parseStoryboard } from "../schema/storyboard.ts";
-import { draftGraph, draftScript } from "./drafting.ts";
+import { draftGraph, draftScript, editFile } from "./drafting.ts";
 import { fakeLlm } from "./fake-llm.testing.ts";
 import { FIXTURES_DIR, fixtureClient } from "./fixtures.ts";
-import { DRAFTED_FLOWS, DRAFTED_SCRIPTS } from "./recordings.ts";
+import { DRAFTED_FLOWS, DRAFTED_SCRIPTS, EDITS } from "./recordings.ts";
 
 const { $schema: _, ...graph } = graphJson;
 const answer = (over: Record<string, unknown> = {}) =>
@@ -144,6 +144,41 @@ describe("draftScript", () => {
       const { graph: drafts, script: written } = drafted.value;
       expect(parseStoryboard(written.draft.storyboard, drafts).ok).toBe(true);
       expect(written.remaining).toEqual([]);
+    },
+  );
+});
+
+describe("editFile", () => {
+  const parsedGraph = orThrow(parseGraph(graph), "graph.json");
+
+  it("turns what the user asked into a JSON Patch on the file, and sends back one that breaks it", async () => {
+    const { client, asked } = fakeLlm([
+      JSON.stringify({ patch: [{ op: "remove", path: "/nodes/0" }], summary: "Removed the user." }),
+      JSON.stringify({
+        patch: [{ op: "replace", path: "/nodes/5/label", value: '"Google"' }],
+        summary: "Renamed the identity provider to Google.",
+      }),
+    ]);
+    const edited = await editFile(client, {
+      file: "graph",
+      request: "Rename the identity provider to Google.",
+      graph: parsedGraph,
+    });
+    expect(edited.ok && edited.value.summary).toBe("Renamed the identity provider to Google.");
+    expect(edited.ok && edited.value.patch).toEqual([
+      { op: "replace", path: "/nodes/5/label", value: "Google" },
+    ]);
+    // Removing a node an edge still names breaks the graph: the errors go back.
+    expect(asked[1]?.messages.at(-1)?.content).toMatch(/graph/);
+    expect(asked[0]?.messages[0]?.content).toContain('"id":"idp"');
+  });
+
+  it.each(EDITS.map((edit) => [edit.request, edit] as const))(
+    "makes the edit %s, as recorded with a real model",
+    async (_request, edit) => {
+      const edited = await edit.run(fixtureClient({ dir: FIXTURES_DIR }));
+      expect(edited.ok ? [] : formatErrors(edited.errors)).toEqual([]);
+      if (edited.ok) expect(edit.holds(edited.value.result)).toBe(true);
     },
   );
 });

@@ -236,4 +236,40 @@ describe("agentTools", () => {
     expect(read("storyboard.json").scenes).toHaveLength(storyboard.scenes.length);
     expect(outputs.s).toMatchObject({ suggestedTitleCard: { title: "Signing in with OAuth" } });
   });
+
+  it("changes the graph as the user asked, with a patch that keeps the rest, and says what changed", async () => {
+    const outputs: Record<string, unknown> = {};
+    const { client } = fakeLlm(
+      [
+        JSON.stringify({
+          patch: [{ op: "replace", path: "/nodes/5/label", value: '"Google"' }],
+          summary: "Renamed the identity provider to Google.",
+        }),
+      ],
+      [
+        { text: "", toolCalls: [call("g", T.updateGraph, { graph })] },
+        {
+          text: "",
+          toolCalls: [
+            call("e", T.editGraph, { request: "Rename the identity provider to Google." }),
+          ],
+        },
+        { text: "Renamed.", toolCalls: [] },
+      ],
+    );
+    await runAgent({
+      client,
+      name: "chat",
+      system: "",
+      history: [],
+      tools: agentTools(context, "sign-in", client),
+      onStep: ({ call, output }) => {
+        outputs[call.id] = output;
+      },
+    });
+    const saved = read("graph.json");
+    expect(saved.nodes[5]).toMatchObject({ id: "idp", label: "Google" });
+    expect(saved.nodes.map((n: { id: string }) => n.id)).toEqual(graph.nodes.map((n) => n.id));
+    expect(outputs.e).toMatchObject({ summary: "Renamed the identity provider to Google." });
+  });
 });

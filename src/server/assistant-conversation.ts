@@ -21,6 +21,7 @@ export const CONVERSATION = [
   "The graph looks good. I approve it.",
   "Yes, that story works for me. Go ahead and write the script.",
   "The script looks good. I approve it.",
+  "One change: shorten beat 2.",
 ] as const;
 
 const NOW = new Date("2026-11-24T12:00:00.000Z");
