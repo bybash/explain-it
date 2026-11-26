@@ -184,10 +184,10 @@ Open questions, settled before the milestone starts:
   the zod schemas, as every other limit does, so the LLM's drafts keep to
   them.
 
-## Feedback to plan (2026-11-24)
+## Feedback (2026-11-24)
 
-From using the app after 5.7, in the user's words where possible. To be
-turned into slices; nothing here is scheduled yet.
+From using the app after 5.7, in the user's words where possible. Built
+as three pull requests (decision 037) and one fix (decision 035).
 
 **The video**
 
@@ -203,14 +203,12 @@ turned into slices; nothing here is scheduled yet.
 
 **The chat**
 
-- Replies should render Markdown (headings, bold, lists); the script
-  arrives as raw `**…**` today. A light Markdown editor for writing
-  messages too, for example Milkdown.
-- The chat should be bigger: the whole screen, or expandable; or a full
-  chat with a button that toggles to the gate's panel, to switch between
-  talking and changing things by hand.
-- Long replies (the whole script in the chat) are hard to read; the panel
-  is the place for the files, the chat for a short summary and a question.
+- ✅ Replies show as Markdown. Writing stays plain text: a rich editor
+  (Milkdown) was weighed and left out (decision 037).
+- ✅ Chat, Split or Panel: the chat alone on the page, beside the gate's
+  panel, or the panel alone.
+- ✅ Replies are short: the panel shows the files, so the assistant does not
+  paste the graph or the script.
 
 ## Carried over
 
@@ -259,6 +257,13 @@ that finishes it.
   `src/server/assistant-conversation.ts`).
 - A personal Anthropic key that is not scoped to a workspace needs the
   `anthropic-workspace-id` header; the client does not send one.
+
+### For 5.8 (checks in the chat), from the page's feedback
+
+- The message box does not grow with what is typed.
+- A video playing in the Preview gate plays on when the layout hides it.
+- A step line that failed ("Could not approve the gate: …") shows the same ✓
+  as one that worked; a step says nothing of whether it did.
 
 ### For 5.3 and 5.4 (drafting), from 5.2
 

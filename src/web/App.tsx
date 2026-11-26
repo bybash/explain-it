@@ -30,7 +30,7 @@ export const App = () => {
         </nav>
       </header>
       <main
-        className={`mx-auto px-6 pt-8 pb-16 ${current.page === "project" ? "max-w-[1320px]" : "max-w-[880px]"}`}
+        className={`mx-auto px-6 ${current.page === "project" ? "max-w-[1600px] pt-4 pb-8" : "max-w-[880px] pt-8 pb-16"}`}
       >
         {current.page === "project" ? (
           <ProjectView slug={current.slug} gate={current.gate} />
