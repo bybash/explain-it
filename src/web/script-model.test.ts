@@ -125,13 +125,19 @@ describe("beatHints", () => {
   });
 
   it("times a line already spoken by its voice, as the checks do, rather than by its words", () => {
-    // Estimated from its words, the example's "code" line goes by faster than it can be read.
-    const code = example.scenes.flatMap((s) => s.beats).find((b) => b.id === "code");
-    if (!code?.say) throw new Error("the example has no spoken code beat");
-    const estimated = beatHints(example, graph, DEFAULT_CONFIG)?.get("code");
+    // Estimated from its words, this line (the example's before 6.2) goes by faster than it can be read.
+    const say = "The provider redirects back with a short-lived, one-time code.";
+    const rushed: Storyboard = {
+      ...example,
+      scenes: example.scenes.map((scene) => ({
+        ...scene,
+        beats: scene.beats.map((b) => (b.id === "code" ? { ...b, say } : b)),
+      })),
+    };
+    const estimated = beatHints(rushed, graph, DEFAULT_CONFIG)?.get("code");
     expect(estimated?.hints.join(" ")).toMatch(/too fast to read/);
     // Spoken, it takes 6 seconds: long enough to read, and the beat lasts as long.
-    const spoken = beatHints(example, graph, DEFAULT_CONFIG, { [code.say]: 6 })?.get("code");
+    const spoken = beatHints(rushed, graph, DEFAULT_CONFIG, { [say]: 6 })?.get("code");
     expect(spoken?.hints).toEqual([]);
     expect(spoken?.seconds).toBeGreaterThan(6);
   });
