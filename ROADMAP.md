@@ -307,6 +307,10 @@ that finishes it.
 
 ### Found outside a slice
 
+- `serves a part of a video, so a player can seek` in
+  `src/server/render-routes.test.ts` sometimes passes its 5-second timeout
+  under load (twice so far: locally in 5.8, on CI in 6.1), and passes when
+  run again.
 - The starter script (`starterScript`) makes one scene of at most 12
   nodes and 10 beats; a larger graph keeps its other nodes and edges out
   of the starter, for the user, or the assistant, to add as scenes.
