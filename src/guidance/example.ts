@@ -4,6 +4,11 @@
  * schemas, so it stays valid.
  */
 
+import type { StoryShape } from "../schema/story.ts";
+
+/** The story shape the example follows: it opens on the problem and ends on the outcome. */
+export const EXAMPLE_SHAPE = "problem" satisfies StoryShape;
+
 export const EXAMPLE_GRAPH = {
   version: 1,
   title: "Resetting a password",

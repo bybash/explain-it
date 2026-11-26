@@ -15,8 +15,9 @@ import {
   ZoneSchema,
 } from "../schema/graph.ts";
 import { TOOL_NAMES } from "../schema/mcp.ts";
+import { HOOK_SECONDS, STORY_SHAPES, TARGET_SECONDS } from "../schema/story.ts";
 import { ACTION_TYPES, BeatSchema, SceneSchema, StoryboardSchema } from "../schema/storyboard.ts";
-import { EXAMPLE_GRAPH, EXAMPLE_STORYBOARD } from "./example.ts";
+import { EXAMPLE_GRAPH, EXAMPLE_SHAPE, EXAMPLE_STORYBOARD } from "./example.ts";
 import { schemaShape } from "./shape.ts";
 
 /**
@@ -64,10 +65,11 @@ const STEPS = `## Steps
 
 1. Read the code or the description the user gave you, and find the flow: who and what takes part, and what passes between them.
 2. Write graph.json and call \`${T.createProject}\` (pass \`sources\`: the files you read, with the commit). Show the user the Mermaid from the result and the preview link, then wait for them to approve or ask for changes. Change it with \`${T.updateGraph}\` (a whole graph or a JSON Patch).
-3. Write storyboard.json and call \`${T.setStoryboard}\`. Show the user the script: each scene's title, then each beat's caption and narration, with the timing from the result (estimated until the voice is generated). Wait for their approval; change it with \`${T.setStoryboard}\` again.
-4. Optionally call \`${T.setStyle}\`: a palette, a title card that names the video, an end card with a link, a logo.
-5. Point the user at the preview link to watch it.
-6. When the user wants the video, call \`${T.check}\` to see that the project is ready (it also generates the narration voice, which can take a minute the first time, and lists problems by beat: shorter labels or fewer nodes in a scene fix most layout ones, and a shorter caption or line, or a slower pace, fixes reading speed), then \`${T.render}\`. Follow the job with \`${T.renderStatus}\` until it is done, and give the user the paths of the files it wrote; \`${T.cancelRender}\` stops it. Rendering takes about half a minute per minute of video, per theme.
+3. Agree the story with the user before writing any beat: who the video is for, the one thing they should remember, the shape it takes and its hook (see Shaping the story). Wait for their approval.
+4. Write storyboard.json and call \`${T.setStoryboard}\`. Show the user the script: each scene's title, then each beat's caption and narration, with the timing from the result (estimated until the voice is generated). Wait for their approval; change it with \`${T.setStoryboard}\` again.
+5. Optionally call \`${T.setStyle}\`: a palette, a title card that names the video, an end card with a link, a logo.
+6. Point the user at the preview link to watch it.
+7. When the user wants the video, call \`${T.check}\` to see that the project is ready (it also generates the narration voice, which can take a minute the first time, and lists problems by beat: shorter labels or fewer nodes in a scene fix most layout ones, and a shorter caption or line, or a slower pace, fixes reading speed), then \`${T.render}\`. Follow the job with \`${T.renderStatus}\` until it is done, and give the user the paths of the files it wrote; \`${T.cancelRender}\` stops it. Rendering takes about half a minute per minute of video, per theme.
 
 Every tool result carries a preview link to the project in the web app. When a tool returns errors, each one names its place (\`graph.nodes[2].kind: …\`): fix those and call it again. Use \`${T.listProjects}\` and \`${T.getProject}\` to pick up a project you made before.
 
@@ -95,6 +97,17 @@ ${ts(schemaShape("Storyboard", StoryboardSchema, STORYBOARD_SHAPE_NAMES))}
 - A scene's \`nodes\` are graph node ids. Its beats' actions may only name those nodes, and a flow's edge must join two of them.
 - A node without an \`appear\` is there from the scene's start.`;
 
+const SHAPE = `## Shaping the story
+
+A video is watched once, often without sound at first, by someone who did not ask for it. Settle the story before the beats:
+
+- **Who it is for.** A new developer, the product team, a reviewer: it sets what they already know and which words need explaining.
+- **The one thing to remember.** One sentence. Every beat serves it; leave out what does not, however true.
+- **The shape.** One of:
+${STORY_SHAPES.map((s) => `  - ${s.label} ("${s.id}"): ${s.beats}. For ${s.suits}.`).join("\n")}
+- **The hook.** The first beat's line says, in under ${HOOK_SECONDS} seconds (about ${Math.floor(HOOK_SECONDS * WORDS_PER_SECOND)} words), the problem or the question the video answers, so the viewer wants the rest.
+- **The length.** Aim for ${TARGET_SECONDS.min} to ${TARGET_SECONDS.max} seconds. Longer is fine for a longer flow, split into scenes.`;
+
 const STORY = `## Telling the story
 
 - One idea per beat: one step of the flow, said once.
@@ -113,6 +126,8 @@ ${ts(schemaShape("Config", ConfigSchema))}
 - Send a logo in \`${T.setStyle}\`'s \`logo\` argument, \`{ light?, dark?, corner?, show? }\`, each image as \`{ path }\` (an absolute path) or \`{ dataUrl }\`. It is checked and copied into the project; config.json then names its file.`;
 
 const EXAMPLE = `## A worked example
+
+The example follows the "${EXAMPLE_SHAPE}" shape: the first beat names the problem, the middle beats walk through the flow, and the last shows the outcome.
 
 graph.json:
 
@@ -137,6 +152,7 @@ export const authoringGuide = (): string =>
     STEPS,
     GRAPH,
     STORYBOARD,
+    SHAPE,
     STORY,
     STYLE,
     EXAMPLE,

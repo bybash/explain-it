@@ -38,3 +38,4 @@ later record supersedes an earlier one and says so.
 | [026](026-preview-gate.md) | The preview gate's player and its sound |
 | [027](027-preview-checks.md) | The checks from the Preview gate |
 | [028](028-render-gate.md) | The render gate |
+| [029](029-story-guidance.md) | Storytelling guidance |
