@@ -5,14 +5,7 @@
     {
       "id": "to_checks",
       "title": "From push to checks",
-      "nodes": [
-        "dev",
-        "github",
-        "actions",
-        "lint",
-        "tests",
-        "build"
-      ],
+      "nodes": ["dev", "github", "actions", "lint", "tests", "build"],
       "beats": [
         {
           "id": "push",
@@ -91,15 +84,7 @@
     {
       "id": "the_gate",
       "title": "The gate",
-      "nodes": [
-        "actions",
-        "lint",
-        "tests",
-        "build",
-        "gate",
-        "registry",
-        "staging"
-      ],
+      "nodes": ["actions", "lint", "tests", "build", "gate", "registry", "staging"],
       "beats": [
         {
           "id": "report",
@@ -148,13 +133,7 @@
             },
             {
               "type": "dim",
-              "except": [
-                "gate",
-                "lint",
-                "tests",
-                "build",
-                "actions"
-              ]
+              "except": ["gate", "lint", "tests", "build", "actions"]
             },
             {
               "type": "flow",
@@ -179,10 +158,7 @@
             },
             {
               "type": "dim",
-              "except": [
-                "gate",
-                "registry"
-              ]
+              "except": ["gate", "registry"]
             },
             {
               "type": "flow",
@@ -201,10 +177,7 @@
             },
             {
               "type": "dim",
-              "except": [
-                "registry",
-                "staging"
-              ]
+              "except": ["registry", "staging"]
             },
             {
               "type": "flow",
@@ -219,9 +192,7 @@
           "actions": [
             {
               "type": "dim",
-              "except": [
-                "staging"
-              ]
+              "except": ["staging"]
             },
             {
               "type": "badge",
