@@ -24,11 +24,16 @@ asked for a chat that fixes things, without boring people with checks.
 - **Who proposes what.** The LLM proposes the shorter words, one structured
   call per problem; without a key a problem has no fix, only a link to its
   beat. The code works out layout fixes, which are applied as they are
-  found and said, with Undo.
+  found and said, with Undo. A layout fix holds only the nodes it lays out
+  again, so another node put by hand since does not stop its undo.
 - **Only new problems are posted.** The quick checks run after each script
   change; the full checks when the Preview gate opens and before a render. A
-  message is posted only for problems the chat has not reported yet; one
-  that goes away is dropped quietly, and "all clear" is never posted.
+  message is posted only for problems the chat has not reported yet. One
+  that goes away is dropped quietly, and is not said again if it comes back
+  (as when a fix is undone): its message, with its fix, is still in the
+  chat. "All clear" is never posted. While the assistant works, the checks
+  wait for its turn to end. The assistant reads these messages back as its
+  own, so "fix it" in the chat refers to them.
 
 ## Alternatives
 

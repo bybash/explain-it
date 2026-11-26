@@ -1,5 +1,6 @@
 import type { BeatPlan } from "../engine/beats/build.ts";
 import { type CheckWarning, NARRATION_FIT, READING_SPEED } from "../schema/checks.ts";
+import { WORD_FIELD_NAMES, type WordField } from "../schema/fixes.ts";
 import type { Narration } from "../schema/narration.ts";
 import type { Storyboard } from "../schema/storyboard.ts";
 import { fitProblems, readingProblems } from "./timing.ts";
@@ -11,7 +12,7 @@ const ROOM = 0.9;
 export type WordProblem = {
   readonly kind: "words";
   readonly beat: string;
-  readonly field: "caption" | "say";
+  readonly field: WordField;
   readonly why: "read" | "fit";
   /** The words as they are now. */
   readonly text: string;
@@ -57,20 +58,26 @@ export const wordProblems = (
   return [...found.values()];
 };
 
-const FIELD_NAMES = { caption: "caption", say: "line" } as const;
-
 const sentence = (text: string) => `${text.charAt(0).toUpperCase()}${text.slice(1)}.`;
+
+/** The beat a problem is at; none for one about the whole video. */
+export const beatOf = (problem: ChatProblem): string | undefined =>
+  problem.kind === "words"
+    ? problem.beat
+    : "beat" in problem.warning
+      ? problem.warning.beat
+      : undefined;
 
 /** A problem in plain words, as the chat says it. */
 export const sayProblem = (problem: ChatProblem): string => {
   if (problem.kind === "words")
-    return `The ${FIELD_NAMES[problem.field]} of beat "${problem.beat}" ${
+    return `The ${WORD_FIELD_NAMES[problem.field]} of beat "${problem.beat}" ${
       problem.why === "read" ? "goes by too fast to read" : "is too long to say in its beat"
     }.`;
-  const { warning } = problem;
-  return "beat" in warning
-    ? `In beat "${warning.beat}", ${warning.message}.`
-    : sentence(warning.message);
+  const beat = beatOf(problem);
+  return beat
+    ? `In beat "${beat}", ${problem.warning.message}.`
+    : sentence(problem.warning.message);
 };
 
 /**
@@ -81,7 +88,7 @@ export const sayProblem = (problem: ChatProblem): string => {
 export const problemKey = (problem: ChatProblem): string => {
   if (problem.kind === "words") return `words:${problem.beat}:${problem.field}`;
   const { warning } = problem;
-  if (!("beat" in warning))
-    return `${warning.check}:${warning.message.split(" ").slice(0, 3).join(" ")}`;
+  // The mix's level and peak are one problem: the mix.
+  if (!("beat" in warning)) return warning.check;
   return `${warning.check}:${warning.beat}:${[...(warning.nodes ?? [])].sort().join(",")}`;
 };

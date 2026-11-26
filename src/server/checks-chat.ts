@@ -1,13 +1,19 @@
 import type { TtsProvider } from "../audio/tts.ts";
 import { narrationLengths, readCachedVoice } from "../audio/voice.ts";
-import { type ChatProblem, problemKey, sayProblem, wordProblems } from "../checks/chat-report.ts";
+import {
+  beatOf,
+  type ChatProblem,
+  problemKey,
+  sayProblem,
+  wordProblems,
+} from "../checks/chat-report.ts";
 import { describeFix, fixesFor } from "../checks/fixes.ts";
 import { projectBeats } from "../engine/beats/build.ts";
 import type { LlmClient } from "../llm/client.ts";
 import { shorterWords } from "../llm/words.ts";
 import type { OpenedProject } from "../schema/api.ts";
 import type { ChatMessage } from "../schema/chat.ts";
-import type { BeatWarning, CheckReport } from "../schema/checks.ts";
+import { type CheckReport, QUICK_CHECKS } from "../schema/checks.ts";
 import { DEFAULT_CONFIG } from "../schema/config.ts";
 import { type FixOffer, isAutomatic } from "../schema/fixes.ts";
 import { appendChat } from "./chat.ts";
@@ -17,11 +23,6 @@ import { openProject, projectDir, withProjectLock } from "./projects.ts";
 
 /** How long the script rests after a change before the quick checks run, so typing is not checked at each save. */
 const WAIT_MS = 1500;
-
-/** The checks that the quick run makes: what the full run finds of these, it leaves to it. */
-const QUICK_CHECKS: readonly string[] = ["reading-speed", "narration-fit"];
-
-type Scope = "quick" | "full";
 
 /** The scene a beat is in, and the video, for words that keep their terms. */
 const aboutBeat = (opened: OpenedProject, beat: string) => {
@@ -36,7 +37,8 @@ const aboutBeat = (opened: OpenedProject, beat: string) => {
  * written. Only problems not reported yet are posted, each in plain words:
  * shorter words the LLM proposes are offered, and a layout fix is applied
  * and said, with Undo. What was reported is kept in memory, so a restart
- * may report a problem once more.
+ * may report a problem once more. While the assistant works, its changes,
+ * and a report written meanwhile, wait for its turn to end.
  */
 export const checksChat = ({
   projectsDir,
@@ -53,13 +55,16 @@ export const checksChat = ({
   readonly now: () => Date;
   readonly wait?: number;
 }) => {
-  /** The problems each scope found last time, by project: what has been reported, and is still there. */
-  const known: Record<Scope, Map<string, ReadonlySet<string>>> = {
-    quick: new Map(),
-    full: new Map(),
-  };
+  /**
+   * The problems reported for each project, kept while the server runs: one
+   * that goes away and comes back (a fix undone, say) is not said again, as
+   * its message is still in the chat, with its fix.
+   */
+  const reported = new Map<string, Set<string>>();
   const working = new Set<string>();
   const waiting = new Set<string>();
+  /** The full checks' report written while the assistant worked, said once it is done. */
+  const held = new Map<string, Pick<CheckReport, "warnings">>();
   const timers = new Map<string, ReturnType<typeof setTimeout>>();
   /** The last run asked for each project: runs follow each other, so each sees what the last reported. */
   const runs = new Map<string, Promise<void>>();
@@ -91,27 +96,30 @@ export const checksChat = ({
       };
       offers.set(problem, { id: id(), label: describeFix(fix), fix });
     }
-    const layout = problems.flatMap((p) =>
-      p.kind === "warning" && "beat" in p.warning
-        ? [p as ChatProblem & { warning: BeatWarning }]
+    const layout = problems.flatMap((problem) =>
+      problem.kind === "warning" && "beat" in problem.warning
+        ? [{ problem, warning: problem.warning }]
         : [],
     );
     for (const fix of fixesFor(
       layout.map((p) => p.warning),
       opened.layout?.overrides ?? {},
     )) {
+      if (fix.kind !== "layout") continue;
       const offer = { id: id(), label: describeFix(fix), fix };
-      for (const p of layout)
-        if (p.warning.nodes?.some((node) => node in (fix.before as object))) offers.set(p, offer);
+      for (const { problem, warning } of layout)
+        if (warning.nodes?.some((node) => node in fix.before)) offers.set(problem, offer);
     }
     return offers;
   };
 
-  /** Posts the problems not reported yet, then applies the fixes that need no asking. */
-  const report = async (slug: string, scope: Scope, problems: readonly ChatProblem[]) => {
-    const reported = new Set([...(known.quick.get(slug) ?? []), ...(known.full.get(slug) ?? [])]);
-    known[scope].set(slug, new Set(problems.map(problemKey)));
-    const fresh = problems.filter((p) => !reported.has(problemKey(p)));
+  /**
+   * Posts the problems not reported yet, then applies the fixes that need no
+   * asking. A problem counts as reported once its message is in the chat.
+   */
+  const report = async (slug: string, problems: readonly ChatProblem[]) => {
+    const said = reported.get(slug) ?? new Set();
+    const fresh = problems.filter((p) => !said.has(problemKey(p)));
     if (fresh.length === 0) return;
     const opened = await openProject(projectsDir, slug);
     if (!opened?.ok) return;
@@ -119,7 +127,7 @@ export const checksChat = ({
     const offers = await offersFor(opened.value, fresh, at);
     const fixes = [...new Set(offers.values())];
     const found = fresh.map((p) => {
-      const beat = p.kind === "words" ? p.beat : "beat" in p.warning ? p.warning.beat : undefined;
+      const beat = beatOf(p);
       const fix = offers.get(p)?.id;
       return {
         key: problemKey(p),
@@ -145,14 +153,15 @@ export const checksChat = ({
     await withProjectLock(projectsDir, slug, () =>
       appendChat(projectDir(projectsDir, slug), [message]),
     );
+    reported.set(slug, new Set([...said, ...found.map((f) => f.key)]));
     events.publish({ type: "chat", slug });
     for (const offer of fixes.filter((f) => isAutomatic(f.fix))) {
       const done = await withProjectLock(projectsDir, slug, async () => {
-        const now_ = await openProject(projectsDir, slug);
-        if (!now_?.ok) return undefined;
+        const current = await openProject(projectsDir, slug);
+        if (!current?.ok) return undefined;
         return fixFromChat(
           projectsDir,
-          now_.value,
+          current.value,
           { id: offer.id, undo: false, gate: message.gate },
           now(),
         );
@@ -188,7 +197,7 @@ export const checksChat = ({
   const quick = (slug: string) =>
     queue(slug, async () => {
       const problems = await quickProblems(slug);
-      if (problems) await report(slug, "quick", problems);
+      if (problems) await report(slug, problems);
     });
 
   /** Checks once the script rests, unless the assistant is at work: then once it is done. */
@@ -204,6 +213,21 @@ export const checksChat = ({
     );
   };
 
+  /** The full checks' report, as written: the quick checks run with it, so all of it is said at once. */
+  const full = (slug: string, written: Pick<CheckReport, "warnings">): Promise<void> => {
+    if (working.has(slug)) {
+      held.set(slug, written);
+      return Promise.resolve();
+    }
+    return queue(slug, async () => {
+      const quickOnes = (await quickProblems(slug)) ?? [];
+      const others = written.warnings
+        .filter((w) => !(QUICK_CHECKS as readonly string[]).includes(w.check))
+        .map((warning): ChatProblem => ({ kind: "warning", warning }));
+      await report(slug, [...quickOnes, ...others]);
+    });
+  };
+
   events.subscribe((event) => {
     if (event.type === "project-updated") later(event.slug);
   });
@@ -211,21 +235,25 @@ export const checksChat = ({
   return {
     quick,
     /** The full checks' report, as written: the quick checks run with it, so all of it is said at once. */
-    full: (slug: string, written: Pick<CheckReport, "warnings">) =>
-      queue(slug, async () => {
-        const problems = (await quickProblems(slug)) ?? [];
-        const others = written.warnings
-          .filter((w) => !QUICK_CHECKS.includes(w.check))
-          .map((warning): ChatProblem => ({ kind: "warning", warning }));
-        await report(slug, "quick", problems);
-        await report(slug, "full", others);
-      }),
-    /** The assistant started a turn on the project: changes wait for it. */
-    busy: (slug: string) => void working.add(slug),
+    full,
+    /** The assistant started a turn on the project: changes, and a report written meanwhile, wait for it. */
+    busy: (slug: string) => {
+      working.add(slug);
+      const timer = timers.get(slug);
+      if (timer === undefined) return;
+      clearTimeout(timer);
+      timers.delete(slug);
+      waiting.add(slug);
+    },
     /** The assistant's turn ended: what it changed is checked now. */
     idle: (slug: string) => {
       working.delete(slug);
-      if (waiting.delete(slug)) later(slug);
+      const written = held.get(slug);
+      held.delete(slug);
+      // A held report runs the quick checks too.
+      if (written) void full(slug, written);
+      else if (waiting.has(slug)) later(slug);
+      waiting.delete(slug);
     },
     /** Resolves once the checks asked for so far have run; for tests. */
     settled: async (slug: string) => {

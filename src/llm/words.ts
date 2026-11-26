@@ -1,25 +1,19 @@
-import { z } from "zod";
+import type { z } from "zod";
 import type { WordProblem } from "../checks/chat-report.ts";
 import type { Validated } from "../schema/errors.ts";
+import { shorterWordsSchema, type WordField } from "../schema/fixes.ts";
 import { fail, ok } from "../schema/result.ts";
-import { MAX_CAPTION, MAX_SAY } from "../schema/storyboard.ts";
 import type { LlmClient } from "./client.ts";
 import { type StructuredCall, structuredCall } from "./structured.ts";
 
-const WHAT = { caption: "on-screen caption", say: "narration line" } as const;
+const WHAT: Readonly<Record<WordField, string>> = {
+  caption: "on-screen caption",
+  say: "narration line",
+};
 const WHY = {
   read: "It goes by too fast to read.",
   fit: "It is too long to say in the time its beat has.",
 } as const;
-
-/** The answer: the words again, shorter. */
-const ShorterSchema = (field: WordProblem["field"]) =>
-  z.strictObject({
-    text: z
-      .string()
-      .min(1)
-      .max(field === "caption" ? MAX_CAPTION : MAX_SAY),
-  });
 
 /**
  * The call that writes a caption or line again in fewer words (decision
@@ -32,7 +26,7 @@ export const shorterWordsCall = (
   /** What the video is about, so the words keep its terms: the scene's title, say. */
   about: string,
 ) => {
-  const schema = ShorterSchema(problem.field);
+  const schema = shorterWordsSchema(problem.field);
   return {
     name: "shorter-words",
     system:

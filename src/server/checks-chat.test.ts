@@ -107,6 +107,51 @@ describe("checksChat: the quick checks", () => {
   });
 });
 
+describe("checksChat: what is said once", () => {
+  /** Sets the rushed line of beat "code", as a fix, or its undo, would. */
+  const setLine = (say: string) => {
+    const storyboard = read("storyboard.json");
+    for (const scene of storyboard.scenes)
+      for (const beat of scene.beats) if (beat.id === "code") beat.say = say;
+    writeFileSync(join(dir(), "storyboard.json"), JSON.stringify(storyboard));
+  };
+
+  it("does not say a problem again when it goes away and comes back, as a fix undone does", async () => {
+    const { checks, asked } = make([SHORTER]);
+    await checks.quick("oauth");
+    const rushed = read("storyboard.json").scenes[0].beats.find(
+      (b: { id: string }) => b.id === "code",
+    ).say;
+    setLine("The provider sends back a code.");
+    await checks.quick("oauth");
+    setLine(rushed);
+    await checks.quick("oauth");
+    expect(await chat()).toHaveLength(1);
+    expect(asked).toHaveLength(1);
+  });
+
+  it("checks a save made just before the assistant starts once its turn ends", async () => {
+    const { checks, events } = make([SHORTER]);
+    events.publish({ type: "project-updated", slug: "oauth" });
+    checks.busy("oauth");
+    await new Promise((r) => setTimeout(r, 20));
+    expect(await chat()).toEqual([]);
+    checks.idle("oauth");
+    await checks.settled("oauth");
+    expect(await chat()).toHaveLength(1);
+  });
+
+  it("holds a full report written while the assistant works until its turn ends", async () => {
+    const { checks } = make([SHORTER]);
+    checks.busy("oauth");
+    await checks.full("oauth", { warnings: [] });
+    expect(await chat()).toEqual([]);
+    checks.idle("oauth");
+    await checks.settled("oauth");
+    expect(await chat()).toHaveLength(1);
+  });
+});
+
 describe("checksChat: the full checks", () => {
   it("lays out again a node put by hand that overlaps, says so, and leaves Undo", async () => {
     const { checks } = make([SHORTER]);
