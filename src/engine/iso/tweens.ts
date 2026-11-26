@@ -48,11 +48,16 @@ export const highlightTweens = (target: string, at: number): TweenSpec[] => {
 };
 
 /** `dim`: 0 in full colour, 1 faded back. Used on node and edge targets alike. */
-export const dimTweens = (target: string, at: number): TweenSpec[] => [
+export const dimTweens = (target: string, at: number): TweenSpec[] => fadeDim(target, at, 0, 1);
+
+/** Brings a dimmed node or edge back to full colour, when the focus moves off it. */
+export const undimTweens = (target: string, at: number): TweenSpec[] => fadeDim(target, at, 1, 0);
+
+const fadeDim = (target: string, at: number, from: number, to: number): TweenSpec[] => [
   {
     target,
-    from: { dim: 0 },
-    to: { dim: 1 },
+    from: { dim: from },
+    to: { dim: to },
     duration: NODE_TIMING.dim,
     ease: "inOutSine",
     at,

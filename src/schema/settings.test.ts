@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { maskKey, PROVIDERS, providerOf, SettingsUpdateSchema } from "./settings.ts";
+import {
+  maskKey,
+  PROVIDERS,
+  presetModel,
+  providerOf,
+  SettingsUpdateSchema,
+  SUGGESTED_MODEL,
+  suggestedModel,
+} from "./settings.ts";
 
 describe("SettingsUpdateSchema", () => {
   it("takes a base URL, a model and a key, or null to remove the key", () => {
@@ -57,5 +65,20 @@ describe("providerOf", () => {
     for (const preset of PROVIDERS) expect(providerOf(preset.baseUrl)).toBe(preset.id);
     expect(providerOf("https://openrouter.ai/api/v1/")).toBe("openrouter");
     expect(providerOf("https://example.com/v1")).toBe("custom");
+  });
+});
+
+describe("suggestedModel", () => {
+  it("suggests a model the endpoint knows: Claude's own id for Anthropic, OpenRouter's otherwise", () => {
+    expect(suggestedModel("https://api.anthropic.com/v1")).toBe("claude-opus-5-5");
+    expect(suggestedModel("https://openrouter.ai/api/v1")).toBe(SUGGESTED_MODEL);
+    expect(suggestedModel("https://example.com/v1")).toBe(SUGGESTED_MODEL);
+  });
+
+  it("leaves the model to the user for endpoints whose models are theirs to name", () => {
+    expect(presetModel("https://api.anthropic.com/v1")).toBe("claude-opus-5-5");
+    expect(presetModel("https://openrouter.ai/api/v1")).toBe(SUGGESTED_MODEL);
+    expect(presetModel("https://api.openai.com/v1")).toBeUndefined();
+    expect(presetModel("http://127.0.0.1:11434/v1")).toBeUndefined();
   });
 });

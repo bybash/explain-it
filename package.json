@@ -28,6 +28,7 @@
     "screenshot": "node scripts/dev-screenshot.ts",
     "clip": "node scripts/dev-clip.ts",
     "shots": "node scripts/app-shots.ts",
+    "llm:record": "node scripts/llm-record.ts",
     "shots:compare": "node scripts/compare-shots.ts",
     "layout": "node scripts/layout.ts",
     "music": "node scripts/music.ts",
@@ -51,12 +52,15 @@
     "vitest": "5.1.1"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "4.0.102",
+    "@ai-sdk/openai-compatible": "3.0.90",
     "@codemirror/commands": "6.11.1",
     "@codemirror/state": "6.7.6",
     "@codemirror/view": "6.43.15",
     "@hono/node-server": "2.1.11",
     "@huggingface/transformers": "3.8.1",
     "@modelcontextprotocol/sdk": "1.32.2",
+    "ai": "7.0.169",
     "elkjs": "0.12.1",
     "fast-json-patch": "3.1.1",
     "hono": "4.13.19",

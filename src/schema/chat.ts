@@ -18,6 +18,8 @@ export const ChatMessageSchema = z.strictObject({
   at: z.iso.datetime(),
   /** The gate the user was looking at when the message was sent. */
   gate: z.enum(GATES),
+  /** A line the assistant adds as it works ("Saved the graph."): shown, but not part of the conversation it reads back. */
+  kind: z.literal("step").optional(),
 });
 export type ChatMessage = z.output<typeof ChatMessageSchema>;
 
@@ -33,11 +35,13 @@ export type NewChatMessage = z.output<typeof NewChatMessageSchema>;
 export const ChatSchema = z.object({
   messages: z.array(ChatMessageSchema),
   problems: z.array(ValidationErrorSchema),
+  /** Whether the assistant is still answering the last message. */
+  working: z.boolean(),
 });
 export type Chat = z.output<typeof ChatSchema>;
 
 /** The messages in `chat.jsonl` text; a broken line is named by its number and skipped. */
-export const parseChatLines = (text: string): Chat => {
+export const parseChatLines = (text: string): Omit<Chat, "working"> => {
   const messages: ChatMessage[] = [];
   const problems: ValidationError[] = [];
   text.split("\n").forEach((line, i) => {

@@ -22,6 +22,7 @@ import {
   RenderJobSchema,
   RenderRequestSchema,
 } from "./render.ts";
+import { BriefSchema, HouseRulesSchema } from "./story.ts";
 import { StoryboardSchema } from "./storyboard.ts";
 
 /** The projects API's requests and responses: the server sends these shapes and the web app checks them. */
@@ -137,6 +138,7 @@ export const OpenedProjectSchema = z.object({
   project: ProjectSchema,
   graph: GraphSchema.nullable(),
   storyboard: StoryboardSchema.nullable(),
+  brief: BriefSchema.nullable(),
   layout: LayoutSchema.nullable(),
   config: ConfigSchema.nullable(),
   problems: z.array(ValidationErrorSchema),
@@ -235,5 +237,24 @@ export const ServerEventSchema = z.discriminatedUnion("type", [
 
 export type ProjectSummary = z.output<typeof ProjectSummarySchema>;
 export type ProjectList = z.output<typeof ProjectListSchema>;
+/** A storyboard saved at the Script gate, with the beats still stale. */
+export const StoryboardSavedSchema = z.strictObject({
+  storyboard: StoryboardSchema,
+  staleBeats: ProjectSchema.shape.staleBeats,
+});
+
+/** Each line of the script already spoken, by its words, with its measured length in seconds. */
+export const MeasuredLinesSchema = z.strictObject({
+  seconds: z.record(z.string(), z.number().positive()),
+});
+export type MeasuredLines = z.output<typeof MeasuredLinesSchema>;
+
+/** A brief saved at the Script gate. */
+export const BriefSavedSchema = z.strictObject({ brief: BriefSchema });
+
+/** The house rules, as the Settings page reads and writes them. */
+export const HouseRulesBodySchema = z.strictObject({ text: HouseRulesSchema });
+export type HouseRulesBody = z.output<typeof HouseRulesBodySchema>;
+
 export type OpenedProject = z.output<typeof OpenedProjectSchema>;
 export type ServerEvent = z.output<typeof ServerEventSchema>;

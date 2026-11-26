@@ -20,6 +20,7 @@
   --color-accent-soft: #ede9fe;
   --color-on-accent: #ffffff;
   --color-error: #b91c1c;
+  --color-warn: #b45309;
 
   --radius-box: 10px;
 
@@ -47,6 +48,7 @@
     --color-accent-soft: #2a2350;
     --color-on-accent: #0f1220;
     --color-error: #f87171;
+    --color-warn: #fbbf24;
     color-scheme: dark;
   }
 }

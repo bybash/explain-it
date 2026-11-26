@@ -15,9 +15,9 @@ import {
   ZoneSchema,
 } from "../schema/graph.ts";
 import { TOOL_NAMES } from "../schema/mcp.ts";
-import { HOOK_SECONDS, STORY_SHAPES, TARGET_SECONDS } from "../schema/story.ts";
+import { BriefSchema, HOOK_SECONDS, STORY_SHAPES, TARGET_SECONDS } from "../schema/story.ts";
 import { ACTION_TYPES, BeatSchema, SceneSchema, StoryboardSchema } from "../schema/storyboard.ts";
-import { EXAMPLE_GRAPH, EXAMPLE_SHAPE, EXAMPLE_STORYBOARD } from "./example.ts";
+import { EXAMPLE_BRIEF, EXAMPLE_GRAPH, EXAMPLE_STORYBOARD } from "./example.ts";
 import { schemaShape } from "./shape.ts";
 
 /**
@@ -65,7 +65,7 @@ const STEPS = `## Steps
 
 1. Read the code or the description the user gave you, and find the flow: who and what takes part, and what passes between them.
 2. Write graph.json and call \`${T.createProject}\` (pass \`sources\`: the files you read, with the commit). Show the user the Mermaid from the result and the preview link, then wait for them to approve or ask for changes. Change it with \`${T.updateGraph}\` (a whole graph or a JSON Patch).
-3. Agree the story with the user before writing any beat: who the video is for, the one thing they should remember, the shape it takes and its hook (see Shaping the story). Wait for their approval.
+3. Agree the story with the user before writing any beat: who the video is for, the one thing they should remember, the shape it takes and its hook (see Shaping the story). Wait for their approval, then call \`${T.setBrief}\` with it as brief.json, so the story is kept with the project. A brief may already be there (\`${T.getProject}\` returns it): start from it, and follow its notes.
 4. Write storyboard.json and call \`${T.setStoryboard}\`. Show the user the script: each scene's title, then each beat's caption and narration, with the timing from the result (estimated until the voice is generated). Wait for their approval; change it with \`${T.setStoryboard}\` again.
 5. Optionally call \`${T.setStyle}\`: a palette, a title card that names the video, an end card with a link, a logo.
 6. Point the user at the preview link to watch it.
@@ -108,12 +108,19 @@ ${STORY_SHAPES.map((s) => `  - ${s.label} ("${s.id}"): ${s.beats}. For ${s.suits
 - **The hook.** The first beat's line says, in under ${HOOK_SECONDS} seconds (about ${Math.floor(HOOK_SECONDS * WORDS_PER_SECOND)} words), the problem or the question the video answers, so the viewer wants the rest.
 - **The length.** Aim for ${TARGET_SECONDS.min} to ${TARGET_SECONDS.max} seconds. Longer is fine for a longer flow, split into scenes.`;
 
+const BRIEF = `## brief.json: the story brief (\`${T.setBrief}\`)
+
+${ts(schemaShape("Brief", BriefSchema))}
+
+- Every field but \`version\` is optional; \`${T.setBrief}\` replaces the whole brief.
+- \`notes\` are the user's own rules for this project's story. Follow them as you follow the house rules.`;
+
 const STORY = `## Telling the story
 
 - One idea per beat: one step of the flow, said once.
 - The caption names the step; the narration explains why it matters. Write narration as you would say it, in short sentences. It is read at about ${WORDS_PER_SECOND} words a second, and that sets the beat's length; a beat without narration lasts at least its caption's length at ${CAPTION_CHARS_PER_SECOND} characters a second.
 - Show before you tell: \`appear\` a node or \`flow\` an edge in the beat that first talks about it.
-- Use \`callout\` for the one detail a viewer must remember, \`badge\` for a result, \`highlight\` to point, and \`dim\` to focus on a few nodes.
+- Use \`callout\` for the one detail a viewer must remember, \`badge\` for a result, \`highlight\` to point, and \`dim\` to focus a beat on a few nodes (the focus lasts that beat; dim again in the next beat to keep it).
 - Use scenes for the parts of a longer story, each with the nodes it needs. One scene is often enough.
 - End on the outcome: show what the user has at the end of the flow.`;
 
@@ -127,7 +134,13 @@ ${ts(schemaShape("Config", ConfigSchema))}
 
 const EXAMPLE = `## A worked example
 
-The example follows the "${EXAMPLE_SHAPE}" shape: the first beat names the problem, the middle beats walk through the flow, and the last shows the outcome.
+The example follows the "${EXAMPLE_BRIEF.shape}" shape: the first beat names the problem, the middle beats walk through the flow, and the last shows the outcome.
+
+brief.json:
+
+\`\`\`json
+${json(EXAMPLE_BRIEF)}
+\`\`\`
 
 graph.json:
 
@@ -141,18 +154,37 @@ storyboard.json:
 ${json(EXAMPLE_STORYBOARD)}
 \`\`\``;
 
+/** The user's house rules, above the advice they override; nothing when there are none. */
+const houseRulesSection = (rules: string | null) =>
+  rules === null || rules.trim() === ""
+    ? []
+    : [
+        `## House rules
+
+The user's own rules for every video. Follow them, over any advice below.
+
+${rules.trim()}`,
+      ];
+
 /**
- * The whole guide: the MCP prompt `explain_flow`, the `get_guide` tool, and
- * later the in-app LLM's prompts.
+ * The whole guide: the MCP prompt \`explain_flow\`, the \`get_guide\` tool, and
+ * later the in-app LLM's prompts; with the user's house rules when they have
+ * written any (\`house-rules.md\`).
  */
-export const authoringGuide = (): string =>
+export const authoringGuide = ({
+  houseRules = null,
+}: {
+  readonly houseRules?: string | null;
+} = {}): string =>
   [
     "# Making an explAIn-it video",
     "explAIn-it turns a flow into a short isometric explainer video. You describe the flow as a graph, then tell its story in scenes and beats; explAIn-it lays it out, animates it and renders it.",
+    ...houseRulesSection(houseRules),
     STEPS,
     GRAPH,
     STORYBOARD,
     SHAPE,
+    BRIEF,
     STORY,
     STYLE,
     EXAMPLE,

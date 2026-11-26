@@ -7,6 +7,7 @@ import { Chat } from "./Chat.tsx";
 import { Errors } from "./Errors.tsx";
 import { GATE_LABELS, GATE_PANELS, updatedLabel } from "./labels.ts";
 import { gateSteps } from "./route.ts";
+import { ScriptGate } from "./ScriptGate.tsx";
 import { BoxList, Muted, PageTitle, SectionTitle } from "./ui.tsx";
 
 /** The graph editor, loaded with the graph gate: CodeMirror and Mermaid are large, and only it needs them. */
@@ -196,6 +197,8 @@ const GatePanel = ({
         <Suspense fallback={<Muted>Opening the style…</Muted>}>
           <StylePanel opened={opened} blocked={setBlocked} />
         </Suspense>
+      ) : gate === "script" ? (
+        <ScriptGate opened={opened} blocked={setBlocked} />
       ) : (
         <Muted>This gate's panel comes in a later version.</Muted>
       )}
@@ -241,6 +244,7 @@ const Files = ({ opened }: { opened: OpenedProject }) => {
         storyboard &&
         `${storyboard.scenes.length} scenes, ${storyboard.scenes.flatMap((s) => s.beats).length} beats`,
     },
+    { file: "brief.json", summary: opened.brief && "the story brief" },
     { file: "layout.json", summary: layout && `${Object.keys(layout.positions).length} positions` },
     { file: "config.json", summary: config && "style and output set" },
   ];

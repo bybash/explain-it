@@ -29,6 +29,17 @@ describe("settingsStore", () => {
     expect(await store.current()).toEqual({ baseUrl: DEFAULT_BASE_URL, model: SUGGESTED_MODEL });
   });
 
+  it("suggests Claude's own model id when the endpoint is Anthropic's and no model is set", async () => {
+    writeFileSync(envFile, "LLM_BASE_URL=https://api.anthropic.com/v1\n");
+    const store = settingsStore({ envFile, environment: {} });
+    expect(await store.view()).toMatchObject({
+      provider: "anthropic",
+      model: "claude-opus-5-5",
+      modelIsSuggested: true,
+    });
+    expect((await store.current()).model).toBe("claude-opus-5-5");
+  });
+
   it("writes .env, keeping its other lines, and reads the settings back", async () => {
     writeFileSync(envFile, "# mine\nPORT=3000\n");
     const store = settingsStore({ envFile, environment: {} });

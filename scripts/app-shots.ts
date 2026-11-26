@@ -9,6 +9,7 @@ import { join, resolve } from "node:path";
 import { chromium, type Page } from "playwright-core";
 import { build } from "vite";
 import { isProjectOutput } from "../src/render/project-output.ts";
+import type { ChatMessage } from "../src/schema/chat.ts";
 
 const [outArg] = process.argv.slice(2);
 if (!outArg) throw new Error("usage: node scripts/app-shots.ts <out-dir>");
@@ -30,12 +31,60 @@ const seed = (dir: string) => {
   });
   const project = JSON.parse(readFileSync(join(example, "project.json"), "utf8"));
   writeFileSync(join(example, "project.json"), JSON.stringify({ ...project, gate: "preview" }));
+  // A conversation with the assistant, as the recorded one went, with its step lines.
+  const said = (
+    role: ChatMessage["role"],
+    text: string,
+    gate: string,
+    kind?: ChatMessage["kind"],
+  ) =>
+    JSON.stringify({ role, text, gate, at: "2026-11-19T12:00:00.000Z", ...(kind ? { kind } : {}) });
+  writeFileSync(
+    join(example, "chat.jsonl"),
+    `${[
+      said("user", "Make a video explaining how signing in with Google works in our app.", "graph"),
+      said("assistant", "Saved the graph.", "graph", "step"),
+      said(
+        "assistant",
+        "I've drafted the graph: the user, the browser, the web app, the identity provider, the sessions store and the photos API, with the sign-in steps between them. Does it look right?",
+        "graph",
+      ),
+      said("user", "The graph looks good. I approve it.", "graph"),
+      said("assistant", "Approved the graph gate.", "graph", "step"),
+      said(
+        "assistant",
+        "Graph approved. Before the script, here is the story I'd tell: for developers new to the codebase, the one thing to remember is that the app never sees the password. Shall I go ahead?",
+        "script",
+      ),
+    ].join("\n")}\n`,
+  );
+  // The example's story, so the Script gate shows a brief filled in.
+  writeFileSync(
+    join(example, "brief.json"),
+    JSON.stringify({
+      version: 1,
+      audience: "Developers new to the codebase",
+      takeaway: "The app never sees the password: it gets a token instead.",
+      shape: "problem",
+      hook: "Where does your password go when you sign in with Google?",
+      notes: "Leave out token refresh; it has its own video.",
+    }),
+  );
   // The example again, at the render gate, for its renders.
   const rendering = join(dir, "oauth-render");
   cpSync(example, rendering, { recursive: true });
   writeFileSync(
     join(rendering, "project.json"),
-    JSON.stringify({ ...project, name: "Sign-in video", gate: "render" }),
+    JSON.stringify({ ...project, name: "Sign-in video", gate: "render", staleBeats: ["code"] }),
+  );
+  // The example's graph with no script yet, for the Script gate's starter.
+  const drafting = join(dir, "draft-video");
+  cpSync(example, drafting, { recursive: true });
+  rmSync(join(drafting, "storyboard.json"));
+  rmSync(join(drafting, "brief.json"));
+  writeFileSync(
+    join(drafting, "project.json"),
+    JSON.stringify({ ...project, name: "Draft video", gate: "script" }),
   );
 
   const draft = join(dir, "photo-upload");
@@ -72,6 +121,10 @@ const seed = (dir: string) => {
       .concat("not a message")
       .join("\n")
       .concat("\n"),
+  );
+  writeFileSync(
+    join(dir, "house-rules.md"),
+    "- No jargon without saying what it means.\n- End with a link to the docs.\n",
   );
   // A saved key, so the settings show its hint and the box to remove it.
   writeFileSync(join(dir, ".env"), "LLM_API_KEY=sk-or-v1-0123456789abcdef\n");
@@ -170,9 +223,35 @@ const SHOTS: readonly {
     },
   },
   {
+    name: "chat-assistant",
+    hash: "#/projects/oauth-example/script",
+    ready: (p) => p.getByText("Approved the graph gate.").waitFor(),
+  },
+  {
     name: "script-gate",
     hash: "#/projects/oauth-example/script",
-    ready: (p) => p.getByText("comes in a later version").waitFor(),
+    ready: (p) => p.getByRole("heading", { name: "Beat 1" }).first().waitFor(),
+  },
+  {
+    name: "script-stale",
+    hash: "#/projects/oauth-render/script",
+    ready: async (p) => {
+      await p.getByText("Stale: the graph changed").waitFor();
+      await p.locator("[data-beat=code]").scrollIntoViewIfNeeded();
+    },
+  },
+  {
+    name: "script-start",
+    hash: "#/projects/draft-video/script",
+    ready: (p) => p.getByRole("button", { name: "Start from the graph" }).waitFor(),
+  },
+  {
+    name: "script-starter",
+    hash: "#/projects/draft-video/script",
+    ready: async (p) => {
+      await p.getByRole("button", { name: "Start from the graph" }).click();
+      await p.getByRole("heading", { name: "Beat 1" }).waitFor();
+    },
   },
   {
     name: "style-gate",

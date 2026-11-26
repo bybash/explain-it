@@ -1,11 +1,14 @@
 import type { z } from "zod";
 import {
   ApprovedSchema,
+  BriefSavedSchema,
   ChecksRunSchema,
   CreatedProjectSchema,
   ErrorsResponseSchema,
   GraphReadSchema,
   GraphSavedSchema,
+  HouseRulesBodySchema,
+  MeasuredLinesSchema,
   type OpenedProject,
   OpenedProjectSchema,
   PreviewChecksSchema,
@@ -17,6 +20,7 @@ import {
   SavedLogoSchema,
   type ServerEvent,
   ServerEventSchema,
+  StoryboardSavedSchema,
   type StyleEdit,
   StyleSavedSchema,
 } from "../schema/api.ts";
@@ -27,6 +31,8 @@ import type { Gate } from "../schema/project.ts";
 import { RenderJobSchema } from "../schema/render.ts";
 import { fail, ok } from "../schema/result.ts";
 import { type SettingsUpdate, type SettingsView, SettingsViewSchema } from "../schema/settings.ts";
+import type { Brief } from "../schema/story.ts";
+import type { Storyboard } from "../schema/storyboard.ts";
 
 /**
  * Calls the API and checks what comes back against its schema. Expected
@@ -148,6 +154,36 @@ export const saveStyle = (slug: string, edit: StyleEdit) =>
     method: "PUT",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(edit),
+  });
+
+/** Saves the project's story brief, replacing the one before. */
+export const saveBrief = (slug: string, brief: Brief) =>
+  fetchChecked(BriefSavedSchema, `/api/projects/${encodeURIComponent(slug)}/brief`, {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(brief),
+  });
+
+/** Saves the script from the Script gate's editor. */
+export const saveStoryboard = (slug: string, storyboard: Storyboard) =>
+  fetchChecked(StoryboardSavedSchema, `/api/projects/${encodeURIComponent(slug)}/storyboard`, {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(storyboard),
+  });
+
+/** The measured length of each line already spoken, by its words. */
+export const getMeasuredLines = (slug: string) =>
+  fetchChecked(MeasuredLinesSchema, `/api/projects/${encodeURIComponent(slug)}/narration`);
+
+/** The house rules every project's story follows. */
+export const getHouseRules = () => fetchChecked(HouseRulesBodySchema, "/api/house-rules");
+
+export const saveHouseRules = (text: string) =>
+  fetchChecked(HouseRulesBodySchema, "/api/house-rules", {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ text }),
   });
 
 /** The saved logo as data URLs, for the preview, or null without one. */

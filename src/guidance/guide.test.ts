@@ -2,12 +2,12 @@ import { describe, expect, it } from "vitest";
 import { CATEGORIES } from "../engine/theme/kinds.ts";
 import { PALETTES } from "../engine/theme/palettes.ts";
 import { ConfigSchema } from "../schema/config.ts";
-import { orThrow } from "../schema/errors.ts";
+import { orThrow, parseWith } from "../schema/errors.ts";
 import { GraphSchema, MERMAID_KEYWORDS, NODE_KINDS, parseGraph } from "../schema/graph.ts";
 import { TOOL_NAMES } from "../schema/mcp.ts";
-import { STORY_SHAPES } from "../schema/story.ts";
+import { BriefSchema, STORY_SHAPES } from "../schema/story.ts";
 import { ACTION_TYPES, parseStoryboard, StoryboardSchema } from "../schema/storyboard.ts";
-import { EXAMPLE_GRAPH, EXAMPLE_SHAPE, EXAMPLE_STORYBOARD } from "./example.ts";
+import { EXAMPLE_BRIEF, EXAMPLE_GRAPH, EXAMPLE_STORYBOARD } from "./example.ts";
 import {
   authoringGuide,
   GRAPH_SHAPE_NAMES,
@@ -78,10 +78,33 @@ describe("shaping the story", () => {
     expect(agree).toBeLessThan(script);
   });
 
-  it("says which shape the worked example follows", () => {
-    const shape = STORY_SHAPES.find((s) => s.id === EXAMPLE_SHAPE);
-    expect(shape).toBeDefined();
-    expect(guide).toMatch(new RegExp(`example follows the "${EXAMPLE_SHAPE}" shape`));
+  it("says which shape the worked example follows, in a brief that validates", () => {
+    const brief = orThrow(parseWith(BriefSchema, EXAMPLE_BRIEF), "example brief");
+    expect(STORY_SHAPES.map((s) => s.id)).toContain(brief.shape);
+    expect(guide).toMatch(new RegExp(`example follows the "${brief.shape}" shape`));
+    expect(guide).toContain(JSON.stringify(EXAMPLE_BRIEF, null, 2));
+  });
+
+  it("gives the brief's format, and saves it with set_brief before the beats", () => {
+    expect(guide).toContain(schemaShape("Brief", BriefSchema));
+    const brief = guide.search(new RegExp(`call \`${TOOL_NAMES.setBrief}\``));
+    expect(brief).toBeGreaterThan(-1);
+    expect(brief).toBeLessThan(guide.search(/show the user the script/i));
+  });
+});
+
+describe("house rules", () => {
+  it("puts the user's house rules near the top, above the advice they override", () => {
+    const rules = "- No jargon.\n- End with a link to the docs.";
+    const withRules = authoringGuide({ houseRules: rules });
+    expect(withRules).toContain(`## House rules`);
+    expect(withRules).toContain(rules);
+    expect(withRules.indexOf(rules)).toBeLessThan(withRules.indexOf("## Steps"));
+  });
+
+  it("leaves the guide as it is when there are none", () => {
+    expect(authoringGuide({ houseRules: "" })).toBe(guide);
+    expect(authoringGuide({ houseRules: "  \n" })).toBe(guide);
   });
 });
 

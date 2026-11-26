@@ -9,15 +9,8 @@ import {
 } from "../schema/chat.ts";
 import { projectDir, projectExists, withProjectLock } from "./projects.ts";
 
-/**
- * The assistant's reply until the LLM arrives (Milestone 5): it says plainly
- * that nothing read the message, and what works instead.
- */
-export const STUB_REPLY =
-  "The assistant is not connected yet: it comes with the LLM in a later version. Until then, work in the panel on the right and approve each gate with its button.";
-
 /** A project's chat: every message that reads, and the lines that do not. */
-export const readChat = async (dir: string): Promise<Chat> => {
+export const readChat = async (dir: string): Promise<Omit<Chat, "working">> => {
   try {
     return parseChatLines(await readFile(join(dir, CHAT_FILE), "utf8"));
   } catch (error) {
@@ -48,8 +41,8 @@ export const appendChat = async (dir: string, messages: readonly ChatMessage[]):
 };
 
 /**
- * Saves what the user sent, at the gate they were looking at, and the stub
- * reply; undefined when there is no such project. Only the folder is
+ * Saves what the user sent, at the gate they were looking at; the assistant
+ * answers it after (see `assistant.ts`). Undefined when there is no such project. Only the folder is
  * needed: a broken project.json does not stop the conversation about it.
  */
 export const addChat = (
@@ -61,10 +54,7 @@ export const addChat = (
   withProjectLock(projectsDir, slug, async () => {
     if (!(await projectExists(projectsDir, slug))) return undefined;
     const at = now.toISOString();
-    const messages: ChatMessage[] = [
-      { role: "user", text: sent.text, at, gate: sent.gate },
-      { role: "assistant", text: STUB_REPLY, at, gate: sent.gate },
-    ];
+    const messages: ChatMessage[] = [{ role: "user", text: sent.text, at, gate: sent.gate }];
     await appendChat(projectDir(projectsDir, slug), messages);
     return messages;
   });

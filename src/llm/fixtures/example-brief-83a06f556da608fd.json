@@ -1,0 +1,61 @@
+{
+  "name": "example-brief",
+  "request": {
+    "system": "You write the story brief for an explAIn-it video: who it is for, the one thing to remember, its shape and its hook. Answer with the JSON object only, version 1.",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Write a brief for a video about this flow, for people who use the app: A user forgets their password. The web app looks up their account and emails them a one-time link; they open it and choose a new password."
+      }
+    ],
+    "schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "$schema": {
+          "description": "The JSON Schema for this file, for editors. Ignored by explAIn-it.",
+          "type": "string"
+        },
+        "version": {
+          "type": "number",
+          "const": 1
+        },
+        "audience": {
+          "description": "Who the video is for, such as \"new backend developers\".",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "takeaway": {
+          "description": "The one thing the viewer should remember, in a sentence.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 140
+        },
+        "shape": {
+          "description": "The shape the story takes.",
+          "type": "string",
+          "enum": ["problem", "before-after", "failure", "zoom"]
+        },
+        "hook": {
+          "description": "What the first beat says to make the viewer want the rest.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 140
+        },
+        "notes": {
+          "description": "This project's own notes and rules for the story: what to stress, what to leave out.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        }
+      },
+      "required": ["version"],
+      "additionalProperties": false,
+      "description": "The story a project's script tells: who it is for, what to remember, its shape."
+    }
+  },
+  "reply": {
+    "text": "{\"$schema\":\"https://explain-it.dev/schema/brief.json\",\"version\":1,\"audience\":\"people who use the app and have ever been locked out of their account\",\"takeaway\":\"Forgetting your password is recoverable: the app emails you a one-time link, and that link is the only way to set a new password.\",\"shape\":\"problem\",\"hook\":\"You've typed the wrong password three times and the login page is staring back at you. Here is what happens when you hit 'Forgot password'.\",\"notes\":\"Keep it to the user's view: request the reset, check email, open the one-time link, choose a new password. Stress that the link is single-use and that the app looks up the account before sending anything. Leave out server internals, token formats, and email delivery infrastructure.\"}"
+  }
+}

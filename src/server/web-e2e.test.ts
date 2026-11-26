@@ -9,6 +9,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { isProjectOutput } from "../render/project-output.ts";
 import { MAX_PROJECT_NAME } from "../schema/project.ts";
 import { clockTime } from "../web/preview-time.ts";
+import { CONVERSATION, CONVERSATION_PROJECT } from "./assistant-conversation.ts";
 import { DEFAULT_HOST } from "./listen.ts";
 
 // The web app in a real browser (AGENTS.md, Tests, layer 5): skipped without Chrome, as on CI.
@@ -37,6 +38,7 @@ const DIAGRAM = "[aria-label='The graph as a diagram']";
 const PROJECTS = "[aria-label=Projects] > li";
 const GRAPH_GATE = "[aria-label='Graph gate']";
 const STYLE_GATE = "[aria-label='Style gate']";
+const SCRIPT_GATE = "[aria-label='Script gate']";
 
 /** Ports away from the defaults, so a developer's own app on 3000 and 3001 is left alone. */
 const START_PORT = 3457;
@@ -83,7 +85,8 @@ const running = new Set<ChildProcess>();
 const launch = (args: readonly string[], env: Record<string, string>) => {
   const child = spawn(process.execPath, args, {
     cwd: root,
-    env: { ...process.env, ...env },
+    // The assistant answers from the recorded fixtures: no key, and the same answers every run.
+    env: { ...process.env, LLM_FIXTURES: join(root, "src", "llm", "fixtures"), ...env },
     stdio: ["ignore", "ignore", "pipe"],
   });
   running.add(child);
@@ -191,13 +194,14 @@ const flow = (
     await page.waitForURL(/#\/projects\/oauth-login\/graph$/);
   });
 
-  it("keeps the chat, with its stub reply, across a restart", async () => {
+  it("keeps the chat, with the assistant's reply, across a restart", async () => {
     await page.fill("#chat-text", "Explain how OAuth login works");
     await page.press("#chat-text", "Enter");
     await expect.poll(() => page.locator(MESSAGES).count(), SOON).toBe(2);
+    // Nothing was recorded for this message, so the assistant says it cannot answer, and what works instead.
     await expect
       .poll(() => page.textContent(`${MESSAGES}[data-role=assistant]`), SOON)
-      .toContain("not connected yet");
+      .toContain("I can't answer yet");
     if (restart) {
       await server.stop();
       server = await serve(projectsDir);
@@ -339,6 +343,87 @@ const flow = (
 
     await page.click("text=Approve and go to Preview");
     await page.waitForURL(/#\/projects\/oauth-style\/preview$/);
+  }, 60_000);
+
+  it("has the assistant answer in the chat: it saves the graph, which the panel shows, and asks", async () => {
+    // The recorded conversation's project and first message, so the assistant's steps replay.
+    const made = await fetch(`${server.url}/api/projects`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name: CONVERSATION_PROJECT }),
+    });
+    expect(made.status).toBe(201);
+    await page.goto(`${server.url}/#/projects/password-reset/graph`);
+    await page.fill("#chat-text", CONVERSATION[0]);
+    await page.press("#chat-text", "Enter");
+    await expect
+      .poll(() => page.locator(`${MESSAGES}[data-kind=step]`).allTextContents(), SOON)
+      .toEqual(["✓ Saved the graph."]);
+    await expect
+      .poll(() => page.locator(`${MESSAGES}[data-role=assistant]:not([data-kind])`).count(), SOON)
+      .toBe(1);
+    // The panel follows: the graph the assistant saved is drawn.
+    await page.locator(DIAGRAM).waitFor(SOON);
+  }, 60_000);
+
+  it("keeps the story: a brief at the Script gate and house rules in Settings, which an agent then reads", async () => {
+    exampleAt(projectsDir, "oauth-story", "script");
+    await page.goto(`${server.url}/#/projects/oauth-story/script`);
+    await page.getByLabel("Who it is for").fill("New backend developers");
+    await page.getByLabel("The one thing to remember").fill("The app never sees the password.");
+    await page.getByLabel("Shape").selectOption("before-after");
+    await page.getByLabel("Hook").fill("Where does your password go?");
+    await page.getByLabel("Notes and rules").fill("Leave out token refresh.");
+    // Unsaved, the brief holds the gate.
+    await expect.poll(() => page.isDisabled("text=Approve and go to Style"), SOON).toBe(true);
+    await page.click("text=Save the brief");
+    await expect
+      .poll(() => page.textContent(`${SCRIPT_GATE} [role=status]`), SOON)
+      .toContain("Saved");
+    // The gate hears of the save a render later, through the Script gate's panel.
+    await expect.poll(() => page.isDisabled("text=Approve and go to Style"), SOON).toBe(false);
+    await page.reload();
+    await expect.poll(() => page.getByLabel("Shape").inputValue(), SOON).toBe("before-after");
+    expect(await page.getByLabel("Who it is for").inputValue()).toBe("New backend developers");
+
+    await page.goto(`${server.url}/#/settings`);
+    const rules = "- No jargon.\n- End with a link to the docs.";
+    await page.getByLabel("House rules").fill(rules);
+    await page.click("text=Save the house rules");
+    await expect
+      .poll(() => page.textContent("[aria-label=Storytelling] [role=status]"), SOON)
+      .toContain("Saved");
+    await page.reload();
+    await expect.poll(() => page.getByLabel("House rules").inputValue(), SOON).toBe(rules);
+
+    // An agent reads both, as an IDE's MCP client would.
+    const rpc = async (method: string, params: unknown) => {
+      const response = await fetch(`${server.url}/mcp`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+        },
+        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
+      });
+      return (await response.json()).result;
+    };
+    const opened = await rpc("tools/call", {
+      name: "get_project",
+      arguments: { slug: "oauth-story" },
+    });
+    const project = JSON.parse(opened.content[0].text);
+    expect(project.brief).toEqual({
+      version: 1,
+      audience: "New backend developers",
+      takeaway: "The app never sees the password.",
+      shape: "before-after",
+      hook: "Where does your password go?",
+      notes: "Leave out token refresh.",
+    });
+    expect(project.houseRules).toBe(rules);
+    const prompt = await rpc("prompts/get", { name: "explain_flow", arguments: {} });
+    expect(prompt.messages[0].content.text).toContain(rules);
   }, 60_000);
 
   it.skipIf(!hasFfmpeg)(

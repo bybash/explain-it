@@ -3,12 +3,13 @@ import type { ValidationError } from "../schema/errors.ts";
 import {
   ENV_NAMES,
   PROVIDERS,
+  presetModel,
   providerOf,
   type SettingsView,
-  SUGGESTED_MODEL,
 } from "../schema/settings.ts";
 import { getSettings, saveSettings } from "./api.ts";
 import { Errors } from "./Errors.tsx";
+import { HouseRules } from "./HouseRules.tsx";
 import { formOf, type SettingsForm, settingsChanges } from "./settings-form.ts";
 import { Muted, PageTitle } from "./ui.tsx";
 
@@ -93,8 +94,13 @@ export const Settings = () => {
           disabled={locked("baseUrl")}
           onChange={(e) => {
             const preset = PROVIDERS.find((p) => p.id === e.target.value);
+            const baseUrl = preset ? preset.baseUrl : "";
+            // A model still as suggested follows the endpoint: its preset's own, or none to type. One the user chose is kept.
+            const suggested =
+              (view.modelIsSuggested && form.model === view.model) ||
+              (form.baseUrl !== view.baseUrl && form.model === (presetModel(form.baseUrl) ?? ""));
             // Custom clears the URL for the user to type their endpoint's.
-            change({ baseUrl: preset ? preset.baseUrl : "" });
+            change({ baseUrl, ...(suggested ? { model: presetModel(baseUrl) ?? "" } : {}) });
             if (!preset) document.getElementById("settings-base-url")?.focus();
           }}
         >
@@ -128,7 +134,7 @@ export const Settings = () => {
           value={form.model}
           disabled={locked("model")}
           spellCheck={false}
-          placeholder={SUGGESTED_MODEL}
+          placeholder={presetModel(form.baseUrl) ?? "The model's id, as the endpoint names it"}
           onChange={(e) => change({ model: e.target.value })}
         />
         {locked("model") ? (
@@ -183,6 +189,7 @@ export const Settings = () => {
         </div>
         <Errors errors={errors} />
       </form>
+      <HouseRules />
     </section>
   );
 };

@@ -13,7 +13,7 @@ export const GATE_LABELS: Readonly<Record<Gate, string>> = {
 /** What each gate's panel shows (SPEC, User flow), until the panels themselves arrive. */
 export const GATE_PANELS: Readonly<Record<Gate, string>> = {
   graph: "The flow as Mermaid code and its diagram, to edit directly.",
-  script: "The scenes and beats: captions, narration and actions.",
+  script: "The story, then its scenes and beats: captions, narration and actions.",
   style:
     "How the video looks and sounds. Changes show in the preview straight away; the voice and the music have samples to listen to.",
   preview:

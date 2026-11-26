@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { authoringGuide, graphSummary, storyboardSummary } from "../guidance/guide.ts";
+import { graphSummary, storyboardSummary } from "../guidance/guide.ts";
 import { RESOLUTIONS, THEME_MODES } from "../schema/config.ts";
 import { formatErrors, type Validated } from "../schema/errors.ts";
 import {
@@ -14,6 +14,7 @@ import {
   PROMPT_NAMES,
   RenderArgsSchema,
   RenderJobArgsSchema,
+  SetBriefArgsSchema,
   SetStoryboardArgsSchema,
   SetStyleArgsSchema,
   TOOL_NAMES,
@@ -32,7 +33,9 @@ import {
 import {
   createProjectTool,
   getProjectTool,
+  guideTool,
   listProjectsTool,
+  setBriefTool,
   setStoryboardTool,
   setStyleTool,
   type ToolContext,
@@ -88,10 +91,10 @@ const TOOLS = [
   {
     name: TOOL_NAMES.getGuide,
     schema: GetGuideArgsSchema,
-    run: async () => ({ ok: true as const, value: authoringGuide() }),
+    run: guideTool,
     text: true,
     description:
-      "Returns the guide to making an explAIn-it video: the steps and when to wait for the user's approval, the exact formats of graph.json and storyboard.json with their limits, how to tell the story in beats, the style options, and a worked example. Read it before writing a graph or a storyboard.",
+      "Returns the guide to making an explAIn-it video: the user's house rules, the steps and when to wait for the user's approval, the exact formats of graph.json and storyboard.json with their limits, how to shape the story and tell it in beats, the style options, and a worked example. Read it before writing a graph or a storyboard.",
   },
   {
     name: TOOL_NAMES.listProjects,
@@ -105,7 +108,7 @@ const TOOLS = [
     schema: GetProjectArgsSchema,
     run: getProjectTool,
     description:
-      "Reads one project by its slug: project.json, graph.json, storyboard.json, layout.json and config.json (null when missing), what is wrong with any broken file, the graph as Mermaid, and a preview link.",
+      "Reads one project by its slug: project.json, graph.json, storyboard.json, brief.json, layout.json and config.json (null when missing), what is wrong with any broken file, the user's house rules for every video (null when none), the graph as Mermaid, and a preview link.",
   },
   {
     name: TOOL_NAMES.createProject,
@@ -122,6 +125,13 @@ const TOOLS = [
     description:
       "Replaces a project's graph.json with `graph`, or applies an RFC 6902 JSON Patch to it with `patch`; lays it out again keeping manual positions. Returns the Mermaid, the beats the change made stale, and any storyboard lines that no longer fit the graph. " +
       graphSummary(),
+  },
+  {
+    name: TOOL_NAMES.setBrief,
+    schema: SetBriefArgsSchema,
+    run: setBriefTool,
+    description:
+      "Saves a project's story brief, brief.json, replacing the one before: who the video is for (`audience`), the one thing to remember (`takeaway`), its `shape`, its `hook`, and the user's `notes` for this story; every field but `version` is optional. Agree it with the user before writing the storyboard, and follow it when you do. Returns the brief and a preview link.",
   },
   {
     name: TOOL_NAMES.setStoryboard,
@@ -191,7 +201,7 @@ export const createMcpServer = (context: ToolContext): McpServer => {
     PROMPT_NAMES.explainFlow,
     {
       description:
-        "Make an explainer video of a flow with explAIn-it: the steps, the file formats, how to tell the story, and when to wait for your approval.",
+        "Make an explainer video of a flow with explAIn-it: your house rules, the steps, the file formats, how to shape and tell the story, and when to wait for your approval.",
       argsSchema: {
         topic: z
           .string()
@@ -199,19 +209,25 @@ export const createMcpServer = (context: ToolContext): McpServer => {
           .describe('What to explain, such as "how login works in this repository".'),
       },
     },
-    ({ topic }) => ({
-      messages: [
-        {
-          role: "user" as const,
-          content: {
-            type: "text" as const,
-            text: topic
-              ? `Make an explAIn-it video explaining ${topic}. Follow this guide.\n\n${authoringGuide()}`
-              : authoringGuide(),
+    async ({ topic }) => {
+      const read = await guideTool(context);
+      // A prompt has no error result of its own; the client shows this message.
+      if (!read.ok) throw new Error(formatErrors(read.errors).join("\n"));
+      const guide = read.value;
+      return {
+        messages: [
+          {
+            role: "user" as const,
+            content: {
+              type: "text" as const,
+              text: topic
+                ? `Make an explAIn-it video explaining ${topic}. Follow this guide.\n\n${guide}`
+                : guide,
+            },
           },
-        },
-      ],
-    }),
+        ],
+      };
+    },
   );
   return server;
 };

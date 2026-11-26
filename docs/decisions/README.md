@@ -39,3 +39,9 @@ later record supersedes an earlier one and says so.
 | [027](027-preview-checks.md) | The checks from the Preview gate |
 | [028](028-render-gate.md) | The render gate |
 | [029](029-story-guidance.md) | Storytelling guidance |
+| [030](030-story-brief.md) | The story brief and house rules |
+| [031](031-three-paths.md) | Three ways through one process, and the assistant |
+| [032](032-script-editor.md) | The Script gate's editor |
+| [033](033-llm-client.md) | The LLM client |
+| [034](034-chat-assistant.md) | The chat assistant |
+| [035](035-dim-focus.md) | A dim is its beat's focus |

@@ -13,9 +13,21 @@ export const ENV_NAMES = {
   openRouterKey: "OPENROUTER_API_KEY",
 } as const;
 
-/** Endpoints the page offers by name; any other base URL is "custom". */
+/** The model suggested when none is set: a capable model that OpenRouter serves. */
+export const SUGGESTED_MODEL = "anthropic/claude-sonnet-5.5";
+
+/**
+ * Endpoints the page offers by name; any other base URL is "custom". One
+ * with a `model` suggests that one, as its own API names models its own way.
+ */
 export const PROVIDERS = [
   { id: "openrouter", label: "OpenRouter", baseUrl: "https://openrouter.ai/api/v1" },
+  {
+    id: "anthropic",
+    label: "Anthropic (Claude)",
+    baseUrl: "https://api.anthropic.com/v1",
+    model: "claude-opus-5-5",
+  },
   { id: "openai", label: "OpenAI", baseUrl: "https://api.openai.com/v1" },
   { id: "ollama", label: "Ollama", baseUrl: "http://127.0.0.1:11434/v1" },
   { id: "lmstudio", label: "LM Studio", baseUrl: "http://127.0.0.1:1234/v1" },
@@ -26,9 +38,6 @@ export type ProviderId = z.output<typeof ProviderSchema>;
 
 /** OpenRouter, the default provider (SPEC, LLM). */
 export const DEFAULT_BASE_URL = PROVIDERS[0].baseUrl;
-/** The model suggested when none is set: a capable model that OpenRouter serves. */
-export const SUGGESTED_MODEL = "anthropic/claude-sonnet-5.5";
-
 const MAX_URL = 500;
 const MAX_MODEL = 200;
 const MAX_KEY = 500;
@@ -44,16 +53,16 @@ export const LOCAL_HOSTS = ["localhost", "127.0.0.1", "[::1]"] as const;
 /** Docker's name for the machine it runs on, where Ollama or LM Studio listen. */
 const DOCKER_HOST = "host.docker.internal";
 
+/** Whether a hostname is this machine, as Ollama and LM Studio are: their calls never cross the network. */
+export const isThisMachine = (hostname: string): boolean =>
+  (LOCAL_HOSTS as readonly string[]).includes(hostname) || hostname === DOCKER_HOST;
+
 /** Whether calls to this base URL keep the key off the network: anything but http, or http to this machine. */
 const keepsKeyPrivate = (url: string) => {
   // zod runs this even after the URL check fails; that failure is already named.
   if (!URL.canParse(url)) return true;
   const { protocol, hostname } = new URL(url);
-  return (
-    protocol !== "http:" ||
-    (LOCAL_HOSTS as readonly string[]).includes(hostname) ||
-    hostname === DOCKER_HOST
-  );
+  return protocol !== "http:" || isThisMachine(hostname);
 };
 
 export const SettingsUpdateSchema = z.strictObject({
@@ -122,3 +131,25 @@ const withoutSlash = (url: string) => url.replace(/\/+$/, "");
 /** The preset a base URL belongs to, or "custom". */
 export const providerOf = (baseUrl: string): ProviderId =>
   PROVIDERS.find((p) => withoutSlash(p.baseUrl) === withoutSlash(baseUrl))?.id ?? "custom";
+
+/** The preset a base URL belongs to, if any. */
+const presetOf = (baseUrl: string) => PROVIDERS.find((p) => p.id === providerOf(baseUrl));
+
+/**
+ * The model a preset suggests, as its own API names it: OpenRouter's and
+ * Anthropic's; undefined for an endpoint whose models are the user's to name
+ * (OpenAI, Ollama, LM Studio, a custom one).
+ */
+export const presetModel = (baseUrl: string): string | undefined => {
+  if (providerOf(baseUrl) === "openrouter") return SUGGESTED_MODEL;
+  const preset = presetOf(baseUrl);
+  return preset && "model" in preset ? preset.model : undefined;
+};
+
+/** The model used when none is set: the preset's own, else `SUGGESTED_MODEL`. */
+export const suggestedModel = (baseUrl: string): string => presetModel(baseUrl) ?? SUGGESTED_MODEL;
+
+/** The host of Claude's own API, from its preset: the provider client calls it with Anthropic's API. */
+export const ANTHROPIC_HOST = new URL(
+  PROVIDERS.find((p) => p.id === "anthropic")?.baseUrl ?? "https://api.anthropic.com",
+).hostname;

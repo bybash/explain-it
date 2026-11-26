@@ -36,12 +36,15 @@ Slices keep their IDs, but after Milestone 1 they are built in this order:
 4. **3.2 to 3.5**, then **3.10** (the app's styles in Tailwind, before the
    remaining panels add more CSS), then **3.7**, **3.11**, **3.8**, **3.13**,
    **3.9**, **4.5** (storytelling guidance, so MCP agents tell better
-   stories straight away) and **3.12**: the rest of the web app.
-5. **Milestones 5 and 6**, as listed, with **3.14** (the story brief and
-   rules), **2.8** (story checks) and **3.6** (the script gate's panel) just
-   before **5.4**: until the LLM drafts scripts, a script comes over MCP,
-   and nothing blocks on editing it in the app. 5.4 then drafts the brief
-   first, for approval, and the beats from it.
+   stories straight away) with **3.14** (the story brief and rules), and
+   **3.6** (the script gate's editor): the rest of the web app. 3.6 closes
+   the path by hand, so a video can be made in the app without an LLM
+   (decision 031). 3.12 moved to **Later**.
+5. **Milestone 5**, the assistant: **5.1**, then **5.7** (the chat agent,
+   built first so the chat works as soon as there is a client), **5.2**,
+   **5.8** (checks in the chat), then **5.3**, **5.4** with
+   **2.8** (story checks, which the agent runs on its own drafts), **5.5**
+   and **5.6**. Then **Milestone 6**.
 6. **Milestone 7**, share outputs: not placed in the order yet. Its open
    questions (below the table) are settled first, in a decision record.
 
@@ -89,7 +92,7 @@ The goal: the CLI renders a hand-written example to an MP4, with no LLM and no v
 | ✅ 2.5 | **Layout checks**: overlap (polygons) and off-frame at each beat's midpoint, including boxes moved onto each other or onto another zone by manual overrides; a JSON report; `explain-it check` | A broken fixture is caught; an overlapping override is reported; the example passes |
 | ✅ 2.6 | **Timing and audio checks**: reading speed, narration fit, loudness | Same as 2.5 |
 | ✅ 2.7 | **Contact sheet**: one still per beat on one image | A contact sheet of the example in the PR |
-| 2.8 | **Story checks**: pure checks on the script's shape, as warnings by beat: the first beat is narrated and short (the hook), the last shows the outcome, the video's length is within a target, and no narrated beat does more than one thing; run by `check`, the Checks tab and 5.4's repair loop. Judgement calls (jargon, tone) stay with the LLM | A broken fixture is caught; the example passes |
+| 2.8 | **Story checks**: pure checks on the script's shape: the first beat is narrated and short (the hook), the last shows the outcome, the video's length is within a target, and no narrated beat does more than one thing. The assistant runs them on its own drafts and repairs what they find before the user sees the script (5.4); the Script gate's editor shows them as hints beside each beat, and `check` reports them. Judgement calls (jargon, tone) stay with the LLM | A broken fixture is caught; the example passes |
 
 ## Milestone 3: web app
 
@@ -100,25 +103,17 @@ The goal: the CLI renders a hand-written example to an MP4, with no LLM and no v
 | ✅ 3.3 | **Chat and gates**: the chat column, the gate stepper, the split layout, `chat.jsonl`; no LLM yet (a stub reply) | Messages persist across restarts |
 | ✅ 3.4 | **Mermaid round-trip**: Mermaid to graph (jsdom, pinned version) and graph to Mermaid, keeping kind, icon and category by id | Round-trip tests on all examples and a set of Mermaid fixtures |
 | ✅ 3.5 | **Graph gate panel**: a Mermaid editor with the rendered diagram, approve and edit | Editing the Mermaid updates `graph.json` |
-| 3.6 | **Script gate panel**: the scene and beat editor; stale beats after graph edits | Changing a node marks only its beats as stale |
+| ✅ 3.6 | **Script gate panel**: the scene and beat editor, a form (captions, narration, actions picked from the scene's nodes and edges), with a starter script made from the graph, live hints beside each beat (its length, and a caption or line that reads too fast), and stale beats after graph edits | Changing a node marks only its beats as stale |
 | ✅ 3.7 | **Style gate panel, the look**: palette and mode, font, title and end cards, logo upload, output, with a live preview drawn by the render player | Changes show in the preview straight away |
 | ✅ 3.8 | **Preview gate**: the player with its sound (the voice generated with progress, mixed as the render mixes it), play and pause, a scrubber and the beat list | The example can be previewed with voice |
 | ✅ 3.9 | **Render gate**: the job queue, progress over SSE, cancel, downloads | The example renders from the UI |
 | ✅ 3.11 | **Style gate panel, the sound**: voice picker with a sample, voice speed, pacing, captions, music | A voice sample plays from the panel |
 | ✅ 3.13 | **Preview gate checks**: run the checks from the panel, warnings that jump to their beat, the contact sheet | A warning in the example jumps to its beat |
-| 3.12 | **Style extras**: a custom palette editor, font upload | A custom palette and an uploaded font show in the preview and the render |
 | ✅ 3.10 | **App styles in Tailwind**: Tailwind v4 through its Vite plugin; the colour tokens and the dark set become `@theme` values; `app.css` moves to utility classes, keeping plain CSS only for CodeMirror's and Mermaid's own classes; the video's styles (`src/engine/`) are untouched; a decision record | Screenshots of each page, light and dark, look the same before and after |
-| 3.14 | **Story brief and rules**: an optional brief for the script (the audience, the one takeaway, the shape of the story from 4.5's list, the hook), the project's own notes and rules (what to stress, what to leave out), and house rules in Settings that every project follows (for example "no jargon", "end with the docs link"); all in the zod schemas with their limits, set with `set_storyboard` and the Script gate, and given to MCP agents in `get_project` and the `explain_flow` prompt | A brief and a house rule set in the app reach an agent through the prompt and `get_project` |
+| ✅ 3.14 | **Story brief and rules**: an optional brief for the script (the audience, the one takeaway, the shape of the story from 4.5's list, the hook), the project's own notes and rules (what to stress, what to leave out), and house rules in Settings that every project follows (for example "no jargon", "end with the docs link"); all in the zod schemas with their limits, in `brief.json` (set with `set_brief` and the Script gate) and `house-rules.md`, and given to MCP agents in `get_project` and the `explain_flow` prompt | A brief and a house rule set in the app reach an agent through the prompt and `get_project` |
 
-Open questions for 3.14, settled in its decision record:
-
-- **Where the brief lives**: in `storyboard.json`, or in its own file so
-  that a new script keeps the brief it was written for.
-- **Where the house rules live**: in `.env` with the other settings, or in a
-  file next to the projects that can be shared with a team.
-- **How rules are written**: free text with a length limit, which an agent
-  or the LLM follows, or a few fixed switches (tone, jargon, length), which
-  2.8's checks could also verify. Free text first is simplest.
+3.14's open questions (where the brief and the house rules live, and how
+rules are written) are settled in decision 030.
 
 ## Milestone 4: MCP
 
@@ -132,16 +127,24 @@ The goal: make a video end to end from an IDE, with no LLM in explAIn-it.
 | ✅ 4.4 | **IDE setup**: README configuration for Claude Code, Cursor and VS Code; a walkthrough explaining a feature of this repository | A video of an explAIn-it feature made from Claude Code, attached to the PR |
 | ✅ 4.5 | **Storytelling guidance**: how to shape the whole story, not only a beat, in `src/guidance/`: who it is for, the one takeaway, a hook in the first few seconds, and a few story shapes to pick from (problem, how it works, outcome; before and after; the happy path, then what goes wrong; the whole system, then one part). The agent agrees the story with the user before writing the beats; served in `get_guide` and the `explain_flow` prompt, and reused by 5.4 | The prompt shows the shapes and the brief step; the example's script follows one shape |
 
-## Milestone 5: LLM in the web app
+## Milestone 5: the assistant
+
+The goal: the chat on the left does the work for the user, from the first
+message to the render, with their own key (decision 031). The in-app LLM
+is an agent with the same tools MCP agents have, so the app, the IDE and
+the path by hand stay one process. Without a key, the chat says so and the
+user works by hand or over MCP.
 
 | ID | Slice | Done when |
 |---|---|---|
-| 5.1 | **LLM client**: AI SDK with OpenRouter and OpenAI-compatible providers, structured calls, the repair loop, fixture recording and replay | Tests replay fixtures without a key |
+| ✅ 5.1 | **LLM client**: AI SDK with OpenRouter, Anthropic's own API (a Claude key) and OpenAI-compatible providers, structured calls, the repair loop, fixture recording and replay | Tests replay fixtures without a key |
 | 5.2 | **Context**: pasted text and file upload, the 100k-character limit, storing files in `context/` | Oversized context is refused with a clear message |
-| 5.3 | **Graph drafting**: chat and context to `graph.json`, streamed into the Mermaid view, at most two questions | Fixtures: three described flows give valid graphs |
-| 5.4 | **Script drafting**: the story brief first (3.14), for approval, keeping to the project's and the house rules; then graph to scenes and beats, and a suggested title card, validated by the schema and the checks, repaired on failure | Fixtures: the three graphs give valid storyboards |
+| 5.3 | **Graph drafting**, through the chat agent (5.7): chat and context to `graph.json`, streamed into the Mermaid view, at most two questions | Fixtures: three described flows give valid graphs |
+| 5.4 | **Script drafting**, through the chat agent (5.7): the story brief first (3.14), for approval, keeping to the project's and the house rules; then graph to scenes and beats, and a suggested title card, validated by the schema, the quick checks and 2.8's story checks, and repaired before the user sees it | Fixtures: the three graphs give valid storyboards |
 | 5.5 | **Edits through chat**: JSON Patches for the graph and the storyboard | Fixtures: "rename X", "add a retry step", "shorten beat 3" |
 | 5.6 | **Layout repair**: check failures the layout engine cannot fix go back to the LLM | A crowded fixture is fixed |
+| ✅ 5.7 | **Chat agent**: the in-app LLM calls the same tools as MCP agents, in-process (the graph, the brief, the storyboard, the style, the checks, the render), following the guide with the house rules; it works gate by gate and waits for the user's approval in the chat; the panel follows each change; without a key, the chat points at the panel and Settings | Fixtures: a described flow goes from the first message to an approved graph and script through tools alone |
+| 5.8 | **Checks in the chat**: the quick checks after every script change, the full checks when the Preview gate opens and before a render; the assistant reports them in plain words, each with a Fix. A fix that changes the user's words is offered first; a timing or layout fix is applied and said. Every fix can be undone | Fixtures: a beat that reads too fast is fixed with one click, then undone |
 
 ## Milestone 6: ship
 
@@ -181,31 +184,53 @@ Open questions, settled before the milestone starts:
   the zod schemas, as every other limit does, so the LLM's drafts keep to
   them.
 
+## Feedback to plan (2026-11-24)
+
+From using the app after 5.7, in the user's words where possible. To be
+turned into slices; nothing here is scheduled yet.
+
+**The video**
+
+- ✅ Scene 2 of a video went semi-transparent: `dim` only ever faded out.
+  Fixed: a dim is now its beat's focus (decision 035).
+
+**The Graph gate**
+
+- The screen is a mess; it needs a cosmetic pass.
+- The Mermaid text and the drawn graph should be one view with a toggle
+  icon button between them, and it should expand (full width or full
+  screen) to see the graph better.
+- "Approve and go to Script" belongs at the top right, not under the
+  editor.
+- The graph the assistant makes should show in the graph viewer on the
+  right, not as Mermaid text in its reply. Two causes seen: the editor kept
+  its old text when the assistant saved ("The graph was changed elsewhere;
+  saving replaces it"), and the guide tells agents to show the Mermaid,
+  which suits the IDE but not the app.
+
+**The chat**
+
+- Replies should render Markdown (headings, bold, lists); the script
+  arrives as raw `**…**` today. A light Markdown editor for writing
+  messages too, for example Milkdown.
+- The chat should be bigger: the whole screen, or expandable; or a full
+  chat with a button that toggles to the gate's panel, to switch between
+  talking and changing things by hand.
+- Long replies (the whole script in the chat) are hard to read; the panel
+  is the place for the files, the chat for a short summary and a question.
+
 ## Carried over
 
 Work a finished slice left for a later one. Each list is removed by the slice
 that finishes it.
 
-### For 5.4 (script drafting), from 2.6 and 3.13
+### For 5.4 (script drafting) and 5.8 (checks in the chat), from 2.6 and 3.13
 
-- `set_storyboard`, and the script drafting's repair loop, could use the
+- `set_storyboard`, the script drafting's repair loop, and 5.8's checks
+  after every script change could use the
   quick checks (reading speed and narration fit, pure, in
   `src/checks/timing.ts`) without Chrome; the layout checks need Chrome and
   loudness a mix. The Preview gate runs them all from its Checks tab.
-
-### For 3.12 (style extras), from 3.7
-
-- The palette select shows a custom palette set over MCP as "Custom" but
-  cannot edit it.
-- `fontFor` (`src/engine/theme/fonts.ts`) knows only bundled fonts; an
-  uploaded one needs the renderer, the checks and the preview to load it
-  from the project's `assets/`.
-- Taking a saved logo out leaves its file in `assets/`; nothing removes
-  files the config no longer names, as with old voice lines in `cache/`.
-- The checks' `filesKey` (`src/render/check-files.ts`) covers the config,
-  not the files in `assets/`: an uploaded font, or a logo file replaced
-  under the same name, leaves an older report marked up to date. Hash the
-  files the config names once fonts can be uploaded.
 
 ### For 5.6 (layout repair), from 2.5
 
@@ -216,35 +241,47 @@ that finishes it.
   heights off its line (the example's "save session").
 - Not checked yet: the title and end cards, and edges against zone labels.
 
-### For 5.1 (LLM client), from 3.2
+### For 5.3, 5.4 and 5.8, from 5.1 and 5.7
 
-- `settingsStore(...).current()` in `src/server/settings.ts` gives the base
-  URL, model and full key, read fresh from `.env` on each call; the client
-  takes them from there. The page checks nothing against the provider: a
-  wrong key or model shows up only on the first call, so 5.1 should name it
-  plainly ("the key was refused by openrouter.ai"). The suggested model
-  `anthropic/claude-sonnet-5.5` (`SUGGESTED_MODEL`) is unchecked; confirm
-  the id when recording the first fixtures.
+- The assistant (`runAssistant` in `src/server/assistant.ts`) drafts with
+  its tools today, in whole files, as an MCP agent does. 5.3 and 5.4 can
+  add drafting tools that make one structured call each
+  (`structuredCall`, `src/llm/structured.ts`, with the repair loop), with
+  prompts in `src/llm/prompts/` as Markdown (SPEC, LLM), and add the
+  models they test to the README's list.
+- Nothing is streamed: the chat gets a line per change, then the reply.
+  5.3 streams the graph into the Mermaid view.
+- Every step sends the whole guide as the system prompt; prompt caching
+  (Claude's own API) would cut the cost of a long turn.
+- A turn cannot be cancelled from the chat, and a message sent while the
+  assistant is answering is refused (409).
+- The assistant reads earlier turns as text only; a long conversation sends
+  them all. A summary of older turns can come when it matters.
+- `approve_gate` is guarded by its description and the system prompt
+  only: the model is trusted to call it after the user approves. 5.8's
+  checks can run when it is called.
+- Recorded answers replay by a hash of everything asked
+  (`src/llm/fixtures/`); a changed guide, tool or prompt needs
+  `npm run llm:record` again (the scripted conversation is in
+  `src/server/assistant-conversation.ts`).
+- A personal Anthropic key that is not scoped to a workspace needs the
+  `anthropic-workspace-id` header; the client does not send one.
 
-### For 3.6 (script gate panel), from 3.3, 3.5, 3.8 and 3.13
+### For 5.8 (checks in the chat), from 3.6 and 3.13
 
-- The script gate's panel replaces the last placeholder in `GatePanel`
-  (`src/web/ProjectView.tsx`), as `GraphPanel` does for the graph gate;
-  a panel tells `GatePanel` through `blocked` when the gate cannot be
-  approved yet (unsaved edits). Approving the script gate needs
-  `storyboard.json`, valid (`src/server/gates.ts`); the other gates need
-  nothing yet. A panel that needs a large library loads it with the panel
-  (`lazy`), as the graph editor does.
-- The end-to-end test (`src/server/web-e2e.test.ts`) runs the app as
-  `npm start` and as `npm run dev` on ports of its own; 3.6 adds the
-  script gate's steps to its flow. It needs Chrome, so CI skips it.
-- SPEC's preview gate says "jump to a beat and edit it": 3.8's beat list
-  (`src/web/PreviewBeats.tsx`) jumps, and so does a warning in the Checks
-  tab (3.13); editing a beat there can reuse 3.6's beat editor once it
-  exists.
-- 3.6's stale beats come from saving the graph: `saveGraph`
-  (`src/server/graphs.ts`) marks them in `project.json`, as MCP's
-  `update_graph` does.
+- SPEC's preview gate says "jump to a beat and edit it": the Preview
+  gate's beat list (`src/web/PreviewBeats.tsx`) and a warning in its
+  Checks tab jump to the beat in the player, not to the Script gate's
+  editor (`src/web/ScriptPanel.tsx`, `BeatCard.tsx`). A Fix there can open
+  the beat it changed.
+- The editor's hints (`beatHints` in `src/web/script-model.ts`) are the
+  quick checks in the browser; the chat's Fix can act on the same hints.
+- The starter script (`starterScript`) makes one scene of at most 12
+  nodes and 10 beats; a larger graph keeps its other nodes and edges out
+  of the starter, for the user, or the assistant, to add as scenes.
+- 3.6 has no browser test of its own (the seams agreed were the API, the
+  editor's pure functions and MCP); the e2e flow can add the Script
+  gate's steps when 5.8 changes it.
 
 ### For 5.5 (edits through chat), from 3.3
 
@@ -307,6 +344,13 @@ that finishes it.
   pitch, a release as one card or clip per feature, a module as an
   onboarding walkthrough (as 4.4's walkthrough of this repository).
 - The narration alone as audio, to listen to away from the screen.
+- Style extras (was 3.12): a custom palette editor and font upload. A
+  palette set over MCP shows as "Custom" but cannot be edited in the
+  Style gate. `fontFor` (`src/engine/theme/fonts.ts`) knows only bundled
+  fonts; an uploaded one needs the renderer, the checks and the preview to
+  load it from `assets/`, and the checks' `filesKey`
+  (`src/render/check-files.ts`) to hash the files the config names, so a
+  replaced font or logo marks an older report out of date.
 - Render speed (from 1.10, 2.4 and 3.9): a render captures every frame
   twice (captioned and clean), about twice the time; making the clean video
   optional, caching the music by mood, seed and length (1.4–2.8 s per
@@ -316,8 +360,8 @@ that finishes it.
   68), and two at once each run at about half speed; overlapping renders
   still came out byte-identical to each rendered alone, so the queue is
   for speed and memory, not for determinism.
-- Housekeeping (from 2.1 and 3.9): old lines stay in `cache/tts/` when a
-  line is edited; the Render gate cannot delete a render; renders made
+- Housekeeping (from 2.1, 3.7 and 3.9): old lines stay in `cache/tts/` when a
+  line is edited; taking a logo out leaves its file in `assets/`; the Render gate cannot delete a render; renders made
   before 3.9 have no `render.json`, so the gate does not list them; and a
   cancel waits for a voice model download already under way. The gate
   re-reads every render on each progress event; with many renders, the

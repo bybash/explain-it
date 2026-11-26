@@ -16,6 +16,7 @@ import { parseGraph } from "../schema/graph.ts";
 import { parseLayout } from "../schema/layout.ts";
 import { type Project, parseProject } from "../schema/project.ts";
 import { fail, ok } from "../schema/result.ts";
+import { BriefSchema } from "../schema/story.ts";
 import { parseStoryboard } from "../schema/storyboard.ts";
 import { slugify } from "./slug.ts";
 
@@ -181,12 +182,22 @@ export const openProject = async (
 
   const graph = await optional("graph.json", parseGraph);
   const config = await optional("config.json", parseConfig);
+  const brief = await optional("brief.json", (data) => parseWith(BriefSchema, data));
   // The storyboard and layout refer to the graph, so they can only be checked once it is valid.
   const storyboard = graph
     ? await optional("storyboard.json", (data) => parseStoryboard(data, graph))
     : null;
   const layout = graph ? await optional("layout.json", (data) => parseLayout(data, graph)) : null;
-  return ok({ slug, project: project.value, graph, storyboard, layout, config, problems });
+  return ok({
+    slug,
+    project: project.value,
+    graph,
+    storyboard,
+    brief,
+    layout,
+    config,
+    problems,
+  });
 };
 
 /** The last change queued for each project folder. */

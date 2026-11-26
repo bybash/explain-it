@@ -44,10 +44,25 @@ The app is a chat on the left and a panel on the right. Work moves through
 five **gates**. Each gate shows its result in the panel; the user approves it
 by chat or by button, or edits it, either through chat or directly in the panel.
 
+**Three ways through, one process** (decision 031). The gates, the files
+and the checks are the same whoever does the work, and the ways can be
+mixed on one project:
+
+- **The chat.** With an LLM key in Settings, the assistant does the work:
+  it calls the same tools as an MCP agent, gate by gate, and waits for the
+  user's approval in the chat. From 5.8 it runs the checks itself and offers
+  a fix for what they find (see LLM).
+- **MCP.** An agent in the user's IDE, with their own LLM, calls the tools
+  (see MCP).
+- **By hand.** Without a key, the user does each gate in its panel: the
+  Mermaid editor, the brief and the beat editor, the style form, the
+  preview and the render; or writes the files and uses the CLI. The chat
+  says that no LLM is connected and points at the panel and Settings.
+
 | Gate | The LLM produces | The panel shows | Direct edits |
 |---|---|---|---|
 | 1. Graph | `graph.json` from the description and context | Mermaid code and the rendered diagram | Edit the Mermaid code |
-| 2. Script | `storyboard.json`: scenes and beats | A list of scenes and beats | Edit captions, narration, actions |
+| 2. Script | `brief.json`, the story, then `storyboard.json`: scenes and beats | The brief, then the scenes and beats as a form, each beat with its length and hints | Edit the brief; start a script from the graph; edit scenes, captions, narration, actions |
 | 3. Style | Nothing (defaults are filled in) | Palette, font, voice, captions, music, output | The form |
 | 4. Preview | Nothing (voice is generated here) | The player with a scrubber, beat list, check warnings and contact sheet | Jump to a beat and edit it |
 | 5. Render | Nothing | Render progress, then downloads | Cancel, render again |
@@ -61,14 +76,28 @@ Rules:
   A beat references what its actions name (a dim action names the nodes it
   keeps); a scene's node list does not make its beats stale. A stale beat
   stops being stale once it is rewritten.
+- The Script gate's editor (decision 032) makes a starter script from the
+  graph when there is none: one scene, a beat for each edge that shows its
+  ends and sends its flow, captions from the labels, and no narration yet.
+  Actions are picked from the scene's own nodes and edges. Beside each
+  beat it shows its length and hints, worked out in the browser as the
+  user types: from the reading-speed check, a line or caption that goes by
+  too fast to read; from 4.5's hook rule, a first beat too long for a
+  hook. Hints show while the script is valid. A line already spoken is
+  timed by its voice, as the checks time it; any other by its words. The
+  script saves only when it is valid, as `set_storyboard` saves it.
 - Style can be changed at any later gate without going back.
 - `project.json` keeps the furthest gate reached. Approving moves on from that
   gate only, so a second click or an old tab changes nothing; the graph and
   script gates need their file, valid. Going back to an earlier gate shows it
   (the address names it, `#/projects/<slug>/<gate>`) and keeps it approved.
 - Chat messages are saved to `chat.jsonl`, each with the gate it was sent at.
-  Until the LLM arrives (Milestone 5), every message gets a stub reply that
-  says so, and gates are approved with their button (decision 020).
+  The assistant answers each message in the background, one at a time per
+  project; the line for each change it makes (`kind: "step"`, such as
+  "Saved the graph.") and its reply are added as they come, and the chat
+  says while it is working. Without a key, its reply says so and points at
+  the panel and Settings (decision 034). Gates are approved with their
+  button, or by the assistant when the user approves in the chat.
 - Checks warn and never block. The user can always render.
 
 ## Data model
@@ -154,6 +183,28 @@ type Action =
 The camera is fixed within a scene and frames the scene's nodes. Scenes change
 with a short transition.
 
+### Brief (`brief.json`)
+
+The story the script tells, agreed before the beats are written (decision
+030). Every field is optional; the file is replaced whole.
+
+```ts
+type Brief = {
+  version: 1;
+  audience?: string;  // who the video is for, ≤ 80 characters
+  takeaway?: string;  // the one thing to remember, ≤ 140 characters
+  shape?: "problem" | "before-after" | "failure" | "zoom";  // src/schema/story.ts
+  hook?: string;      // what the first beat says, ≤ 140 characters
+  notes?: string;     // this project's own notes and rules for the story, ≤ 2000 characters
+};
+```
+
+**House rules** are the user's rules for every project's story, such as "no
+jargon" or "end with a link to the docs": free text, at most 4000
+characters, in `house-rules.md` in the projects folder. The Settings page
+edits them, and they can be written or shared by hand. The guide puts them
+first, above the advice they override, and `get_project` returns them.
+
 ### Config (`config.json`)
 
 ```ts
@@ -200,6 +251,7 @@ projects/<slug>/
   graph.json
   layout.json         computed positions plus the user's manual overrides
   storyboard.json
+  brief.json          the story brief
   config.json
   assets/             the logo, referred to from config.json
   cache/tts/          <hash of model + voice + speed + text>.wav (decision 012)
@@ -299,7 +351,12 @@ for frame capture, so what the user approves is what gets rendered.
      characters per second, spoken or not (decision 017).
   3. Actions run in order at their default length, with the spare time
      shared out after each; callouts stay until the narration ends, and
-     badges until the scene ends.
+     badges until the scene ends. A `dim` is its beat's focus: from its
+     start, every node it does not keep, and each edge touching one, fades
+     back, and what it keeps comes back, so a later dim moves the focus and
+     a node both keep stays bright. A beat without a dim brings everything
+     back as it starts; the last beat's focus holds through the scene's
+     fade-out (decision 035).
   4. Narration longer than the caption band's two lines is split into cues,
      between sentences, else clauses, else words; each cue is on screen for
      its share of the line's characters. The cues are `__cues` and the `.srt`.
@@ -469,10 +526,36 @@ Decision 018 says why.
 
 ## LLM
 
-- Vercel AI SDK. Providers: OpenRouter (default) and any OpenAI-compatible
+- **The assistant is an agent.** The in-app LLM calls the same tools as an
+  MCP agent, in-process, on the chat's own project, reads the same guide with
+  the house rules, and stops for the user's approval at each gate. It has
+  one tool MCP agents do not, `approve_gate`, which its instructions allow
+  only when the user approved that gate in their last message (the model is
+  trusted to follow them; the server checks only that the gate is the one
+  reached and its file is valid). It reads the
+  conversation as text (not its earlier tool calls), and the project through
+  `get_project`. Its tool results leave out links and times, so a recorded
+  conversation replays exactly. A turn stops at `MAX_AGENT_STEPS` steps (16). It has every MCP project
+  tool but `create_project`, `list_projects` and `get_guide`, which a chat on
+  one project has no use for. Drafting a gate's
+  file is one of its tools.
+- **Checks become fixes.** The quick checks run after every script change,
+  and the full checks when the Preview gate opens and before a render. The
+  assistant reports what they find in plain words, each with a Fix. A fix
+  that changes the user's words is offered first; a timing or layout fix
+  (a slower beat, a moved box) is applied and said. Every fix can be undone.
+  The assistant runs the checks on its own drafts and repairs them before
+  showing them, so most problems never reach the user.
+- Vercel AI SDK. Providers: OpenRouter (default), Anthropic's own API for a
+  Claude key (native structured output), and any OpenAI-compatible
   endpoint (OpenAI, Ollama, LM Studio). Settings: base URL, API key, model.
+  The OpenRouter and Anthropic presets suggest a model their API knows
+  (`claude-opus-5-5` for Anthropic); for OpenAI and local endpoints the
+  user names the model. A key echoed in an endpoint's error is never
+  repeated.
   One model for every call in v1.
-- One structured call per gate, each with its own zod schema:
+- Drafting is one of the assistant's tools: one structured call per file,
+  each with its own zod schema:
   - **Graph:** the chat and context in, `graph.json` out. Streamed, so the
     Mermaid view builds up live.
   - **Script:** the approved graph in, `storyboard.json` out.
@@ -481,6 +564,16 @@ Decision 018 says why.
 - Every result is validated (schema, then references between graph and
   storyboard, then the checks that apply). Errors are sent back to the model,
   at most twice.
+- The client makes two kinds of call: a structured call (JSON in a
+  schema's shape) and an agent's step (the conversation so far and the tools
+  on offer in, the model's text and the tools it calls out; the agent runs
+  them). Both are recorded and replayed the same way.
+- One client for every endpoint: the AI SDK's Anthropic provider for
+  `api.anthropic.com`, its OpenAI-compatible provider for the rest, with the
+  settings read on every call. A failed call names its cause so
+  the user can act on it: a refused key, an unknown model or base URL, a
+  host that cannot be reached, a missing key. An endpoint on this machine
+  (Ollama, LM Studio) needs no key.
 - Prompts live in `src/llm/prompts/` as Markdown files.
 - Context: pasted text and uploaded `.md`, `.txt`, `.mmd` and source files, up
   to about 100,000 characters in total. Above that the user is asked to trim;
@@ -501,11 +594,12 @@ server validates, lays out, checks, previews and renders.
 
 | Tool | Does | Returns |
 |---|---|---|
-| `get_guide` | Reads the authoring guide | The guide as text, the same as `explain_flow` |
+| `get_guide` | Reads the authoring guide | The guide as text, with the house rules, the same as `explain_flow` |
 | `list_projects` | Lists projects | Names, gates, last update |
-| `get_project` | Reads one project | Its files and the current gate |
+| `get_project` | Reads one project | Its files, the current gate and the house rules |
 | `create_project` | Creates a project from a graph, with optional `sources` | Validation errors or the Mermaid, and a preview link |
 | `update_graph` | Replaces the graph or applies a JSON Patch | Errors or the Mermaid; stale beats |
+| `set_brief` | Replaces the story brief | Errors or the brief, and a preview link |
 | `set_storyboard` | Replaces the storyboard or applies a JSON Patch | Errors, timing (measured for lines already voiced, else estimated, with a count of each), check warnings |
 | `set_style` | Updates `config.json` | The config, a preview link |
 | `check` | Generates the voice if needed and runs the checks | The report (readiness, the voice, every check by beat, the timing) and the contact sheet as an image |
@@ -547,7 +641,8 @@ text, and the graph and storyboard tools carry a short summary of their
 format that points at it.
 
 **Approval.** The prompt tells the agent to show the user the Mermaid, then
-agree the story with them, then show the script, in the IDE chat and to wait for approval before moving on. Every
+agree the story with them and save it with `set_brief`, then show the
+script, in the IDE chat and to wait for approval before moving on. Every
 tool result includes a link to the project in the web app for a visual
 preview. The server never blocks a render on approval. MCP elicitation may
 replace this once clients support it widely.
@@ -732,8 +827,9 @@ key and also serve as test fixtures:
 3. **Web app.** The five gates, Mermaid round-trip, editors, preview, render queue.
 4. **MCP.** The endpoint, the tools and the `explain_flow` prompt: the first
    way to make a video end to end, from the IDE, with no LLM in explAIn-it.
-5. **LLM.** Graph and script drafting in the web app, repair loops, edits
-   through chat.
+5. **The assistant.** The in-app LLM as an agent with the MCP tools, checks
+   in the chat with Fix and undo, graph and script drafting through it, edits
+   through chat, layout repair.
 6. **Ship.** Docker on GHCR, three examples, docs, v0.1.0.
 
 The pull requests that make up each milestone are listed in [`ROADMAP.md`](ROADMAP.md).
