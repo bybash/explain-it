@@ -34,6 +34,7 @@ const SOON = { timeout: 15_000 };
 const GATES = "[aria-label=Gates]";
 const CURRENT_GATE = `${GATES} [data-state=current]`;
 const MESSAGES = "[aria-label=Messages] > li";
+const MESSAGES_LIST = "[aria-label=Messages]";
 const DIAGRAM = "[aria-label='The graph as a diagram']";
 const PROJECTS = "[aria-label=Projects] > li";
 const GRAPH_GATE = "[aria-label='Graph gate']";
@@ -363,7 +364,9 @@ const flow = (
       .poll(() => page.locator(`${MESSAGES}[data-role=assistant]:not([data-kind])`).count(), SOON)
       .toBe(1);
     // The panel follows: the graph the assistant saved is drawn.
-    await page.locator(DIAGRAM).waitFor(SOON);
+    // Not the starter, which has no email service.
+    await expect.poll(() => page.textContent(DIAGRAM), SOON).toMatch(/Email/);
+    expect(await page.textContent(MESSAGES_LIST)).not.toContain("flowchart");
   }, 60_000);
 
   it("keeps the story: a brief at the Script gate and house rules in Settings, which an agent then reads", async () => {

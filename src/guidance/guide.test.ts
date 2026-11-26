@@ -126,3 +126,34 @@ describe("summaries for tool descriptions", () => {
     }
   });
 });
+
+describe("the guide where it is read", () => {
+  const inApp = authoringGuide({ where: "app" });
+
+  it("tells an agent in the app that the panel shows the files, so it never pastes them", () => {
+    expect(inApp).toMatch(/never paste the graph, its Mermaid or the script/i);
+    expect(inApp).not.toMatch(/show the user the Mermaid/i);
+    expect(inApp).not.toMatch(/show the user the script/i);
+    expect(inApp).not.toMatch(/preview link/i);
+    expect(inApp).not.toContain(TOOL_NAMES.createProject);
+    expect(inApp).not.toContain(TOOL_NAMES.listProjects);
+  });
+
+  it("keeps the same approvals, in the same order, as over MCP", () => {
+    const order = (text: string, patterns: readonly RegExp[]) =>
+      patterns.map((p) => text.search(p));
+    const found = order(inApp, [
+      /ask whether the graph is right/i,
+      /agree the story/i,
+      /ask whether the script is right/i,
+    ]);
+    expect(found.every((i) => i >= 0)).toBe(true);
+    expect(found).toEqual([...found].sort((a, b) => a - b));
+  });
+
+  it("is otherwise the same guide, and the IDE's is the default", () => {
+    expect(authoringGuide({ where: "ide" })).toBe(guide);
+    const afterSteps = (text: string) => text.slice(text.indexOf("## graph.json"));
+    expect(afterSteps(inApp)).toBe(afterSteps(guide));
+  });
+});
