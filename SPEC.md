@@ -566,8 +566,11 @@ Decision 018 says why.
   brief is agreed, following it and the house rules; the story checks and
   the quick checks send its answer back for repair, and when the repairs run
   out the last script that fits the graph is kept, with what is left, for
-  the assistant to say. It suggests a title card. A change after either is
-  a JSON Patch. Nothing is streamed: the graph
+  the assistant to say. It suggests a title card. A change the user asks
+  for in the chat ("rename X", "add a retry step", "shorten beat 3") goes
+  to `edit_graph` or `edit_script` (5.5): one structured call that answers
+  with a JSON Patch on the current file, applied and checked as the file
+  is, so everything it does not touch stays as it was. Nothing is streamed: the graph
   shows in the Graph gate once it is saved (decision 039).
 - **Checks become fixes.** The quick checks run after every script change,
   and the full checks when the Preview gate opens and before a render. The

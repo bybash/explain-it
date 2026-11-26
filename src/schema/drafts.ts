@@ -5,7 +5,12 @@ import { GraphSchema } from "./graph.ts";
 import { StoryboardSchema } from "./storyboard.ts";
 
 /** The drafting tools only the app's assistant has: an IDE's agent is the LLM, and drafts itself. */
-export const DRAFT_TOOL_NAMES = { draftGraph: "draft_graph", draftScript: "draft_script" } as const;
+export const DRAFT_TOOL_NAMES = {
+  draftGraph: "draft_graph",
+  draftScript: "draft_script",
+  editGraph: "edit_graph",
+  editScript: "edit_script",
+} as const;
 
 /** The most questions a draft may ask: it drafts right away and states what it assumed (SPEC, User flow). */
 export const MAX_QUESTIONS = 2;
@@ -40,6 +45,43 @@ export const ScriptDraftSchema = z.strictObject({
   assumptions: Assumptions,
 });
 export type ScriptDraft = z.output<typeof ScriptDraftSchema>;
+
+/**
+ * An edit the user asked for (5.5): a JSON Patch on the file, and what it
+ * changed in a sentence. Each value is JSON text, as structured output takes
+ * no field of any type; the code reads it back into the patch.
+ */
+export const EditSchema = z.strictObject({
+  patch: z
+    .array(
+      z.strictObject({
+        op: z.enum(["add", "remove", "replace", "move", "copy", "test"]),
+        path: z.string().describe('A JSON Pointer, such as "/nodes/2/label".'),
+        from: z.string().optional().describe("For move and copy: where from."),
+        value: z
+          .string()
+          .optional()
+          .describe(
+            'For add, replace and test: the value as JSON text, such as "\\"Google\\"" or "{\\"id\\": \\"retry\\"}".',
+          ),
+      }),
+    )
+    .min(1)
+    .describe("An RFC 6902 JSON Patch on the current file, each value written as JSON text."),
+  summary: z.string().min(1).max(200).describe("What the patch changes, in a sentence."),
+});
+export type Edit = z.output<typeof EditSchema>;
+
+/** What the assistant asks an editing tool for: the change, as the user asked it. */
+export const EditArgsSchema = z.strictObject({
+  request: z
+    .string()
+    .min(1)
+    .max(MAX_CHAT_MESSAGE)
+    .describe(
+      'The change, as the user asked it: "rename X", "add a retry step", "shorten beat 3".',
+    ),
+});
 
 /** What the assistant asks a drafting tool for: the user's description, and the context files that bear on it. */
 export const DraftArgsSchema = z.strictObject({

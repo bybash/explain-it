@@ -50,6 +50,8 @@ const historyOf = (messages: readonly ChatMessage[]): AgentMessage[] =>
 const STEP_LINES: Readonly<Record<string, { readonly done: string; readonly failed: string }>> = {
   [T.draftGraph]: { done: "Drafted the graph.", failed: "Could not draft the graph" },
   [T.updateGraph]: { done: "Saved the graph.", failed: "Could not save the graph" },
+  [T.editGraph]: { done: "Changed the graph.", failed: "Could not change the graph" },
+  [T.editScript]: { done: "Changed the script.", failed: "Could not change the script" },
   [T.setBrief]: { done: "Saved the story brief.", failed: "Could not save the story brief" },
   [T.draftScript]: { done: "Drafted the script.", failed: "Could not draft the script" },
   [T.setStoryboard]: { done: "Saved the script.", failed: "Could not save the script" },

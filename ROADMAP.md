@@ -141,7 +141,7 @@ user works by hand or over MCP.
 | ✅ 5.2 | **Context**: pasted text and file upload, the 100k-character limit, storing files in `context/` | Oversized context is refused with a clear message |
 | ✅ 5.3 | **Graph drafting**, through the chat agent (5.7): chat and context to `graph.json`, shown in the Mermaid view once saved, at most two questions | Fixtures: three described flows give valid graphs |
 | ✅ 5.4 | **Script drafting**, through the chat agent (5.7): the story brief first (3.14), for approval, keeping to the project's and the house rules; then graph to scenes and beats, and a suggested title card, validated by the schema, the quick checks and 2.8's story checks, and repaired before the user sees it | Fixtures: the three graphs give valid storyboards |
-| 5.5 | **Edits through chat**: JSON Patches for the graph and the storyboard | Fixtures: "rename X", "add a retry step", "shorten beat 3" |
+| ✅ 5.5 | **Edits through chat**: JSON Patches for the graph and the storyboard | Fixtures: "rename X", "add a retry step", "shorten beat 3" |
 | 5.6 | **Layout repair**: check failures the layout engine cannot fix go back to the LLM | A crowded fixture is fixed |
 | ✅ 5.7 | **Chat agent**: the in-app LLM calls the same tools as MCP agents, in-process (the graph, the brief, the storyboard, the style, the checks, the render), following the guide with the house rules; it works gate by gate and waits for the user's approval in the chat; the panel follows each change; without a key, the chat points at the panel and Settings | Fixtures: a described flow goes from the first message to an approved graph and script through tools alone |
 | ✅ 5.8 | **Checks in the chat**: the quick checks after every script change, the full checks when the Preview gate opens and when a render is asked for; the assistant reports them in plain words, each with a Fix. A fix that changes the user's words is offered first; a layout fix is applied and said. Every fix can be undone | Fixtures: a beat that reads too fast is fixed with one click, then undone |
@@ -224,7 +224,7 @@ that finishes it.
   heights off its line (the example's "save session").
 - Not checked yet: the title and end cards, and edges against zone labels.
 
-### For 5.5 and later, from 5.1, 5.3, 5.4 and 5.7
+### Not placed yet, from 5.1, 5.3, 5.4 and 5.7
 
 - Every step sends the whole guide as the system prompt; prompt caching
   (Claude's own API) would cut the cost of a long turn.
@@ -242,7 +242,7 @@ that finishes it.
 - A personal Anthropic key that is not scoped to a workspace needs the
   `anthropic-workspace-id` header; the client does not send one.
 
-### For 5.5 and later, from 5.2
+### Not placed yet, from 5.2
 
 - Once the assistant has read a context file, its text is sent again on
   every later step of that turn (and read again on the next turn, as earlier
@@ -259,7 +259,7 @@ that finishes it.
 - Loudness has no fix in the chat; the mix is made to the target, so a
   miss means a bug in `src/audio/`, not something to fix by hand.
 
-### For 5.5 (edits through chat), from 5.8
+### Not placed yet, from 5.8
 
 - What the chat reported is kept in memory (`checksChat`), so a restart
   may report a problem once more. The checks that run before a render do
@@ -271,13 +271,6 @@ that finishes it.
 - The Script gate's hints (`beatHints` in `src/web/script-model.ts`) and the
   chat's problems (`wordProblems`) read the same quick checks each their
   own way; a Fix in the editor beside a hint could share the chat's.
-
-### For 5.5 (edits through chat), from 3.3
-
-- Chat messages are saved with the gate they were sent at, and each gets
-  `STUB_REPLY` (`src/server/chat.ts`). The LLM replaces the stub; approving
-  by chat ("looks good") waits for it too, since only the LLM can tell what
-  the user means.
 
 ### For 6.1 (Docker), from 3.1
 

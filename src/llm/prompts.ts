@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 
 /** The prompts in `prompts/`, by name: Markdown, with `{{place}}` for what each call fills in (SPEC, LLM). */
-const PROMPTS = ["draft-graph", "draft-script"] as const;
+const PROMPTS = ["draft-graph", "draft-script", "edit"] as const;
 export type PromptName = (typeof PROMPTS)[number];
 
 const read = (name: PromptName) =>

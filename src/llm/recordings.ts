@@ -1,11 +1,16 @@
+import exampleGraphJson from "../../examples/oauth-login/graph.json" with { type: "json" };
+import exampleStoryboardJson from "../../examples/oauth-login/storyboard.json" with {
+  type: "json",
+};
 import { graphSummary } from "../guidance/guide.ts";
 import { DEFAULT_CONFIG } from "../schema/config.ts";
-import type { Validated } from "../schema/errors.ts";
-import { GraphSchema, parseGraph } from "../schema/graph.ts";
+import { orThrow, type Validated } from "../schema/errors.ts";
+import { type Graph, GraphSchema, parseGraph } from "../schema/graph.ts";
 import { ok } from "../schema/result.ts";
 import { BriefSchema } from "../schema/story.ts";
+import { parseStoryboard, type Storyboard } from "../schema/storyboard.ts";
 import type { LlmClient } from "./client.ts";
-import { draftGraph, draftScript } from "./drafting.ts";
+import { draftGraph, draftScript, editFile } from "./drafting.ts";
 import { type StructuredCall, structuredCall } from "./structured.ts";
 import { shorterWords } from "./words.ts";
 
@@ -79,6 +84,65 @@ export const DRAFTED_SCRIPTS = DRAFTED_FLOWS.map((flow) => ({
   },
 }));
 
+const exampleGraph = orThrow(parseGraph(exampleGraphJson), "graph.json");
+const exampleScript = orThrow(
+  parseStoryboard(exampleStoryboardJson, exampleGraph),
+  "storyboard.json",
+);
+const beatsOf = (storyboard: Storyboard) => storyboard.scenes.flatMap((s) => s.beats);
+const sameIds = <T extends { id: string }>(before: readonly T[], after: readonly T[]) =>
+  before.every((b) => after.some((a) => a.id === b.id));
+
+/** The edits 5.5's "Done when" names, on the oauth-login example, each with what must hold after it. */
+export const EDITS = [
+  {
+    request: "Rename the identity provider to Google.",
+    file: "graph",
+    holds: (result: Graph | Storyboard) =>
+      "nodes" in result &&
+      sameIds(exampleGraph.nodes, result.nodes) &&
+      result.nodes.some((n) => n.id === "idp" && n.label.includes("Google")),
+  },
+  {
+    request:
+      "Add a retry step: when swapping the code for a token fails, the app asks the provider again.",
+    file: "graph",
+    holds: (result: Graph | Storyboard) =>
+      "nodes" in result &&
+      sameIds(exampleGraph.nodes, result.nodes) &&
+      sameIds(exampleGraph.edges, result.edges) &&
+      result.edges.length > exampleGraph.edges.length,
+  },
+  {
+    request: "Shorten beat 3.",
+    file: "storyboard",
+    holds: (result: Graph | Storyboard) => {
+      if (!("scenes" in result)) return false;
+      const [before, after] = [beatsOf(exampleScript), beatsOf(result)];
+      const length = (b: Storyboard["scenes"][number]["beats"][number] | undefined) =>
+        (b?.say ?? "").length + (b?.caption ?? "").length;
+      return (
+        length(after[2]) < length(before[2]) &&
+        before.every((b, i) => i === 2 || JSON.stringify(b) === JSON.stringify(after[i]))
+      );
+    },
+  },
+].map((edit) => ({
+  ...edit,
+  run: (client: LlmClient) =>
+    editFile(
+      client,
+      edit.file === "graph"
+        ? { file: "graph", request: edit.request, graph: exampleGraph }
+        : {
+            file: "storyboard",
+            request: edit.request,
+            graph: exampleGraph,
+            storyboard: exampleScript,
+          },
+    ),
+}));
+
 /** The recorded calls, each run with its own schema. */
 export const RECORDED_CALLS: readonly {
   readonly name: string;
@@ -92,4 +156,5 @@ export const RECORDED_CALLS: readonly {
     run: (client: LlmClient) => draftGraph(client, { request: flow.request, context: [] }),
   })),
   ...DRAFTED_SCRIPTS.map((flow) => ({ name: `draft-script: ${flow.name}`, run: flow.run })),
+  ...EDITS.map((edit) => ({ name: `edit: ${edit.request}`, run: edit.run })),
 ];

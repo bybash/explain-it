@@ -43,6 +43,7 @@ describe("the recorded conversation", () => {
       expect.arrayContaining([
         "Drafted the graph.",
         "Drafted the script.",
+        "Changed the script.",
         "Approved the graph gate.",
         "Approved the script gate.",
       ]),
