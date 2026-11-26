@@ -1,0 +1,23 @@
+# Only what the image builds from. Never keys, projects, caches or renders.
+.env
+.env.*
+!.env.example
+.git/
+.github/
+.cursor/
+.vitest/
+node_modules/
+dist/
+projects/
+cache/
+out/
+shots/
+coverage/
+docs/
+dev/
+**/out/
+**/cache/
+**/checks.json
+**/contact-sheet.*
+*.log
+.DS_Store
