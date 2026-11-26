@@ -115,7 +115,7 @@
 
 /* CodeMirror draws its own elements, so they are styled by its class names. */
 .mermaid-editor .cm-editor {
-  height: 360px;
+  height: min(60vh, 560px);
   font-size: 14px;
 }
 

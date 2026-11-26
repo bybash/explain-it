@@ -61,7 +61,7 @@ mixed on one project:
 
 | Gate | The LLM produces | The panel shows | Direct edits |
 |---|---|---|---|
-| 1. Graph | `graph.json` from the description and context | Mermaid code and the rendered diagram | Edit the Mermaid code |
+| 1. Graph | `graph.json` from the description and context | The diagram, or the Mermaid code behind it, switched by a button; the diagram full screen | Edit the Mermaid code |
 | 2. Script | `brief.json`, the story, then `storyboard.json`: scenes and beats | The brief, then the scenes and beats as a form, each beat with its length and hints | Edit the brief; start a script from the graph; edit scenes, captions, narration, actions |
 | 3. Style | Nothing (defaults are filled in) | Palette, font, voice, captions, music, output | The form |
 | 4. Preview | Nothing (voice is generated here) | The player with a scrubber, beat list, check warnings and contact sheet | Jump to a beat and edit it |
@@ -86,6 +86,10 @@ Rules:
   hook. Hints show while the script is valid. A line already spoken is
   timed by its voice, as the checks time it; any other by its words. The
   script saves only when it is valid, as `set_storyboard` saves it.
+- A gate's Approve button is at the top right of its panel and stays there
+  as the panel scrolls. A graph saved by the assistant, or over MCP, shows
+  at once unless the user has edits of their own, which are kept and the
+  saved graph offered.
 - Style can be changed at any later gate without going back.
 - `project.json` keeps the furthest gate reached. Approving moves on from that
   gate only, so a second click or an old tab changes nothing; the graph and

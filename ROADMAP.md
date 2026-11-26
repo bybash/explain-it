@@ -196,17 +196,10 @@ turned into slices; nothing here is scheduled yet.
 
 **The Graph gate**
 
-- The screen is a mess; it needs a cosmetic pass.
-- The Mermaid text and the drawn graph should be one view with a toggle
-  icon button between them, and it should expand (full width or full
-  screen) to see the graph better.
-- "Approve and go to Script" belongs at the top right, not under the
-  editor.
-- The graph the assistant makes should show in the graph viewer on the
-  right, not as Mermaid text in its reply. Two causes seen: the editor kept
-  its old text when the assistant saved ("The graph was changed elsewhere;
-  saving replaces it"), and the guide tells agents to show the Mermaid,
-  which suits the IDE but not the app.
+- ✅ The Mermaid text and the drawn graph are one view with a toggle icon
+  button, and the diagram opens full screen, with zoom.
+- ✅ "Approve and go to …" is at the top right, at every gate.
+- ✅ The assistant's graph shows in the viewer, not as text in its reply.
 
 **The chat**
 

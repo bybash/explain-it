@@ -8,7 +8,7 @@ import { Errors } from "./Errors.tsx";
 import { GATE_LABELS, GATE_PANELS, updatedLabel } from "./labels.ts";
 import { gateSteps } from "./route.ts";
 import { ScriptGate } from "./ScriptGate.tsx";
-import { BoxList, Muted, PageTitle, SectionTitle } from "./ui.tsx";
+import { BoxList, Muted, PageTitle } from "./ui.tsx";
 
 /** The graph editor, loaded with the graph gate: CodeMirror and Mermaid are large, and only it needs them. */
 const GraphPanel = lazy(() => import("./GraphPanel.tsx").then((m) => ({ default: m.GraphPanel })));
@@ -109,7 +109,7 @@ const Opened = ({
       location.replace(`#/projects/${slug}/${viewed}`);
   }, [requested, viewed, slug]);
   return (
-    <div className="grid grid-cols-[1fr] items-start gap-6 min-[861px]:grid-cols-[minmax(280px,380px)_1fr]">
+    <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-6 min-[861px]:grid-cols-[minmax(280px,380px)_minmax(0,1fr)]">
       <Chat key={slug} slug={slug} gate={viewed} />
       <div>
         <PageTitle>{project.name}</PageTitle>
@@ -132,7 +132,7 @@ const Opened = ({
                 </a>
               ) : (
                 <span
-                  className={`${GATE_PILL_CLASS} opacity-60`}
+                  className={`${GATE_PILL_CLASS} inline-block opacity-60`}
                   data-state={step.state}
                   aria-disabled="true"
                 >
@@ -149,7 +149,7 @@ const Opened = ({
   );
 };
 
-/** A gate's panel: what it shows, the files so far, and Approve at the gate reached. */
+/** A gate's panel: Approve at the top when it is the gate reached, what it shows, and the files so far. */
 const GatePanel = ({
   opened,
   gate,
@@ -179,8 +179,37 @@ const GatePanel = ({
 
   return (
     <section className="mt-2" aria-label={`${GATE_LABELS[gate]} gate`}>
-      <SectionTitle level={2}>{GATE_LABELS[gate]}</SectionTitle>
-      <p className="my-4">{GATE_PANELS[gate]}</p>
+      {/* Stays at the top of a long panel, so a gate can be approved from anywhere in it. */}
+      <div className="sticky top-0 z-10 -mx-2 flex flex-wrap items-center gap-x-4 gap-y-2 bg-page px-2 py-3">
+        <h2 className="font-bold text-lg">{GATE_LABELS[gate]}</h2>
+        <div className="ml-auto flex flex-wrap items-center justify-end gap-3">
+          {gate === project.gate ? (
+            next && (
+              <>
+                {blocked && <span className="text-muted text-sm">{blocked}</span>}
+                <button
+                  className="btn"
+                  type="button"
+                  onClick={approve}
+                  disabled={approving || blocked !== undefined}
+                >
+                  Approve and go to {GATE_LABELS[next]}
+                </button>
+              </>
+            )
+          ) : (
+            <p className="text-muted text-sm">
+              Approved. The project is at the{" "}
+              <a className="underline" href={`#/projects/${slug}/${project.gate}`}>
+                {GATE_LABELS[project.gate]}
+              </a>{" "}
+              gate.
+            </p>
+          )}
+        </div>
+      </div>
+      <Errors errors={errors} />
+      <p className="mb-3 text-muted">{GATE_PANELS[gate]}</p>
       {gate === "graph" ? (
         <Suspense fallback={<Muted>Opening the graph editor…</Muted>}>
           <GraphPanel opened={opened} blocked={setBlocked} />
@@ -201,30 +230,6 @@ const GatePanel = ({
         <ScriptGate opened={opened} blocked={setBlocked} />
       ) : (
         <Muted>This gate's panel comes in a later version.</Muted>
-      )}
-      {gate === project.gate ? (
-        next && (
-          <div className="my-4">
-            <button
-              className="btn"
-              type="button"
-              onClick={approve}
-              disabled={approving || blocked !== undefined}
-            >
-              Approve and go to {GATE_LABELS[next]}
-            </button>
-            {blocked && <span className="text-muted"> {blocked}</span>}
-            <Errors errors={errors} />
-          </div>
-        )
-      ) : (
-        <p className="my-4">
-          Approved. The project is at the{" "}
-          <a className="underline" href={`#/projects/${slug}/${project.gate}`}>
-            {GATE_LABELS[project.gate]}
-          </a>{" "}
-          gate.
-        </p>
       )}
       <Files opened={opened} />
     </section>
@@ -249,8 +254,11 @@ const Files = ({ opened }: { opened: OpenedProject }) => {
     { file: "config.json", summary: config && "style and output set" },
   ];
   return (
-    <>
-      <SectionTitle level={3}>Files</SectionTitle>
+    // Open by itself only when something in it needs the user.
+    <details className="mt-8" open={problems.length > 0}>
+      <summary className="mb-3 cursor-pointer font-semibold text-muted text-sm">
+        The project's files
+      </summary>
       {problems.length > 0 && (
         <>
           <p className="my-4">Some files are broken:</p>
@@ -268,6 +276,6 @@ const Files = ({ opened }: { opened: OpenedProject }) => {
           </li>
         ))}
       </BoxList>
-    </>
+    </details>
   );
 };

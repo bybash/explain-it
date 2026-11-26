@@ -227,8 +227,10 @@ const flow = (
       "flowchart LR\n  %% the user's own note\n  user([User]) -->|signs in| app[Photo app]\n  app --> photos[(Photos)]",
     );
     await expect.poll(() => page.textContent(DIAGRAM), SOON).toContain("Photo app");
-    await expect.poll(() => page.isEnabled("text=Save the graph"), SOON).toBe(true);
-    await page.click("text=Save the graph");
+    await expect
+      .poll(() => page.getByRole("button", { name: "Save the graph" }).isEnabled(), SOON)
+      .toBe(true);
+    await page.getByRole("button", { name: "Save the graph" }).click();
     await expect
       .poll(() => page.textContent(`${GRAPH_GATE} [role=status]`), SOON)
       .toContain("Saved");
@@ -246,7 +248,7 @@ const flow = (
     await page.keyboard.press("ControlOrMeta+End");
     await page.keyboard.insertText("\n  photos -->");
     await page.waitForSelector(".cm-error-line");
-    expect(await page.isDisabled("text=Save the graph")).toBe(true);
+    expect(await page.getByRole("button", { name: "Save the graph" }).isDisabled()).toBe(true);
     // The problem is said once, above the diagram: Mermaid adds no error drawing of its own to the page.
     expect(await page.getByText("Syntax error in text").count()).toBe(0);
     await page.keyboard.press("ControlOrMeta+Z");
@@ -328,7 +330,7 @@ const flow = (
     await page.getByRole("button", { name: "▶ Listen" }).click();
     expect((await music).headers()["content-type"]).toBe("audio/wav");
 
-    await page.click("text=Save the style");
+    await page.getByRole("button", { name: "Save the style" }).click();
     await expect
       .poll(() => page.textContent(`${STYLE_GATE} [role=status]`), SOON)
       .toContain("Saved");
@@ -379,7 +381,7 @@ const flow = (
     await page.getByLabel("Notes and rules").fill("Leave out token refresh.");
     // Unsaved, the brief holds the gate.
     await expect.poll(() => page.isDisabled("text=Approve and go to Style"), SOON).toBe(true);
-    await page.click("text=Save the brief");
+    await page.getByRole("button", { name: "Save the brief" }).click();
     await expect
       .poll(() => page.textContent(`${SCRIPT_GATE} [role=status]`), SOON)
       .toContain("Saved");
@@ -392,7 +394,7 @@ const flow = (
     await page.goto(`${server.url}/#/settings`);
     const rules = "- No jargon.\n- End with a link to the docs.";
     await page.getByLabel("House rules").fill(rules);
-    await page.click("text=Save the house rules");
+    await page.getByRole("button", { name: "Save the house rules" }).click();
     await expect
       .poll(() => page.textContent("[aria-label=Storytelling] [role=status]"), SOON)
       .toContain("Saved");
