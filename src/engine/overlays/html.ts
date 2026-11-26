@@ -1,6 +1,7 @@
 import { STAGE } from "../../schema/checks.ts";
 import type { BADGE_TONES } from "../../schema/storyboard.ts";
 import type { NodeShape, Polygon } from "../iso/scene.ts";
+import { dimOpacity } from "../iso/tweens.ts";
 import { categoryStyle } from "../theme/kinds.ts";
 import type { State } from "../timeline.ts";
 import { type CalloutPlacement, placeBadge, placeCallout } from "./place.ts";
@@ -107,7 +108,8 @@ export const renderOverlays = (
       cards.push({ box: boxOf(main), ...(overlay.shown ? { shown: overlay.shown } : {}) });
     return (state: State): void => {
       const s = state[overlayTarget(overlay.id)] ?? {};
-      const opacity = s.opacity ?? 0;
+      // A badge or callout fades with the node it is on (`dim`, see `focusTweens`).
+      const opacity = (s.opacity ?? 0) * dimOpacity(s.dim);
       for (const part of el) {
         part.style.visibility = opacity > 0 ? "visible" : "hidden";
         part.style.opacity = opacity.toFixed(3);

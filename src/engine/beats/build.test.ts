@@ -641,6 +641,105 @@ describe("buildBeats: a dim is its beat's focus", () => {
   });
 });
 
+describe("buildBeats: a dim fades what belongs to a faded node", () => {
+  const layerGraph = unwrap(
+    parseGraph({
+      version: 1,
+      title: "Layers",
+      nodes: [
+        { id: "a", label: "A", kind: "service" },
+        { id: "b", label: "B", kind: "service", zone: "z" },
+        { id: "c", label: "C", kind: "service", zone: "z" },
+      ],
+      edges: [
+        { id: "ab", from: "a", to: "b" },
+        { id: "ac", from: "a", to: "c" },
+      ],
+      zones: [{ id: "z", label: "Hidden layer" }],
+    }),
+  );
+  const layerBoard = unwrap(
+    parseStoryboard(
+      {
+        version: 1,
+        scenes: [
+          {
+            id: "s",
+            title: "Layers",
+            nodes: ["a", "b", "c"],
+            beats: [
+              {
+                id: "marked",
+                caption: "B gets a value.",
+                actions: [
+                  { type: "badge", node: "b", text: "0.45", tone: "ok" },
+                  { type: "callout", node: "c", text: "C weighs it." },
+                ],
+              },
+              {
+                id: "only_a",
+                caption: "Only A.",
+                actions: [
+                  { type: "dim", except: ["a"] },
+                  { type: "callout", node: "c", text: "C sits this one out." },
+                ],
+              },
+              {
+                id: "a_and_b",
+                caption: "A and B.",
+                actions: [{ type: "dim", except: ["a", "b"] }],
+              },
+              { id: "all", caption: "All of it.", actions: [{ type: "highlight", node: "a" }] },
+              { id: "end_on_a", caption: "A again.", actions: [{ type: "dim", except: ["a"] }] },
+            ],
+          },
+        ],
+      },
+      layerGraph,
+    ),
+  );
+  const plan = buildBeats(layerBoard, layerGraph);
+  const at = seeker(plan);
+  const dim = (t: number, target: string) => at(t, target).dim ?? 0;
+  const mid = (id: string) => {
+    const b = spanOf(plan.beats, id);
+    return (b.start + b.end) / 2;
+  };
+  const zone = zoneTarget(scoped("s", "z"));
+  const overlayOn = (kind: string, node: string) => {
+    const overlay = plan.overlays.find((o) => o.kind === kind && "node" in o && o.node === node);
+    if (!overlay) throw new Error(`no ${kind} on "${node}"`);
+    return overlayTarget(overlay.id);
+  };
+  const badge = overlayOn("badge", "b");
+
+  it("fades a zone, its area and its label, when the focus keeps none of its nodes", () => {
+    expect(dim(mid("only_a"), zone)).toBe(1);
+    expect(dim(plan.duration, zone)).toBe(1);
+  });
+
+  it("keeps a zone bright while the focus keeps one of its nodes, or there is no focus", () => {
+    expect(dim(mid("marked"), zone)).toBe(0);
+    expect(dim(mid("a_and_b"), zone)).toBe(0);
+    expect(dim(mid("all"), zone)).toBe(0);
+  });
+
+  it("fades a badge with the node it sits on, and brings it back with it", () => {
+    expect(dim(mid("marked"), badge)).toBe(0);
+    expect(dim(mid("only_a"), badge)).toBe(1);
+    expect(dim(mid("a_and_b"), badge)).toBe(0);
+    expect(dim(plan.duration, badge)).toBe(1);
+  });
+
+  it("fades a callout with the node it points at, and not before the node fades", () => {
+    const callouts = plan.overlays.filter((o) => o.kind === "callout");
+    const [early, during] = callouts.map((o) => ({ target: overlayTarget(o.id), until: o.until }));
+    if (!early || !during) throw new Error("two callouts");
+    expect(dim(mid("marked"), early.target)).toBe(0);
+    expect(dim(during.until - 0.01, during.target)).toBe(1);
+  });
+});
+
 describe("buildBeats: a scene whose dims went semi-transparent", () => {
   const { graph: fixtureGraph, storyboard: fixtureBoard } = dimFocusFixture;
   const fixture = unwrap(parseGraph(fixtureGraph));

@@ -51,5 +51,6 @@ later record supersedes an earlier one and says so.
 | [039](039-drafting.md) | Drafting tools |
 | [040](040-layout-repair.md) | Layout repair |
 | [041](041-docker.md) | The Docker image |
+| [042](042-dim-what-belongs-to-a-node.md) | A dim fades what belongs to the nodes it fades |
 | [043](043-colours.md) | Colours for nodes, edges and areas |
 | [044](044-framing.md) | Framing: the scene number, the title card and the camera |
