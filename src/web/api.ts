@@ -3,6 +3,7 @@ import {
   ApprovedSchema,
   BriefSavedSchema,
   ChecksRunSchema,
+  ColoursSavedSchema,
   CreatedProjectSchema,
   ErrorsResponseSchema,
   GraphReadSchema,
@@ -25,6 +26,7 @@ import {
   StyleSavedSchema,
 } from "../schema/api.ts";
 import { type Chat, ChatMessageSchema, ChatSchema } from "../schema/chat.ts";
+import type { ColourChange } from "../schema/colours.ts";
 import type { Config, VoiceConfig } from "../schema/config.ts";
 import { type AddContext, ContextFileSchema, ContextListSchema } from "../schema/context.ts";
 import { parseWith, type Validated, type ValidationError } from "../schema/errors.ts";
@@ -163,6 +165,14 @@ export const saveStyle = (slug: string, edit: StyleEdit) =>
     method: "PUT",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(edit),
+  });
+
+/** Saves a change of colours: only the categories in graph.json (decision 043). */
+export const saveColours = (slug: string, change: ColourChange) =>
+  fetchChecked(ColoursSavedSchema, `/api/projects/${encodeURIComponent(slug)}/colours`, {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(change),
   });
 
 /** Saves the project's story brief, replacing the one before. */

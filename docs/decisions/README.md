@@ -51,3 +51,4 @@ later record supersedes an earlier one and says so.
 | [039](039-drafting.md) | Drafting tools |
 | [040](040-layout-repair.md) | Layout repair |
 | [041](041-docker.md) | The Docker image |
+| [043](043-colours.md) | Colours for nodes, edges and areas |

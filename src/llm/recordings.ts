@@ -3,6 +3,7 @@ import exampleStoryboardJson from "../../examples/oauth-login/storyboard.json" w
   type: "json",
 };
 import { canonical } from "../checks/fixes.ts";
+import { categoryColours } from "../engine/theme/categories.ts";
 import { graphSummary } from "../guidance/guide.ts";
 import { DEFAULT_CONFIG } from "../schema/config.ts";
 import { orThrow, type Validated } from "../schema/errors.ts";
@@ -109,6 +110,8 @@ export const DRAFTED_SCRIPTS = DRAFTED_FLOWS.map((flow) => ({
 }));
 
 const exampleGraph = orThrow(parseGraph(exampleGraphJson), "graph.json");
+/** The example's palette (default), as a graph edit sees it. */
+const EXAMPLE_COLOURS = orThrow(categoryColours("default"), "palette");
 const exampleScript = orThrow(
   parseStoryboard(exampleStoryboardJson, exampleGraph),
   "storyboard.json",
@@ -138,6 +141,16 @@ export const EDITS = [
       result.edges.length > exampleGraph.edges.length,
   },
   {
+    // By its colour: only the palette's colours say pink is c4 (#be185d in the default palette).
+    request: "Make the identity provider pink.",
+    file: "graph",
+    holds: (result: Graph | Storyboard) =>
+      "nodes" in result &&
+      canonical(result.nodes.filter((n) => n.id !== "idp")) ===
+        canonical(exampleGraph.nodes.filter((n) => n.id !== "idp")) &&
+      result.nodes.some((n) => n.id === "idp" && n.category === "c4"),
+  },
+  {
     request: "Shorten beat 3.",
     file: "storyboard",
     holds: (result: Graph | Storyboard) => {
@@ -157,7 +170,7 @@ export const EDITS = [
     editFile(
       client,
       edit.file === "graph"
-        ? { file: "graph", request: edit.request, graph: exampleGraph }
+        ? { file: "graph", request: edit.request, graph: exampleGraph, colours: EXAMPLE_COLOURS }
         : {
             file: "storyboard",
             request: edit.request,

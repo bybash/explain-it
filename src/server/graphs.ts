@@ -61,3 +61,22 @@ export const saveGraph = async (
   });
   return ok({ staleBeats: staleNow, storyboardProblems, warnings });
 };
+
+/**
+ * Saves a graph whose colours alone changed (decision 043): nothing moves and
+ * no beat goes stale, so only graph.json and the time are written. The caller
+ * holds the project lock and tells listeners.
+ */
+export const saveColours = async (
+  projectsDir: string,
+  slug: string,
+  before: OpenedProject,
+  graph: Graph,
+  now: Date,
+): Promise<void> => {
+  await writeProjectFile(projectsDir, slug, "graph.json", graph);
+  await writeProjectFile(projectsDir, slug, "project.json", {
+    ...before.project,
+    updatedAt: now.toISOString(),
+  });
+};

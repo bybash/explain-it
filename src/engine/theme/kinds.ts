@@ -1,17 +1,5 @@
-import { MAX_CATEGORY_COLOURS } from "../../schema/config.ts";
+import { DEFAULT_CATEGORY } from "../../schema/colours.ts";
 import type { NodeKind } from "../../schema/graph.ts";
-
-/** The category of anything that does not name one and has no kind: edges and zones. */
-export const DEFAULT_CATEGORY = "accent";
-
-/** The palette's numbered category colours, c1 to c6. */
-export const NUMBERED_CATEGORIES = Array.from(
-  { length: MAX_CATEGORY_COLOURS },
-  (_, i) => `c${i + 1}`,
-);
-
-/** Every category a node, edge or zone can name; an unknown one draws in the accent. */
-export const CATEGORIES = [DEFAULT_CATEGORY, "muted", ...NUMBERED_CATEGORIES] as const;
 
 /** The style attribute that colours an element with its category; unknown ones fall back to the accent. */
 export const categoryStyle = (category: string): string =>

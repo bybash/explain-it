@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { categoryColours } from "../engine/theme/categories.ts";
 import { FONTS } from "../engine/theme/fonts.ts";
 import { PALETTES } from "../engine/theme/palettes.ts";
 import type { OpenedProject } from "../schema/api.ts";
@@ -14,7 +15,15 @@ import {
   THEME_MODES,
 } from "../schema/config.ts";
 import type { ValidationError } from "../schema/errors.ts";
-import { getLogo, saveStyle } from "./api.ts";
+import { getLogo, saveColours, saveStyle } from "./api.ts";
+import { ColoursTab } from "./ColoursTab.tsx";
+import {
+  type ColourDraft,
+  changesColours,
+  colourChange,
+  colouredGraph,
+  NO_COLOURS,
+} from "./colours-form.ts";
 import { Errors } from "./Errors.tsx";
 import { capitalised, THEME_MODE_LABELS } from "./labels.ts";
 import { StylePreview } from "./StylePreview.tsx";
@@ -37,7 +46,8 @@ const configBroken = (opened: OpenedProject) =>
 /**
  * The style gate's panel (SPEC, User flow): the look of the video (palette
  * and mode, font, output, the title and end cards, the logo) and its sound
- * (voice, pacing, captions, music) as a form, the video drawn with it
+ * (voice, pacing, captions, music) as a form, the colour of each node, edge
+ * and area (decision 043), the video drawn with it
  * straight away, samples of the voice and the music, and Save. `blocked` says why the gate
  * cannot be approved yet: there are unsaved changes, or config.json is
  * broken and Save writes it again.
@@ -63,15 +73,20 @@ export const StylePanel = ({
   const [elsewhere, setElsewhere] = useState(false);
 
   const player = useSamplePlayer();
-  const [tab, setTab] = useState<"look" | "sound">("look");
+  const [tab, setTab] = useState<"look" | "sound" | "colours">("look");
+  const [colourDraft, setColourDraft] = useState<ColourDraft>(NO_COLOURS);
   const broken = configBroken(opened);
   const edit = styleEdit(saved, draft, pending);
-  const changed = Object.keys(edit.config ?? {}).length > 0 || edit.logo !== undefined;
+  const styleChanged = Object.keys(edit.config ?? {}).length > 0 || edit.logo !== undefined;
+  const colours = opened.graph ? colourChange(opened.graph, colourDraft) : {};
+  const coloursChanged = changesColours(colours);
+  const changed = styleChanged || coloursChanged;
   const unsaved = changed || broken;
   const changedIn = (settings: readonly string[]) =>
     settings.some((setting) => setting in (edit.config ?? {}));
   const checked = parseConfig(draft);
   const formErrors = checked.ok ? [] : checked.errors;
+  const palette = categoryColours((checked.ok ? checked.value : saved).theme.palette);
 
   useEffect(() => {
     void getLogo(slug).then((result) => {
@@ -85,13 +100,13 @@ export const StylePanel = ({
   const seen = useRef(onDisk);
   useEffect(() => {
     if (onDisk === seen.current) return;
-    if (changed) return setElsewhere(true);
+    if (styleChanged) return setElsewhere(true);
     seen.current = onDisk;
     const next = opened.config ?? DEFAULT_CONFIG;
     setSaved(next);
     setDraft(next);
     setElsewhere(false);
-  }, [onDisk, changed, opened.config]);
+  }, [onDisk, styleChanged, opened.config]);
 
   useEffect(() => {
     blocked(
@@ -128,6 +143,20 @@ export const StylePanel = ({
 
   const save = async () => {
     setSaving(true);
+    // The colours first: they need no checks of the style's, and a style refused leaves them saved.
+    if (coloursChanged) {
+      const coloured = await saveColours(slug, colours);
+      if (!coloured.ok) {
+        setSaving(false);
+        return setSaveErrors(coloured.errors);
+      }
+      setColourDraft(NO_COLOURS);
+    }
+    if (!styleChanged && !broken) {
+      setSaving(false);
+      setSaveErrors([]);
+      return setJustSaved(true);
+    }
     const result = await saveStyle(slug, edit);
     setSaving(false);
     if (!result.ok) return setSaveErrors(result.errors);
@@ -153,7 +182,9 @@ export const StylePanel = ({
           Preview
         </h3>
         <StylePreview
-          opened={opened}
+          opened={
+            opened.graph ? { ...opened, graph: colouredGraph(opened.graph, colourDraft) } : opened
+          }
           config={checked.ok ? checked.value : saved}
           logo={previewLogo(draft, savedLogo, pending)}
         />
@@ -305,6 +336,26 @@ export const StylePanel = ({
                 </div>
               ),
             },
+            ...(opened.graph && palette.ok
+              ? [
+                  {
+                    id: "colours" as const,
+                    label: "Colours",
+                    marked: coloursChanged,
+                    content: (
+                      <ColoursTab
+                        graph={opened.graph}
+                        colours={palette.value}
+                        draft={colourDraft}
+                        change={(next) => {
+                          setColourDraft(next);
+                          setJustSaved(false);
+                        }}
+                      />
+                    ),
+                  },
+                ]
+              : []),
           ]}
         />
         <Errors errors={formErrors} />

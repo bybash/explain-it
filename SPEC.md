@@ -77,8 +77,9 @@ Rules:
 - The user can go back to any gate. Editing the graph marks only the beats
   that reference changed nodes or edges as stale; the script gate lists them.
   A beat references what its actions name (a dim action names the nodes it
-  keeps); a scene's node list does not make its beats stale. A stale beat
-  stops being stale once it is rewritten.
+  keeps); a scene's node list does not make its beats stale, and nor does a
+  change of colour (a `category`), which no line depends on (decision 043).
+  A stale beat stops being stale once it is rewritten.
 - The Script gate's editor (decision 032) makes a starter script from the
   graph when there is none: one scene, a beat for each edge that shows its
   ends and sends its flow, captions from the labels, and no narration yet.
@@ -154,7 +155,10 @@ the platform's front-left edge, just outside it, where its own boxes cannot
 cover it. Categories are `accent`, `muted` and
 `c1` to `c6`; a palette with fewer than six category colours repeats them in
 order, and an unknown category draws in the accent colour. Edges and zones
-without a category use the accent.
+without a category use the accent. An edge's arrowhead takes its edge's
+colour. A colour is always a category, never a hex value, so it follows the
+palette in light and dark; a colour of one's own goes in a custom palette
+(decision 043).
 
 ### Storyboard (`storyboard.json`)
 
@@ -641,7 +645,7 @@ server validates, lays out, checks, previews and renders.
 |---|---|---|
 | `get_guide` | Reads the authoring guide | The guide as text, with the house rules, the same as `explain_flow` |
 | `list_projects` | Lists projects | Names, gates, last update |
-| `get_project` | Reads one project | Its files, the current gate and the house rules |
+| `get_project` | Reads one project | Its files, the current gate, the house rules, and what each colour category looks like in its palette (`colours`) |
 | `create_project` | Creates a project from a graph, with optional `sources` | Validation errors or the Mermaid, and a preview link |
 | `update_graph` | Replaces the graph or applies a JSON Patch | Errors or the Mermaid; stale beats |
 | `set_brief` | Replaces the story brief | Errors or the brief, and a preview link |
@@ -745,6 +749,10 @@ comes later.
   beat and the end. Save sends what changed as a JSON Merge Patch with any
   new logo files and writes `config.json` the way MCP's `set_style` does;
   the gate cannot be approved while changes are unsaved (decision 024).
+  Its Colours tab lists the nodes, edges and areas (zones), each with the
+  palette's category swatches, the default marked; a node's row can give its
+  colour to every node of its kind. Save writes only the categories in
+  `graph.json`, with nothing laid out again and no beat stale (decision 043).
   Its sound has samples: the voice speaks the script's first line (a
   sentence of its own when there is no narration yet) in the chosen voice
   and speed, cached with the video's lines, and the music plays 15 s of the

@@ -1,3 +1,4 @@
+import type { CategoryColour } from "../engine/theme/categories.ts";
 import { graphGuide, storyboardGuide } from "../guidance/guide.ts";
 import { type Edit, EditSchema, type LayoutRepair, LayoutRepairSchema } from "../schema/drafts.ts";
 import { under, type Validated } from "../schema/errors.ts";
@@ -14,7 +15,21 @@ export type EditInput = {
   readonly request: string;
   readonly graph: Graph;
   readonly houseRules?: string | null;
-} & ({ readonly file: "graph" } | { readonly file: "storyboard"; readonly storyboard: Storyboard });
+} & (
+  | {
+      readonly file: "graph";
+      /** What each category looks like in the project's palette, so a colour asked for by name finds its category. */
+      readonly colours?: Readonly<Record<string, CategoryColour>> | null;
+    }
+  | { readonly file: "storyboard"; readonly storyboard: Storyboard }
+);
+
+/** The palette's colours by category, as a graph edit reads them. */
+const colourLines = (colours: Readonly<Record<string, CategoryColour>>) =>
+  [
+    "The colours of this project's palette, by category (light theme, dark theme):",
+    ...Object.entries(colours).map(([category, c]) => `- ${category}: ${c.light}, ${c.dark}`),
+  ].join("\n");
 
 /** A JSON Patch step, with its value read back from the JSON text the answer gives. */
 type PatchStep = {
@@ -89,6 +104,7 @@ export const editFile = async (
       ...(input.file === "storyboard"
         ? [`The graph.json it tells:\n\n${JSON.stringify(input.graph)}`]
         : []),
+      ...(input.file === "graph" && input.colours ? [colourLines(input.colours)] : []),
       `The current ${input.file}.json:\n\n${JSON.stringify(current)}`,
       `The change the user asked for:\n\n${input.request}`,
     ]),

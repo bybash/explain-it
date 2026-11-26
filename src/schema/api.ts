@@ -107,6 +107,9 @@ export const StyleSavedSchema = z.object({
   warnings: z.array(z.string()),
 });
 
+/** `PUT /api/projects/:slug/colours`: the graph with its new colours. */
+export const ColoursSavedSchema = z.object({ graph: GraphSchema });
+
 /** `GET /api/projects/:slug/logo`: the saved logo as the preview draws it, or null without one. */
 export const SavedLogoSchema = z.object({ logo: LogoImagesSchema.nullable() });
 
