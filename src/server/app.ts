@@ -23,7 +23,10 @@ import { MCP_PATH } from "../schema/mcp.ts";
 import { LOCAL_HOSTS } from "../schema/settings.ts";
 import { runAssistant } from "./assistant.ts";
 import { addChat, appendChat, readChat } from "./chat.ts";
+import { checksChat } from "./checks-chat.ts";
+import { contextRoutes } from "./context-routes.ts";
 import { createEvents } from "./events.ts";
+import { fixRoutes } from "./fix-routes.ts";
 import { approveGate } from "./gates.ts";
 import { graphRoutes } from "./graph-routes.ts";
 import { previewChecks } from "./preview-checks.ts";
@@ -127,6 +130,17 @@ export const createApp = ({
         state: job.state,
         ...(job.progress ? { percent: job.progress.percent } : {}),
       }),
+  });
+  // What the checks find is said in the chat, with fixes (decision 038).
+  const inChat = checksChat({ projectsDir, tts, llm, events, now });
+  const checks = previewChecks({
+    projectsDir,
+    sound,
+    tts,
+    run: runChecks,
+    missingTools: missingRenderTools,
+    events,
+    reported: (slug, report) => void inChat.full(slug, report),
   });
   // The in-app assistant works with the same tools as MCP, on the same projects and queue.
   const assistantContext: ToolContext = {
@@ -279,6 +293,7 @@ export const createApp = ({
     }
     events.publish({ type: "chat", slug });
     const { gate } = sent.value;
+    inChat.busy(slug);
     void runAssistant({ context: assistantContext, client: llm, slug, gate })
       // A broken environment still leaves the user an answer, not a chat that stops.
       .catch(async (error: unknown) => {
@@ -294,6 +309,7 @@ export const createApp = ({
       })
       .finally(() => {
         answering.delete(slug);
+        inChat.idle(slug);
         events.publish({ type: "chat", slug });
       });
     return c.json({ messages: added }, 201);
@@ -302,21 +318,21 @@ export const createApp = ({
   graphRoutes(app, { projectsDir, now, events });
   styleRoutes(app, { projectsDir, now, events });
   storyRoutes(app, { projectsDir, now, events });
+  contextRoutes(app, { projectsDir, events });
   storyboardRoutes(app, { projectsDir, now, events, tts });
+  fixRoutes(app, { projectsDir, now, events });
   sampleRoutes(app, { projectsDir, tts });
-  renderRoutes(app, { projectsDir, renders });
-  previewRoutes(app, {
+  // The checks run before a render too, unless their report is up to date; the render does not wait for them.
+  renderRoutes(app, {
     projectsDir,
-    sound,
-    checks: previewChecks({
-      projectsDir,
-      sound,
-      tts,
-      run: runChecks,
-      missingTools: missingRenderTools,
-      events,
-    }),
+    renders,
+    beforeRender: (slug) =>
+      void checks.status(slug).then((now) => {
+        if (!now.upToDate && now.run.state !== "waiting" && now.run.state !== "checking")
+          return checks.start(slug);
+      }),
   });
+  previewRoutes(app, { projectsDir, sound, checks });
 
   app.post("/api/projects/:slug/approve", async (c) => {
     const slug = c.req.param("slug");

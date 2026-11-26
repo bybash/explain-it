@@ -14,6 +14,7 @@ import { ContactSheet } from "./ContactSheet.tsx";
 import { checkRows, type WarningPlace } from "./check-rows.ts";
 import { PreviewBeats } from "./PreviewBeats.tsx";
 import { beatAt, clockTime } from "./preview-time.ts";
+import { projectHref } from "./route.ts";
 import { Pill, Tabs } from "./ui.tsx";
 import { usePreviewChecks } from "./usePreviewChecks.ts";
 import { usePreviewFrame } from "./usePreviewFrame.ts";
@@ -53,7 +54,14 @@ const soundLine = (sound: PreviewSound, voiced: boolean): string => {
  * silently with estimated timing. Below, every beat by scene: the one
  * playing is marked, and a click goes to it.
  */
-export const PreviewPanel = ({ opened }: { opened: OpenedProject }) => {
+export const PreviewPanel = ({
+  opened,
+  hidden = false,
+}: {
+  opened: OpenedProject;
+  /** Out of sight: what plays stops, as no one is watching it. */
+  hidden?: boolean;
+}) => {
   const { slug, storyboard } = opened;
   const config = opened.config ?? DEFAULT_CONFIG;
   const [sound, setSound] = useState<PreviewSound>({ state: "idle" });
@@ -95,6 +103,9 @@ export const PreviewPanel = ({ opened }: { opened: OpenedProject }) => {
     void start();
   }, [start, projectFiles]);
   const checks = usePreviewChecks(slug, projectFiles);
+  useEffect(() => {
+    if (hidden) setPlaying(false);
+  }, [hidden]);
 
   const waitingForFirstLine = sound.state === "speaking" && sound.spoken === 0;
   useEffect(() => {
@@ -276,6 +287,7 @@ export const PreviewPanel = ({ opened }: { opened: OpenedProject }) => {
                   warningsOutOfDate={!upToDate}
                   revealed={revealed}
                   seek={seek}
+                  edit={(beat) => projectHref(slug, "script", beat)}
                 />
               ),
             },

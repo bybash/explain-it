@@ -1,0 +1,30 @@
+{
+  "name": "shorter-words",
+  "request": {
+    "system": "You edit the words of an explainer video. Write the given words again, shorter, keeping what they say and every name in them; plain words, no new facts. Answer with the JSON object only.",
+    "messages": [
+      {
+        "role": "user",
+        "content": "The narration line of beat \"code\" (the scene \"Sign in\" of the video \"Signing in with OAuth\"):\n\"The provider redirects back with a short-lived, one-time code.\"\nIt goes by too fast to read. Write it in at most 55 characters; it has 62."
+      }
+    ],
+    "schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "reply": {
+    "text": "{\"text\": \"The provider sends back a short-lived, one-time code.\"}"
+  }
+}

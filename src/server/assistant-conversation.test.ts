@@ -29,9 +29,24 @@ describe("the recorded conversation", () => {
     // Every message has its answer, and no answer is a failure.
     const replies = chat.filter((m) => m.role === "assistant" && m.kind !== "step");
     expect(replies).toHaveLength(CONVERSATION.length);
-    for (const reply of replies) expect(reply.text).not.toMatch(/^I can't answer yet/);
+    for (const reply of replies) {
+      expect(reply.text).not.toMatch(/^I can't answer yet/);
+      // The panel shows the graph: it is never pasted into the chat as Mermaid.
+      expect(reply.text).not.toMatch(/```|flowchart (LR|RL|TB|TD|BT)/);
+      // Nor the script: a reply may quote how it opens and ends, not read it out.
+      const said = (storyboard?.scenes ?? []).flatMap((s) =>
+        s.beats.map((b) => b.say ?? b.caption),
+      );
+      expect(said.filter((line) => reply.text.includes(line)).length).toBeLessThan(3);
+    }
     expect(chat.filter((m) => m.kind === "step").map((m) => m.text)).toEqual(
-      expect.arrayContaining(["Approved the graph gate.", "Approved the script gate."]),
+      expect.arrayContaining([
+        "Drafted the graph.",
+        "Drafted the script.",
+        "Changed the script.",
+        "Approved the graph gate.",
+        "Approved the script gate.",
+      ]),
     );
   }, 60_000);
 });

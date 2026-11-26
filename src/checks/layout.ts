@@ -76,11 +76,19 @@ export const layoutWarnings = (shapes: readonly Shape[], where: Where): BeatWarn
   const edges = of("edge");
   const overlays = of("overlay");
   const warnings: BeatWarning[] = [];
-  const warn = (check: BeatWarning["check"], px: number, message: string) =>
-    warnings.push({ check, ...where, px: round(px), message });
+  const warn = (check: BeatWarning["check"], px: number, message: string, of: readonly Shape[]) => {
+    const nodeIds = of.flatMap((s) => (s.kind === "node" ? [s.id] : []));
+    warnings.push({
+      check,
+      ...where,
+      px: round(px),
+      ...(nodeIds.length ? { nodes: nodeIds } : {}),
+      message,
+    });
+  };
   const overlap = (a: Shape, b: Shape, say: (px: number) => string) => {
     const depth = overlapDepth(outline(a), outline(b));
-    if (depth > OVERLAP_PX) warn("overlap", depth, say(round(depth)));
+    if (depth > OVERLAP_PX) warn("overlap", depth, say(round(depth)), [a, b]);
   };
   const pairs = <T>(list: readonly T[]) =>
     list.flatMap((a, i) => list.slice(i + 1).map((b) => [a, b] as const));
@@ -107,6 +115,7 @@ export const layoutWarnings = (shapes: readonly Shape[], where: Where): BeatWarn
             "overlap",
             length,
             `${nameOf(edge)} runs through ${nameOf(node)} for ${round(length)} px`,
+            [node],
           );
       }
   for (const overlay of overlays)
@@ -119,7 +128,9 @@ export const layoutWarnings = (shapes: readonly Shape[], where: Where): BeatWarn
   for (const shape of shapes) {
     const past = outsideBy(outline(shape), SAFE_AREA);
     if (past > 0)
-      warn("off-frame", past, `${nameOf(shape)} leaves the safe area by ${round(past)} px`);
+      warn("off-frame", past, `${nameOf(shape)} leaves the safe area by ${round(past)} px`, [
+        shape,
+      ]);
   }
   return warnings;
 };

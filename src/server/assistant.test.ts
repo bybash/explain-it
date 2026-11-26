@@ -11,6 +11,7 @@ import { RenderQueue } from "../render/queue.ts";
 import type { ServerEvent } from "../schema/api.ts";
 import { runAssistant } from "./assistant.ts";
 import { appendChat, readChat } from "./chat.ts";
+import { addContext } from "./context.ts";
 import { createEvents } from "./events.ts";
 import { makeProject, projectDir } from "./projects.ts";
 
@@ -79,6 +80,21 @@ describe("runAssistant", () => {
     expect(system).toContain("## Steps");
   });
 
+  it("marks a step that did not work, so it is not shown as done", async () => {
+    await appendChat(projectDir(projectsDir, "sign-in"), [said("user", "It looks good.")]);
+    const { client } = fakeLlm(
+      [],
+      [
+        { text: "", toolCalls: [{ id: "1", name: T.approveGate, input: { gate: "script" } }] },
+        { text: "The graph comes first.", toolCalls: [] },
+      ],
+    );
+    await runAssistant({ context, client, slug: "sign-in", gate: "graph" });
+    const step = (await chat()).find((m) => m.kind === "step");
+    expect(step?.text).toMatch(/^Could not approve the gate/);
+    expect(step?.failed).toBe(true);
+  });
+
   it("reads back the conversation without its step lines", async () => {
     await appendChat(projectDir(projectsDir, "sign-in"), [
       said("user", "Explain sign-in."),
@@ -114,5 +130,39 @@ describe("runAssistant", () => {
     await runAssistant({ context, client, slug: "sign-in", gate: "script" });
     expect(conversed[0]?.system).toContain("which is at the graph gate");
     expect((await chat()).at(-1)?.gate).toBe("script");
+  });
+
+  it("lists the user's context in the prompt, and reads a file of it when the model asks", async () => {
+    await addContext(projectDir(projectsDir, "sign-in"), {
+      name: "spec.md",
+      text: "Sign-in uses Google and keeps a session for 30 days.",
+    });
+    await appendChat(projectDir(projectsDir, "sign-in"), [said("user", "Use my notes.")]);
+    const { client, conversed } = fakeLlm(
+      [],
+      [
+        { text: "", toolCalls: [{ id: "1", name: T.readContext, input: { name: "spec.md" } }] },
+        { text: "Read it.", toolCalls: [] },
+      ],
+    );
+    await runAssistant({ context, client, slug: "sign-in", gate: "graph" });
+    expect(conversed[0]?.system).toContain("- spec.md (52 characters)");
+    expect(conversed[1]?.messages.at(-1)).toEqual({
+      role: "tool",
+      results: [
+        {
+          id: "1",
+          name: T.readContext,
+          output: { name: "spec.md", text: "Sign-in uses Google and keeps a session for 30 days." },
+        },
+      ],
+    });
+  });
+
+  it("says nothing of context when there is none", async () => {
+    await appendChat(projectDir(projectsDir, "sign-in"), [said("user", "Hi.")]);
+    const { client, conversed } = fakeLlm([], [{ text: "Hello.", toolCalls: [] }]);
+    await runAssistant({ context, client, slug: "sign-in", gate: "graph" });
+    expect(conversed[0]?.system).not.toContain("## Context");
   });
 });

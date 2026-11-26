@@ -1,6 +1,6 @@
 // Screenshots of every page of the web app, light and dark, from a fixed set of projects:
 // run before and after a change to its look, then compare with scripts/compare-shots.ts.
-// Usage: node scripts/app-shots.ts <out-dir>
+// Usage: node scripts/app-shots.ts <out-dir> [only shots whose names start with this]
 // Needs Chrome. It builds the web app into dist/web first, as `npm run build` does.
 import { type ChildProcess, spawn } from "node:child_process";
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -11,8 +11,8 @@ import { build } from "vite";
 import { isProjectOutput } from "../src/render/project-output.ts";
 import type { ChatMessage } from "../src/schema/chat.ts";
 
-const [outArg] = process.argv.slice(2);
-if (!outArg) throw new Error("usage: node scripts/app-shots.ts <out-dir>");
+const [outArg, only = ""] = process.argv.slice(2);
+if (!outArg) throw new Error("usage: node scripts/app-shots.ts <out-dir> [name]");
 const out = resolve(outArg);
 mkdirSync(out, { recursive: true });
 
@@ -53,10 +53,16 @@ const seed = (dir: string) => {
       said("assistant", "Approved the graph gate.", "graph", "step"),
       said(
         "assistant",
-        "Graph approved. Before the script, here is the story I'd tell: for developers new to the codebase, the one thing to remember is that the app never sees the password. Shall I go ahead?",
+        "Graph approved. Here is the story I'd tell:\n\n- **Audience:** developers new to the codebase\n- **To remember:** the app never sees the password\n- **Shape:** problem, how it works, outcome\n\n| Scene | Length |\n|---|---|\n| Sign in | 28 s |\n| Token exchange | 32 s |\n\nShall I go ahead and save it as `brief.json`?",
         "script",
       ),
     ].join("\n")}\n`,
+  );
+  // Context the user gave, so the chat shows its files.
+  mkdirSync(join(example, "context"), { recursive: true });
+  writeFileSync(
+    join(example, "context", "login-notes.md"),
+    "# Sign-in\n\nWe use Google as the identity provider. Sessions last 30 days.\n",
   );
   // The example's story, so the Script gate shows a brief filled in.
   writeFileSync(
@@ -149,7 +155,7 @@ const waitUntilUp = async (child: ChildProcess) => {
 
 /** The graph editor is open and Mermaid has drawn its diagram. */
 const graphReady = async (page: Page) => {
-  await page.locator(".cm-content").waitFor();
+  await page.locator(".cm-content").waitFor({ state: "attached" });
   await diagramDrawn(page);
 };
 
@@ -215,12 +221,36 @@ const SHOTS: readonly {
     },
   },
   {
+    name: "graph-full-screen",
+    hash: "#/projects/oauth-example/graph",
+    ready: async (p) => {
+      await diagramDrawn(p);
+      await p.getByRole("button", { name: "Show the diagram full screen" }).click();
+      await p.getByRole("dialog").locator("svg[id^=mermaid]").waitFor();
+      await p.waitForTimeout(500);
+    },
+  },
+  {
     name: "graph-approved",
     hash: "#/projects/oauth-example/graph",
     ready: async (p) => {
       await p.getByText("Approved").first().waitFor();
       await diagramDrawn(p);
     },
+  },
+  ...(["Chat", "Panel"] as const).map((layout) => ({
+    name: `layout-${layout.toLowerCase()}`,
+    hash: "#/projects/oauth-example/script",
+    ready: async (p: Page) => {
+      await p.getByRole("button", { name: layout, exact: true }).click();
+      await p.waitForTimeout(300);
+    },
+  })),
+  {
+    name: "layout-phone",
+    hash: "#/projects/oauth-example/graph",
+    width: 390,
+    ready: (p) => p.getByText("Shall I go ahead").waitFor(),
   },
   {
     name: "chat-assistant",
@@ -386,7 +416,7 @@ const checksRun = async (page: Page) => {
 
 /** Mermaid has drawn, and the drawing has settled. */
 const diagramDrawn = async (page: Page) => {
-  await page.locator("svg[aria-roledescription]").first().waitFor();
+  await page.locator("svg[aria-roledescription]").first().waitFor({ state: "attached" });
   await page.waitForTimeout(500);
 };
 
@@ -409,7 +439,7 @@ const browser = await chromium.launch({ channel: "chrome" });
 try {
   await waitUntilUp(server);
   for (const scheme of ["light", "dark"] as const)
-    for (const shot of SHOTS) {
+    for (const shot of SHOTS.filter((s) => s.name.startsWith(only))) {
       const page = await browser.newPage({
         viewport: { width: shot.width ?? 1280, height: 900 },
         colorScheme: scheme,

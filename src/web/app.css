@@ -115,7 +115,7 @@
 
 /* CodeMirror draws its own elements, so they are styled by its class names. */
 .mermaid-editor .cm-editor {
-  height: 360px;
+  height: min(60vh, 560px);
   font-size: 14px;
 }
 
@@ -141,4 +141,79 @@
 
 .mermaid-editor .cm-error-line {
   background: color-mix(in srgb, var(--color-error) 18%, transparent);
+}
+
+/* A chat message's Markdown, whose elements react-markdown makes. Line breaks the writer typed are kept. */
+.markdown {
+  overflow-wrap: anywhere;
+}
+
+.markdown p,
+.markdown li:not(:has(> p)) {
+  white-space: pre-line;
+}
+
+.markdown > * + *,
+.markdown li > * + * {
+  margin-top: 0.6em;
+}
+
+.markdown :is(h1, h2, h3, h4, h5, h6) {
+  font-weight: 700;
+}
+
+.markdown :is(ul, ol) {
+  padding-left: 1.4em;
+}
+
+.markdown ul {
+  list-style: disc;
+}
+
+.markdown ol {
+  list-style: decimal;
+}
+
+.markdown li + li {
+  margin-top: 0.25em;
+}
+
+.markdown a {
+  color: var(--color-accent);
+  text-decoration: underline;
+}
+
+.markdown code {
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--color-line) 60%, transparent);
+  padding: 1px 4px;
+  font-size: 14px;
+}
+
+.markdown pre {
+  overflow-x: auto;
+  border-radius: var(--radius-box);
+  background: color-mix(in srgb, var(--color-line) 60%, transparent);
+  padding: 10px 12px;
+}
+
+.markdown pre code {
+  background: none;
+  padding: 0;
+}
+
+.markdown blockquote {
+  border-left: 3px solid var(--color-line);
+  padding-left: 0.8em;
+  color: var(--color-muted);
+}
+
+.markdown table {
+  border-collapse: collapse;
+}
+
+.markdown :is(th, td) {
+  border: 1px solid var(--color-line);
+  padding: 4px 8px;
+  text-align: left;
 }

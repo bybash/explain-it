@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { gateSteps, route } from "./route.ts";
+import { gateSteps, projectHref, route } from "./route.ts";
 
 describe("route", () => {
   it("names the page an address shows", () => {
@@ -11,10 +11,26 @@ describe("route", () => {
       slug: "oauth-login",
       gate: "style",
     });
+    expect(route("#/projects/oauth-login/script/code")).toEqual({
+      page: "project",
+      slug: "oauth-login",
+      gate: "script",
+      beat: "code",
+    });
     expect(route("#/projects/oauth-login/nonsense")).toEqual({
       page: "project",
       slug: "oauth-login",
     });
+  });
+});
+
+describe("projectHref", () => {
+  it("links to a project, a gate, or a beat in the Script gate, and reads back as it", () => {
+    expect(projectHref("oauth login")).toBe("#/projects/oauth%20login");
+    expect(projectHref("oauth", "style")).toBe("#/projects/oauth/style");
+    const toBeat = projectHref("oauth", "script", "code");
+    expect(toBeat).toBe("#/projects/oauth/script/code");
+    expect(route(toBeat)).toEqual({ page: "project", slug: "oauth", gate: "script", beat: "code" });
   });
 });
 

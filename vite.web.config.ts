@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
@@ -12,6 +13,9 @@ if (!listen.ok || !api.ok)
     formatErrors([...(listen.ok ? [] : listen.errors), ...(api.ok ? [] : api.errors)]).join("\n"),
   );
 
+/** A page of the web app, by its whole path. */
+const page = (name: string) => fileURLToPath(new URL(`./src/web/${name}`, import.meta.url));
+
 // The web app: built into dist/web, which `npm start` serves with the API.
 export default defineConfig({
   root: "src/web",
@@ -20,7 +24,8 @@ export default defineConfig({
     outDir: "../../dist/web",
     emptyOutDir: true,
     // The app, and the preview page its panels show in an iframe (preview.ts).
-    rollupOptions: { input: { index: "src/web/index.html", preview: "src/web/preview.html" } },
+    // Whole paths: the dev server's dependency scan reads them from `root`, the build from here.
+    rollupOptions: { input: { index: page("index.html"), preview: page("preview.html") } },
     // The preview page carries every Lucide icon, since any node may use any of them.
     chunkSizeWarningLimit: 1000,
   },

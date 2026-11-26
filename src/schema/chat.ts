@@ -1,5 +1,7 @@
 import { z } from "zod";
+import { IdSchema } from "./common.ts";
 import { parseWith, type ValidationError, ValidationErrorSchema } from "./errors.ts";
+import { FixDoneSchema, FixOfferSchema } from "./fixes.ts";
 import { GATES } from "./project.ts";
 
 /**
@@ -18,10 +20,36 @@ export const ChatMessageSchema = z.strictObject({
   at: z.iso.datetime(),
   /** The gate the user was looking at when the message was sent. */
   gate: z.enum(GATES),
-  /** A line the assistant adds as it works ("Saved the graph."): shown, but not part of the conversation it reads back. */
-  kind: z.literal("step").optional(),
+  /**
+   * What the assistant adds besides its replies: a line as it works ("Saved
+   * the graph."), which is not read back to it; what the checks found, with
+   * fixes to offer; and a fix applied or undone.
+   */
+  kind: z.enum(["step", "checks", "fix"]).optional(),
+  /** A step that did not work: shown as such, not with a tick. */
+  failed: z.literal(true).optional(),
+  /** What a "checks" message found, each in plain words, at its beat, and with its fix when there is one. */
+  found: z
+    .array(
+      z.strictObject({
+        /** What makes it the same problem from one run to the next. */
+        key: z.string(),
+        text: z.string().min(1),
+        beat: IdSchema.optional(),
+        fix: FixOfferSchema.shape.id.optional(),
+      }),
+    )
+    .optional(),
+  /** The fixes a "checks" message offers. */
+  fixes: z.array(FixOfferSchema).optional(),
+  /** What a "fix" message did. */
+  fix: FixDoneSchema.optional(),
 });
 export type ChatMessage = z.output<typeof ChatMessageSchema>;
+
+/** Whether a fix the chat offered is applied now, from the chat's own record of it. */
+export const isFixApplied = (messages: readonly ChatMessage[], id: string): boolean =>
+  messages.findLast((m) => m.fix?.id === id)?.fix?.done === "applied";
 
 /** `POST /api/projects/:slug/chat`: what the user typed. */
 export const NewChatMessageSchema = z.strictObject({

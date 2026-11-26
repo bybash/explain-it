@@ -17,7 +17,8 @@ export const errorLine = (errors: readonly ValidationError[]): number | undefine
 /**
  * Whether the editor holds changes not saved yet, and whether they can be:
  * only once they read as a graph. `saved` is undefined while the project has
- * no graph, so even an unchanged starter is a change.
+ * no graph, so even an unchanged starter can be saved; but it is not
+ * `edited`: a graph saved elsewhere may replace it, as nothing is lost.
  */
 export const editorState = ({
   text,
@@ -28,7 +29,33 @@ export const editorState = ({
   readonly saved: string | undefined;
   /** The last read of `text`: undefined until it comes back. */
   readonly read: { readonly ok: boolean } | undefined;
-}): { readonly unsaved: boolean; readonly canSave: boolean } => {
+}): { readonly unsaved: boolean; readonly canSave: boolean; readonly edited: boolean } => {
   const unsaved = text !== saved;
-  return { unsaved, canSave: unsaved && read?.ok === true };
+  return {
+    unsaved,
+    canSave: unsaved && read?.ok === true,
+    edited: text !== (saved ?? STARTER_MERMAID),
+  };
+};
+
+/**
+ * What the editor does about the graph on disk: `saved` is it now, `synced`
+ * the one this editor last took or wrote, both as generated Mermaid. A graph
+ * saved elsewhere is taken, unless the user has edits: then it is flagged,
+ * and taken if they undo them, so the graph shown is never an old one by
+ * mistake. Nothing is done while this editor's own save is on its way.
+ */
+export const onDisk = ({
+  saved,
+  synced,
+  edited,
+  saving,
+}: {
+  readonly saved: string | undefined;
+  readonly synced: string | undefined;
+  readonly edited: boolean;
+  readonly saving: boolean;
+}): "same" | "take" | "flag" => {
+  if (saving || saved === undefined || saved === synced) return "same";
+  return edited ? "flag" : "take";
 };

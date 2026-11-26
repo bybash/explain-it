@@ -7,6 +7,7 @@ import { makeSoundtrack } from "../audio/soundtrack.ts";
 import type { VoiceLine } from "../audio/voice.ts";
 import { layoutWarnings } from "../checks/layout.ts";
 import { stillAt } from "../checks/sheet.ts";
+import { storyWarnings } from "../checks/story.ts";
 import { loudnessWarnings, narrationFitWarnings, readingWarnings } from "../checks/timing.ts";
 import { projectBeats } from "../engine/beats/build.ts";
 import {
@@ -14,6 +15,7 @@ import {
   type BeatWarning,
   type CheckReport,
   type CheckWarning,
+  LAYOUT_CHECKS,
   ShapeSchema,
   type SkippedChecks,
 } from "../schema/checks.ts";
@@ -139,7 +141,7 @@ export const skippedChecks = (
   const lacks = (tool: MissingTool["tool"]) => missing.some((m) => m.tool === tool);
   const skipped: SkippedChecks[] = [];
   if (lacks("chrome"))
-    skipped.push({ checks: ["overlap", "off-frame"], reason: "Chrome is not available" });
+    skipped.push({ checks: [...LAYOUT_CHECKS], reason: "Chrome is not available" });
   if (voiceFailed)
     skipped.push({ checks: ["narration-fit", "loudness"], reason: "the voice did not generate" });
   else if (lacks("ffmpeg"))
@@ -245,6 +247,7 @@ export const checkProjectFolder = async ({
   const warnings = [
     ...layout.warnings,
     ...readingWarnings(plan),
+    ...storyWarnings(plan, project.storyboard),
     ...(skipped.has("narration-fit") ? [] : narrationFitWarnings(plan, project.narration ?? {})),
     ...(skipped.has("loudness") ? [] : await checkSoundtrack({ project, lines, soundtrack })),
   ];

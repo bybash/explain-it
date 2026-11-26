@@ -7,7 +7,7 @@ import { CHECK_REPORT, checkedFilesKey } from "../render/check-files.ts";
 import type { MissingTool } from "../render/environment.ts";
 import { loadProject } from "../render/load.ts";
 import type { ChecksRun, PreviewChecks, PreviewSound } from "../schema/api.ts";
-import { CheckReportSchema, type SkippedChecks } from "../schema/checks.ts";
+import { type CheckReport, CheckReportSchema, type SkippedChecks } from "../schema/checks.ts";
 import { formatErrors, parseWith, type Validated } from "../schema/errors.ts";
 import { fail, ok } from "../schema/result.ts";
 import type { Events } from "./events.ts";
@@ -51,6 +51,7 @@ export const previewChecks = ({
   run,
   missingTools,
   events,
+  reported = () => {},
 }: {
   readonly projectsDir: string;
   readonly sound: PreviewSoundJobs;
@@ -59,6 +60,8 @@ export const previewChecks = ({
   readonly run: RunChecks;
   readonly missingTools: () => Promise<readonly MissingTool[]>;
   readonly events: Events;
+  /** Told of each report the checks write, for the chat to say what they found. */
+  readonly reported?: (slug: string, report: CheckReport) => void;
 }) => {
   const jobs = new Map<string, Job>();
 
@@ -142,6 +145,8 @@ export const previewChecks = ({
         onProgress: (checked, total) => report(slug, job, { state: "checking", checked, total }),
       });
       report(slug, job, { state: "done" });
+      const written = await readReport(slug);
+      if (written && jobs.get(slug) === job) reported(slug, written);
     } catch (error) {
       if (signal.aborted) return;
       report(slug, job, {

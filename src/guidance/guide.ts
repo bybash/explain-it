@@ -4,6 +4,7 @@ import { FONTS } from "../engine/theme/fonts.ts";
 import { CATEGORIES, KIND_STYLES } from "../engine/theme/kinds.ts";
 import { PALETTES } from "../engine/theme/palettes.ts";
 import { ConfigSchema } from "../schema/config.ts";
+import { DRAFT_TOOL_NAMES } from "../schema/drafts.ts";
 import {
   GraphEdgeSchema,
   GraphNodeSchema,
@@ -33,7 +34,7 @@ const union = (words: readonly string[]) => words.map((w) => `"${w}"`).join(" | 
 const commaList = (words: readonly string[]) => words.map((w) => `"${w}"`).join(", ");
 const json = (value: unknown) => JSON.stringify(value, null, 2);
 const ts = (code: string) => `\`\`\`ts\n${code}\n\`\`\``;
-const T = TOOL_NAMES;
+const T = { ...TOOL_NAMES, ...DRAFT_TOOL_NAMES };
 
 export const GRAPH_SHAPE_NAMES = { nodes: "Node", edges: "Edge", zones: "Zone" } as const;
 export const STORYBOARD_SHAPE_NAMES = {
@@ -61,7 +62,17 @@ const fieldsOf = (schema: z.ZodType): string => {
   return `{ ${fields.join(", ")} }`;
 };
 
-const STEPS = `## Steps
+/** What both sets of steps say of the check and the render. */
+const CHECK_NOTE =
+  "it also generates the narration voice, which can take a minute the first time, and lists problems by beat: shorter labels or fewer nodes in a scene fix most layout ones, and a shorter caption or line, or a slower pace, fixes reading speed";
+const RENDER_NOTE = "Rendering takes about half a minute per minute of video, per theme.";
+
+/** The rules every step shares, wherever the guide is read. */
+const FIELDS_RULE =
+  "Every object below takes exactly the fields shown: any other field, such as a `description` on a node, is an error.";
+
+/** The steps for an agent in an IDE, whose user reads everything in its chat. */
+const IDE_STEPS = `## Steps
 
 1. Read the code or the description the user gave you, and find the flow: who and what takes part, and what passes between them.
 2. Write graph.json and call \`${T.createProject}\` (pass \`sources\`: the files you read, with the commit). Show the user the Mermaid from the result and the preview link, then wait for them to approve or ask for changes. Change it with \`${T.updateGraph}\` (a whole graph or a JSON Patch).
@@ -69,11 +80,30 @@ const STEPS = `## Steps
 4. Write storyboard.json and call \`${T.setStoryboard}\`. Show the user the script: each scene's title, then each beat's caption and narration, with the timing from the result (estimated until the voice is generated). Wait for their approval; change it with \`${T.setStoryboard}\` again.
 5. Optionally call \`${T.setStyle}\`: a palette, a title card that names the video, an end card with a link, a logo.
 6. Point the user at the preview link to watch it.
-7. When the user wants the video, call \`${T.check}\` to see that the project is ready (it also generates the narration voice, which can take a minute the first time, and lists problems by beat: shorter labels or fewer nodes in a scene fix most layout ones, and a shorter caption or line, or a slower pace, fixes reading speed), then \`${T.render}\`. Follow the job with \`${T.renderStatus}\` until it is done, and give the user the paths of the files it wrote; \`${T.cancelRender}\` stops it. Rendering takes about half a minute per minute of video, per theme.
+7. When the user wants the video, call \`${T.check}\` to see that the project is ready (${CHECK_NOTE}), then \`${T.render}\`. Follow the job with \`${T.renderStatus}\` until it is done, and give the user the paths of the files it wrote; \`${T.cancelRender}\` stops it. ${RENDER_NOTE}
 
 Every tool result carries a preview link to the project in the web app. When a tool returns errors, each one names its place (\`graph.nodes[2].kind: …\`): fix those and call it again. Use \`${T.listProjects}\` and \`${T.getProject}\` to pick up a project you made before.
 
-Every object below takes exactly the fields shown: any other field, such as a \`description\` on a node, is an error.`;
+${FIELDS_RULE}`;
+
+/** The steps for an agent in the app, whose user sees each file in the panel beside the chat. */
+const APP_STEPS = `## Steps
+
+The user sees the project in the panel, beside this chat or behind the Panel button at the top of the page when only the chat is shown. It changes as you save: the graph as a diagram, the story, the script beat by beat, the style, the preview and the renders. Never paste the graph, its Mermaid or the script into the chat: say in a sentence or two what you made or changed, then ask what you need to know. If they ask to see one of these, say which gate of the panel shows it.
+
+1. Read the description and the context the user gave you, and find the flow: who and what takes part, and what passes between them.
+2. Draft the graph with \`${T.draftGraph}\`: give it the flow as the user described it, and the names of the context files that bear on it. It checks its own answer and saves graph.json. Say in a sentence what the graph shows and what it assumed, put its questions to the user (it asks at most two), and ask whether the graph is right. Wait for the user to approve it or ask for changes.
+3. Agree the story with the user before writing any beat: who the video is for, the one thing they should remember, the shape it takes and its hook (see Shaping the story). It is short, so write it in the chat. Wait for their approval, then call \`${T.setBrief}\` with it as brief.json, so the story is kept with the project. A brief may already be there (\`${T.getProject}\` returns it): start from it, and follow its notes.
+4. Draft the script with \`${T.draftScript}\`: give it what the user asked for and the names of the context files that bear on it; it follows the brief, checks and repairs its own script, and saves storyboard.json. Say how many scenes and beats it has, how long it runs (from the result, estimated until the voice is generated) and how it opens and ends, and ask whether the script is right. If the result lists problems it could not repair, say so in a sentence. Wait for their approval.
+5. Offer the title card the draft suggests, and optionally a palette or an end card with a link; save what the user wants with \`${T.setStyle}\`.
+6. Point the user at the Preview gate to watch it.
+7. When the user wants the video, call \`${T.check}\` to see that the project is ready (${CHECK_NOTE}), then \`${T.render}\`. Follow the job with \`${T.renderStatus}\`; the finished video plays at the Render gate, and \`${T.cancelRender}\` stops one under way. ${RENDER_NOTE}
+
+When the user asks for a change to the graph or the script ("rename X", "add a retry step", "shorten beat 3"), at any gate, make it with \`${T.editGraph}\` or \`${T.editScript}\`, giving it their words: it changes only what they asked. Say what changed in a sentence. Draft again only when they want to start over.
+
+When a tool returns errors, each one names its place (\`graph.nodes[2].kind: …\`): fix those and call it again.
+
+${FIELDS_RULE}`;
 
 const GRAPH = `## graph.json: the structure
 
@@ -173,14 +203,17 @@ ${rules.trim()}`,
  */
 export const authoringGuide = ({
   houseRules = null,
+  where = "ide",
 }: {
   readonly houseRules?: string | null;
+  /** Who reads it: an IDE's agent over MCP, or the app's own, whose user sees the files beside the chat. */
+  readonly where?: "ide" | "app";
 } = {}): string =>
   [
     "# Making an explAIn-it video",
     "explAIn-it turns a flow into a short isometric explainer video. You describe the flow as a graph, then tell its story in scenes and beats; explAIn-it lays it out, animates it and renders it.",
     ...houseRulesSection(houseRules),
-    STEPS,
+    where === "app" ? APP_STEPS : IDE_STEPS,
     GRAPH,
     STORYBOARD,
     SHAPE,
@@ -191,6 +224,44 @@ export const authoringGuide = ({
   ].join("\n\n");
 
 const SEE_GUIDE = `Call ${T.getGuide} first for the full formats, how to tell the story, and a worked example.`;
+
+/**
+ * The guide's part on graph.json, with the worked example's graph and the
+ * user's house rules: what a graph-drafting call reads (5.3), so its prompt
+ * is built from the guide and never written again.
+ */
+export const graphGuide = (houseRules: string | null = null): string =>
+  [
+    ...houseRulesSection(houseRules),
+    GRAPH,
+    `An example graph.json:
+
+\`\`\`json
+${json(EXAMPLE_GRAPH)}
+\`\`\``,
+  ].join("\n\n");
+
+/**
+ * The guide's parts on the script (the story's shape, storyboard.json, and
+ * telling it in beats), with the worked example's script and the house
+ * rules: what a script-drafting call reads (5.4).
+ */
+export const storyboardGuide = (houseRules: string | null = null): string =>
+  [
+    ...houseRulesSection(houseRules),
+    SHAPE,
+    STORYBOARD,
+    STORY,
+    `An example storyboard.json, for the example graph.json:
+
+\`\`\`json
+${json(EXAMPLE_GRAPH)}
+\`\`\`
+
+\`\`\`json
+${json(EXAMPLE_STORYBOARD)}
+\`\`\``,
+  ].join("\n\n");
 
 /** A few lines on graph.json for the tool descriptions; the guide has the rest. */
 export const graphSummary = (): string =>

@@ -40,8 +40,11 @@ in a pull request that edits this file.
 
 ## User flow
 
-The app is a chat on the left and a panel on the right. Work moves through
-five **gates**. Each gate shows its result in the panel; the user approves it
+The app is a chat on the left and a panel on the right, or either one alone:
+a switch (Chat, Split, Panel) at the top of the project chooses, and the
+browser keeps the choice. A narrow screen has no split. Messages show as
+Markdown; HTML in them shows as text and images are never loaded (decision
+037). Work moves through five **gates**. Each gate shows its result in the panel; the user approves it
 by chat or by button, or edits it, either through chat or directly in the panel.
 
 **Three ways through, one process** (decision 031). The gates, the files
@@ -61,7 +64,7 @@ mixed on one project:
 
 | Gate | The LLM produces | The panel shows | Direct edits |
 |---|---|---|---|
-| 1. Graph | `graph.json` from the description and context | Mermaid code and the rendered diagram | Edit the Mermaid code |
+| 1. Graph | `graph.json` from the description and context | The diagram, or the Mermaid code behind it, switched by a button; the diagram full screen | Edit the Mermaid code |
 | 2. Script | `brief.json`, the story, then `storyboard.json`: scenes and beats | The brief, then the scenes and beats as a form, each beat with its length and hints | Edit the brief; start a script from the graph; edit scenes, captions, narration, actions |
 | 3. Style | Nothing (defaults are filled in) | Palette, font, voice, captions, music, output | The form |
 | 4. Preview | Nothing (voice is generated here) | The player with a scrubber, beat list, check warnings and contact sheet | Jump to a beat and edit it |
@@ -82,10 +85,15 @@ Rules:
   Actions are picked from the scene's own nodes and edges. Beside each
   beat it shows its length and hints, worked out in the browser as the
   user types: from the reading-speed check, a line or caption that goes by
-  too fast to read; from 4.5's hook rule, a first beat too long for a
-  hook. Hints show while the script is valid. A line already spoken is
+  too fast to read; from the story checks (2.8), a hook that is not said or
+  too long, an ending on another step, and a beat that does more than one
+  thing. Hints show while the script is valid. A line already spoken is
   timed by its voice, as the checks time it; any other by its words. The
   script saves only when it is valid, as `set_storyboard` saves it.
+- The gates and the Approve button are across the top, and stay there as
+  the panel scrolls. A graph saved by the assistant, or over MCP, shows
+  at once unless the user has edits of their own, which are kept and the
+  saved graph offered.
 - Style can be changed at any later gate without going back.
 - `project.json` keeps the furthest gate reached. Approving moves on from that
   gate only, so a second click or an old tab changes nothing; the graph and
@@ -442,8 +450,8 @@ built from it, so narration fit guards that rule. Title cards, end cards
 and scene titles hold their text long enough by design and are not
 reading-checked. A check that cannot run (no Chrome for the layout, no
 ffmpeg for loudness, no voice for narration fit and loudness) is listed in
-the report as skipped, with the reason; the others still run. `explain-it check` exits 1 when it finds problems and 2
-when it cannot check. Layout warnings do not stop a render; the layout engine keeps
+the report as skipped, with the reason; the others still run. `explain-it check` exits 1 when it finds problems (the story
+checks are advice, and do not count) and 2 when it cannot check. Layout warnings do not stop a render; the layout engine keeps
 routes in sight of boxes and places edge labels and badges clear of boxes and
 of each other. Decision 016 says why.
 
@@ -469,6 +477,15 @@ than hiding it. Decision 027 says why.
 | Reading speed | Caption characters ÷ seconds on screen | Above 15 characters per second for a step caption, or 17 for a narration caption (a subtitle of speech also heard) |
 | Narration fit | Voice length against the room its beat leaves it, from the lead-in to the beat's end | A line would need speeding up by more than 1.05× |
 | Loudness | ffmpeg `ebur128` on the final mix, made by the check as a render would | Outside −16 ± 1 LUFS or true peak above −1 dBTP |
+| Hook (story) | The first beat, timed as it plays | It has no narration, or takes more than 5 s |
+| Outcome (story) | The last beat's actions | It flows another edge, rather than showing where the flow ends |
+| One thing (story) | Each narrated beat | More than two flows, or more than two sentences |
+| Length (story) | The whole video | Outside 45 to 90 s |
+
+The story checks (2.8) are pure, on the script and its plan: the Script
+gate shows them as hints, `check` reports them, and the assistant's
+`draft_script` repairs its own script against them. Judgement calls
+(jargon, tone) stay with the LLM.
 
 Layout problems go back to the layout engine first and to the LLM second.
 
@@ -537,13 +554,35 @@ Decision 018 says why.
   `get_project`. Its tool results leave out links and times, so a recorded
   conversation replays exactly. A turn stops at `MAX_AGENT_STEPS` steps (16). It has every MCP project
   tool but `create_project`, `list_projects` and `get_guide`, which a chat on
-  one project has no use for. Drafting a gate's
-  file is one of its tools.
+  one project has no use for.
+- **Drafting tools.** Drafting a gate's file is one of the assistant's
+  tools, which only the app has (an IDE's agent drafts itself): one
+  structured call with the repair loop, its prompt in `src/llm/prompts/` as
+  Markdown, built from the authoring guide's part on that file and the house
+  rules, never written again. `draft_graph` (5.3) drafts graph.json from the
+  user's description and the context files the assistant names, with what
+  it assumed and at most two questions, and saves it as `update_graph`
+  does. `draft_script` (5.4) drafts storyboard.json for the graph once a
+  brief is agreed, following it and the house rules; the story checks and
+  the quick checks send its answer back for repair, and when the repairs run
+  out the last script that fits the graph is kept, with what is left, for
+  the assistant to say. It suggests a title card. A change the user asks
+  for in the chat ("rename X", "add a retry step", "shorten beat 3") goes
+  to `edit_graph` or `edit_script` (5.5): one structured call that answers
+  with a JSON Patch on the current file, applied and checked as the file
+  is, so everything it does not touch stays as it was. Nothing is streamed: the graph
+  shows in the Graph gate once it is saved (decision 039).
 - **Checks become fixes.** The quick checks run after every script change,
   and the full checks when the Preview gate opens and before a render. The
-  assistant reports what they find in plain words, each with a Fix. A fix
-  that changes the user's words is offered first; a timing or layout fix
-  (a slower beat, a moved box) is applied and said. Every fix can be undone.
+  assistant reports what they find in plain words, each with a Fix, and
+  only problems it has not reported yet. A fix that changes the user's
+  words (a shorter caption or line, which the LLM proposes) is offered
+  first; a layout fix (a box put by hand laid out again) is applied and
+  said. A layout problem that does not cover goes to the LLM (5.6), which
+  may shorten labels or move nodes to another scene, never a box by
+  coordinates; its repair is offered, as it changes the user's words, and
+  the next checks say whether it worked (decision 040). Every fix can be undone, unless what it changed has changed since
+  (decision 038).
   The assistant runs the checks on its own drafts and repairs them before
   showing them, so most problems never reach the user.
 - Vercel AI SDK. Providers: OpenRouter (default), Anthropic's own API for a
@@ -575,9 +614,15 @@ Decision 018 says why.
   host that cannot be reached, a missing key. An endpoint on this machine
   (Ollama, LM Studio) needs no key.
 - Prompts live in `src/llm/prompts/` as Markdown files.
-- Context: pasted text and uploaded `.md`, `.txt`, `.mmd` and source files, up
-  to about 100,000 characters in total. Above that the user is asked to trim;
-  nothing is summarised silently.
+- Context: pasted text and uploaded `.md`, `.txt`, `.mmd` and source files
+  (`CONTEXT_EXTENSIONS`), kept as text in the project's `context/`, up to
+  100,000 characters in total (`MAX_CONTEXT_CHARS`). Above that nothing is
+  kept, and the user is told by how much and asked to remove or trim a
+  file; nothing is summarised silently. A binary file is refused. The
+  assistant's prompt lists the files by name and size, and its
+  `read_context` tool reads one when it needs it, so the text is not sent
+  on every step (decision 036). Context is added from the chat: attach a
+  file, or add what is typed in the message box as a file.
 - The README lists models tested for structured output. Local models are best
   effort.
 
@@ -640,7 +685,12 @@ user, as a slash command in Claude Code), so `get_guide` returns the same
 text, and the graph and storyboard tools carry a short summary of their
 format that points at it.
 
-**Approval.** The prompt tells the agent to show the user the Mermaid, then
+**In the app** the same guide has steps of its own (`authoringGuide({ where:
+"app" })`): the panel beside the chat shows each file, so the assistant never
+pastes the graph or the script; it says what it made and asks. Its tools leave
+out the Mermaid too. Everything after the steps is the same text.
+
+**Approval** over MCP. The prompt tells the agent to show the user the Mermaid, then
 agree the story with them and save it with `set_brief`, then show the
 script, in the IDE chat and to wait for approval before moving on. Every
 tool result includes a link to the project in the web app for a visual

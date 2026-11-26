@@ -1,8 +1,11 @@
 import { z } from "zod";
 import { graphSummary, storyboardSummary } from "../guidance/guide.ts";
 import type { AgentTool } from "../llm/agent.ts";
+import type { LlmClient } from "../llm/client.ts";
 import { ApproveSchema } from "../schema/api.ts";
-import { formatErrors, parseWith, type Validated } from "../schema/errors.ts";
+import { ReadContextArgsSchema } from "../schema/context.ts";
+import { DRAFT_TOOL_NAMES } from "../schema/drafts.ts";
+import { formatErrors, parseWith } from "../schema/errors.ts";
 import { GraphSchema } from "../schema/graph.ts";
 import {
   RenderArgsSchema,
@@ -15,7 +18,11 @@ import {
 import { GATES } from "../schema/project.ts";
 import { BriefSchema } from "../schema/story.ts";
 import { StoryboardSchema } from "../schema/storyboard.ts";
+import { readContext } from "../server/context.ts";
 import { approveGate } from "../server/gates.ts";
+import { projectDir } from "../server/projects.ts";
+import { inputOf, output } from "./agent-results.ts";
+import { draftTools } from "./draft-tools.ts";
 import { cancelRenderTool, checkTool, renderStatusTool, renderTool } from "./render-tools.ts";
 import {
   getProjectTool,
@@ -38,29 +45,10 @@ export const AGENT_TOOL_NAMES = {
   render: "render",
   renderStatus: "render_status",
   cancelRender: "cancel_render",
+  readContext: "read_context",
+  ...DRAFT_TOOL_NAMES,
 } as const;
 const T = AGENT_TOOL_NAMES;
-
-/** Fields the in-app agent never needs: links into the app it is in, and times that change on every run. */
-const NOT_FOR_THE_AGENT = new Set(["preview", "createdAt", "updatedAt"]);
-
-/** A tool's result with those fields taken out, at any depth. */
-const forTheAgent = (value: unknown): unknown => {
-  if (Array.isArray(value)) return value.map(forTheAgent);
-  if (value === null || typeof value !== "object") return value;
-  return Object.fromEntries(
-    Object.entries(value)
-      .filter(([key]) => !NOT_FOR_THE_AGENT.has(key))
-      .map(([key, v]) => [key, forTheAgent(v)]),
-  );
-};
-
-/** What the model reads back from a tool: its result, or its errors named by place. */
-const output = (result: Validated<unknown>): unknown =>
-  result.ok ? forTheAgent(result.value) : { errors: formatErrors(result.errors) };
-
-const inputOf = (schema: z.ZodType) =>
-  z.toJSONSchema(schema, { io: "input" }) as Record<string, unknown>;
 
 /**
  * An MCP tool's arguments (without the slug, which is the chat's own) with
@@ -83,22 +71,27 @@ const withSlug = (slug: string, input: unknown) => ({ ...argsOf(input), slug });
 /**
  * The in-app assistant's tools (SPEC, LLM: the assistant): the MCP tools,
  * called in-process on the project the chat belongs to, so the app and an
- * IDE's agent do the same things, plus `approve_gate`, which only the app
- * has: in the IDE, approval stays in its chat. Results leave out links and
+ * IDE's agent do the same things, plus a few only
+ * the app has: `approve_gate` (in the IDE, approval stays in its chat),
+ * `read_context` (an IDE's agent reads the repository itself), and the
+ * drafting tools, `draft_graph`, `draft_script`, `edit_graph` and
+ * `edit_script`, which draft or edit in one checked call with `client` (an
+ * IDE's agent is the LLM, and drafts itself). Results leave out links and
  * times, which the agent has no use for, so a recorded conversation replays
  * exactly.
  */
-export const agentTools = (context: ToolContext, slug: string): AgentTool[] => [
+export const agentTools = (context: ToolContext, slug: string, client: LlmClient): AgentTool[] => [
+  ...draftTools(context, slug, client),
   {
     name: T.getProject,
     description:
-      "Reads the project: its gate, graph.json, storyboard.json, brief.json, config.json, any broken files, the user's house rules, and the graph as Mermaid.",
+      "Reads the project: its gate, graph.json, storyboard.json, brief.json, config.json, any broken files, and the user's house rules.",
     inputSchema: inputOf(z.strictObject({})),
     run: async () => output(await getProjectTool(context, { slug })),
   },
   {
     name: T.updateGraph,
-    description: `Saves the project's graph.json: the whole graph in \`graph\`, or an RFC 6902 JSON Patch in \`patch\`. Lays it out, and returns the Mermaid and the beats the change made stale. ${graphSummary()}`,
+    description: `Saves the project's graph.json: the whole graph in \`graph\`, or an RFC 6902 JSON Patch in \`patch\`. Lays it out, shows it in the panel, and returns the beats the change made stale. ${graphSummary()}`,
     inputSchema: argsFor(UpdateGraphArgsSchema.omit({ slug: true }), { graph: GraphSchema }),
     run: async (input) => output(await updateGraphTool(context, withSlug(slug, input))),
   },
@@ -141,6 +134,19 @@ export const agentTools = (context: ToolContext, slug: string): AgentTool[] => [
       return approval.kind === "missing"
         ? { errors: [`slug: no project "${slug}"`] }
         : { errors: formatErrors(approval.errors) };
+    },
+  },
+  {
+    name: T.readContext,
+    description:
+      "Reads one of the files of context the user gave for this project (listed under Context in your instructions): notes, a spec, Mermaid or source code. Read what you need before drafting.",
+    inputSchema: inputOf(ReadContextArgsSchema),
+    run: async (input) => {
+      const asked = parseWith(ReadContextArgsSchema, input);
+      if (!asked.ok) return { errors: formatErrors(asked.errors) };
+      const { name } = asked.value;
+      const text = await readContext(projectDir(context.projectsDir, slug), name);
+      return text.ok ? { name, text: text.value } : { errors: formatErrors(text.errors) };
     },
   },
   {

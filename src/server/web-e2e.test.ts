@@ -34,6 +34,7 @@ const SOON = { timeout: 15_000 };
 const GATES = "[aria-label=Gates]";
 const CURRENT_GATE = `${GATES} [data-state=current]`;
 const MESSAGES = "[aria-label=Messages] > li";
+const MESSAGES_LIST = "[aria-label=Messages]";
 const DIAGRAM = "[aria-label='The graph as a diagram']";
 const PROJECTS = "[aria-label=Projects] > li";
 const GRAPH_GATE = "[aria-label='Graph gate']";
@@ -226,8 +227,10 @@ const flow = (
       "flowchart LR\n  %% the user's own note\n  user([User]) -->|signs in| app[Photo app]\n  app --> photos[(Photos)]",
     );
     await expect.poll(() => page.textContent(DIAGRAM), SOON).toContain("Photo app");
-    await expect.poll(() => page.isEnabled("text=Save the graph"), SOON).toBe(true);
-    await page.click("text=Save the graph");
+    await expect
+      .poll(() => page.getByRole("button", { name: "Save the graph" }).isEnabled(), SOON)
+      .toBe(true);
+    await page.getByRole("button", { name: "Save the graph" }).click();
     await expect
       .poll(() => page.textContent(`${GRAPH_GATE} [role=status]`), SOON)
       .toContain("Saved");
@@ -245,7 +248,7 @@ const flow = (
     await page.keyboard.press("ControlOrMeta+End");
     await page.keyboard.insertText("\n  photos -->");
     await page.waitForSelector(".cm-error-line");
-    expect(await page.isDisabled("text=Save the graph")).toBe(true);
+    expect(await page.getByRole("button", { name: "Save the graph" }).isDisabled()).toBe(true);
     // The problem is said once, above the diagram: Mermaid adds no error drawing of its own to the page.
     expect(await page.getByText("Syntax error in text").count()).toBe(0);
     await page.keyboard.press("ControlOrMeta+Z");
@@ -327,7 +330,7 @@ const flow = (
     await page.getByRole("button", { name: "▶ Listen" }).click();
     expect((await music).headers()["content-type"]).toBe("audio/wav");
 
-    await page.click("text=Save the style");
+    await page.getByRole("button", { name: "Save the style" }).click();
     await expect
       .poll(() => page.textContent(`${STYLE_GATE} [role=status]`), SOON)
       .toContain("Saved");
@@ -345,7 +348,7 @@ const flow = (
     await page.waitForURL(/#\/projects\/oauth-style\/preview$/);
   }, 60_000);
 
-  it("has the assistant answer in the chat: it saves the graph, which the panel shows, and asks", async () => {
+  it("has the assistant answer in the chat: it drafts the graph, which the panel shows, and asks", async () => {
     // The recorded conversation's project and first message, so the assistant's steps replay.
     const made = await fetch(`${server.url}/api/projects`, {
       method: "POST",
@@ -358,12 +361,14 @@ const flow = (
     await page.press("#chat-text", "Enter");
     await expect
       .poll(() => page.locator(`${MESSAGES}[data-kind=step]`).allTextContents(), SOON)
-      .toEqual(["✓ Saved the graph."]);
+      .toEqual(["✓ Drafted the graph."]);
     await expect
       .poll(() => page.locator(`${MESSAGES}[data-role=assistant]:not([data-kind])`).count(), SOON)
       .toBe(1);
     // The panel follows: the graph the assistant saved is drawn.
-    await page.locator(DIAGRAM).waitFor(SOON);
+    // Not the starter, which has no email service.
+    await expect.poll(() => page.textContent(DIAGRAM), SOON).toMatch(/Email/);
+    expect(await page.textContent(MESSAGES_LIST)).not.toContain("flowchart");
   }, 60_000);
 
   it("keeps the story: a brief at the Script gate and house rules in Settings, which an agent then reads", async () => {
@@ -376,7 +381,7 @@ const flow = (
     await page.getByLabel("Notes and rules").fill("Leave out token refresh.");
     // Unsaved, the brief holds the gate.
     await expect.poll(() => page.isDisabled("text=Approve and go to Style"), SOON).toBe(true);
-    await page.click("text=Save the brief");
+    await page.getByRole("button", { name: "Save the brief" }).click();
     await expect
       .poll(() => page.textContent(`${SCRIPT_GATE} [role=status]`), SOON)
       .toContain("Saved");
@@ -389,7 +394,7 @@ const flow = (
     await page.goto(`${server.url}/#/settings`);
     const rules = "- No jargon.\n- End with a link to the docs.";
     await page.getByLabel("House rules").fill(rules);
-    await page.click("text=Save the house rules");
+    await page.getByRole("button", { name: "Save the house rules" }).click();
     await expect
       .poll(() => page.textContent("[aria-label=Storytelling] [role=status]"), SOON)
       .toContain("Saved");
@@ -463,8 +468,8 @@ const flow = (
     "checks the video from the preview: a warning jumps to its beat, and the contact sheet shows",
     async () => {
       // The tone voice speaks faster than a reader reads, so the example's captions get warnings.
+      // Opening the gate ran the checks, as their report was out of date (decision 038).
       await page.getByRole("tab", { name: /^Checks/ }).click();
-      await page.getByRole("button", { name: "Run the checks" }).click();
       const warnings = page.getByRole("list", { name: "Warnings at beats" });
       await warnings.waitFor({ timeout: 120_000 });
       await expect.poll(() => page.getByRole("tab", { name: /^Checks \(\d+\)$/ }).count()).toBe(1);

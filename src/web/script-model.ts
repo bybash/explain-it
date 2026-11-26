@@ -1,8 +1,9 @@
+import { storyWarnings } from "../checks/story.ts";
 import { readingProblems } from "../checks/timing.ts";
 import { beatOptions, buildBeats } from "../engine/beats/build.ts";
+import { tenth } from "../engine/beats/timing.ts";
 import type { Config } from "../schema/config.ts";
 import type { Graph } from "../schema/graph.ts";
-import { HOOK_SECONDS } from "../schema/story.ts";
 import {
   type ACTION_TYPES,
   type Action,
@@ -246,7 +247,8 @@ const HINTS = {
 } as const;
 
 /**
- * Each beat's length and hints, as the quick checks would find them, in the
+ * Each beat's length and hints, as the quick checks and the story checks
+ * would find them, in the
  * order the beats play: a line already spoken (`measured`, its seconds by
  * its words) is timed by its voice, any other by its words. Undefined while
  * the storyboard is not valid against the graph.
@@ -272,20 +274,16 @@ export const beatHints = (
   const said = new Map<string, string[]>();
   for (const { kind, beat } of readingProblems(plan))
     said.set(beat.id, [...new Set([...(said.get(beat.id) ?? []), HINTS[kind]])]);
-  const spoken = new Set(
-    parsed.value.scenes.flatMap((s) => s.beats.filter((b) => b.say).map((b) => b.id)),
-  );
-  const tenth = (seconds: number) => Math.round(seconds * 10) / 10;
+  // The story checks (2.8) at each beat: the hook, the outcome, one thing per beat.
+  for (const warning of storyWarnings(plan, parsed.value))
+    if ("beat" in warning) {
+      const hint = `${warning.message.charAt(0).toUpperCase()}${warning.message.slice(1)}.`;
+      said.set(warning.beat, [...(said.get(warning.beat) ?? []), hint]);
+    }
   return new Map(
-    plan.beats.map((beat, i) => {
-      const seconds = beat.end - beat.start;
-      const hook =
-        i === 0 && seconds > HOOK_SECONDS
-          ? [
-              `As the first beat, this is the hook: it takes ${tenth(seconds)} s, and a hook lands within ${HOOK_SECONDS} s. ${spoken.has(beat.id) ? "Shorten its line." : "Shorten its caption, or give it fewer actions."}`,
-            ]
-          : [];
-      return [beat.id, { seconds: tenth(seconds), hints: [...hook, ...(said.get(beat.id) ?? [])] }];
-    }),
+    plan.beats.map((beat) => [
+      beat.id,
+      { seconds: tenth(beat.end - beat.start), hints: said.get(beat.id) ?? [] },
+    ]),
   );
 };
