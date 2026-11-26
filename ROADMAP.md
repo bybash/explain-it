@@ -296,6 +296,12 @@ that finishes it.
   smoke test (build, run, answer, render the example) on PRs that change
   the `Dockerfile` would catch a broken image earlier.
 
+### Not placed yet, from 3.15
+
+- The Colours tab has no browser test of its own (3.15 agreed the pure,
+  API, MCP and recorded-LLM seams); it was checked by hand, with
+  screenshots. The e2e flow could pick a colour and save it.
+
 ### Not placed yet, from 6.1
 
 - The image is about 1.65 GB: Chromium and ffmpeg with their libraries

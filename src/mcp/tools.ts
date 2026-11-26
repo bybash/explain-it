@@ -1,6 +1,6 @@
 import type { TtsProvider } from "../audio/tts.ts";
 import { narrationLengths, readCachedVoice } from "../audio/voice.ts";
-import { categoryColours } from "../engine/theme/categories.ts";
+import { coloursOf } from "../engine/theme/categories.ts";
 import { authoringGuide } from "../guidance/guide.ts";
 import { graphToMermaid } from "../mermaid/generate.ts";
 import type { RunChecks } from "../render/check.ts";
@@ -78,13 +78,12 @@ export const getProjectTool = async (context: ToolContext, input: Args) => {
   const { graph, config } = opened.value;
   const houseRules = await readHouseRules(context.projectsDir);
   if (!houseRules.ok) return houseRules;
-  const colours = categoryColours((config ?? DEFAULT_CONFIG).theme.palette);
   return ok({
     ...opened.value,
     houseRules: houseRules.value,
     mermaid: graph ? graphToMermaid(graph) : null,
     // What each category looks like here, so "make it green" picks the right one.
-    colours: colours.ok ? colours.value : null,
+    colours: coloursOf(config),
     preview: context.previewUrl(args.value.slug),
   });
 };

@@ -15,8 +15,15 @@ that named the node stale.
   nodes, edges and areas, each with the palette's swatches; the default (a
   node's kind's colour, or the accent) carries a dot, and picking it gives
   the default back. A node's row can give its colour to every node of its
-  kind. The preview draws the picks before they are saved; the Style gate's
-  one Save saves them with the style.
+  kind. The swatches show the colour as the video will: light, dark, or
+  half of each when it renders both. The preview draws the picks before
+  they are saved; the Style gate's one Save saves them with the style, the
+  style first, as only it has checks of its own to fail: a style refused
+  saves nothing.
+- **A pick remembers the colour it replaces.** When the graph changes
+  elsewhere (the chat, an agent), a pick for something recoloured meanwhile
+  is dropped, and the tab says so, so a save never undoes that change; a pick
+  for something gone is dropped too.
 - **Categories, never hex.** A pick is a category, so it follows the
   palette in light and dark, and a change of palette recolours everything
   consistently. A colour of one's own belongs in a custom palette (the

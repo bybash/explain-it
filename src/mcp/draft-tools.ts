@@ -1,4 +1,4 @@
-import { categoryColours } from "../engine/theme/categories.ts";
+import { coloursOf } from "../engine/theme/categories.ts";
 import type { AgentTool } from "../llm/agent.ts";
 import type { LlmClient } from "../llm/client.ts";
 import { draftGraph, draftScript } from "../llm/drafting.ts";
@@ -55,12 +55,11 @@ export const draftTools = (context: ToolContext, slug: string, client: LlmClient
       if (!opened?.ok) return noProject(slug);
       const { graph, config } = opened.value;
       if (!graph) return { errors: [`graph.json: missing; draft the graph with ${T.draftGraph}`] };
-      const colours = categoryColours((config ?? DEFAULT_CONFIG).theme.palette);
       const edit = await editFile(client, {
         file: "graph",
         request: asked.value.request,
         graph,
-        colours: colours.ok ? colours.value : null,
+        colours: coloursOf(config),
         houseRules: await houseRulesOf(context),
       });
       if (!edit.ok) return { errors: formatErrors(edit.errors) };

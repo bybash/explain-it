@@ -15,6 +15,13 @@ export const NUMBERED_CATEGORIES = Array.from(
 
 /** Every category a node, edge or zone can name; an unknown one draws in the accent. */
 export const CATEGORIES = [DEFAULT_CATEGORY, "muted", ...NUMBERED_CATEGORIES] as const;
+export type Category = (typeof CATEGORIES)[number];
+
+/** A category's colour in each mode. */
+export type CategoryColour = { readonly light: string; readonly dark: string };
+
+/** What each category looks like in a palette: what `get_project` gives agents as `colours`. */
+export type ColourTable = Readonly<Record<Category, CategoryColour>>;
 
 const ColoursOfSchema = (what: string) =>
   z

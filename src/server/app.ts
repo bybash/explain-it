@@ -24,6 +24,7 @@ import { LOCAL_HOSTS } from "../schema/settings.ts";
 import { runAssistant } from "./assistant.ts";
 import { addChat, appendChat, readChat } from "./chat.ts";
 import { checksChat } from "./checks-chat.ts";
+import { colourRoutes } from "./colour-routes.ts";
 import { contextRoutes } from "./context-routes.ts";
 import { createEvents } from "./events.ts";
 import { fixRoutes } from "./fix-routes.ts";
@@ -317,6 +318,7 @@ export const createApp = ({
 
   graphRoutes(app, { projectsDir, now, events });
   styleRoutes(app, { projectsDir, now, events });
+  colourRoutes(app, { projectsDir, now, events });
   storyRoutes(app, { projectsDir, now, events });
   contextRoutes(app, { projectsDir, events });
   storyboardRoutes(app, { projectsDir, now, events, tts });

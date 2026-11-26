@@ -1,7 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { categoryColours } from "../engine/theme/categories.ts";
-import { FONTS } from "../engine/theme/fonts.ts";
-import { PALETTES } from "../engine/theme/palettes.ts";
+import { coloursOf } from "../engine/theme/categories.ts";
 import type { OpenedProject } from "../schema/api.ts";
 import {
   type Config,
@@ -11,30 +9,19 @@ import {
   type LogoImages,
   type LogoMode,
   parseConfig,
-  RESOLUTIONS,
-  THEME_MODES,
 } from "../schema/config.ts";
 import type { ValidationError } from "../schema/errors.ts";
 import { getLogo, saveColours, saveStyle } from "./api.ts";
 import { ColoursTab } from "./ColoursTab.tsx";
-import {
-  type ColourDraft,
-  changesColours,
-  colourChange,
-  colouredGraph,
-  NO_COLOURS,
-} from "./colours-form.ts";
 import { Errors } from "./Errors.tsx";
-import { capitalised, THEME_MODE_LABELS } from "./labels.ts";
+import { CARDS_CLASS, LookTab } from "./LookTab.tsx";
 import { StylePreview } from "./StylePreview.tsx";
 import { CaptionsCard, MusicCard, PacingCard, VoiceCard } from "./sound-fields.tsx";
-import { CardFields, INPUT_CLASS, LABEL_CLASS, LogoFields, Section } from "./style-fields.tsx";
 import { type PendingLogos, previewLogo, styleEdit, withLogoFile } from "./style-form.ts";
 import { Tabs } from "./ui.tsx";
+import { useColours } from "./useColours.ts";
 import { useSamplePlayer } from "./useSamplePlayer.ts";
 
-/** The cards in a tab: two to a row when the panel is wide enough. */
-const CARDS_CLASS = "grid grid-cols-[1fr] items-start gap-4 @2xl:grid-cols-2";
 /** The settings each tab changes, to mark the tab that has unsaved changes. */
 const LOOK_SETTINGS = ["theme", "font", "cards", "logo", "output"] as const;
 const SOUND_SETTINGS = ["voice", "pacing", "captions", "music"] as const;
@@ -74,19 +61,18 @@ export const StylePanel = ({
 
   const player = useSamplePlayer();
   const [tab, setTab] = useState<"look" | "sound" | "colours">("look");
-  const [colourDraft, setColourDraft] = useState<ColourDraft>(NO_COLOURS);
+  const colours = useColours(opened.graph);
   const broken = configBroken(opened);
   const edit = styleEdit(saved, draft, pending);
   const styleChanged = Object.keys(edit.config ?? {}).length > 0 || edit.logo !== undefined;
-  const colours = opened.graph ? colourChange(opened.graph, colourDraft) : {};
-  const coloursChanged = changesColours(colours);
-  const changed = styleChanged || coloursChanged;
+  const changed = styleChanged || colours.changed;
   const unsaved = changed || broken;
   const changedIn = (settings: readonly string[]) =>
     settings.some((setting) => setting in (edit.config ?? {}));
   const checked = parseConfig(draft);
   const formErrors = checked.ok ? [] : checked.errors;
-  const palette = categoryColours((checked.ok ? checked.value : saved).theme.palette);
+  const shown = checked.ok ? checked.value : saved;
+  const palette = coloursOf(shown);
 
   useEffect(() => {
     void getLogo(slug).then((result) => {
@@ -143,24 +129,25 @@ export const StylePanel = ({
 
   const save = async () => {
     setSaving(true);
-    // The colours first: they need no checks of the style's, and a style refused leaves them saved.
-    if (coloursChanged) {
-      const coloured = await saveColours(slug, colours);
-      if (!coloured.ok) {
-        setSaving(false);
-        return setSaveErrors(coloured.errors);
-      }
-      setColourDraft(NO_COLOURS);
-    }
-    if (!styleChanged && !broken) {
+    // The style first, as only it has checks of its own to fail: a style refused saves nothing.
+    // The colours are picked from the palette, for what the graph has.
+    const styled = styleChanged || broken ? await saveStyle(slug, edit) : undefined;
+    if (styled && !styled.ok) {
       setSaving(false);
-      setSaveErrors([]);
-      return setJustSaved(true);
+      return setSaveErrors(styled.errors);
     }
-    const result = await saveStyle(slug, edit);
+    const coloured = colours.changed ? await saveColours(slug, colours.change) : undefined;
     setSaving(false);
-    if (!result.ok) return setSaveErrors(result.errors);
+    if (coloured && !coloured.ok)
+      return setSaveErrors([
+        ...(styled ? [{ path: "style", message: "saved; the colours were not" }] : []),
+        ...coloured.errors,
+      ]);
+    if (coloured) colours.saved(coloured.value.graph);
     setSaveErrors([]);
+    setJustSaved(true);
+    if (!styled) return;
+    const result = styled;
     setWarnings(result.value.warnings);
     seen.current = JSON.stringify(result.value.config);
     setSaved(result.value.config);
@@ -182,9 +169,7 @@ export const StylePanel = ({
           Preview
         </h3>
         <StylePreview
-          opened={
-            opened.graph ? { ...opened, graph: colouredGraph(opened.graph, colourDraft) } : opened
-          }
+          opened={colours.preview ? { ...opened, graph: colours.preview } : opened}
           config={checked.ok ? checked.value : saved}
           logo={previewLogo(draft, savedLogo, pending)}
         />
@@ -211,116 +196,14 @@ export const StylePanel = ({
               label: "Look",
               marked: changedIn(LOOK_SETTINGS) || edit.logo !== undefined,
               content: (
-                <div className={CARDS_CLASS}>
-                  <Section title="Colours">
-                    <label className={LABEL_CLASS} htmlFor="style-palette">
-                      Palette
-                    </label>
-                    <select
-                      id="style-palette"
-                      className={INPUT_CLASS}
-                      value={
-                        typeof draft.theme.palette === "string" ? draft.theme.palette : "custom"
-                      }
-                      onChange={(e) =>
-                        change({ ...draft, theme: { ...draft.theme, palette: e.target.value } })
-                      }
-                    >
-                      {Object.keys(PALETTES).map((name) => (
-                        <option key={name} value={name}>
-                          {capitalised(name)}
-                        </option>
-                      ))}
-                      {typeof draft.theme.palette !== "string" && (
-                        <option value="custom" disabled>
-                          Custom (set over MCP)
-                        </option>
-                      )}
-                    </select>
-                    <span className={LABEL_CLASS}>Mode</span>
-                    <div
-                      className="mt-1.5 flex flex-wrap gap-4"
-                      role="radiogroup"
-                      aria-label="Mode"
-                    >
-                      {THEME_MODES.map((mode) => (
-                        <label key={mode} className="flex items-center gap-2">
-                          <input
-                            type="radio"
-                            name="style-mode"
-                            checked={draft.theme.mode === mode}
-                            onChange={() => change({ ...draft, theme: { ...draft.theme, mode } })}
-                          />
-                          {THEME_MODE_LABELS[mode]}
-                        </label>
-                      ))}
-                    </div>
-                  </Section>
-
-                  <Section title="Text">
-                    <label className={LABEL_CLASS} htmlFor="style-font">
-                      Font
-                    </label>
-                    <select
-                      id="style-font"
-                      className={INPUT_CLASS}
-                      value={draft.font}
-                      onChange={(e) => change({ ...draft, font: e.target.value })}
-                    >
-                      {FONTS.map((font) => (
-                        <option key={font.id} value={font.id}>
-                          {font.family}
-                        </option>
-                      ))}
-                    </select>
-                  </Section>
-
-                  <CardFields
-                    cards={draft.cards ?? {}}
-                    name={opened.project.name}
-                    change={(cards) => {
-                      const { cards: _cards, ...rest } = draft;
-                      // A card that is left out is no key at all, so it compares equal to one never set.
-                      const kept = Object.fromEntries(Object.entries(cards).filter(([, c]) => c));
-                      change(Object.keys(kept).length === 0 ? rest : { ...rest, cards: kept });
-                    }}
-                  />
-
-                  <LogoFields
-                    logo={draft.logo}
-                    errors={fileErrors}
-                    pick={pickLogo}
-                    place={(logo) => change({ ...draft, logo })}
-                    remove={() => {
-                      const { logo: _logo, ...rest } = draft;
-                      setPending({});
-                      change(rest);
-                    }}
-                  />
-
-                  <Section title="Output">
-                    <label className={LABEL_CLASS} htmlFor="style-resolution">
-                      Resolution
-                    </label>
-                    <select
-                      id="style-resolution"
-                      className={INPUT_CLASS}
-                      value={draft.output.resolution}
-                      onChange={(e) =>
-                        change({
-                          ...draft,
-                          output: { resolution: e.target.value as (typeof RESOLUTIONS)[number] },
-                        })
-                      }
-                    >
-                      {RESOLUTIONS.map((resolution) => (
-                        <option key={resolution} value={resolution}>
-                          {resolution}
-                        </option>
-                      ))}
-                    </select>
-                  </Section>
-                </div>
+                <LookTab
+                  draft={draft}
+                  change={change}
+                  name={opened.project.name}
+                  fileErrors={fileErrors}
+                  pickLogo={pickLogo}
+                  removeLogo={() => setPending({})}
+                />
               ),
             },
             {
@@ -336,19 +219,20 @@ export const StylePanel = ({
                 </div>
               ),
             },
-            ...(opened.graph && palette.ok
+            ...(colours.graph && palette
               ? [
                   {
                     id: "colours" as const,
                     label: "Colours",
-                    marked: coloursChanged,
+                    marked: colours.changed,
                     content: (
                       <ColoursTab
-                        graph={opened.graph}
-                        colours={palette.value}
-                        draft={colourDraft}
-                        change={(next) => {
-                          setColourDraft(next);
+                        graph={colours.graph}
+                        colours={palette}
+                        mode={shown.theme.mode}
+                        draft={colours.draft}
+                        pick={(part, ids, to) => {
+                          colours.pick(part, ids, to);
                           setJustSaved(false);
                         }}
                       />
@@ -369,6 +253,11 @@ export const StylePanel = ({
             Save the style
           </button>
           {changed && <span className="font-semibold text-accent">Unsaved changes</span>}
+          {colours.lost.length > 0 && (
+            <span className="text-muted">
+              Some colours were changed elsewhere, so your picks for them were dropped.
+            </span>
+          )}
           {elsewhere && changed && (
             <span className="text-muted">The style was changed elsewhere; saving replaces it.</span>
           )}

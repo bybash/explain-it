@@ -1,12 +1,24 @@
-import type { CategoryColour } from "../engine/theme/categories.ts";
 import { KIND_STYLES } from "../engine/theme/kinds.ts";
-import { CATEGORIES, DEFAULT_CATEGORY } from "../schema/colours.ts";
+import {
+  CATEGORIES,
+  type Category,
+  type CategoryColour,
+  type ColourTable,
+  DEFAULT_CATEGORY,
+} from "../schema/colours.ts";
+import type { THEME_MODES } from "../schema/config.ts";
 import type { Graph } from "../schema/graph.ts";
-import type { ColourDraft, ColouredPart } from "./colours-form.ts";
+import { type ColourDraft, type ColouredPart, shownColour } from "./colours-form.ts";
 import { capitalised } from "./labels.ts";
 import { Section } from "./style-fields.tsx";
 
-type Colours = Readonly<Record<string, CategoryColour>>;
+type ThemeMode = (typeof THEME_MODES)[number];
+
+/** A swatch as the video shows it: light, dark, or half of each when it renders both. */
+const swatchBackground = (colour: CategoryColour, mode: ThemeMode) =>
+  mode === "both"
+    ? `linear-gradient(135deg, ${colour.light} 50%, ${colour.dark} 50%)`
+    : colour[mode];
 
 /** One row: a name, the palette's swatches, and what its default colour is. */
 const ColourRow = ({
@@ -16,6 +28,7 @@ const ColourRow = ({
   chosen,
   fallback,
   colours,
+  mode,
   pick,
   extra,
 }: {
@@ -24,11 +37,12 @@ const ColourRow = ({
   name: string;
   detail?: string | undefined;
   /** The category picked or saved, or null for the default. */
-  chosen: string | null;
+  chosen: Category | null;
   /** The category the default draws in. */
-  fallback: string;
-  colours: Colours;
-  pick: (category: string | null) => void;
+  fallback: Category;
+  colours: ColourTable;
+  mode: ThemeMode;
+  pick: (category: Category | null) => void;
   extra?: React.ReactNode;
 }) => (
   <li className="flex flex-wrap items-center gap-x-3 gap-y-1.5 py-2">
@@ -59,7 +73,7 @@ const ColourRow = ({
             />
             <span
               className="grid size-6 cursor-pointer place-items-center rounded-full border-2 border-surface outline-1 outline-line peer-checked:outline-2 peer-checked:outline-ink peer-focus-visible:outline-accent"
-              style={{ background: colour?.light }}
+              style={{ background: colour && swatchBackground(colour, mode) }}
             >
               {/* The default's mark: what picking it goes back to. */}
               {isDefault && <span className="size-1.5 rounded-full bg-surface" />}
@@ -81,19 +95,25 @@ const ColourRow = ({
 export const ColoursTab = ({
   graph,
   colours,
+  mode,
   draft,
-  change,
+  pick,
 }: {
   graph: Graph;
-  colours: Colours;
+  colours: ColourTable;
+  mode: ThemeMode;
   draft: ColourDraft;
-  change: (draft: ColourDraft) => void;
+  pick: (part: ColouredPart, ids: readonly string[], to: Category | null) => void;
 }) => {
-  const chosen = (part: ColouredPart, item: { id: string; category?: string | undefined }) =>
-    item.id in draft[part] ? (draft[part][item.id] ?? null) : (item.category ?? null);
-  const pick = (part: ColouredPart, id: string) => (category: string | null) =>
-    change({ ...draft, [part]: { ...draft[part], [id]: category } });
   const labelOf = new Map(graph.nodes.map((n) => [n.id, n.label]));
+  const row = (part: ColouredPart, item: { id: string; category?: string | undefined }) => ({
+    key: item.id,
+    group: `colour-${part}-${item.id}`,
+    chosen: shownColour(draft, part, item),
+    colours,
+    mode,
+    pick: (to: Category | null) => pick(part, [item.id], to),
+  });
 
   return (
     <div className="flex flex-col gap-4">
@@ -104,33 +124,21 @@ export const ColoursTab = ({
       <Section title="Nodes">
         <ul className="divide-y divide-line">
           {graph.nodes.map((node) => {
-            const fallback = KIND_STYLES[node.kind].category;
-            const current = chosen("nodes", node);
-            const sameKind = graph.nodes.filter((n) => n.kind === node.kind);
+            const sameKind = graph.nodes.filter((n) => n.kind === node.kind).map((n) => n.id);
+            const { key, ...props } = row("nodes", node);
             return (
               <ColourRow
-                key={node.id}
-                group={`colour-node-${node.id}`}
+                key={key}
+                {...props}
                 name={node.label}
                 detail={capitalised(node.kind)}
-                chosen={current}
-                fallback={fallback}
-                colours={colours}
-                pick={pick("nodes", node.id)}
+                fallback={KIND_STYLES[node.kind].category}
                 extra={
                   sameKind.length > 1 && (
                     <button
                       type="button"
                       className="text-muted text-sm underline hover:text-ink"
-                      onClick={() =>
-                        change({
-                          ...draft,
-                          nodes: {
-                            ...draft.nodes,
-                            ...Object.fromEntries(sameKind.map((n) => [n.id, current])),
-                          },
-                        })
-                      }
+                      onClick={() => pick("nodes", sameKind, props.chosen)}
                     >
                       Use for every {node.kind}
                     </button>
@@ -144,35 +152,30 @@ export const ColoursTab = ({
       {graph.edges.length > 0 && (
         <Section title="Edges">
           <ul className="divide-y divide-line">
-            {graph.edges.map((edge) => (
-              <ColourRow
-                key={edge.id}
-                group={`colour-edge-${edge.id}`}
-                name={edge.label ?? edge.id}
-                detail={`${labelOf.get(edge.from) ?? edge.from} → ${labelOf.get(edge.to) ?? edge.to}`}
-                chosen={chosen("edges", edge)}
-                fallback={DEFAULT_CATEGORY}
-                colours={colours}
-                pick={pick("edges", edge.id)}
-              />
-            ))}
+            {graph.edges.map((edge) => {
+              const { key, ...props } = row("edges", edge);
+              return (
+                <ColourRow
+                  key={key}
+                  {...props}
+                  name={edge.label ?? edge.id}
+                  detail={`${labelOf.get(edge.from) ?? edge.from} → ${labelOf.get(edge.to) ?? edge.to}`}
+                  fallback={DEFAULT_CATEGORY}
+                />
+              );
+            })}
           </ul>
         </Section>
       )}
       {graph.zones.length > 0 && (
         <Section title="Areas">
           <ul className="divide-y divide-line">
-            {graph.zones.map((zone) => (
-              <ColourRow
-                key={zone.id}
-                group={`colour-zone-${zone.id}`}
-                name={zone.label}
-                chosen={chosen("zones", zone)}
-                fallback={DEFAULT_CATEGORY}
-                colours={colours}
-                pick={pick("zones", zone.id)}
-              />
-            ))}
+            {graph.zones.map((zone) => {
+              const { key, ...props } = row("zones", zone);
+              return (
+                <ColourRow key={key} {...props} name={zone.label} fallback={DEFAULT_CATEGORY} />
+              );
+            })}
           </ul>
         </Section>
       )}
