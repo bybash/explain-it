@@ -348,7 +348,7 @@ const flow = (
     await page.waitForURL(/#\/projects\/oauth-style\/preview$/);
   }, 60_000);
 
-  it("has the assistant answer in the chat: it saves the graph, which the panel shows, and asks", async () => {
+  it("has the assistant answer in the chat: it drafts the graph, which the panel shows, and asks", async () => {
     // The recorded conversation's project and first message, so the assistant's steps replay.
     const made = await fetch(`${server.url}/api/projects`, {
       method: "POST",
@@ -361,7 +361,7 @@ const flow = (
     await page.press("#chat-text", "Enter");
     await expect
       .poll(() => page.locator(`${MESSAGES}[data-kind=step]`).allTextContents(), SOON)
-      .toEqual(["✓ Saved the graph."]);
+      .toEqual(["✓ Drafted the graph."]);
     await expect
       .poll(() => page.locator(`${MESSAGES}[data-role=assistant]:not([data-kind])`).count(), SOON)
       .toBe(1);
