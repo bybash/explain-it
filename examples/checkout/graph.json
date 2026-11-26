@@ -1,0 +1,94 @@
+{
+  "$schema": "../../schemas/graph.schema.json",
+  "version": 1,
+  "title": "Checkout in our shop",
+  "nodes": [
+    {
+      "id": "shopper",
+      "label": "Shopper",
+      "kind": "actor"
+    },
+    {
+      "id": "web_app",
+      "label": "Web app",
+      "kind": "service",
+      "zone": "shop"
+    },
+    {
+      "id": "order_service",
+      "label": "Order service",
+      "kind": "service",
+      "zone": "shop"
+    },
+    {
+      "id": "stock",
+      "label": "Stock",
+      "kind": "database",
+      "zone": "shop"
+    },
+    {
+      "id": "payment_provider",
+      "label": "Payment provider",
+      "kind": "external"
+    },
+    {
+      "id": "email_service",
+      "label": "Email service",
+      "kind": "external",
+      "icon": "mail"
+    }
+  ],
+  "edges": [
+    {
+      "id": "pay",
+      "from": "shopper",
+      "to": "web_app",
+      "label": "Pay"
+    },
+    {
+      "id": "place_order",
+      "from": "web_app",
+      "to": "order_service",
+      "label": "Place order"
+    },
+    {
+      "id": "reserve_stock",
+      "from": "order_service",
+      "to": "stock",
+      "label": "Reserve stock",
+      "category": "c2"
+    },
+    {
+      "id": "take_payment",
+      "from": "order_service",
+      "to": "payment_provider",
+      "label": "Take payment",
+      "category": "c5"
+    },
+    {
+      "id": "payment_taken",
+      "from": "payment_provider",
+      "to": "order_service",
+      "label": "Payment taken",
+      "category": "c5"
+    },
+    {
+      "id": "confirm_order",
+      "from": "order_service",
+      "to": "email_service",
+      "label": "Order confirmed"
+    },
+    {
+      "id": "confirmation_email",
+      "from": "email_service",
+      "to": "shopper",
+      "label": "Confirmation email"
+    }
+  ],
+  "zones": [
+    {
+      "id": "shop",
+      "label": "Our shop"
+    }
+  ]
+}

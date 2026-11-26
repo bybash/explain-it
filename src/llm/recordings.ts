@@ -44,7 +44,7 @@ const briefCall = {
   schema: BriefSchema,
 } satisfies StructuredCall<typeof BriefSchema>;
 
-/** The oauth-login example's line that the quick checks find goes by too fast to read. */
+/** A line of the oauth-login example's beat "code" that goes by too fast to read: the example's own until 6.2 made it plainer. */
 export const RUSHED_LINE = {
   kind: "words",
   beat: "code",
