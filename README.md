@@ -104,7 +104,7 @@ npx explain-it render examples/checkout
 
 The image carries Node, Chromium and ffmpeg, so Docker is all you need
 (on Windows, it is the way to run explAIn-it). It is published to GHCR for
-Intel and Arm; it is about 1.65 GB, pulled once:
+Intel and Arm: about 520 MB to download, 1.3 GB once unpacked, pulled once:
 
 ```sh
 docker run -p 127.0.0.1:3000:3000 \
