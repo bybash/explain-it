@@ -184,6 +184,15 @@ export const CaptionsCard = (form: Form) => {
         />
         Each step's caption
       </label>
+      <label className={`${CHECK_CLASS} pl-6`}>
+        <input
+          type="checkbox"
+          checked={captions.list}
+          disabled={!captions.step}
+          onChange={(e) => set({ list: e.target.checked })}
+        />
+        Listed down the left, the current one solid
+      </label>
       <span className={LABEL_CLASS}>Size</span>
       <div className={RADIOS_CLASS} role="radiogroup" aria-label="Caption size">
         {CAPTION_SIZES.map((size) => (

@@ -14,8 +14,10 @@ export type StageRegions = {
   /** The frame minus the safe margin; nothing is drawn outside it. */
   readonly safe: Rect;
   readonly title: Rect;
-  /** Missing when step captions are off. */
+  /** Missing when step captions are off, or listed (`list`). */
   readonly step?: Rect;
+  /** The beat list's column down the left, when the captions are listed (decision 048). */
+  readonly list?: Rect;
   /** Missing when narration captions are off. */
   readonly narration?: Rect;
   /** What is left for nodes, edges and callouts. */
@@ -39,6 +41,8 @@ const TITLE_FONT = 22;
 export const LINE_HEIGHT = 1.3;
 /** Narration shows at most this many lines at once; longer lines are split into cues (beats/cues.ts). */
 export const NARRATION_LINES = 2;
+/** How much of the safe area's width the beat list takes, when the captions are listed. */
+const LIST_SHARE = 0.3;
 /** Space between bands, and between a band and the content. */
 const GAP = 24;
 /** The title chip's padding above and below its text. */
@@ -83,7 +87,8 @@ export const stageRegions = (
 
   const title = band(safe.y, lines(TITLE_FONT, 1) + 2 * TITLE_PADDING);
   let top = title.y + title.height;
-  const step = captions.step ? band(top + GAP / 2, lines(font.step, 1)) : undefined;
+  const listed = captions.step && captions.list;
+  const step = captions.step && !listed ? band(top + GAP / 2, lines(font.step, 1)) : undefined;
   if (step) top = step.y + step.height;
 
   let bottom = safe.y + safe.height;
@@ -94,12 +99,20 @@ export const stageRegions = (
   if (narration) bottom = narration.y - GAP;
 
   const contentTop = top + GAP;
+  const width = safe.width * LIST_SHARE;
+  const list = listed
+    ? { x: safe.x, y: contentTop, width, height: bottom - contentTop }
+    : undefined;
+  const content = band(contentTop, bottom - contentTop);
   const regions = {
     safe,
     title,
     ...(step ? { step } : {}),
+    ...(list ? { list } : {}),
     ...(narration ? { narration } : {}),
-    content: band(contentTop, bottom - contentTop),
+    content: list
+      ? { ...content, x: list.x + list.width + GAP, width: content.width - list.width - GAP }
+      : content,
     fonts: { title: TITLE_FONT, ...font },
   };
   return logoOnEveryFrame ? clearOf(regions, logoBox(logoOnEveryFrame)) : regions;

@@ -112,6 +112,7 @@ The goal: the CLI renders a hand-written example to an MP4, with no LLM and no v
 | ✅ 3.11 | **Style gate panel, the sound**: voice picker with a sample, voice speed, pacing, captions, music | A voice sample plays from the panel |
 | ✅ 3.13 | **Preview gate checks**: run the checks from the panel, warnings that jump to their beat, the contact sheet | A warning in the example jumps to its beat |
 | ✅ 3.10 | **App styles in Tailwind**: Tailwind v4 through its Vite plugin; the colour tokens and the dark set become `@theme` values; `app.css` moves to utility classes, keeping plain CSS only for CodeMirror's and Mermaid's own classes; the video's styles (`src/engine/`) are untouched; a decision record | Screenshots of each page, light and dark, look the same before and after |
+| ✅ 3.19 | **Beat list**: `captions.list` lists the step captions down a column on the left, the current one solid and the ones before it faded, the content to its right; in the Captions card; measured and read by the checks | A still of the list; the plan's lines and their fade tested; oauth-login checks clean with it on |
 | ✅ 3.18 | **Angle**: an `angle` in `config.json` (isometric, wide or high) and in the Look tab; the projection seen from an elevation, isometric unchanged to the pixel | Wide and high stills of the example; isometric stills byte-identical to before |
 | ✅ 3.17 | **Badges and arrowheads**: a badge is a tag with pointed ends and a grey fill, apart from the edge label pills; an edge that arrives from behind its target stops just outside the box's outline, so its arrowhead is in sight | Stills show tags apart from pills, and arrowheads in sight on edges from behind |
 | ✅ 3.16 | **Framing**: no scene number when there is only one scene; a shorter title card (20 characters a second, 3 to 5 s) with a "How long" setting (`cards.title.seconds`, 2 to 10 s); a camera for each scene (`config.camera`, zoom 1 to 2, moved up to half the frame), set with sliders and Reset in the Look tab, and by agents with `set_style` | A one-scene video shows no number; a set title card holds as set; a zoomed and moved scene shows in the preview and the render, and stills without a camera are unchanged |
@@ -237,9 +238,9 @@ gate, in the user's words where possible. The first three are slice 3.16
   as from 25° above it (60° from the vertical is 30°), which fits a 16:9
   frame better when the frame's height is what limits a layout; high is
   there for tall layouts (decision 047).
-- Or keep the angle and use the empty left side for the beat titles, listed
+- ✅ Or keep the angle and use the empty left side for the beat titles, listed
   from top to bottom: the current beat's title solid, the ones before it
-  semi-dimmed.
+  semi-dimmed. Slice 3.19 (decision 048).
 
 ## Feedback (2026-11-27)
 
@@ -320,6 +321,14 @@ a maintainer, and is listed as steps in [`docs/RELEASING.md`](docs/RELEASING.md)
 the licence check of the image's GPL and LGPL parts, uploading the demo
 video so the README plays it inline, the `v0.1.0` tag (which runs the
 publish workflow for the first time), and making the GHCR package public.
+
+### Not placed yet, from 3.19
+
+- With the beat list on, the scene is framed in less width: in the
+  examples, checkout gets a 9 px badge overlap and the CI pipeline's
+  camera, tuned for the full width, puts Staging out of the frame. The
+  checks report both; the examples keep the list off.
+- No golden still covers the beat list.
 
 ### Not placed yet, from 3.18
 

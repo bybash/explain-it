@@ -277,6 +277,12 @@ export const ConfigSchema = z
       .strictObject({
         narration: z.boolean().default(true),
         step: z.boolean().default(true),
+        list: z
+          .boolean()
+          .default(false)
+          .describe(
+            "Lists the scene's step captions down the left side, the current one solid and the ones before it faded, in place of the step caption at the top (decision 048).",
+          ),
         size: z.enum(CAPTION_SIZES).default("M"),
       })
       .prefault({}),

@@ -38,6 +38,14 @@ export type OverlayDrawing = { readonly shown?: Interval } & (
       readonly tone: (typeof BADGE_TONES)[number];
     }
   | { readonly kind: "title" | "step" | "narration"; readonly id: string; readonly text: string }
+  | {
+      readonly kind: "list";
+      readonly id: string;
+      readonly text: string;
+      /** Which scene's list it is in, and its place there. */
+      readonly scene: string;
+      readonly index: number;
+    }
 );
 
 /** Sets every overlay from the timeline's state; overlays missing from it stay hidden. */
@@ -108,8 +116,9 @@ export const renderOverlays = (
       cards.push({ box: boxOf(main), ...(overlay.shown ? { shown: overlay.shown } : {}) });
     return (state: State): void => {
       const s = state[overlayTarget(overlay.id)] ?? {};
-      // A badge or callout fades with the node it is on (`dim`, see `focusTweens`).
-      const opacity = (s.opacity ?? 0) * dimOpacity(s.dim);
+      // A badge or callout fades with the node it is on (`dim`, see `focusTweens`); a line of the
+      // beat list fades once its beat is over (`faded`).
+      const opacity = (s.opacity ?? 0) * dimOpacity(s.dim) * (1 - LIST_FADE * (s.faded ?? 0));
       for (const part of el) {
         part.style.visibility = opacity > 0 ? "visible" : "hidden";
         part.style.opacity = opacity.toFixed(3);
@@ -119,9 +128,32 @@ export const renderOverlays = (
         main.style.transform = `translateY(${(s.shift ?? 0).toFixed(2)}px) scale(${(s.scale ?? 1).toFixed(3)})`;
     };
   });
+  stackList(root, regions);
   return (state) => {
     for (const pose of posers) pose(state);
   };
+};
+
+/** How much a line of the beat list fades once its beat is over: to 45% (decision 048). */
+const LIST_FADE = 0.55;
+/** The gap between the lines of the beat list, in pixels. */
+const LIST_GAP = 18;
+
+/** Stacks each scene's list lines down the list's column, in order, each below the one before. */
+const stackList = (root: HTMLElement, regions: StageRegions): void => {
+  if (!regions.list) return;
+  const byScene = new Map<string, HTMLElement[]>();
+  for (const line of root.querySelectorAll<HTMLElement>(".list-line")) {
+    const scene = line.dataset.scene ?? "";
+    byScene.set(scene, [...(byScene.get(scene) ?? []), line]);
+  }
+  for (const lines of byScene.values()) {
+    let top = regions.list.y;
+    for (const line of lines.sort((a, b) => Number(a.dataset.index) - Number(b.dataset.index))) {
+      line.style.top = `${top}px`;
+      top += line.offsetHeight + LIST_GAP;
+    }
+  }
 };
 
 /** Whether two overlays are on screen at the same moment; one without times always is. */
@@ -155,6 +187,16 @@ const draw = (
       positionAt(band, regions.title);
       div("scene-title-chip", band, overlay.text);
       return [band];
+    }
+    case "list": {
+      if (!regions.list) return [];
+      const line = div("overlay caption list-line", root);
+      line.dataset.scene = overlay.scene;
+      line.dataset.index = String(overlay.index);
+      line.style.left = `${regions.list.x}px`;
+      line.style.width = `${regions.list.width}px`;
+      div("caption-text", line, overlay.text);
+      return [line];
     }
     case "step":
     case "narration": {

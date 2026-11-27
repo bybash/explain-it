@@ -229,7 +229,8 @@ type Config = {
   font: string;                         // a bundled font id or an uploaded font file
   pacing: "relaxed" | "normal" | "brisk";                   // how unhurried the video is; "relaxed" by default
   voice: { enabled: boolean; id: string; speed: number };   // a kokoro voice, e.g. "af_heart"
-  captions: { narration: boolean; step: boolean; size: "S" | "M" | "L" };
+  captions: { narration: boolean; step: boolean; list: boolean; size: "S" | "M" | "L" };
+                                        // list: the step captions down the left side (off by default)
   music: { enabled: boolean; mood: "calm" | "upbeat" | "technical"; seed: number; volumeDb: number }; // volumeDb: under the voice, −12 by default
   output: { resolution: "1080p" | "720p" };
   cards?: {
@@ -338,7 +339,12 @@ for frame capture, so what the user approves is what gets rendered.
   stage is split into bands inside the safe area: the scene title at the top
   left, the step caption under it, the narration caption along the bottom (at
   most two lines), and the content between them, where the scene is framed.
-  A caption that is turned off gives its band to the content. A callout card
+  A caption that is turned off gives its band to the content. With the
+  step captions listed (`captions.list`, decision 048), they run down a
+  column on the left, a third of the width, under the scene title: each
+  beat's caption appears as its beat starts and stays to the scene's end,
+  solid while its beat is on and faded to 45% after, and the content moves
+  to the right of the column. A callout card
   sits beside its node, to the right if that side is free, else the left,
   above or below, sliding along a side before covering a box or an edge
   label. A badge stands on its node's back corner: a tag with pointed ends,

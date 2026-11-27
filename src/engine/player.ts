@@ -285,6 +285,8 @@ const drawScene = (
             text: o.text,
             tone: o.tone,
           };
+        case "list":
+          return { kind: "list", id: o.id, shown, text: o.text, scene: o.scene, index: o.index };
         default:
           return { kind: o.kind, id: o.id, shown, text: o.text };
       }
