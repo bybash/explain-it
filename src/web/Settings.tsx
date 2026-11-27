@@ -2,6 +2,9 @@ import { type FormEvent, useCallback, useEffect, useState } from "react";
 import type { ValidationError } from "../schema/errors.ts";
 import {
   ENV_NAMES,
+  modelAfterSwitch,
+  modelChoices,
+  openingModel,
   PROVIDERS,
   presetModel,
   providerOf,
@@ -9,7 +12,9 @@ import {
 } from "../schema/settings.ts";
 import { getSettings, saveSettings } from "./api.ts";
 import { Errors } from "./Errors.tsx";
+import { FromEnvironment } from "./FromEnvironment.tsx";
 import { HouseRules } from "./HouseRules.tsx";
+import { ModelPicker } from "./ModelPicker.tsx";
 import { formOf, type SettingsForm, settingsChanges } from "./settings-form.ts";
 import { Muted, PageTitle } from "./ui.tsx";
 
@@ -19,13 +24,6 @@ const NOTE_CLASS = "text-muted text-sm";
 const LABEL_CLASS = "mt-3.5 font-semibold";
 /** A text box or the provider select. */
 const INPUT_CLASS = "field bg-surface disabled:opacity-60";
-
-/** Says that the environment sets a field, which then cannot be changed here. */
-const FromEnvironment = ({ variable }: { variable: string }) => (
-  <p className={NOTE_CLASS}>
-    Set by <code>{variable}</code> in the environment, which wins over <code>.env</code>.
-  </p>
-);
 
 /**
  * The LLM settings: the endpoint, chosen by provider or typed, the model and
@@ -98,9 +96,13 @@ export const Settings = () => {
             // A model still as suggested follows the endpoint: its preset's own, or none to type. One the user chose is kept.
             const suggested =
               (view.modelIsSuggested && form.model === view.model) ||
-              (form.baseUrl !== view.baseUrl && form.model === (presetModel(form.baseUrl) ?? ""));
+              (form.baseUrl !== view.baseUrl && form.model === openingModel(form.baseUrl));
             // Custom clears the URL for the user to type their endpoint's.
-            change({ baseUrl, ...(suggested ? { model: presetModel(baseUrl) ?? "" } : {}) });
+            // One picked from the old provider's list goes, as the new one names its models its own way.
+            change({
+              baseUrl,
+              model: suggested ? openingModel(baseUrl) : modelAfterSwitch(form.model, baseUrl),
+            });
             if (!preset) document.getElementById("settings-base-url")?.focus();
           }}
         >
@@ -128,20 +130,21 @@ export const Settings = () => {
         <label className={LABEL_CLASS} htmlFor="settings-model">
           Model
         </label>
-        <input
+        <ModelPicker
+          key={provider}
           className={INPUT_CLASS}
           id="settings-model"
-          value={form.model}
+          choices={modelChoices(provider)}
+          model={form.model}
           disabled={locked("model")}
-          spellCheck={false}
-          placeholder={presetModel(form.baseUrl) ?? "The model's id, as the endpoint names it"}
-          onChange={(e) => change({ model: e.target.value })}
+          placeholder={presetModel(form.baseUrl)}
+          pick={(model) => change({ model })}
         />
         {locked("model") ? (
           <FromEnvironment variable={ENV_NAMES.model} />
         ) : (
           view.modelIsSuggested && (
-            <p className={NOTE_CLASS}>Suggested; saving keeps it, or type another.</p>
+            <p className={NOTE_CLASS}>Suggested; saving keeps it, or pick another.</p>
           )
         )}
 

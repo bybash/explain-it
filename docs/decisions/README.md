@@ -59,3 +59,4 @@ later record supersedes an earlier one and says so.
 | [047](047-angle.md) | The angle the scenes are seen from |
 | [048](048-beat-list.md) | The beat list |
 | [049](049-titles-bottom-left.md) | The titles in the bottom-left corner |
+| [050](050-model-picker.md) | The model picker |

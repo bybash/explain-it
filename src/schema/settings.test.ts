@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  MODEL_CHOICES,
   maskKey,
+  modelAfterSwitch,
+  modelChoices,
   PROVIDERS,
   presetModel,
   providerOf,
@@ -80,5 +83,56 @@ describe("suggestedModel", () => {
     expect(presetModel("https://openrouter.ai/api/v1")).toBe(SUGGESTED_MODEL);
     expect(presetModel("https://api.openai.com/v1")).toBeUndefined();
     expect(presetModel("http://127.0.0.1:11434/v1")).toBeUndefined();
+  });
+});
+
+describe("modelChoices", () => {
+  it("offers, for OpenRouter, Claude, Gemini and GPT models among others, the suggested one first", () => {
+    const choices = modelChoices("openrouter");
+    const families = new Set<string>(choices.map((c) => c.family));
+    for (const family of ["Claude", "Gemini", "GPT"]) expect(families.has(family)).toBe(true);
+    expect(choices[0]?.id).toBe(SUGGESTED_MODEL);
+    for (const choice of choices) expect(choice.id).toMatch(/^[a-z0-9-]+\/[a-z0-9.-]+$/);
+  });
+
+  it("offers each provider's models by its own names, its preset among them", () => {
+    expect(modelChoices("anthropic")[0]?.id).toBe(presetModel(PROVIDERS[1].baseUrl));
+    for (const choice of [...modelChoices("anthropic"), ...modelChoices("openai")])
+      expect(choice.id).not.toContain("/");
+  });
+
+  it("offers nothing to pick for a local or custom endpoint, whose models are its own", () => {
+    expect(modelChoices("ollama")).toEqual([]);
+    expect(modelChoices("custom")).toEqual([]);
+  });
+
+  it("names each model once per provider", () => {
+    for (const choices of Object.values(MODEL_CHOICES)) {
+      const ids = (choices ?? []).map((c) => c.id);
+      expect(new Set(ids).size).toBe(ids.length);
+    }
+  });
+});
+
+describe("modelAfterSwitch", () => {
+  const [openrouter, anthropic, openai] = [PROVIDERS[0], PROVIDERS[1], PROVIDERS[2]].map(
+    (p) => p.baseUrl,
+  ) as [string, string, string];
+
+  it("drops a model from the old provider's list, which the new one names its own way", () => {
+    expect(modelAfterSwitch("google/gemini-4-carbon", anthropic)).toBe("claude-opus-5-5");
+    expect(modelAfterSwitch("claude-sonnet-5-5", openrouter)).toBe(SUGGESTED_MODEL);
+  });
+
+  it("opens a provider with a list but no preset on its first model", () => {
+    expect(modelAfterSwitch(SUGGESTED_MODEL, openai)).toBe("gpt-6.2-astra");
+  });
+
+  it("keeps a model no list names, which the user typed", () => {
+    expect(modelAfterSwitch("acme/house-model", anthropic)).toBe("acme/house-model");
+  });
+
+  it("leaves the box empty for a local endpoint after a listed model", () => {
+    expect(modelAfterSwitch("gpt-6-luna", "http://127.0.0.1:11434/v1")).toBe("");
   });
 });

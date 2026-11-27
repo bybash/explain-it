@@ -10,6 +10,7 @@ import { hasChrome } from "../render/chrome.testing.ts";
 import { isProjectOutput } from "../render/project-output.ts";
 import { launchBrowser } from "../render/render.ts";
 import { MAX_PROJECT_NAME } from "../schema/project.ts";
+import { SUGGESTED_MODEL } from "../schema/settings.ts";
 import { clockTime } from "../web/preview-time.ts";
 import { CONVERSATION, CONVERSATION_PROJECT } from "./assistant-conversation.ts";
 import { DEFAULT_HOST } from "./listen.ts";
@@ -367,6 +368,28 @@ const flow = (
     // Not the starter, which has no email service.
     await expect.poll(() => page.textContent(DIAGRAM), SOON).toMatch(/Email/);
     expect(await page.textContent(MESSAGES_LIST)).not.toContain("flowchart");
+  }, 60_000);
+
+  it("picks the chat's model from the list, which Settings then shows", async () => {
+    exampleAt(projectsDir, "model-pick", "graph");
+    await page.goto(`${server.url}/#/projects/model-pick/graph`);
+    const chatModel = page.locator("#chat-model");
+    await expect.poll(() => chatModel.inputValue(), SOON).toBe(SUGGESTED_MODEL);
+    await chatModel.selectOption("google/gemini-4-carbon");
+    const savedModel = async () =>
+      ((await (await fetch(`${server.url}/api/settings`)).json()) as { model: string }).model;
+    await expect.poll(savedModel, SOON).toBe("google/gemini-4-carbon");
+    await page.goto(`${server.url}/#/settings`);
+    await expect
+      .poll(() => page.locator("#settings-model").inputValue(), SOON)
+      .toBe("google/gemini-4-carbon");
+    // A model the list lacks is typed, and kept.
+    await page.locator("#settings-model").selectOption("other");
+    await page.getByLabel("Model id").fill("acme/house-model");
+    await page.getByRole("button", { name: "Save", exact: true }).click();
+    await page.goto(`${server.url}/#/projects/model-pick/graph`);
+    await expect.poll(() => chatModel.inputValue(), SOON).toBe("other");
+    expect(await page.getByLabel("Model id").inputValue()).toBe("acme/house-model");
   }, 60_000);
 
   it("keeps the story: a brief at the Script gate and house rules in Settings, which an agent then reads", async () => {

@@ -36,6 +36,137 @@ export const PROVIDERS = [
 export const ProviderSchema = z.enum([...PROVIDERS.map((p) => p.id), "custom"]);
 export type ProviderId = z.output<typeof ProviderSchema>;
 
+/** The families the model lists are grouped by. */
+export const MODEL_FAMILIES = ["Claude", "Gemini", "GPT", "Other"] as const;
+
+/** A model offered by name in the settings and the chat (decision 050). */
+export type ModelChoice = {
+  readonly id: string;
+  readonly family: (typeof MODEL_FAMILIES)[number];
+  readonly label: string;
+  /** What it is good for, in a few words. */
+  readonly note: string;
+};
+
+/**
+ * The models each provider offers by name (decision 050): ones that answer
+ * with structured output, which every step of the assistant needs, as
+ * OpenRouter's catalogue said on 2026-11-27. OpenRouter serves them all;
+ * Anthropic's and OpenAI's own APIs name their own. The suggested model and
+ * the Anthropic preset come first in their lists. Any other model can still
+ * be typed.
+ */
+export const MODEL_CHOICES: Readonly<Partial<Record<ProviderId, readonly ModelChoice[]>>> = {
+  openrouter: [
+    { id: SUGGESTED_MODEL, family: "Claude", label: "Claude Sonnet 5.5", note: "balanced" },
+    {
+      id: "anthropic/claude-opus-5.5",
+      family: "Claude",
+      label: "Claude Opus 5.5",
+      note: "flagship, for long agentic work",
+    },
+    {
+      id: "anthropic/claude-fable-5.2",
+      family: "Claude",
+      label: "Claude Fable 5.2",
+      note: "the most capable, and the dearest",
+    },
+    {
+      id: "anthropic/claude-haiku-5.5",
+      family: "Claude",
+      label: "Claude Haiku 5.5",
+      note: "fast and cheap",
+    },
+    {
+      id: "google/gemini-4-carbon",
+      family: "Gemini",
+      label: "Gemini 4 Carbon",
+      note: "frontier, for complex reasoning",
+    },
+    {
+      id: "google/gemini-4-argon",
+      family: "Gemini",
+      label: "Gemini 4 Argon",
+      note: "Google's flagship reasoning model",
+    },
+    {
+      id: "google/gemini-4-neon",
+      family: "Gemini",
+      label: "Gemini 4 Neon",
+      note: "fast, mid-priced",
+    },
+    {
+      id: "google/gemini-4-hydrogen",
+      family: "Gemini",
+      label: "Gemini 4 Hydrogen",
+      note: "efficient, for many calls",
+    },
+    {
+      id: "openai/gpt-6.2-astra",
+      family: "GPT",
+      label: "GPT-6.2 Astra",
+      note: "OpenAI's flagship",
+    },
+    {
+      id: "openai/gpt-6.2-sol",
+      family: "GPT",
+      label: "GPT-6.2 Sol",
+      note: "below Astra, for everyday work",
+    },
+    { id: "openai/gpt-6-luna", family: "GPT", label: "GPT-6 Luna", note: "fast and cheap" },
+    { id: "x-ai/grok-4.7", family: "Other", label: "Grok 4.7", note: "SpaceXSI's flagship" },
+    {
+      id: "deepseek/deepseek-v4.1-flash",
+      family: "Other",
+      label: "DeepSeek V4.1 Flash",
+      note: "very cheap",
+    },
+    {
+      id: "mistralai/mistral-large-4-0",
+      family: "Other",
+      label: "Mistral Large 4",
+      note: "Mistral's frontier model",
+    },
+    { id: "qwen/qwen4-max", family: "Other", label: "Qwen4 Max", note: "Alibaba's flagship" },
+    {
+      id: "moonshotai/kimi-k3.1-pro",
+      family: "Other",
+      label: "Kimi K3.1 Pro",
+      note: "open-weight reasoning",
+    },
+  ],
+  anthropic: [
+    {
+      id: PROVIDERS[1].model,
+      family: "Claude",
+      label: "Claude Opus 5.5",
+      note: "flagship, for long agentic work",
+    },
+    { id: "claude-sonnet-5-5", family: "Claude", label: "Claude Sonnet 5.5", note: "balanced" },
+    {
+      id: "claude-fable-5-2",
+      family: "Claude",
+      label: "Claude Fable 5.2",
+      note: "the most capable, and the dearest",
+    },
+    { id: "claude-haiku-5-5", family: "Claude", label: "Claude Haiku 5.5", note: "fast and cheap" },
+  ],
+  openai: [
+    { id: "gpt-6.2-astra", family: "GPT", label: "GPT-6.2 Astra", note: "OpenAI's flagship" },
+    {
+      id: "gpt-6.2-sol",
+      family: "GPT",
+      label: "GPT-6.2 Sol",
+      note: "below Astra, for everyday work",
+    },
+    { id: "gpt-6-luna", family: "GPT", label: "GPT-6 Luna", note: "fast and cheap" },
+  ],
+};
+
+/** The models to pick from for a provider; none for a local or custom endpoint, whose models are its own. */
+export const modelChoices = (provider: ProviderId): readonly ModelChoice[] =>
+  MODEL_CHOICES[provider] ?? [];
+
 /** OpenRouter, the default provider (SPEC, LLM). */
 export const DEFAULT_BASE_URL = PROVIDERS[0].baseUrl;
 const MAX_URL = 500;
@@ -153,3 +284,22 @@ export const suggestedModel = (baseUrl: string): string => presetModel(baseUrl) 
 export const ANTHROPIC_HOST = new URL(
   PROVIDERS.find((p) => p.id === "anthropic")?.baseUrl ?? "https://api.anthropic.com",
 ).hostname;
+
+/** The model a provider opens on: its preset, else its first listed model; none for a local or custom endpoint. */
+export const openingModel = (baseUrl: string): string =>
+  presetModel(baseUrl) ?? modelChoices(providerOf(baseUrl))[0]?.id ?? "";
+
+/**
+ * The model after the provider changes to the one at `baseUrl`: one picked
+ * from another provider's list goes, as the new one names its models its own
+ * way, for the new provider's opening model. A model no list names was typed,
+ * and is kept.
+ */
+export const modelAfterSwitch = (model: string, baseUrl: string): string => {
+  const listed = Object.values(MODEL_CHOICES).some((choices) =>
+    choices.some((c) => c.id === model),
+  );
+  return !listed || modelChoices(providerOf(baseUrl)).some((c) => c.id === model)
+    ? model
+    : openingModel(baseUrl);
+};

@@ -841,7 +841,12 @@ comes later.
 - Keys: read from `.env`; the settings page writes to it. Docker users pass
   `-e OPENROUTER_API_KEY=…`. The variables are `LLM_BASE_URL` (OpenRouter by
   default), `LLM_MODEL` and `LLM_API_KEY`, with `OPENROUTER_API_KEY` read as
-  the key when `LLM_API_KEY` is not set. Each setting is looked up in the
+  the key when `LLM_API_KEY` is not set. The model is picked from a list,
+  grouped by family (Claude, Gemini, GPT and others; OpenRouter's ids, or
+  Anthropic's and OpenAI's own for their APIs), on the settings page and
+  above the chat's message box, both writing `LLM_MODEL`, or typed as
+  "Another model…"; a local or custom endpoint has the box alone
+  (decision 050). Each setting is looked up in the
   environment first, then in `.env`, so a variable the environment sets wins
   (even `OPENROUTER_API_KEY` over an `LLM_API_KEY` in `.env`), and the page
   shows it but cannot change it. Only its owner
