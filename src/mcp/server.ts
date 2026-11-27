@@ -191,7 +191,7 @@ const TOOLS = [
     schema: ExplainChangeArgsSchema,
     run: explainChangeTool,
     description:
-      "Returns a project's summary as Markdown, to post where a code change is discussed (a pull request, a chat): its name, the one thing to remember, each scene's title and captions, the files it covers, and a link to the video when you pass `video_url`. Also returns the newest render's video and poster paths on this machine (null before a render), for you to attach, and `outdated` when the project changed after that render. It is made from the script, so it says what the video says. Use it after render, as the explain_change prompt describes; post it only when the user says so.",
+      "Returns a project's summary as Markdown, to post where a code change is discussed (a pull request, a chat): its name, the one thing to remember, each scene's title and captions, the files it covers, and a link to the video when you pass `video_url`. Pass `gif_url` too and the summary shows the GIF of one scene, which plays inline in a pull request. Also returns the newest render's video, poster, GIF and TL;DR card paths on this machine (null before a render), for you to attach, and `outdated` when the project changed after that render. It is made from the script, so it says what the video says. Use it after render, as the explain_change prompt describes; post it only when the user says so.",
   },
 ];
 

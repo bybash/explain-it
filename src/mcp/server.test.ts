@@ -575,6 +575,8 @@ describe("explaining a change", () => {
       }),
       video: null,
       poster: null,
+      gif: null,
+      card: null,
       outdated: false,
       preview: preview(created.slug),
     });
@@ -583,20 +585,30 @@ describe("explaining a change", () => {
   it("links the video where it was put for readers, never a path on this machine", async () => {
     const slug = await exampleProject();
     const url = "https://github.com/acme/app/assets/video.mp4";
-    const linked = await succeeds("explain_change", { slug, video_url: url });
+    const gif = "https://github.com/acme/app/assets/scene.gif";
+    const linked = await succeeds("explain_change", { slug, video_url: url, gif_url: gif });
     expect(linked.summary).toContain(`[Watch the video](<${url}>)`);
+    // The GIF plays inline where the summary is posted, under its name.
+    expect(linked.summary.split("\n\n")[1]).toBe(`![A scene of the video](<${gif}>)`);
     for (const local of ["file:///Users/me/video.mp4", "http://127.0.0.1:3000/video.mp4"])
-      expect(await fails("explain_change", { slug, video_url: local }), local).toEqual(
-        expect.arrayContaining([expect.stringMatching(/^video_url: /)]),
-      );
+      for (const field of ["video_url", "gif_url"])
+        expect(await fails("explain_change", { slug, [field]: local }), local).toEqual(
+          expect.arrayContaining([expect.stringMatching(new RegExp(`^${field}: `))]),
+        );
   });
 
-  it("gives the newest render's light video and poster, and says when the script changed since", async () => {
+  it("gives the newest render's light video, poster, GIF and card, and says when the script changed since", async () => {
     const slug = await exampleProject();
     const render = (stamp: string, createdAt: string) => {
       const dir = join(projectsDir, slug, "out", stamp);
       for (const theme of ["dark", "light"]) mkdirSync(join(dir, theme), { recursive: true });
-      for (const file of ["dark/video.mp4", "light/video.mp4", "light/poster.png"])
+      for (const file of [
+        "dark/video.mp4",
+        "light/video.mp4",
+        "light/poster.png",
+        "light/scene.gif",
+        "dark/card.png",
+      ])
         writeFileSync(join(dir, file), "x");
       writeFileSync(
         join(dir, "render.json"),
@@ -616,6 +628,9 @@ describe("explaining a change", () => {
     expect(body).toMatchObject({
       video: join(newest, "light", "video.mp4"),
       poster: join(newest, "light", "poster.png"),
+      gif: join(newest, "light", "scene.gif"),
+      // Only the dark theme has a card here, so the dark one is given.
+      card: join(newest, "dark", "card.png"),
       outdated: false,
     });
     // The project was last changed at 10:00 (NOW); a render from before then shows an older script.

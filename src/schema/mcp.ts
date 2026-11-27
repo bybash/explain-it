@@ -61,17 +61,24 @@ export const ListProjectsArgsSchema = z.strictObject({});
 export const GetGuideArgsSchema = z.strictObject({});
 
 export const GetProjectArgsSchema = z.strictObject({ slug: SlugSchema });
-export const ExplainChangeArgsSchema = z.strictObject({
-  slug: SlugSchema,
-  video_url: z
+/** An http or https address readers of a posted summary can open: not one of this machine. */
+const publicUrl = (what: string) =>
+  z
     .url({ protocol: /^https?$/ })
     .refine((url) => !isThisMachine(new URL(url).hostname), {
       error: "is on this machine, where no reader of the summary can open it",
     })
     .optional()
-    .describe(
-      "Where the video was put for others to watch, such as an attachment on the pull request; the summary links it.",
-    ),
+    .describe(what);
+
+export const ExplainChangeArgsSchema = z.strictObject({
+  slug: SlugSchema,
+  video_url: publicUrl(
+    "Where the video was put for others to watch, such as an attachment on the pull request; the summary links it.",
+  ),
+  gif_url: publicUrl(
+    "Where the GIF was put, such as an attachment on the pull request; the summary shows it, playing inline, under its title.",
+  ),
 });
 
 export const CreateProjectArgsSchema = z.strictObject({

@@ -38,6 +38,7 @@ export const changeSummary = ({
   brief,
   sources,
   videoUrl,
+  gifUrl,
 }: {
   readonly name: string;
   readonly storyboard: Storyboard;
@@ -45,8 +46,11 @@ export const changeSummary = ({
   readonly sources?: Project["sources"] | undefined;
   /** Where the video was put for readers to watch: an http or https address. */
   readonly videoUrl?: string | undefined;
+  /** Where the GIF of one scene was put: shown under the title, where it plays inline. */
+  readonly gifUrl?: string | undefined;
 }): string => {
   const blocks = [`### ${plain(name)}`];
+  if (gifUrl) blocks.push(`![A scene of the video](${destination(gifUrl)})`);
   if (brief?.takeaway) blocks.push(plain(brief.takeaway));
   for (const scene of storyboard.scenes)
     blocks.push(
