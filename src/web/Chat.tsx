@@ -5,6 +5,7 @@ import type { ValidationError } from "../schema/errors.ts";
 import type { Gate } from "../schema/project.ts";
 import { getChat, onServerEvents, sendChat } from "./api.ts";
 import { ChatContext, useChatContext } from "./ChatContext.tsx";
+import { ChatModel } from "./ChatModel.tsx";
 import { CheckMessage } from "./CheckMessage.tsx";
 import { Errors } from "./Errors.tsx";
 import { GATE_LABELS } from "./labels.ts";
@@ -169,6 +170,7 @@ export const Chat = ({
       </div>
       <form className="border-line border-t p-3" onSubmit={send}>
         <div className={`grid grid-cols-[1fr_auto] gap-2 ${column}`}>
+          <ChatModel className="col-span-full" />
           <ChatContext context={context} />
           <label htmlFor="chat-text" className="sr-only">
             Message

@@ -36,6 +36,121 @@ export const PROVIDERS = [
 export const ProviderSchema = z.enum([...PROVIDERS.map((p) => p.id), "custom"]);
 export type ProviderId = z.output<typeof ProviderSchema>;
 
+/** A model offered by name in the settings and the chat (decision 050). */
+export type ModelChoice = {
+  readonly id: string;
+  /** The family it is listed under: Claude, Gemini, GPT or Other. */
+  readonly family: string;
+  readonly label: string;
+  /** What it is good for, in a few words. */
+  readonly note: string;
+};
+
+const claude = (prefix: string, sep: "." | "-"): ModelChoice[] => [
+  {
+    id: `${prefix}claude-sonnet-5${sep}5`,
+    family: "Claude",
+    label: "Claude Sonnet 5.5",
+    note: "balanced; the suggested model",
+  },
+  {
+    id: `${prefix}claude-opus-5${sep}5`,
+    family: "Claude",
+    label: "Claude Opus 5.5",
+    note: "flagship, for long agentic work",
+  },
+  {
+    id: `${prefix}claude-fable-5${sep}2`,
+    family: "Claude",
+    label: "Claude Fable 5.2",
+    note: "the most capable, and the dearest",
+  },
+  {
+    id: `${prefix}claude-haiku-5${sep}5`,
+    family: "Claude",
+    label: "Claude Haiku 5.5",
+    note: "fast and cheap; the recordings use it",
+  },
+];
+const gpt = (prefix: string): ModelChoice[] => [
+  {
+    id: `${prefix}gpt-6.2-astra`,
+    family: "GPT",
+    label: "GPT-6.2 Astra",
+    note: "OpenAI's flagship",
+  },
+  {
+    id: `${prefix}gpt-6.2-sol`,
+    family: "GPT",
+    label: "GPT-6.2 Sol",
+    note: "below Astra, for everyday work",
+  },
+  { id: `${prefix}gpt-6-luna`, family: "GPT", label: "GPT-6 Luna", note: "fast and cheap" },
+];
+
+/**
+ * The models each provider offers by name (decision 050): ones that answer
+ * with structured output, which every step of the assistant needs. OpenRouter
+ * serves them all; Anthropic's and OpenAI's own APIs name their own. Any
+ * other model can still be typed.
+ */
+export const MODEL_CHOICES: Readonly<Partial<Record<ProviderId, readonly ModelChoice[]>>> = {
+  openrouter: [
+    ...claude("anthropic/", "."),
+    {
+      id: "google/gemini-4-carbon",
+      family: "Gemini",
+      label: "Gemini 4 Carbon",
+      note: "frontier, for complex reasoning",
+    },
+    {
+      id: "google/gemini-4-argon",
+      family: "Gemini",
+      label: "Gemini 4 Argon",
+      note: "Google's flagship reasoning model",
+    },
+    {
+      id: "google/gemini-4-neon",
+      family: "Gemini",
+      label: "Gemini 4 Neon",
+      note: "fast, mid-priced",
+    },
+    {
+      id: "google/gemini-4-hydrogen",
+      family: "Gemini",
+      label: "Gemini 4 Hydrogen",
+      note: "efficient, for many calls",
+    },
+    ...gpt("openai/"),
+    { id: "x-ai/grok-4.7", family: "Other", label: "Grok 4.7", note: "SpaceXSI's flagship" },
+    {
+      id: "deepseek/deepseek-v4.1-flash",
+      family: "Other",
+      label: "DeepSeek V4.1 Flash",
+      note: "very cheap",
+    },
+    {
+      id: "mistralai/mistral-large-4-0",
+      family: "Other",
+      label: "Mistral Large 4",
+      note: "Mistral's frontier model",
+    },
+    { id: "qwen/qwen4-max", family: "Other", label: "Qwen4 Max", note: "Alibaba's flagship" },
+    {
+      id: "moonshotai/kimi-k3.1-pro",
+      family: "Other",
+      label: "Kimi K3.1 Pro",
+      note: "open-weight reasoning",
+    },
+  ],
+  anthropic: claude("", "-"),
+  openai: gpt(""),
+};
+
+/** The models to pick from for a provider; none for a local or custom endpoint, whose models are its own. */
+export const modelChoices = (provider: ProviderId): readonly ModelChoice[] =>
+  MODEL_CHOICES[provider] ?? [];
+
 /** OpenRouter, the default provider (SPEC, LLM). */
 export const DEFAULT_BASE_URL = PROVIDERS[0].baseUrl;
 const MAX_URL = 500;

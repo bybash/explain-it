@@ -2,6 +2,7 @@ import { type FormEvent, useCallback, useEffect, useState } from "react";
 import type { ValidationError } from "../schema/errors.ts";
 import {
   ENV_NAMES,
+  modelChoices,
   PROVIDERS,
   presetModel,
   providerOf,
@@ -10,6 +11,7 @@ import {
 import { getSettings, saveSettings } from "./api.ts";
 import { Errors } from "./Errors.tsx";
 import { HouseRules } from "./HouseRules.tsx";
+import { ModelPicker } from "./ModelPicker.tsx";
 import { formOf, type SettingsForm, settingsChanges } from "./settings-form.ts";
 import { Muted, PageTitle } from "./ui.tsx";
 
@@ -128,20 +130,20 @@ export const Settings = () => {
         <label className={LABEL_CLASS} htmlFor="settings-model">
           Model
         </label>
-        <input
+        <ModelPicker
           className={INPUT_CLASS}
           id="settings-model"
-          value={form.model}
+          choices={modelChoices(provider)}
+          model={form.model}
           disabled={locked("model")}
-          spellCheck={false}
-          placeholder={presetModel(form.baseUrl) ?? "The model's id, as the endpoint names it"}
-          onChange={(e) => change({ model: e.target.value })}
+          placeholder={presetModel(form.baseUrl)}
+          pick={(model) => change({ model })}
         />
         {locked("model") ? (
           <FromEnvironment variable={ENV_NAMES.model} />
         ) : (
           view.modelIsSuggested && (
-            <p className={NOTE_CLASS}>Suggested; saving keeps it, or type another.</p>
+            <p className={NOTE_CLASS}>Suggested; saving keeps it, or pick another.</p>
           )
         )}
 
