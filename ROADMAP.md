@@ -385,8 +385,8 @@ publish workflow for the first time), and making the GHCR package public.
   failed" (exit code 134, not 1) when it found problems in a project whose
   voice it had just generated (6.2): `process.exit` tore the process down
   with the voice's ONNX threads still about. It now sets the exit code and
-  lets Node exit. The CLI's error paths (`fail`) still call `process.exit`;
-  one that runs after the voice was generated could abort the same way.
+  lets Node exit. Its error paths (`fail`) now do the same: they set the
+  exit code and end the command, and Node exits by itself.
 - `serves a part of a video, so a player can seek` in
   `src/server/render-routes.test.ts` sometimes passes its 5-second timeout
   under load (twice so far: locally in 5.8, on CI in 6.1), and passes when
