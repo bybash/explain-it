@@ -3,6 +3,16 @@
 What each release adds, for people who use explAIn-it. The plan and the
 reasons are in [`ROADMAP.md`](ROADMAP.md) and [`docs/decisions/`](docs/decisions/README.md).
 
+## 0.1.2
+
+- **A smaller image**: it leaves out what Node never loads in it (source
+  maps, browser builds, other systems' binaries), so it downloads and
+  unpacks smaller.
+- **A faster release build**: the Arm image is built on an Arm machine, not
+  emulated on an Intel one.
+- 0.1.1's image was never published (its build was stopped); its changes,
+  below, are in this image.
+
 ## 0.1.1
 
 - **The start-up line gives the address to open.** In Docker it said
