@@ -450,6 +450,12 @@ publish workflow for the first time), and making the GHCR package public.
 
 ### Found outside a slice
 
+- In the browser test of the preview with its voice, pressing Play just
+  after "The voice and the music are ready" sometimes leaves the audio
+  paused (seen 2026-11-27, under load). It may be a real bug, Play pressed
+  while the player still seeks to a beat, or only the test's timing; the
+  beat's start moving once the measured voice lands, also seen there, was
+  the test's (fixed in 0.1.1).
 - ✅ `explain-it check` ended with "libc++abi: terminating … mutex lock
   failed" (exit code 134, not 1) when it found problems in a project whose
   voice it had just generated (6.2): `process.exit` tore the process down
