@@ -84,8 +84,8 @@ compare them.
 
 ## Rendering
 
-`src/render/render.ts` serves the built render page, opens four Chrome
-pages, seeks each to its share of the frames, and pipes the PNGs in order
+`src/render/render.ts` serves the built render page, opens it in four
+Chrome browsers, seeks each to its share of the frames, and pipes the PNGs in order
 to one ffmpeg, which encodes H.264 with the mixed soundtrack. Each theme
 gives a captioned video, a clean one, captions (`.srt`) and a poster, in
 `out/<time>/<theme>/`. The **render queue** runs one job at a time and
@@ -120,14 +120,17 @@ recorded again.
 - **Unit and property tests** (Vitest, fast-check) on the core.
 - **Integration**: the server API on a temporary folder, MCP through an
   in-memory client, the LLM through its recordings.
-- **Chrome and ffmpeg**: the render test, the checks and the layout repair.
+- **Chrome and ffmpeg**: the render test, the checks (with the mix's
+  loudness), ffmpeg itself and the layout repair; they skip themselves
+  where Chrome or ffmpeg is missing.
 - **Golden stills**: each example's beats compared with `golden/`, in the
   Docker image's test stage, where they were made (`npm run golden:check`).
 - **End to end**: Playwright drives the web app through every gate.
 
 CI runs lint, typecheck, the module boundaries and the tests on every pull
-request, and the Chrome and ffmpeg tests and the golden stills in the
-Docker image.
+request, the web app's browser tests among them, on the runner's Google
+Chrome. A second job runs every test of the renderer and the checks, and
+the golden stills, in the Docker image, where Chromium and ffmpeg are.
 
 ## Where to start
 

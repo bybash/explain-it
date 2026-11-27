@@ -309,6 +309,13 @@ that finishes it.
   chat's problems (`wordProblems`) read the same quick checks each their
   own way; a Fix in the editor beside a hint could share the chat's.
 
+### For 6.5 (release), from 6.4
+
+- The README's demo links to the video's file page, where GitHub plays it;
+  to play inline in the README, the clip needs uploading to GitHub (drag it
+  into an issue or PR comment) and that `user-attachments` link placing in
+  the README.
+
 ### For 6.5 (release), from 6.1
 
 - Before the first publish, check the image against the GPL and LGPL

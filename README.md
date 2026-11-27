@@ -57,8 +57,10 @@ another address, change the URL in your IDE's config to match.
 
 Then:
 
-1. Open **Settings** and paste your LLM key (it is saved to `.env`, which
-   only you can read, and shown as its last four characters).
+1. Open **Settings**, choose your provider (OpenRouter is the default;
+   Anthropic's API or any OpenAI-compatible endpoint, such as Ollama, also
+   works), and paste its key. The key is saved to `.env`, which only you
+   can read, and shown as its last four characters.
 2. On the home page, name a **New project** and **Create** it, then
    describe the flow in the chat. The assistant drafts the graph; approve
    it, agree the story, approve the script, pick a style, preview it and
@@ -91,7 +93,7 @@ docker run -p 127.0.0.1:3000:3000 \
 ```
 
 Open <http://127.0.0.1:3000>. Give Docker at least 4 GB of memory: a render runs
-four Chrome pages. The voice model downloads into `cache/` the
+four Chrome browsers. The voice model downloads into `cache/` the
 first time; a key saved in Settings is kept in `config/.env`. On Linux, add
 `--user "$(id -u):$(id -g)"` when the folders you mount belong to another
 user than uid 1000. Render from the command line with
@@ -110,10 +112,14 @@ Studio. Models tested for structured output:
 |---|---|---|
 | `anthropic/claude-haiku-5.5` | OpenRouter | The recorded fixtures in `src/llm/fixtures/`: structured calls, graph and script drafting, edits, layout repair, shorter words, and a whole conversation with the assistant (5.1 to 6.2) |
 
+The app suggests `anthropic/claude-sonnet-5.5` on OpenRouter when no model
+is set; it has not been recorded, though a stronger model of the same
+family is expected to do at least as well.
+
 Other models should work if they answer with structured output (a JSON
 Schema); they have not been recorded yet. To test one, set it in Settings
 (or `LLM_MODEL` in `.env`), delete the fixtures, run `npm run llm:record`
-(it costs a few calls), and run `npm test`: the tests then replay that
+(a few dozen calls; with Haiku, a few cents), and run `npm test`: the tests then replay that
 model's answers. A model that cannot keep to the schemas shows up there,
 as a call that ran out of repairs.
 

@@ -43,22 +43,25 @@ title becomes the commit title on `main`.
 
 - **Golden stills.** A change to how the examples are drawn fails the
   golden stills in CI. Make them again with `npm run golden` (in Docker,
-  for CI's browser), look at the difference in the PR, and say why it is
-  right. `npm run golden:check` runs the check as CI does and writes any
+  for CI's browser and processor, so on an Arm Mac it runs emulated and
+  takes several minutes), look at the difference in the PR, and say why it
+  is right. `npm run golden:check` runs the check as CI does and writes any
   difference to `golden-out/`.
 - **LLM recordings.** The tests replay recorded LLM answers from
   `src/llm/fixtures/` and never call an LLM. A change to a prompt, the
   authoring guide or a schema an LLM answers with changes what is asked, so
   the tests say which calls have no recording. A maintainer records them
-  with `npm run llm:record`, which needs a key and costs a few calls.
+  with `npm run llm:record`, which needs a key and costs a few dozen calls
+  (a few cents with Haiku).
 
 ## Review
 
 A maintainer checks the slice's **Done when** line in `ROADMAP.md`, the
 architecture, code rules and test rules in `AGENTS.md`, and the evidence in
 the PR. CI must pass: lint, typecheck, the module boundaries and the tests,
-and, in the Docker image, the golden stills and the Chrome and ffmpeg
-tests. The branch must be up to date with `main`.
+and, in the Docker image, the golden stills and every test of the renderer
+and the checks (the ones that need Chromium or ffmpeg run there). The web
+app's browser tests run in the first job, on the runner's Google Chrome. The branch must be up to date with `main`.
 
 The short version of the engineering rules:
 
