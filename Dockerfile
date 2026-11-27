@@ -22,7 +22,7 @@ COPY . .
 RUN npm run build && npm run build:engine
 
 # The tests that need Chromium and ffmpeg, as CI runs them (6.3): the golden
-# stills, the render test and the layout repair, in the image's own browser.
+# stills, the renders and the checks, in the image's own browser.
 FROM browser AS test
 WORKDIR /app
 COPY --from=build /app /app

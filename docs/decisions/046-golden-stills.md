@@ -32,9 +32,10 @@ render test never ran there (1.9, 6.1).
   stop building. When Debian's Chromium changes how a still is drawn, CI
   fails with no code change; `npm run golden` then makes the stills again,
   and the PR shows the difference.
-- **The same CI job runs the render test and the layout repair** in that
-  image, so they run on every PR at last, then builds the real image and
-  checks that it starts and answers.
+- **The same CI job runs every test of the renderer and the checks** in
+  that image (`src/render` and the render end-to-end test), so the ones
+  that need Chromium or ffmpeg run on every PR at last, then builds the
+  real image and checks that it starts and answers.
 
 ## Alternatives
 
