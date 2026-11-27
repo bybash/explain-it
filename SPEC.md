@@ -193,7 +193,7 @@ type Action =
 ```
 
 The camera is fixed within a scene and frames the scene's nodes. A scene's
-camera in `config.json` zooms in (up to twice as close) and moves the scene
+camera in `config.json` zooms in (up to three times as close) and moves the scene
 from where it fits, by a share of the area it is framed in (below the
 titles and above the captions, up to half of it), so a scene
 with room around it can fill the frame; the layout checks say whether it
@@ -351,7 +351,8 @@ for frame capture, so what the user approves is what gets rendered.
   scene is framed in the whole height above the narration: an isometric
   layout usually leaves that corner empty, and the checks report it when it
   does not. The beat list then rises from above the title, the current line
-  at the bottom. A callout card
+  at the bottom. At the top, the step band takes two lines when a step
+  caption does not fit on one in the video's font. A callout card
   sits beside its node, to the right if that side is free, else the left,
   above or below, sliding along a side before covering a box or an edge
   label. A badge stands on its node's back corner: a tag with pointed ends,

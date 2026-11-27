@@ -187,6 +187,10 @@ body {
   overflow: hidden;
 }
 
+.step-caption .caption-text {
+  -webkit-line-clamp: var(--step-lines);
+}
+
 .step-caption {
   align-items: flex-start;
   font-size: var(--step-size);

@@ -9,7 +9,7 @@ import {
   VOICE_SPEEDS,
 } from "../schema/config.ts";
 import { musicSample, voiceSample } from "./api.ts";
-import { capitalised } from "./labels.ts";
+import { CAPTION_PLACE_LABELS, capitalised } from "./labels.ts";
 import { INPUT_CLASS, LABEL_CLASS, Section } from "./style-fields.tsx";
 import { Pill } from "./ui.tsx";
 import type { SamplePlayer, SampleSource } from "./useSamplePlayer.ts";
@@ -225,9 +225,6 @@ export const CaptionsCard = (form: Form) => {
     </Section>
   );
 };
-
-/** Where the scene title and the step captions go, as the Captions card offers it (decision 049). */
-const CAPTION_PLACE_LABELS = { top: "At the top", bottom: "Bottom left, two lines" } as const;
 
 /** The music: its mood, which take of it, how loud under the voice, with a sample. */
 export const MusicCard = ({ player, ...form }: Form & { player: SamplePlayer }) => {

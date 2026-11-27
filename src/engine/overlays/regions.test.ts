@@ -10,6 +10,18 @@ const inside = (inner: Rect, outer: Rect) =>
   inner.x + inner.width <= outer.x + outer.width &&
   bottom(inner) <= bottom(outer);
 
+describe("stageRegions: a step caption on two lines at the top", () => {
+  it("gives the step band two lines when a caption needs them, and one otherwise", () => {
+    const one = stageRegions(captions);
+    const two = stageRegions(captions, undefined, 2);
+    if (!one.step || !two.step) throw new Error("the step captions are on by default");
+    expect(two.step.height).toBeGreaterThanOrEqual(2 * two.fonts.step);
+    expect(two.step.height).toBeGreaterThan(one.step.height);
+    expect(two.content.y).toBeGreaterThan(one.content.y);
+    expect(stageRegions(captions, undefined, 1)).toEqual(one);
+  });
+});
+
 describe("stageRegions: titles at the bottom left", () => {
   const bottomLeft = { ...captions, place: "bottom" as const };
 
@@ -23,6 +35,12 @@ describe("stageRegions: titles at the bottom left", () => {
     expect(bottom(title)).toBeLessThanOrEqual(step.y);
     expect(bottom(step)).toBeLessThan(narration.y);
     expect(step.height).toBeGreaterThanOrEqual(2 * fonts.step);
+  });
+
+  it("gives the scene more height than the titles at the top do", () => {
+    expect(stageRegions(bottomLeft).content.height).toBeGreaterThan(
+      stageRegions(captions).content.height,
+    );
   });
 
   it("frames the scene in the whole height, from the top of the safe area to the narration", () => {

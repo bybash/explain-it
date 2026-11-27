@@ -256,7 +256,9 @@ From watching the examples rendered in 6.2.
 
 - ✅ With the wide angle, the titles at the top hold the scene down from a
   bigger zoom, and a step caption cannot break onto a second line: titles
-  can go in the bottom-left corner, two lines for the step caption (3.20).
+  can go in the bottom-left corner, two lines for the step caption; at the
+  top the step band takes two lines when a caption needs them; the camera
+  zooms to 3× (3.20).
 - ✅ The beat list as an option: there since 3.19, and it rises from the
   bottom-left corner when the titles are there (3.20).
 
@@ -333,8 +335,9 @@ publish workflow for the first time), and making the GHCR package public.
 
 ### Not placed yet, from 3.20
 
-- At the top, a step caption is still one line; two lines there would
-  need a band sized to the longest caption.
+- In the bottom-left corner (42% of the width), a step caption at the
+  60-character limit in size L can need three lines; it is cut at two,
+  and no check says so.
 - With the titles at the bottom and the wide angle, the CI pipeline's area
   label leaves the frame by 12 px: the framing fits the area's outline, not
   its label, which lies outside it.

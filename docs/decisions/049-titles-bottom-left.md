@@ -19,8 +19,11 @@ corner empty.
   layout that reaches into it is reported by the checks, as any overlap is.
 - **The beat list (048) rises from above the title**, the current line at
   the bottom and the oldest leaving from the top.
-- At the top the step caption stays on one line: two lines there would take
-  height from every scene.
+- **At the top, the step band takes two lines only when a caption needs
+  them**: the player measures the step captions in the video's font, so a
+  video whose captions fit on one line keeps the band, and its look, as it
+  was.
+- **The camera zooms to 3×** (was 2×), so the height given back can be used.
 
 ## Alternatives
 
@@ -28,5 +31,5 @@ corner empty.
   no height, which is the point.
 - **Placing the titles wherever the scene leaves room**, frame by frame.
   Clever, but titles that move between scenes are hard to follow.
-- **Two-line step captions at the top too.** Possible later, as a band
-  sized to the longest caption.
+- **Two lines at the top always.** Simpler, but every video would lose a
+  line of height for captions that may never need it.

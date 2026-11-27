@@ -66,6 +66,7 @@ export const CARD_LIMITS = {
 
 /** Where the scene title and the step captions go (decision 049). */
 export const CAPTION_PLACES = ["top", "bottom"] as const;
+export type CaptionPlace = (typeof CAPTION_PLACES)[number];
 
 /** The angles a video's scenes are drawn at (decision 047). */
 export const ANGLES = ["isometric", "wide", "high"] as const;
@@ -77,8 +78,8 @@ export const ANGLE_ELEVATIONS: Readonly<Record<Angle, number | undefined>> = {
   high: 50,
 };
 
-/** How far the camera zooms in, and moves, as a share of the area the scene is framed in (below the titles, above the captions). */
-export const CAMERA_LIMITS = { zoom: { min: 1, max: 2 }, move: 0.5 } as const;
+/** How far the camera zooms in, and moves, as a share of the area the scene is framed in (clear of the titles and captions that take room from it). */
+export const CAMERA_LIMITS = { zoom: { min: 1, max: 3 }, move: 0.5 } as const;
 
 export const CameraSchema = z
   .strictObject({
@@ -86,7 +87,7 @@ export const CameraSchema = z
       .number()
       .min(CAMERA_LIMITS.zoom.min)
       .max(CAMERA_LIMITS.zoom.max)
-      .describe("1 frames the scene as it fits; 2 is twice as close."),
+      .describe("1 frames the scene as it fits; 3 is three times as close."),
     x: z
       .number()
       .min(-CAMERA_LIMITS.move)

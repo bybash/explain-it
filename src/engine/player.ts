@@ -89,7 +89,12 @@ export const mountPlayer = async (frame: HTMLElement, input: PlayerInput): Promi
       ? { src: input.logo[mode], corner: config.logo.corner, show: config.logo.show }
       : undefined;
   const onEveryFrame = logo && logoShowsOn(logo.show, "frames") ? logo : undefined;
-  const regions = stageRegions(config.captions, onEveryFrame?.corner);
+  const regions = withStepLines(
+    stageRegions(config.captions, onEveryFrame?.corner),
+    storyboard,
+    font.family,
+    (lines) => stageRegions(config.captions, onEveryFrame?.corner, lines),
+  );
   const routes = edgeRoutes(graph, layout);
   const plan = buildBeats(storyboard, graph, beatOptions(config, input.narration));
   frame.replaceChildren();
@@ -145,6 +150,28 @@ const drawCard = (
       if (!logo) throw missing();
       return renderLogoCard(frame, logo.src);
   }
+};
+
+/**
+ * The regions with a two-line step band at the top when a step caption does
+ * not fit on one line in the video's font (decision 049); the font is loaded
+ * first, so the measure is the one the page draws with.
+ */
+const withStepLines = (
+  regions: StageRegions,
+  storyboard: Storyboard,
+  family: string,
+  twoLines: (lines: 2) => StageRegions,
+): StageRegions => {
+  if (regions.place !== "top" || !regions.step) return regions;
+  const context = document.createElement("canvas").getContext("2d");
+  if (!context) return regions;
+  context.font = `700 ${regions.fonts.step}px "${family}"`;
+  const width = regions.step.width;
+  const tooLong = storyboard.scenes.some((scene) =>
+    scene.beats.some((beat) => context.measureText(beat.caption).width > width),
+  );
+  return tooLong ? twoLines(2) : regions;
 };
 
 type Drawing = {
