@@ -332,8 +332,8 @@ publish workflow for the first time), and making the GHCR package public.
 
 - The Camera card has no browser test of its own (3.16 agreed the pure,
   schema and MCP seams, and stills by eye).
-- The camera's sliders show whole percents; a camera set more finely over
-  MCP shows rounded, and moving a slider rounds it.
+- ✅ The camera's sliders showed whole percents, so a camera set more
+  finely over MCP showed rounded; they now go by a tenth of a percent.
 - The layout repair's recording (5.6) holds only for some answers: three
   fresh recordings of the same prompt each left a zone label covered by
   about 12 px. Record it again only with `repair.test.ts` run after.
@@ -357,11 +357,12 @@ publish workflow for the first time), and making the GHCR package public.
 
 ### Found outside a slice
 
-- `explain-it check` once ended with "libc++abi: terminating due to
-  uncaught exception … mutex lock failed" after writing its report, on a
-  project whose voice it had just generated (6.2). The report and the
-  contact sheet were complete; the voice library's teardown at exit is the
-  likely cause.
+- ✅ `explain-it check` ended with "libc++abi: terminating … mutex lock
+  failed" (exit code 134, not 1) when it found problems in a project whose
+  voice it had just generated (6.2): `process.exit` tore the process down
+  with the voice's ONNX threads still about. It now sets the exit code and
+  lets Node exit. The CLI's error paths (`fail`) still call `process.exit`;
+  one that runs after the voice was generated could abort the same way.
 - `serves a part of a video, so a player can seek` in
   `src/server/render-routes.test.ts` sometimes passes its 5-second timeout
   under load (twice so far: locally in 5.8, on CI in 6.1), and passes when

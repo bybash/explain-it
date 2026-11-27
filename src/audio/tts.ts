@@ -13,4 +13,6 @@ export type TtsProvider = {
   readonly id: string;
   /** Speaks one line. Throws when the model cannot load or run: a broken environment. */
   readonly generate: (text: string, options: SpeakOptions) => Promise<Audio>;
+  /** Lets the model go once the voice is done with, so a render that follows has its memory. */
+  readonly close?: () => Promise<void>;
 };

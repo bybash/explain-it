@@ -62,5 +62,12 @@ export const kokoroProvider = ({ cacheDir }: KokoroOptions): TtsProvider => {
       const audio = await tts.generate(text, { voice, speed });
       return { samples: audio.audio, sampleRate: audio.sampling_rate };
     },
+    close: async () => {
+      const loaded = loading;
+      loading = undefined;
+      if (!loaded) return;
+      const tts = await loaded.catch(() => undefined);
+      await tts?.model.dispose();
+    },
   };
 };
