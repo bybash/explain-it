@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import exampleGraph from "../../examples/oauth-login/graph.json" with { type: "json" };
 import exampleStoryboard from "../../examples/oauth-login/storyboard.json" with { type: "json" };
+import { PALETTES } from "../engine/theme/palettes.ts";
 import { CARD_LIMITS, parseCard } from "../schema/card.ts";
 import { orThrow } from "../schema/errors.ts";
 import { parseGraph } from "../schema/graph.ts";
@@ -9,6 +10,11 @@ import { CARD_SIZE, cardHtml, defaultCard } from "./card.ts";
 
 const graph = orThrow(parseGraph(exampleGraph), "graph");
 const storyboard = orThrow(parseStoryboard(exampleStoryboard, graph), "storyboard");
+const palette = (name: string) => {
+  const preset = PALETTES[name];
+  if (!preset) throw new Error(`no palette "${name}"`);
+  return preset;
+};
 
 describe("card.json", () => {
   it("takes a title and one to three bullets, each within its length", () => {
@@ -28,6 +34,7 @@ describe("card.json", () => {
 
 describe("defaultCard", () => {
   it("names the video, and gives where each scene lands: its last caption", () => {
+    expect(parseCard(defaultCard(graph.title, storyboard)).ok).toBe(true);
     expect(defaultCard(graph.title, storyboard)).toEqual({
       version: 1,
       title: "Signing in with OAuth",
@@ -36,6 +43,25 @@ describe("defaultCard", () => {
         "Signed in, without sharing a password.",
       ],
     });
+  });
+
+  it("takes the last three scenes of a longer script, where the video lands", () => {
+    const four = {
+      ...storyboard,
+      scenes: [0, 1, 2, 3].map((n) => ({
+        ...storyboard.scenes[0],
+        id: `s${n}`,
+        beats: (storyboard.scenes[0]?.beats ?? []).map((b) => ({
+          ...b,
+          caption: `Scene ${n} lands.`,
+        })),
+      })),
+    } as typeof storyboard;
+    expect(defaultCard("T", four).bullets).toEqual([
+      "Scene 1 lands.",
+      "Scene 2 lands.",
+      "Scene 3 lands.",
+    ]);
   });
 
   it("keeps to the card's own limits, however long the script's words are", () => {
@@ -56,7 +82,7 @@ describe("cardHtml", () => {
   it("lays the title, the bullets and the still out at the link-preview size, its words escaped", () => {
     const html = cardHtml(
       { version: 1, title: "A <b>bold</b> change", bullets: ["One & two"] },
-      { still: "data:image/png;base64,AAAA", dark: false },
+      { still: "data:image/png;base64,AAAA", colours: palette("default").light },
     );
     expect(CARD_SIZE).toEqual({ width: 1200, height: 630 });
     expect(html).toContain("A &#60;b&#62;bold&#60;/b&#62; change");
@@ -64,9 +90,12 @@ describe("cardHtml", () => {
     expect(html).toContain('src="data:image/png;base64,AAAA"');
   });
 
-  it("draws a dark card for a dark video", () => {
-    const light = cardHtml({ version: 1, title: "T", bullets: ["b"] }, { still: "", dark: false });
-    const dark = cardHtml({ version: 1, title: "T", bullets: ["b"] }, { still: "", dark: true });
-    expect(dark).not.toBe(light);
+  it("draws in the video's palette, in its theme", () => {
+    const card = { version: 1 as const, title: "T", bullets: ["b"] };
+    const ocean = palette("ocean");
+    expect(cardHtml(card, { still: "", colours: ocean.dark })).toContain(
+      `background: ${ocean.dark.background}`,
+    );
+    expect(cardHtml(card, { still: "", colours: ocean.light })).toContain(ocean.light.accent);
   });
 });

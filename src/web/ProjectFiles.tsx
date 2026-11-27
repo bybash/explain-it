@@ -17,6 +17,7 @@ export const ProjectFiles = ({ opened }: { opened: OpenedProject }) => {
         `${storyboard.scenes.length} scenes, ${storyboard.scenes.flatMap((s) => s.beats).length} beats`,
     },
     { file: "brief.json", summary: opened.brief && "the story brief" },
+    { file: "card.json", summary: opened.card && "the TL;DR card" },
     { file: "layout.json", summary: layout && `${Object.keys(layout.positions).length} positions` },
     { file: "config.json", summary: config && "style and output set" },
   ];

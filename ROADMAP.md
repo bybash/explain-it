@@ -284,6 +284,10 @@ From watching the examples rendered in 6.2.
 - The card is set over MCP (`set_card`) or by hand; the web app has no
   field for it yet, and the in-app assistant does not draft one.
 - The card's text uses the system font, not the video's.
+- The still on the card is about 520 px wide, so the diagram's labels are
+  too small to read there; the card's words carry it.
+- The summary (`changeSummary`, 7.5) lists every caption; a shorter one,
+  for a PR body that only skims, could take each scene's last caption.
 - The card is drawn with every render, not on its own, so a new card needs
   a new render.
 

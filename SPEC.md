@@ -220,8 +220,8 @@ type Brief = {
 What the card every render draws says (decision 053): a headline and the
 points that sum the video up, such as what changed, why, and what to look
 at. It is optional and replaced whole; without it, the card is the graph's
-title and each scene's last caption, for at most three scenes. An agent
-writes it with `set_card`.
+title and each scene's last caption, for the last three scenes at most,
+where the video lands. An agent writes it with `set_card`.
 
 ```ts
 type Card = {
@@ -606,8 +606,8 @@ Decision 018 says why.
     (decision 052).
   - `card.png`: the TL;DR card, 1200 × 630 (the size link previews
     show): `card.json`'s headline and points on the left, a still of the
-    GIF's scene, all drawn, on the right, in the video's theme (decision
-    053).
+    GIF's scene, all drawn, on the right, in the video's palette and theme;
+    long text shrinks until it fits (decision 053).
 
 ## LLM
 
