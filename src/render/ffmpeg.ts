@@ -58,3 +58,7 @@ export const pipeFrames = async (
     throw error;
   }
 };
+
+/** Runs ffmpeg on files it reads itself, with nothing to feed it; fails, and removes the output, as `pipeFrames` does. */
+export const runFfmpeg = (args: readonly string[]): Promise<void> =>
+  pipeFrames(args, async () => {});

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { FPS, frameTimes, posterTime } from "./frames.ts";
+import { GIF_LIMITS } from "../schema/render.ts";
+import { FPS, frameTimes, gifClip, posterTime } from "./frames.ts";
 
 describe("frameTimes", () => {
   it("captures 30 frames a second", () => {
@@ -50,5 +51,57 @@ describe("posterTime", () => {
       beats: [{ scene: "a", start: 3.8, end: 8 }],
     };
     expect(posterTime(plan)).toBe(0);
+  });
+});
+
+describe("gifClip", () => {
+  const plan = (beats: [scene: string, start: number, end: number][]) => ({
+    scenes: [...new Set(beats.map(([scene]) => scene))].map((id) => ({ id })),
+    beats: beats.map(([scene, start, end]) => ({ scene, start, end })),
+  });
+
+  it("takes the second scene, the heart of a story, from its first beat to its last", () => {
+    const clip = gifClip(
+      plan([
+        ["before", 2, 8],
+        ["before", 8, 14],
+        ["after", 14, 19],
+        ["after", 19, 25],
+        ["review", 25, 31],
+      ]),
+    );
+    expect(clip).toEqual({ scene: "after", start: 14, end: 25 });
+  });
+
+  it("takes the only scene of a one-scene video", () => {
+    expect(
+      gifClip(
+        plan([
+          ["only", 1, 6],
+          ["only", 6, 9],
+        ]),
+      ),
+    ).toEqual({ scene: "only", start: 1, end: 9 });
+  });
+
+  it("ends a long scene at the last beat that finishes in time, so it never stops mid-beat", () => {
+    const clip = gifClip(
+      plan([
+        ["a", 0, 4],
+        ["b", 4, 10],
+        ["b", 10, 17],
+        ["b", 17, 30],
+      ]),
+    );
+    expect(clip).toEqual({ scene: "b", start: 4, end: 17 });
+    expect(clip.end - clip.start).toBeLessThanOrEqual(GIF_LIMITS.seconds);
+  });
+
+  it("cuts a first beat longer than the limit at the limit", () => {
+    expect(gifClip(plan([["a", 3, 40]]))).toEqual({
+      scene: "a",
+      start: 3,
+      end: 3 + GIF_LIMITS.seconds,
+    });
   });
 });

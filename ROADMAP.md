@@ -175,7 +175,7 @@ renderer), so the outputs and the video always agree.
 | ID | Slice | Done when |
 |---|---|---|
 | 7.1 | **Storyboard strip**: 4 to 8 stills, each with its caption, as one image, built on the contact sheet's page (2.7); exported from MCP and the render gate | The example's strip reads without sound and posts to Slack under 1 MB |
-| 7.2 | **GIF clip**: one scene, at most 15 s, captions burned in, no sound, from the renderer and ffmpeg | A scene of the example plays inline in Slack and in a GitHub comment, under 5 MB |
+| ✅ 7.2 | **GIF clip**: one scene, at most 15 s, captions burned in, no sound, from the renderer and ffmpeg | A scene of the example plays inline in Slack and in a GitHub comment, under 5 MB |
 | 7.3 | **Diagram export**: the graph as SVG and PNG, plus its Mermaid text (3.4) | The example's diagram pastes into Notion, and its Mermaid draws on GitHub |
 | 7.4 | **TL;DR card and summary**: a title, at most three bullets (what changed, why, what to look at) and a still, as one image; and a short Markdown summary from the script's captions (the summary is there since 7.5: `changeSummary`) | The example gives a card that reads at a glance and a summary for a PR body |
 | ✅ 7.5 | **Change explainer over MCP**: an `explain_change` prompt and tool. The agent, which already has the diff, drafts the components a change touches as the graph, then before, after and what to review as the script, and gets the summary and the video back (the GIF and the card are 7.5b) | A pull request in this repository gets its explainer posted by the agent: #105 |
@@ -278,6 +278,17 @@ From watching the examples rendered in 6.2.
   tab shows there only once the chat opens again.
 
 ## Carried over
+
+### Not placed yet, from 7.2
+
+- The GIF's scene is chosen by a rule (the second scene, else the first);
+  there is no setting to pick another, and the rule agreed first (the scene
+  the brief's takeaway lands in) needs the brief in the render and a way to
+  place the takeaway (decision 052).
+- A GIF over 5 MB even at the smallest size is kept, with no warning.
+- The GIF is checked to play inline on GitHub (the PR shows it); Slack's
+  inline playback is by its documented limits, not tried.
+- Every render makes the GIF, adding a few seconds per theme.
 
 ### Not placed yet, from 7.5
 

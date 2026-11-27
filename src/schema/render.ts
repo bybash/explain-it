@@ -41,7 +41,32 @@ export const RENDER_FILES = {
   audio: "audio.wav",
   poster: "poster.png",
   contactSheet: "contact-sheet.png",
+  gif: "scene.gif",
 } as const;
+
+/**
+ * The GIF of one scene a render makes (decision 052): short enough to play
+ * through in a chat or a pull request, and small enough to attach to one.
+ */
+export const GIF_LIMITS = {
+  /** The longest clip, in seconds. */
+  seconds: 15,
+  /** The size it aims under: GitHub's and Slack's limits for an image that plays inline. */
+  bytes: 5 * 1024 * 1024,
+  /** The colours in its palette, made for the clip. */
+  colours: 128,
+} as const;
+
+/**
+ * The GIF's sizes, tried in order until one is under `GIF_LIMITS.bytes`
+ * (decision 052): each smaller in width or frame rate than the one before.
+ */
+export const GIF_SIZES = [
+  { width: 720, fps: 12 },
+  { width: 640, fps: 10 },
+  { width: 480, fps: 8 },
+  { width: 400, fps: 6 },
+] as const;
 export type RenderFile = keyof typeof RENDER_FILES;
 
 /** How each of a render's files is served. */
@@ -52,6 +77,7 @@ export const RENDER_FILE_TYPES: Readonly<Record<RenderFile, string>> = {
   audio: "audio/wav",
   poster: "image/png",
   contactSheet: "image/png",
+  gif: "image/gif",
 };
 
 /** Written into `out/<time>/` once every theme is: a folder without it is not a finished render. */
@@ -76,6 +102,8 @@ export const RenderedThemeSchema = z.object({
   poster: z.string(),
   /** One still per beat on one image. */
   contactSheet: z.string(),
+  /** One scene as a GIF, captions burned in, no sound (decision 052). */
+  gif: z.string(),
   /** The soundtrack, when the video has voice or music. */
   audio: z.string().optional(),
 });

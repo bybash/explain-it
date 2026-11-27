@@ -61,3 +61,4 @@ later record supersedes an earlier one and says so.
 | [049](049-titles-bottom-left.md) | The titles in the bottom-left corner |
 | [050](050-model-picker.md) | The model picker |
 | [051](051-explain-change.md) | Explaining a code change over MCP |
+| [052](052-gif.md) | One scene as a GIF |

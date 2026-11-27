@@ -8,6 +8,7 @@ import { encodeWav } from "../audio/wav.ts";
 import { sheetLayout } from "../checks/sheet.ts";
 import { beatOptions, buildBeats } from "../engine/beats/build.ts";
 import { formatErrors } from "../schema/errors.ts";
+import { GIF_LIMITS, GIF_SIZES } from "../schema/render.ts";
 import { parseStoryboard } from "../schema/storyboard.ts";
 import { hasChrome } from "./chrome.testing.ts";
 import { FPS, frameTimes } from "./frames.ts";
@@ -121,6 +122,12 @@ describe.skipIf(!hasFfmpeg || !hasChrome)("renderProject (Chrome and ffmpeg)", (
     const layout = sheetLayout({ beats: plan.beats, warnings: [], tileWidth: 480 });
     expect(layout.tiles).toHaveLength(3);
     expect([sheet.readUInt32BE(16), sheet.readUInt32BE(20)]).toEqual([layout.width, layout.height]);
+
+    // The GIF: the one scene of this short project, under its limit, captions and all.
+    const gif = readFileSync(light.gif);
+    expect(gif.subarray(0, 6).toString()).toBe("GIF89a");
+    expect(gif.length).toBeLessThanOrEqual(GIF_LIMITS.bytes);
+    expect(gif.readUInt16LE(6)).toBe(GIF_SIZES[0].width);
 
     const poster = readFileSync(light.poster);
     expect(poster.subarray(1, 4).toString()).toBe("PNG");

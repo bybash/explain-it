@@ -1,5 +1,6 @@
 import { STAGE } from "../schema/checks.ts";
 import type { Resolution } from "../schema/config.ts";
+import { GIF_LIMITS } from "../schema/render.ts";
 
 /** Output frame sizes. The stage is always captured at 1080p and scaled down. */
 export const RESOLUTION_SIZES: Readonly<
@@ -56,4 +57,32 @@ export const posterArgs = ({
   ...["-y", "-loglevel", "error", "-f", "image2pipe", "-c:v", "png", "-i", "-"],
   ...scaleTo(resolution),
   ...["-frames:v", "1", out],
+];
+
+/**
+ * ffmpeg arguments that cut `start` to `end` of the captioned video into a
+ * GIF at `width` and `fps`, with no sound: a palette is made for the clip
+ * first, so its colours stay true, and only the parts that change are
+ * redrawn from frame to frame, which keeps the file small.
+ */
+export const gifArgs = ({
+  video,
+  start,
+  end,
+  width,
+  fps,
+  out,
+}: {
+  readonly video: string;
+  readonly start: number;
+  readonly end: number;
+  readonly width: number;
+  readonly fps: number;
+  readonly out: string;
+}): string[] => [
+  ...["-y", "-loglevel", "error", "-ss", String(start), "-t", String(end - start), "-i", video],
+  "-an",
+  "-filter_complex",
+  `fps=${fps},scale=${width}:-2:flags=lanczos,split[a][b];[a]palettegen=max_colors=${GIF_LIMITS.colours}:stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=4:diff_mode=rectangle`,
+  ...["-loop", "0", out],
 ];
