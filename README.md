@@ -28,7 +28,7 @@ paste a key in the app's Settings later, or make a video by hand with none):
 ```sh
 docker run -p 127.0.0.1:3000:3000 \
   -v ./projects:/app/projects -v ./cache:/app/cache -v ./config:/app/config \
-  -e OPENROUTER_API_KEY=... ghcr.io/bybash/explain-it:0.1.1
+  -e OPENROUTER_API_KEY=... ghcr.io/bybash/explain-it:0.1.2
 ```
 
 Open <http://127.0.0.1:3000>, create a project and describe a flow in the
@@ -41,7 +41,7 @@ project folder or `checks.json` helps.
 
 ## Status
 
-Released: v0.1.1. In the web app, a chat with your own LLM key
+Released: v0.1.2. In the web app, a chat with your own LLM key
 drafts the graph and the script with you; from your IDE, its agent can do
 the same over MCP, and explain a code change as before, after and what to
 review, with a GIF, a TL;DR card and a summary to post on the pull request.
@@ -109,7 +109,7 @@ Intel and Arm; it is about 1.65 GB, pulled once:
 ```sh
 docker run -p 127.0.0.1:3000:3000 \
   -v ./projects:/app/projects -v ./cache:/app/cache -v ./config:/app/config \
-  -e OPENROUTER_API_KEY=... ghcr.io/bybash/explain-it:0.1.1
+  -e OPENROUTER_API_KEY=... ghcr.io/bybash/explain-it:0.1.2
 ```
 
 Or build it from this repository: `docker build -t explain-it .`, then run
@@ -120,7 +120,7 @@ four Chrome browsers. The voice model downloads into `cache/` the
 first time; a key saved in Settings is kept in `config/.env`. On Linux, add
 `--user "$(id -u):$(id -g)"` when the folders you mount belong to another
 user than uid 1000. Render from the command line with
-`docker run --rm -v ./projects:/app/projects -v ./cache:/app/cache ghcr.io/bybash/explain-it:0.1.1 explain-it render projects/<name>`.
+`docker run --rm -v ./projects:/app/projects -v ./cache:/app/cache ghcr.io/bybash/explain-it:0.1.2 explain-it render projects/<name>`.
 To reach an LLM on your own machine (Ollama, LM Studio), use
 `http://host.docker.internal:<port>` as its base URL (on Linux, also pass
 `--add-host=host.docker.internal:host-gateway`).
