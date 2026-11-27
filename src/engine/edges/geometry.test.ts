@@ -135,4 +135,35 @@ describe("edgeGeometry: the end at its target", () => {
   it("keeps its end when it already stops at or outside the target's outline", () => {
     expect(edgeGeometry(route, view, [], rect(6, 6, 1, 1)).length).toBeCloseTo(60, 6);
   });
+
+  it("cuts only the stretch at its end: one passing behind the target earlier is not counted", () => {
+    // 90 px long: through the box along the first leg (10 px), out, then back in for the last 5 px.
+    const winding = [
+      { x: 0, y: 0 },
+      { x: 4, y: 0 },
+      { x: 4, y: 2 },
+      { x: 2, y: 2 },
+      { x: 2, y: 1 },
+    ];
+    const edge = edgeGeometry(winding, view, [], rect(1.5, -0.5, 1, 2));
+    expect(edge.length).toBeCloseTo(90 - 5 - ARROW_GAP, 6);
+  });
+
+  it("is left whole when it arrives from the front, whatever it passes on the way", () => {
+    const passing = [
+      { x: 0, y: 0 },
+      { x: 4, y: 0 },
+      { x: 4, y: 2 },
+    ];
+    // The route crosses this box along its first leg, and ends outside it.
+    expect(edgeGeometry(passing, view, [], rect(1, -1, 1, 2)).length).toBeCloseTo(60, 6);
+  });
+
+  it("is left whole when cutting would leave too little to show its arrowhead", () => {
+    const short = [
+      { x: 0, y: 0 },
+      { x: 2, y: 0 },
+    ];
+    expect(edgeGeometry(short, view, [], rect(-1, -1, 4, 2)).length).toBeCloseTo(20, 6);
+  });
 });

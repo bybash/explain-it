@@ -21,6 +21,10 @@ export type EdgeGeometry = {
 
 /** Pixels between an edge's end and its target box's outline, when the box would hide the end. */
 export const ARROW_GAP = 6;
+/** An edge cut back shorter than this would have no room for its arrowhead, so it is left whole. */
+const MIN_CUT_LENGTH = 32;
+/** Less of an end inside the outline than this is rounding, not a box hiding it. */
+const HIDDEN_TOLERANCE = 0.5;
 
 /**
  * The screen geometry of one edge drawn on the floor. `occluders` are the
@@ -37,8 +41,9 @@ export const edgeGeometry = (
   target?: Polygon,
 ): EdgeGeometry => {
   const floor = route.map((p) => project({ x: p.x, y: p.y, z: 0 }, view));
-  const hidden = target ? insideLength(floor, target) : 0;
-  const points = hidden > 0 ? cutTo(floor, lengthOf(floor) - hidden - ARROW_GAP) : floor;
+  const hidden = target ? hiddenEnd(floor, target) : 0;
+  const keep = lengthOf(floor) - hidden - ARROW_GAP;
+  const points = hidden > HIDDEN_TOLERANCE && keep >= MIN_CUT_LENGTH ? cutTo(floor, keep) : floor;
   const starts: number[] = [];
   let length = 0;
   for (const [i, a] of points.entries()) {
@@ -90,6 +95,38 @@ const lengthOf = (points: readonly ScreenPoint[]): number =>
     const q = points[i + 1];
     return q ? sum + distance(p, q) : sum;
   }, 0);
+
+/** Whether a point lies inside a convex polygon, whichever way it winds. */
+const insideConvex = (p: ScreenPoint, polygon: Polygon): boolean => {
+  let sign = 0;
+  for (const [i, a] of polygon.entries()) {
+    const b = polygon[(i + 1) % polygon.length] ?? a;
+    const cross = (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x);
+    if (cross === 0) continue;
+    if (sign === 0) sign = Math.sign(cross);
+    else if (Math.sign(cross) !== sign) return false;
+  }
+  return true;
+};
+
+/**
+ * How much of the path's end lies inside a convex outline: walking back from
+ * the end while it is inside, so a stretch that passes the outline earlier
+ * is not counted.
+ */
+const hiddenEnd = (points: readonly ScreenPoint[], outline: Polygon): number => {
+  let hidden = 0;
+  for (let i = points.length - 1; i > 0; i--) {
+    const a = points[i - 1];
+    const b = points[i];
+    if (!a || !b || !insideConvex(b, outline)) break;
+    const inside = insideLength([a, b], outline);
+    hidden += inside;
+    // The segment leaves the outline on its way back: the end's stretch is over.
+    if (inside < distance(a, b) - 1e-9) break;
+  }
+  return hidden;
+};
 
 /** The path up to `keep` pixels from its start; at least its first point twice. */
 const cutTo = (points: readonly ScreenPoint[], keep: number): ScreenPoint[] => {

@@ -15,11 +15,15 @@ the edges, hid the last stretch and the arrowhead.
   fill (the surface mixed with the muted colour, so it reads in light and
   dark), and its tone's dot kept, so ok, warn and error still read at a
   glance. Edge labels keep their pills: a pill names an arrow, a tag tells a
-  node's state.
+  node's state. A tag is a little wider than the pill was, so a badge may
+  sit a little further from its node's corner than before.
 - **An edge stops at its target's outline.** Where the end of an edge lies
   inside the target box's outline on screen, the edge is cut back to just
-  outside it, 6 px short, so its arrowhead is always in sight. An edge that
-  arrives from the front already ends on the outline and is unchanged. The
+  outside it, 6 px short, so its arrowhead is always in sight. Only the
+  stretch at the end counts, so a route that passes behind the box earlier
+  is not cut for it. An edge that arrives from the front already ends on the
+  outline and is unchanged, and one that would be left too short for its
+  arrowhead is left whole. The
   cut is made where the edge is drawn, so the preview, the render and the
   checks see the same line.
 

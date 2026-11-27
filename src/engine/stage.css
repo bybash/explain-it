@@ -247,7 +247,8 @@ body {
  * from the palette, so it reads in light and dark.
  */
 .badge {
-  --point: 14px;
+  /* How far each pointed end reaches in; the fill's ends follow the outline's, 2 px in. */
+  --tag-point: 14px;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -273,14 +274,15 @@ body {
 }
 
 .badge-shape {
+  --point: var(--tag-point);
   inset: 0;
   background: var(--tone);
 }
 
 .badge-fill {
-  --point: 13px;
+  --point: calc(var(--tag-point) - 1px);
   inset: 2px;
-  background: color-mix(in srgb, var(--surface) 84%, var(--muted));
+  background: color-mix(in srgb, var(--surface) 76%, var(--muted));
 }
 
 .badge::before {
