@@ -59,6 +59,7 @@ beforeEach(async () => {
         captions: join(projectsDir, request.slug, "out", theme, "captions.srt"),
         poster: join(projectsDir, request.slug, "out", theme, "poster.png"),
         contactSheet: join(projectsDir, request.slug, "out", theme, "contact-sheet.png"),
+        gif: join(projectsDir, request.slug, "out", theme, "scene.gif"),
       }));
     },
   });

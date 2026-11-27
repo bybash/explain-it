@@ -580,6 +580,12 @@ Decision 018 says why.
   - `audio.wav`, when the video has voice or music
   - `poster.png`
   - `contact-sheet.png`
+  - `scene.gif`: one scene, for a chat or a pull request, where a GIF
+    plays inline and a video does not. It is the second scene when there
+    is one, else the first, from its first beat to the last that ends within
+    15 s, cut from `video.mp4` (so its captions are burned in), with no
+    sound, under 5 MB: ffmpeg makes a palette for the clip and tries
+    smaller sizes until one fits (decision 052).
 
 ## LLM
 

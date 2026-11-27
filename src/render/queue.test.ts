@@ -36,6 +36,7 @@ const steppedRenderer = () => {
               captions: `/out/${request.slug}/captions.srt`,
               poster: `/out/${request.slug}/poster.png`,
               contactSheet: `/out/${request.slug}/contact-sheet.png`,
+              gif: `/out/${request.slug}/scene.gif`,
             },
           ]),
         fail: (message) => reject(new Error(message)),

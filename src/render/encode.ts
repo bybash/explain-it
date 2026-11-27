@@ -57,3 +57,42 @@ export const posterArgs = ({
   ...scaleTo(resolution),
   ...["-frames:v", "1", out],
 ];
+
+/**
+ * The GIF's sizes, tried in order until one is under its limit in bytes
+ * (decision 052): each smaller in width or frame rate than the one before.
+ */
+export const GIF_SIZES = [
+  { width: 720, fps: 12 },
+  { width: 640, fps: 10 },
+  { width: 480, fps: 8 },
+  { width: 400, fps: 6 },
+] as const;
+
+/**
+ * ffmpeg arguments that cut `start` to `end` of the captioned video into a
+ * GIF at `width` and `fps`, with no sound: a palette is made for the clip
+ * first, so its colours stay true, and only the parts that change are
+ * redrawn from frame to frame, which keeps the file small.
+ */
+export const gifArgs = ({
+  video,
+  start,
+  end,
+  width,
+  fps,
+  out,
+}: {
+  readonly video: string;
+  readonly start: number;
+  readonly end: number;
+  readonly width: number;
+  readonly fps: number;
+  readonly out: string;
+}): string[] => [
+  ...["-y", "-loglevel", "error", "-ss", String(start), "-t", String(end - start), "-i", video],
+  "-an",
+  "-filter_complex",
+  `fps=${fps},scale=${width}:-2:flags=lanczos,split[a][b];[a]palettegen=max_colors=128:stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=4:diff_mode=rectangle`,
+  ...["-loop", "0", out],
+];

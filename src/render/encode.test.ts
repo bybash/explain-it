@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { encodeArgs, posterArgs } from "./encode.ts";
+import { encodeArgs, GIF_SIZES, gifArgs, posterArgs } from "./encode.ts";
 
 const argAfter = (args: readonly string[], flag: string) => args[args.indexOf(flag) + 1];
 
@@ -53,5 +53,40 @@ describe("posterArgs", () => {
     expect(big.at(-1)).toBe("poster.png");
     const small = posterArgs({ resolution: "720p", out: "poster.png" });
     expect(argAfter(small, "-vf")).toMatch(/^scale=1280:720/);
+  });
+});
+
+describe("gifArgs", () => {
+  it("cuts the clip from the video, with no sound, at the size asked, through a palette made for it", () => {
+    const args = gifArgs({
+      video: "in.mp4",
+      start: 14,
+      end: 25,
+      width: 720,
+      fps: 10,
+      out: "scene.gif",
+    });
+    expect(args.slice(0, 9)).toEqual([
+      "-y",
+      "-loglevel",
+      "error",
+      "-ss",
+      "14",
+      "-t",
+      "11",
+      "-i",
+      "in.mp4",
+    ]);
+    expect(args).toContain("-an");
+    const filter = args[args.indexOf("-filter_complex") + 1];
+    expect(filter).toContain("fps=10,scale=720:-2");
+    expect(filter).toMatch(/palettegen.*paletteuse/);
+    expect(args.at(-1)).toBe("scene.gif");
+  });
+
+  it("tries smaller and smaller sizes, the first at most as big as a 720p video", () => {
+    expect(GIF_SIZES.length).toBeGreaterThan(1);
+    for (const [a, b] of GIF_SIZES.slice(1).map((s, i) => [GIF_SIZES[i], s] as const))
+      expect((b?.width ?? 0) * (b?.fps ?? 0)).toBeLessThan((a?.width ?? 0) * (a?.fps ?? 0));
   });
 });

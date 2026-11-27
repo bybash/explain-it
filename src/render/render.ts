@@ -1,4 +1,4 @@
-import { copyFile, mkdir, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { type Browser, chromium, type Page } from "playwright-core";
 import { z } from "zod";
@@ -10,14 +10,15 @@ import { type BeatSpan, BeatSpanSchema, STAGE } from "../schema/checks.ts";
 import type { Resolution } from "../schema/config.ts";
 import { formatErrors, parseWith } from "../schema/errors.ts";
 import {
+  GIF_LIMITS,
   RENDER_FILES,
   type RenderedTheme,
   type RenderProgress,
   type RenderStep,
 } from "../schema/render.ts";
-import { encodeArgs, posterArgs } from "./encode.ts";
+import { encodeArgs, GIF_SIZES, gifArgs, posterArgs } from "./encode.ts";
 import { pipeFrames } from "./ffmpeg.ts";
-import { FPS, frameTimes, posterTime } from "./frames.ts";
+import { FPS, frameTimes, gifClip, posterTime } from "./frames.ts";
 import type { ProjectFiles } from "./load.ts";
 import { captureInOrder } from "./parallel.ts";
 import { drawSheet } from "./sheet.ts";
@@ -145,6 +146,7 @@ const renderTheme = async (
     captions: join(dir, RENDER_FILES.captions),
     poster: join(dir, RENDER_FILES.poster),
     contactSheet: join(dir, RENDER_FILES.contactSheet),
+    gif: join(dir, RENDER_FILES.gif),
     ...(audio ? { audio: join(dir, RENDER_FILES.audio) } : {}),
   };
   const narrationShown = project.config.captions.narration;
@@ -209,6 +211,7 @@ const renderTheme = async (
     await pipeFrames(posterArgs({ resolution, out: files.poster }), (write) => write(poster));
     await writeFile(files.captions, toSrt(cues));
     await writeFile(files.contactSheet, await contactSheetOf(browsers[0] as Browser, first));
+    await writeGif(files.video, gifClip(plan), files.gif);
     return files;
   } finally {
     await closeAll(pages, (page) => page.close());
@@ -277,4 +280,21 @@ const contactSheetOf = async (browser: Browser, page: Page): Promise<Buffer> => 
   const stills: Buffer[] = [];
   for (const beat of beats) stills.push(await frameAt(page, stillAt(beat)));
   return drawSheet(browser, { beats, stills, warnings: [], size: "full" });
+};
+
+/**
+ * Cuts `clip` of the captioned video into a GIF at `out`, at the first of
+ * `GIF_SIZES` that is under its limit in bytes; when none is, the smallest
+ * is kept, as the best that can be had (decision 052).
+ */
+const writeGif = async (
+  video: string,
+  clip: { readonly start: number; readonly end: number },
+  out: string,
+): Promise<void> => {
+  for (const size of GIF_SIZES) {
+    // ffmpeg reads the video itself, so there are no frames to feed it.
+    await pipeFrames(gifArgs({ video, ...clip, ...size, out }), async () => {});
+    if ((await stat(out)).size <= GIF_LIMITS.bytes) return;
+  }
 };
