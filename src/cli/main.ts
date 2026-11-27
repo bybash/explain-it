@@ -80,6 +80,7 @@ const render = async (argv: readonly string[]): Promise<void> => {
             r.captions,
             r.poster,
             r.gif,
+            r.card,
             ...(r.audio ? [r.audio] : []),
           ].join("\n       "),
         );

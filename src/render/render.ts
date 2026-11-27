@@ -6,9 +6,10 @@ import { stillAt } from "../checks/sheet.ts";
 import { projectBeats } from "../engine/beats/build.ts";
 import type { InjectedProject } from "../engine/page/render.ts";
 import type { ThemeMode } from "../engine/theme/palettes.ts";
+import { themeFor } from "../engine/theme/theme.ts";
 import { type BeatSpan, BeatSpanSchema, STAGE } from "../schema/checks.ts";
 import type { Resolution } from "../schema/config.ts";
-import { formatErrors, parseWith } from "../schema/errors.ts";
+import { formatErrors, orThrow, parseWith } from "../schema/errors.ts";
 import {
   GIF_LIMITS,
   GIF_SIZES,
@@ -17,6 +18,8 @@ import {
   type RenderProgress,
   type RenderStep,
 } from "../schema/render.ts";
+import { defaultCard } from "../share/card.ts";
+import { drawCard } from "./card.ts";
 import { encodeArgs, gifArgs, posterArgs } from "./encode.ts";
 import { pipeFrames, runFfmpeg } from "./ffmpeg.ts";
 import { FPS, frameTimes, gifClip, posterTime } from "./frames.ts";
@@ -148,6 +151,7 @@ const renderTheme = async (
     poster: join(dir, RENDER_FILES.poster),
     contactSheet: join(dir, RENDER_FILES.contactSheet),
     gif: join(dir, RENDER_FILES.gif),
+    card: join(dir, RENDER_FILES.card),
     ...(audio ? { audio: join(dir, RENDER_FILES.audio) } : {}),
   };
   const narrationShown = project.config.captions.narration;
@@ -212,7 +216,12 @@ const renderTheme = async (
     await pipeFrames(posterArgs({ resolution, out: files.poster }), (write) => write(poster));
     await writeFile(files.captions, toSrt(cues));
     await writeFile(files.contactSheet, await contactSheetOf(browsers[0] as Browser, first));
-    await writeGif(files.video, gifClip(plan), files.gif, signal);
+    const clip = gifClip(plan);
+    await writeGif(files.video, clip, files.gif, signal);
+    // The card's still is the GIF scene's last beat, all drawn; the poster may be the title card, which the card already names.
+    const landing = plan.beats.filter((b) => b.scene === clip.scene).at(-1);
+    const still = landing ? await frameAt(first, Math.min(stillAt(landing), duration)) : poster;
+    await writeCard(browsers[0] as Browser, project, theme, still, files.card);
     return files;
   } finally {
     await closeAll(pages, (page) => page.close());
@@ -299,4 +308,20 @@ const writeGif = async (
     await runFfmpeg(gifArgs({ video, ...clip, ...size, out }));
     if ((await stat(out)).size <= GIF_LIMITS.bytes) return;
   }
+};
+
+/**
+ * Draws the TL;DR card (decision 053): the project's `card.json`, or one made
+ * from its script, beside `still`, in the video's palette and theme.
+ */
+const writeCard = async (
+  browser: Browser,
+  project: ProjectFiles,
+  theme: ThemeMode,
+  still: Buffer,
+  out: string,
+): Promise<void> => {
+  const card = project.card ?? defaultCard(project.graph.title, project.storyboard);
+  const colours = orThrow(themeFor(project.config.theme.palette, theme), "the palette").colours;
+  await writeFile(out, await drawCard(browser, card, { still, colours }));
 };

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { CardSchema } from "./card.ts";
 import { ConfigSchema } from "./config.ts";
 import { GraphSchema } from "./graph.ts";
 import { LayoutSchema } from "./layout.ts";
@@ -13,6 +14,7 @@ const SCHEMAS = {
   project: ProjectSchema,
   layout: LayoutSchema,
   brief: BriefSchema,
+  card: CardSchema,
 } as const;
 
 const SCHEMA_BASE_URL = "https://raw.githubusercontent.com/bybash/explain-it/main/schemas/";

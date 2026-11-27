@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { CardSchema } from "./card.ts";
 import { CheckReportSchema } from "./checks.ts";
 import { SlugSchema } from "./common.ts";
 import {
@@ -142,6 +143,7 @@ export const OpenedProjectSchema = z.object({
   graph: GraphSchema.nullable(),
   storyboard: StoryboardSchema.nullable(),
   brief: BriefSchema.nullable(),
+  card: CardSchema.nullable(),
   layout: LayoutSchema.nullable(),
   config: ConfigSchema.nullable(),
   problems: z.array(ValidationErrorSchema),

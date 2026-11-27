@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { inFile } from "../render/load.ts";
 import { writeWhole } from "../render/write-whole.ts";
 import type { OpenedProject } from "../schema/api.ts";
+import { type Card, parseCard } from "../schema/card.ts";
 import { parseWith, type Validated } from "../schema/errors.ts";
 import { fail, ok } from "../schema/result.ts";
 import { type Brief, BriefSchema, HouseRulesSchema } from "../schema/story.ts";
@@ -29,6 +30,26 @@ export const saveBrief = async (
     updatedAt: now.toISOString(),
   });
   return brief;
+};
+
+/**
+ * Replaces a project's TL;DR card with `data`, once it is valid, and marks the
+ * project updated (decision 053). Its next render draws it.
+ */
+export const saveCard = async (
+  projectsDir: string,
+  opened: OpenedProject,
+  data: unknown,
+  now: Date,
+): Promise<Validated<Card>> => {
+  const card = parseCard(data);
+  if (!card.ok) return card;
+  await writeProjectFile(projectsDir, opened.slug, "card.json", card.value);
+  await writeProjectFile(projectsDir, opened.slug, "project.json", {
+    ...opened.project,
+    updatedAt: now.toISOString(),
+  });
+  return card;
 };
 
 /**

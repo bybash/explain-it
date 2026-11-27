@@ -177,7 +177,7 @@ renderer), so the outputs and the video always agree.
 | 7.1 | **Storyboard strip**: 4 to 8 stills, each with its caption, as one image, built on the contact sheet's page (2.7); exported from MCP and the render gate | The example's strip reads without sound and posts to Slack under 1 MB |
 | ✅ 7.2 | **GIF clip**: one scene, at most 15 s, captions burned in, no sound, from the renderer and ffmpeg | A scene of the example plays inline in Slack and in a GitHub comment, under 5 MB |
 | 7.3 | **Diagram export**: the graph as SVG and PNG, plus its Mermaid text (3.4) | The example's diagram pastes into Notion, and its Mermaid draws on GitHub |
-| 7.4 | **TL;DR card and summary**: a title, at most three bullets (what changed, why, what to look at) and a still, as one image; and a short Markdown summary from the script's captions (the summary is there since 7.5: `changeSummary`) | The example gives a card that reads at a glance and a summary for a PR body |
+| ✅ 7.4 | **TL;DR card and summary**: a title, at most three bullets (what changed, why, what to look at) and a still, as one image; and a short Markdown summary from the script's captions (the summary is there since 7.5: `changeSummary`) | The example gives a card that reads at a glance and a summary for a PR body |
 | ✅ 7.5 | **Change explainer over MCP**: an `explain_change` prompt and tool. The agent, which already has the diff, drafts the components a change touches as the graph, then before, after and what to review as the script, and gets the summary and the video back (the GIF and the card are 7.5b) | A pull request in this repository gets its explainer posted by the agent: #105 |
 | 7.5b | **The GIF and the card in the change explainer**: `explain_change` also returns the GIF (7.2) and the TL;DR card (7.4) | A pull request gets the GIF and the card with its summary |
 | 7.6 | **Interactive page**: one self-contained HTML file with the player and the beat list, clicking a beat to go to it | The file opens offline in a browser and plays the example |
@@ -278,6 +278,18 @@ From watching the examples rendered in 6.2.
   tab shows there only once the chat opens again.
 
 ## Carried over
+
+### Not placed yet, from 7.4
+
+- The card is set over MCP (`set_card`) or by hand; the web app has no
+  field for it yet, and the in-app assistant does not draft one.
+- The card's text uses the system font, not the video's.
+- The still on the card is about 520 px wide, so the diagram's labels are
+  too small to read there; the card's words carry it.
+- The summary (`changeSummary`, 7.5) lists every caption; a shorter one,
+  for a PR body that only skims, could take each scene's last caption.
+- The card is drawn with every render, not on its own, so a new card needs
+  a new render.
 
 ### Not placed yet, from 7.2
 

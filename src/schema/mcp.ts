@@ -28,6 +28,7 @@ export const TOOL_NAMES = {
   createProject: "create_project",
   updateGraph: "update_graph",
   setBrief: "set_brief",
+  setCard: "set_card",
   setStoryboard: "set_storyboard",
   setStyle: "set_style",
   check: "check",
@@ -93,6 +94,11 @@ export const UpdateGraphArgsSchema = z.strictObject({
 export const SetBriefArgsSchema = z.strictObject({
   slug: SlugSchema,
   brief: document("The whole brief.json: it replaces the one before."),
+});
+
+export const SetCardArgsSchema = z.strictObject({
+  slug: SlugSchema,
+  card: document("The whole card.json: it replaces the one before."),
 });
 
 export const SetStoryboardArgsSchema = z.strictObject({

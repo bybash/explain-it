@@ -42,6 +42,7 @@ export const RENDER_FILES = {
   poster: "poster.png",
   contactSheet: "contact-sheet.png",
   gif: "scene.gif",
+  card: "card.png",
 } as const;
 
 /**
@@ -78,6 +79,7 @@ export const RENDER_FILE_TYPES: Readonly<Record<RenderFile, string>> = {
   poster: "image/png",
   contactSheet: "image/png",
   gif: "image/gif",
+  card: "image/png",
 };
 
 /** Written into `out/<time>/` once every theme is: a folder without it is not a finished render. */
@@ -104,6 +106,8 @@ export const RenderedThemeSchema = z.object({
   contactSheet: z.string(),
   /** One scene as a GIF, captions burned in, no sound (decision 052). */
   gif: z.string(),
+  /** The TL;DR card: a title, its points and a still, as one image (decision 053). */
+  card: z.string(),
   /** The soundtrack, when the video has voice or music. */
   audio: z.string().optional(),
 });

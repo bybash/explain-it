@@ -215,6 +215,22 @@ type Brief = {
 };
 ```
 
+### TL;DR card (`card.json`)
+
+What the card every render draws says (decision 053): a headline and the
+points that sum the video up, such as what changed, why, and what to look
+at. It is optional and replaced whole; without it, the card is the graph's
+title and each scene's last caption, for the last three scenes at most,
+where the video lands. An agent writes it with `set_card`.
+
+```ts
+type Card = {
+  version: 1;
+  title: string;      // ≤ 60 characters
+  bullets: string[];  // 1 to 3, each ≤ 80 characters (src/schema/card.ts)
+};
+```
+
 **House rules** are the user's rules for every project's story, such as "no
 jargon" or "end with a link to the docs": free text, at most 4000
 characters, in `house-rules.md` in the projects folder. The Settings page
@@ -273,6 +289,7 @@ projects/<slug>/
   layout.json         computed positions plus the user's manual overrides
   storyboard.json
   brief.json          the story brief
+  card.json           the TL;DR card (optional)
   config.json
   assets/             the logo, referred to from config.json
   cache/tts/          <hash of model + voice + speed + text>.wav (decision 012)
@@ -587,6 +604,10 @@ Decision 018 says why.
     sound, aiming under 5 MB: ffmpeg makes a palette for the clip and
     tries smaller sizes until one fits, keeping the smallest when none does
     (decision 052).
+  - `card.png`: the TL;DR card, 1200 × 630 (the size link previews
+    show): `card.json`'s headline and points on the left, a still of the
+    GIF's scene, all drawn, on the right, in the video's palette and theme;
+    long text shrinks until it fits (decision 053).
 
 ## LLM
 
@@ -692,6 +713,7 @@ server validates, lays out, checks, previews and renders.
 | `create_project` | Creates a project from a graph, with optional `sources` | Validation errors or the Mermaid, and a preview link |
 | `update_graph` | Replaces the graph or applies a JSON Patch | Errors or the Mermaid; stale beats |
 | `set_brief` | Replaces the story brief | Errors or the brief, and a preview link |
+| `set_card` | Replaces the TL;DR card | Errors or the card, and a preview link |
 | `set_storyboard` | Replaces the storyboard or applies a JSON Patch | Errors, timing (measured for lines already voiced, else estimated, with a count of each), check warnings |
 | `set_style` | Updates `config.json` | The config, a preview link |
 | `check` | Generates the voice if needed and runs the checks | The report (readiness, the voice, every check by beat, the timing) and the contact sheet as an image |

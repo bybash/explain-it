@@ -17,6 +17,7 @@ You have the change (its diff, its pull request). The video is for people who wi
    - **After**: what the change does, step by step; a badge or callout marks each part it changes; its last beat says what is better now.
    - **What to review**: the parts most worth a reviewer's time, a beat each, saying why (a new dependency, a changed contract, a risky edge case). With fewer than ${MIN_BEATS} such parts, end with how the change was tested, or what it leaves as it was.
    Say only what the change shows. Leave out what it does not touch.
-4. **Share**: run \`${TOOL_NAMES.check}\`, then \`${TOOL_NAMES.render}\`; once the render is done, \`${TOOL_NAMES.explainChange}\` gives the summary to post where the change is discussed, and the video's and poster's paths on this machine (\`outdated\` means the project changed after that render: render again). Put the video where readers can watch it (attached to the pull request, say), then pass its address as \`video_url\` for the summary to link it. Post only when the user says so.
+4. **Card** (\`${TOOL_NAMES.setCard}\`): a headline, then what changed, why, and what to look at, a point each.
+5. **Share**: run \`${TOOL_NAMES.check}\`, then \`${TOOL_NAMES.render}\`; once the render is done, \`${TOOL_NAMES.explainChange}\` gives the summary to post where the change is discussed, and the video's and poster's paths on this machine (\`outdated\` means the project changed after that render: render again). Put the video where readers can watch it (attached to the pull request, say), then pass its address as \`video_url\` for the summary to link it. Post only when the user says so.
 
 Wait for the user's approval of the graph and of the script, as the guide below says.`;

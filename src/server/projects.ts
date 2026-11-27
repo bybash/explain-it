@@ -8,6 +8,7 @@ import {
   type ProjectSummary,
   ProjectSummarySchema,
 } from "../schema/api.ts";
+import { parseCard } from "../schema/card.ts";
 import { SlugSchema } from "../schema/common.ts";
 import { parseConfig } from "../schema/config.ts";
 import type { Validated, ValidationError } from "../schema/errors.ts";
@@ -183,6 +184,7 @@ export const openProject = async (
   const graph = await optional("graph.json", parseGraph);
   const config = await optional("config.json", parseConfig);
   const brief = await optional("brief.json", (data) => parseWith(BriefSchema, data));
+  const card = await optional("card.json", parseCard);
   // The storyboard and layout refer to the graph, so they can only be checked once it is valid.
   const storyboard = graph
     ? await optional("storyboard.json", (data) => parseStoryboard(data, graph))
@@ -194,6 +196,7 @@ export const openProject = async (
     graph,
     storyboard,
     brief,
+    card,
     layout,
     config,
     problems,

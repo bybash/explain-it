@@ -1,5 +1,5 @@
 // Module boundaries from AGENTS.md (Architecture). Run with `npm run deps`.
-const CORE = "^src/(schema|layout|engine|mermaid|guidance|checks)/";
+const CORE = "^src/(schema|layout|engine|mermaid|guidance|checks|share)/";
 // checks/ holds the pure rules; the browser measures shapes in engine/shapes.ts and render/check.ts.
 const SHELL = "^src/(server|mcp|render|audio|llm|cli|web)/";
 const TEST = "\\.test\\.ts$";

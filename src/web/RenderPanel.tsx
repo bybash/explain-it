@@ -21,6 +21,7 @@ const FILE_LABELS: Readonly<Record<RenderFile, string>> = {
   poster: "Poster",
   contactSheet: "Contact sheet",
   gif: "One scene as a GIF",
+  card: "TL;DR card",
 };
 
 const CARD = "rounded-box border border-line bg-surface p-4";

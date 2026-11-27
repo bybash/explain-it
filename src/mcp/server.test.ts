@@ -106,6 +106,7 @@ describe("tools", () => {
       "render",
       "render_status",
       "set_brief",
+      "set_card",
       "set_storyboard",
       "set_style",
       "update_graph",
@@ -473,6 +474,34 @@ describe("review fixes", () => {
     ]);
     const nodes = readProjectFile(slug, "graph.json").nodes;
     expect([nodes[0].label, nodes[1].label]).toEqual(["First", "Second"]);
+  });
+});
+
+describe("set_card", () => {
+  const CARD = {
+    version: 1,
+    title: "Sign in without sharing a password",
+    bullets: ["The app hands off to the provider.", "The app gets a token, never the password."],
+  };
+
+  it("saves the TL;DR card, which get_project then shows", async () => {
+    const slug = await exampleProject();
+    expect(await succeeds("set_card", { slug, card: CARD })).toEqual({
+      card: CARD,
+      preview: preview(slug),
+    });
+    expect(published).toContainEqual({ type: "project-updated", slug });
+    expect((await succeeds("get_project", { slug })).card).toEqual(CARD);
+  });
+
+  it("names what is wrong in the card, and saves nothing", async () => {
+    const slug = await exampleProject();
+    const lines = await fails("set_card", {
+      slug,
+      card: { ...CARD, bullets: ["a", "b", "c", "d"] },
+    });
+    expect(lines[0]).toMatch(/^card\.bullets: /);
+    expect((await succeeds("get_project", { slug })).card).toBeNull();
   });
 });
 
