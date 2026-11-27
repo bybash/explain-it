@@ -48,7 +48,10 @@ describe("/mcp", () => {
     expect(listed.result.tools.map((t: { name: string }) => t.name)).toContain("create_project");
 
     const prompts = await (await rpc("prompts/list", {})).json();
-    expect(prompts.result.prompts.map((p: { name: string }) => p.name)).toEqual(["explain_flow"]);
+    expect(prompts.result.prompts.map((p: { name: string }) => p.name)).toEqual([
+      "explain_flow",
+      "explain_change",
+    ]);
     const prompt = await (
       await rpc("prompts/get", { name: "explain_flow", arguments: { topic: "how login works" } })
     ).json();

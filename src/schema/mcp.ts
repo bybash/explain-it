@@ -3,6 +3,7 @@ import { SlugSchema } from "./common.ts";
 import { LOGO_CORNERS, LOGO_SHOWS } from "./config.ts";
 import { ProjectSchema } from "./project.ts";
 import { JobIdSchema, RenderRequestSchema } from "./render.ts";
+import { isThisMachine } from "./settings.ts";
 
 /**
  * The MCP tools' arguments. The documents they carry (graph, storyboard,
@@ -14,7 +15,10 @@ import { JobIdSchema, RenderRequestSchema } from "./render.ts";
 export const MCP_PATH = "/mcp";
 
 /** The MCP prompts, by name. */
-export const PROMPT_NAMES = { explainFlow: "explain_flow" } as const;
+export const PROMPT_NAMES = {
+  explainFlow: "explain_flow",
+  explainChange: "explain_change",
+} as const;
 
 /** The MCP tools, by name: the server registers them and the guide refers to them. */
 export const TOOL_NAMES = {
@@ -30,6 +34,7 @@ export const TOOL_NAMES = {
   render: "render",
   renderStatus: "render_status",
   cancelRender: "cancel_render",
+  explainChange: "explain_change",
 } as const;
 
 /** A document argument: anything here, checked by its schema in the tool; but it must be there. */
@@ -55,6 +60,18 @@ export const ListProjectsArgsSchema = z.strictObject({});
 export const GetGuideArgsSchema = z.strictObject({});
 
 export const GetProjectArgsSchema = z.strictObject({ slug: SlugSchema });
+export const ExplainChangeArgsSchema = z.strictObject({
+  slug: SlugSchema,
+  video_url: z
+    .url({ protocol: /^https?$/ })
+    .refine((url) => !isThisMachine(new URL(url).hostname), {
+      error: "is on this machine, where no reader of the summary can open it",
+    })
+    .optional()
+    .describe(
+      "Where the video was put for others to watch, such as an attachment on the pull request; the summary links it.",
+    ),
+});
 
 export const CreateProjectArgsSchema = z.strictObject({
   name: ProjectSchema.shape.name

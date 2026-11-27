@@ -177,8 +177,9 @@ renderer), so the outputs and the video always agree.
 | 7.1 | **Storyboard strip**: 4 to 8 stills, each with its caption, as one image, built on the contact sheet's page (2.7); exported from MCP and the render gate | The example's strip reads without sound and posts to Slack under 1 MB |
 | 7.2 | **GIF clip**: one scene, at most 15 s, captions burned in, no sound, from the renderer and ffmpeg | A scene of the example plays inline in Slack and in a GitHub comment, under 5 MB |
 | 7.3 | **Diagram export**: the graph as SVG and PNG, plus its Mermaid text (3.4) | The example's diagram pastes into Notion, and its Mermaid draws on GitHub |
-| 7.4 | **TL;DR card and summary**: a title, at most three bullets (what changed, why, what to look at) and a still, as one image; and a short Markdown summary from the script's captions | The example gives a card that reads at a glance and a summary for a PR body |
-| 7.5 | **Change explainer over MCP**: an `explain_change` prompt and tool. The agent, which already has the diff, drafts the components a change touches as the graph, then before, after and what to review as the script, and gets the GIF, the card and the summary back | A pull request in this repository gets its explainer posted by the agent |
+| 7.4 | **TL;DR card and summary**: a title, at most three bullets (what changed, why, what to look at) and a still, as one image; and a short Markdown summary from the script's captions (the summary is there since 7.5: `changeSummary`) | The example gives a card that reads at a glance and a summary for a PR body |
+| ✅ 7.5 | **Change explainer over MCP**: an `explain_change` prompt and tool. The agent, which already has the diff, drafts the components a change touches as the graph, then before, after and what to review as the script, and gets the summary and the video back (the GIF and the card are 7.5b) | A pull request in this repository gets its explainer posted by the agent: #105 |
+| 7.5b | **The GIF and the card in the change explainer**: `explain_change` also returns the GIF (7.2) and the TL;DR card (7.4) | A pull request gets the GIF and the card with its summary |
 | 7.6 | **Interactive page**: one self-contained HTML file with the player and the beat list, clicking a beat to go to it | The file opens offline in a browser and plays the example |
 
 Open questions, settled before the milestone starts:
@@ -277,6 +278,14 @@ From watching the examples rendered in 6.2.
   tab shows there only once the chat opens again.
 
 ## Carried over
+
+### Not placed yet, from 7.5
+
+- The video has to be attached to a pull request by hand: GitHub's API has
+  no upload for comment attachments, so an agent can post the summary and a
+  link, not the file.
+- `sources` is recorded, not checked: nothing compares what the video says
+  with the diff (the "Trust" open question).
 
 Work a finished slice left for a later one. Each list is removed by the slice
 that finishes it.

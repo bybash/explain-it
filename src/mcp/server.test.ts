@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
@@ -7,6 +7,8 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import graphJson from "../../examples/oauth-login/graph.json" with { type: "json" };
 import storyboardJson from "../../examples/oauth-login/storyboard.json" with { type: "json" };
 import { fakeTts } from "../audio/fake-tts.testing.ts";
+import { CHANGE_GUIDE } from "../guidance/change.ts";
+import { changeSummary } from "../guidance/change-summary.ts";
 import { authoringGuide, graphSummary, storyboardSummary } from "../guidance/guide.ts";
 import { RenderQueue } from "../render/queue.ts";
 import type { ServerEvent } from "../schema/api.ts";
@@ -16,6 +18,7 @@ import { parseGraph } from "../schema/graph.ts";
 import { parseLayout } from "../schema/layout.ts";
 import { parseProject } from "../schema/project.ts";
 import { MAX_HOUSE_RULES } from "../schema/story.ts";
+import { parseStoryboard } from "../schema/storyboard.ts";
 import { createEvents } from "../server/events.ts";
 import { createMcpServer } from "./server.ts";
 
@@ -96,6 +99,7 @@ describe("tools", () => {
       "cancel_render",
       "check",
       "create_project",
+      "explain_change",
       "get_guide",
       "get_project",
       "list_projects",
@@ -527,13 +531,99 @@ describe("house rules over the limit", () => {
   });
 });
 
+describe("explaining a change", () => {
+  it("sums up a change's video from its script, with the files it covers", async () => {
+    const sources = [{ path: "src/auth/login.ts", commit: "9a4df3c2b1" }];
+    const created = await succeeds("create_project", { graph: graphFile, sources });
+    await succeeds("set_storyboard", { slug: created.slug, storyboard: storyboardFile });
+    const body = await succeeds("explain_change", { slug: created.slug });
+    expect(body).toEqual({
+      summary: changeSummary({
+        name: "Signing in with OAuth",
+        storyboard: orThrow(parseStoryboard(storyboardJson, graph), "storyboard.json"),
+        brief: null,
+        sources,
+      }),
+      video: null,
+      poster: null,
+      outdated: false,
+      preview: preview(created.slug),
+    });
+  });
+
+  it("links the video where it was put for readers, never a path on this machine", async () => {
+    const slug = await exampleProject();
+    const url = "https://github.com/acme/app/assets/video.mp4";
+    const linked = await succeeds("explain_change", { slug, video_url: url });
+    expect(linked.summary).toContain(`[Watch the video](<${url}>)`);
+    for (const local of ["file:///Users/me/video.mp4", "http://127.0.0.1:3000/video.mp4"])
+      expect(await fails("explain_change", { slug, video_url: local }), local).toEqual(
+        expect.arrayContaining([expect.stringMatching(/^video_url: /)]),
+      );
+  });
+
+  it("gives the newest render's light video and poster, and says when the script changed since", async () => {
+    const slug = await exampleProject();
+    const render = (stamp: string, createdAt: string) => {
+      const dir = join(projectsDir, slug, "out", stamp);
+      for (const theme of ["dark", "light"]) mkdirSync(join(dir, theme), { recursive: true });
+      for (const file of ["dark/video.mp4", "light/video.mp4", "light/poster.png"])
+        writeFileSync(join(dir, file), "x");
+      writeFileSync(
+        join(dir, "render.json"),
+        JSON.stringify({
+          version: 1,
+          createdAt,
+          resolution: "1080p",
+          themes: ["dark", "light"],
+          seconds: 60,
+        }),
+      );
+      return dir;
+    };
+    render("2026-11-20T09-00-00.000Z", "2026-11-20T09:00:00.000Z");
+    const newest = render("2026-11-20T11-00-00.000Z", "2026-11-20T11:00:00.000Z");
+    const body = await succeeds("explain_change", { slug });
+    expect(body).toMatchObject({
+      video: join(newest, "light", "video.mp4"),
+      poster: join(newest, "light", "poster.png"),
+      outdated: false,
+    });
+    // The project was last changed at 10:00 (NOW); a render from before then shows an older script.
+    rmSync(newest, { recursive: true });
+    expect((await succeeds("explain_change", { slug })).outdated).toBe(true);
+  });
+
+  it("asks for the script first, as the summary is made from it", async () => {
+    const created = await succeeds("create_project", { graph: graphFile });
+    expect(await fails("explain_change", { slug: created.slug })).toContain(
+      "storyboard: there is no script yet: write it with set_storyboard first",
+    );
+  });
+
+  it("offers the explain_change prompt: the change, how to tell it, then the guide", async () => {
+    const { messages } = await client.getPrompt({
+      name: "explain_change",
+      arguments: { change: "pull request #105" },
+    });
+    const text = messages.map((m) => (m.content.type === "text" ? m.content.text : "")).join("\n");
+    expect(text.split("\n")[0]).toContain("pull request #105");
+    expect(text).toContain(CHANGE_GUIDE);
+    expect(text).toContain(authoringGuide());
+  });
+});
+
 describe("guidance", () => {
-  it("offers the explain_flow prompt with an optional topic", async () => {
+  it("offers the explain_flow and explain_change prompts, each with an optional subject", async () => {
     const { prompts } = await client.listPrompts();
     expect(prompts).toEqual([
       expect.objectContaining({
         name: "explain_flow",
         arguments: [expect.objectContaining({ name: "topic", required: false })],
+      }),
+      expect.objectContaining({
+        name: "explain_change",
+        arguments: [expect.objectContaining({ name: "change", required: false })],
       }),
     ]);
   });
