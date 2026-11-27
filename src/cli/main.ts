@@ -21,9 +21,18 @@ const USAGE = `usage:
   explain-it render <project> [--theme light|dark|both] [--resolution 1080p|720p]
   explain-it check  <project>`;
 
+/** Thrown by `fail` and caught where the CLI starts: the exit code is already set. */
+class CliExit extends Error {}
+
+/**
+ * Says what went wrong and ends the command with `code`. Not process.exit:
+ * exiting at once, with the voice's ONNX threads still about, can abort the
+ * process (exit code 134) as it shuts down; Node exits by itself instead.
+ */
 const fail = (lines: readonly string[], code: number): never => {
   for (const line of lines) console.error(line);
-  process.exit(code);
+  process.exitCode = code;
+  throw new CliExit();
 };
 
 const render = async (argv: readonly string[]): Promise<void> => {
@@ -117,12 +126,15 @@ const check = async (argv: readonly string[]): Promise<void> => {
   const failing = report.warnings.filter(
     (w) => !(STORY_CHECKS as readonly string[]).includes(w.check),
   );
-  // Not process.exit: exiting at once, with the voice's ONNX threads still about, can abort the
-  // process (exit code 134) as it shuts down; Node exits by itself once the work is done.
+  // Not process.exit, for the reason `fail` gives.
   if (failing.length > 0) process.exitCode = 1;
 };
 
 const [command, ...rest] = process.argv.slice(2);
-if (command === "render") await render(rest);
-else if (command === "check") await check(rest);
-else fail([command === undefined ? "no command" : `unknown command "${command}"`, USAGE], 2);
+try {
+  if (command === "render") await render(rest);
+  else if (command === "check") await check(rest);
+  else fail([command === undefined ? "no command" : `unknown command "${command}"`, USAGE], 2);
+} catch (error) {
+  if (!(error instanceof CliExit)) throw error;
+}

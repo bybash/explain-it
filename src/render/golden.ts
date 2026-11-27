@@ -31,9 +31,10 @@ const dataUrl = (png: Buffer) => `data:image/png;base64,${png.toString("base64")
 const pngOf = (url: string) => Buffer.from(url.slice(url.indexOf(",") + 1), "base64");
 
 /**
- * Each beat of an example at the moment the checks look at it, light, as the
- * render page draws it, shrunk to `GOLDEN_WIDTH`. The narration is timed by
- * its words, so the stills need no voice.
+ * Each beat of an example at the moment the checks look at it, light, and
+ * each scene's last beat dark, as the render page draws them, shrunk to
+ * `GOLDEN_WIDTH`. The narration is timed by its words, so the stills need no
+ * voice.
  */
 export const exampleStills = async (
   browser: Browser,
@@ -42,25 +43,45 @@ export const exampleStills = async (
 ): Promise<Still[]> => {
   const project = await loadProject(join(EXAMPLES_DIR, name));
   if (!project.ok) throw new Error(`${name}:\n${formatErrors(project.errors).join("\n")}`);
-  const page = await openPage(browser, pageUrl, { ...project.value, mode: "light" });
   const tools = await browser.newPage();
   try {
+    const light = await stillsIn(browser, tools, pageUrl, { ...project.value, mode: "light" });
+    // Dark at each scene's last beat, when the most is drawn: a regression only dark shows is caught.
+    const dark = await stillsIn(browser, tools, pageUrl, { ...project.value, mode: "dark" }, true);
+    return [...light, ...dark];
+  } finally {
+    await tools.close();
+  }
+};
+
+/** The stills of one mode: every beat's, or, with `lastOfScene`, each scene's last beat's, named by mode. */
+const stillsIn = async (
+  browser: Browser,
+  tools: Page,
+  pageUrl: string,
+  project: Parameters<typeof openPage>[2] & { readonly mode: "light" | "dark" },
+  lastOfScene = false,
+): Promise<Still[]> => {
+  const page = await openPage(browser, pageUrl, project);
+  try {
+    const beats = await beatsOnPage(page);
     const stills: Still[] = [];
-    for (const [i, beat] of (await beatsOnPage(page)).entries()) {
+    for (const [i, beat] of beats.entries()) {
+      if (lastOfScene && beats[i + 1]?.scene === beat.scene) continue;
       await page.evaluate(
         (t) => (window as unknown as { __seek: (t: number) => void }).__seek(t),
         stillAt(beat),
       );
       const full = await page.screenshot({ type: "png" });
+      const prefix = project.mode === "dark" ? "dark-" : "";
       stills.push({
-        name: `${String(i + 1).padStart(2, "0")}-${beat.id}`,
+        name: `${prefix}${String(i + 1).padStart(2, "0")}-${beat.id}`,
         png: await shrink(tools, full),
       });
     }
     return stills;
   } finally {
     await page.close();
-    await tools.close();
   }
 };
 

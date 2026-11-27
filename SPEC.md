@@ -849,8 +849,8 @@ comes later.
   each with light and dark variants.
 - Layout: elkjs (EPL-2.0, used as a dependency).
 - Tests: Vitest. LLM calls are recorded as fixtures and replayed in CI, so CI
-  needs no API key. Each example's beats are drawn as stills (light, timed
-  by the estimated voice, 960 px wide) and compared with the golden stills
+  needs no API key. Each example's beats are drawn as stills (light, and
+  each scene's last beat dark, timed by the estimated voice, 960 px wide) and compared with the golden stills
   in `golden/` within a small tolerance; CI runs them, the render test and
   the layout repair inside the Docker image's test stage, where the golden
   stills are made, so the browser and fonts match (decision 046).
