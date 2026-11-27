@@ -12,8 +12,8 @@ type Args = Readonly<Record<string, unknown>>;
 /**
  * The `explain_change` tool (decision 051): a project's summary to post where
  * a change is discussed, made from its script and linking `video_url` when
- * given, and the newest render's video and poster on this machine (light
- * first), or null before one is made. A local path is never linked: no one
+ * given (and showing `gif_url`), and the newest render's video, poster, GIF
+ * and card on this machine (light first), or null before one is made. A local path is never linked: no one
  * the summary is posted to could open it. `outdated` says the project changed
  * after that render, so the video may not show what the summary says.
  */
@@ -33,7 +33,7 @@ export const explainChangeTool = async (context: ToolContext, input: Args) => {
     ]);
   const dir = projectDir(context.projectsDir, slug);
   const [newest] = await rendersIn(dir);
-  const fileOf = async (file: "video" | "poster") => {
+  const fileOf = async (file: "video" | "poster" | "gif" | "card") => {
     if (!newest) return null;
     const themes = [
       ...newest.themes.filter((t) => t === "light"),
@@ -52,9 +52,12 @@ export const explainChangeTool = async (context: ToolContext, input: Args) => {
       brief,
       sources: project.sources,
       videoUrl: args.value.video_url,
+      gifUrl: args.value.gif_url,
     }),
     video: await fileOf("video"),
     poster: await fileOf("poster"),
+    gif: await fileOf("gif"),
+    card: await fileOf("card"),
     outdated: newest !== undefined && newest.createdAt < project.updatedAt,
     preview: context.previewUrl(slug),
   });

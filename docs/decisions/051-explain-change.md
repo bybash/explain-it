@@ -46,3 +46,11 @@ to tell the change as a short video, and something to post with it.
   already has its own way to post.
 - **Checking the video against the diff.** The "Trust" open question:
   `sources` is recorded, not checked, in this slice.
+
+## Later: the GIF and the card (7.5b)
+
+Once every render made a GIF (052) and a card (053), the tool returns their
+paths too, and takes `gif_url`, checked like `video_url`: the summary shows
+the GIF under its title, where it plays inline in a pull request. The card
+is left to chats and link previews, where an image of the whole fits better
+than in a summary that already says it.

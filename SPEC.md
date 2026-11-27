@@ -720,7 +720,7 @@ server validates, lays out, checks, previews and renders.
 | `render` | Queues a render | A job id |
 | `render_status` | Reads a render job | Progress, then the output paths |
 | `cancel_render` | Cancels a queued or running render | The job; no partial files are left |
-| `explain_change` | Sums up a change's video, to post where the change is discussed | Markdown from the script (name, takeaway, each scene's captions, the files covered, the video's link when given as `video_url`), and the newest render's video and poster paths |
+| `explain_change` | Sums up a change's video, to post where the change is discussed | Markdown from the script (name, takeaway, each scene's captions, the files covered, the GIF when given as `gif_url`, the video's link when given as `video_url`), and the newest render's video, poster, GIF and card paths |
 
 The endpoint is stateless: each POST gets a fresh MCP server on the shared
 projects and answers with JSON; GET and DELETE answer 405. It sits behind
@@ -748,8 +748,9 @@ named as the code names them, with the changed files as `sources`; a
 check, render, and `explain_change` for the summary to post with the video.
 The summary is made from the script alone, so it says what the video says,
 and it names the files it covers, or says they were not recorded. It links
-the video only at an address given as `video_url`, never a path on this
-machine. The agent posts only when the user says so (decision 051).
+the video and shows the GIF only at addresses given as `video_url` and
+`gif_url`, never a path or address of this machine; the tool returns the
+render's video, poster, GIF and card paths for the agent to put there. The agent posts only when the user says so (decision 051).
 
 **Guidance.** An MCP prompt, `explain_flow`, and the tool descriptions carry
 what the agent needs to write good files: the schemas, the limits, the node

@@ -179,7 +179,7 @@ renderer), so the outputs and the video always agree.
 | 7.3 | **Diagram export**: the graph as SVG and PNG, plus its Mermaid text (3.4) | The example's diagram pastes into Notion, and its Mermaid draws on GitHub |
 | ✅ 7.4 | **TL;DR card and summary**: a title, at most three bullets (what changed, why, what to look at) and a still, as one image; and a short Markdown summary from the script's captions (the summary is there since 7.5: `changeSummary`) | The example gives a card that reads at a glance and a summary for a PR body |
 | ✅ 7.5 | **Change explainer over MCP**: an `explain_change` prompt and tool. The agent, which already has the diff, drafts the components a change touches as the graph, then before, after and what to review as the script, and gets the summary and the video back (the GIF and the card are 7.5b) | A pull request in this repository gets its explainer posted by the agent: #105 |
-| 7.5b | **The GIF and the card in the change explainer**: `explain_change` also returns the GIF (7.2) and the TL;DR card (7.4) | A pull request gets the GIF and the card with its summary |
+| ✅ 7.5b | **The GIF and the card in the change explainer**: `explain_change` also returns the GIF (7.2) and the TL;DR card (7.4) | A pull request gets the GIF and the card with its summary |
 | 7.6 | **Interactive page**: one self-contained HTML file with the player and the beat list, clicking a beat to go to it | The file opens offline in a browser and plays the example |
 
 Open questions, settled before the milestone starts:
@@ -489,6 +489,17 @@ publish workflow for the first time), and making the GHCR package public.
 ## Later
 
 - Sequence diagrams; images as input.
+- **explAIn-it in CI**: a GitHub Action that, on a pull request, drafts the
+  change explainer and posts the GIF, the card and the summary. It needs the
+  LLM key in CI and changes Milestone 7's open question on sharing beyond
+  the machine (2026-11-27).
+- **A smaller image** (about 1.65 GB now): Chrome's headless shell instead
+  of Debian's Chromium, an ffmpeg with only the codecs used, and the voice
+  runtime without its GPU files could take a third or more off; each step
+  needs the golden stills to hold (2026-11-27).
+- A desktop app was considered and left: the app already runs in the browser
+  on this machine, and a desktop shell would still need Chrome and ffmpeg,
+  and add packaging, signing and updates for each OS (2026-11-27).
 - Streaming a draft into the Mermaid view as it is written (left out of 5.3,
   decision 039): the graph shows once it is saved.
 - Git repository exploration inside the web app (the place where an agent
