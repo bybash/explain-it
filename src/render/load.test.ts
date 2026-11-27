@@ -134,7 +134,8 @@ describe("loadProject", () => {
       expect(result.ok).toBe(true);
     });
 
-    it("names the field of a file it may not read", async () => {
+    // Root reads any file, whatever its mode, as in the Docker test image: there is nothing to refuse.
+    it.skipIf(process.getuid?.() === 0)("names the field of a file it may not read", async () => {
       const dir = withLogo({ light: "locked.svg" }, { "locked.svg": SVG });
       chmodSync(join(dir, "assets", "locked.svg"), 0o000);
       expect(await errorsOf(dir)).toEqual([
