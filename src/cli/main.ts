@@ -36,9 +36,12 @@ const render = async (argv: readonly string[]): Promise<void> => {
     else {
       const settings = renderSettings(args.value, project.value.config);
       const tts = kokoroProvider({ cacheDir: resolve(process.env.CACHE_DIR ?? "cache") });
-      const voiced = await withNarration(dir, project.value, tts).catch((error: unknown) =>
-        fail([error instanceof Error ? error.message : String(error)], 1),
-      );
+      const voiced = await withNarration(dir, project.value, tts).catch(async (error: unknown) => {
+        await tts.close?.();
+        return fail([error instanceof Error ? error.message : String(error)], 1);
+      });
+      // The voice is done with: let its model go, so the render has its memory.
+      await tts.close?.();
       const made = voiced.lines.filter((line) => !line.cached).length;
       if (voiced.lines.length > 0)
         console.log(
@@ -96,6 +99,8 @@ const check = async (argv: readonly string[]): Promise<void> => {
       return { project: project.value, lines: [], failed: true };
     },
   );
+  // The voice is done with: let its model go.
+  await tts.close?.();
   const skip = skippedChecks(await missingRenderTools(), { voiceFailed: voiced.failed });
   const report = await checkProjectFolder({
     dir,
@@ -112,7 +117,9 @@ const check = async (argv: readonly string[]): Promise<void> => {
   const failing = report.warnings.filter(
     (w) => !(STORY_CHECKS as readonly string[]).includes(w.check),
   );
-  if (failing.length > 0) process.exit(1);
+  // Not process.exit: exiting at once, with the voice's ONNX threads still about, can abort the
+  // process (exit code 134) as it shuts down; Node exits by itself once the work is done.
+  if (failing.length > 0) process.exitCode = 1;
 };
 
 const [command, ...rest] = process.argv.slice(2);
