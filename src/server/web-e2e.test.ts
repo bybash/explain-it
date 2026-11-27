@@ -469,11 +469,15 @@ const flow = (
         .first()
         .getByRole("button")
         .nth(2);
-      const startsAt = Number(await third.getAttribute("data-starts-at"));
-      const shown = clockTime(startsAt);
+      // The beat's start, read each time: the measured voice can still move it after "ready" shows.
+      const startOfThird = async () =>
+        clockTime(Number(await third.getAttribute("data-starts-at")));
       await third.click();
-      await expect.poll(time, SOON).toMatch(new RegExp(`^${shown} /`));
+      await expect
+        .poll(async () => (await time())?.startsWith(`${await startOfThird()} /`), SOON)
+        .toBe(true);
       await expect.poll(() => third.getAttribute("aria-current"), SOON).toBe("step");
+      const shown = await startOfThird();
 
       await page.getByRole("button", { name: "Play" }).click();
       await expect
