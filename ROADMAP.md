@@ -309,21 +309,13 @@ that finishes it.
   chat's problems (`wordProblems`) read the same quick checks each their
   own way; a Fix in the editor beside a hint could share the chat's.
 
-### For 6.5 (release), from 6.4
+### For 6.5 (release), from 6.1 and 6.4
 
-- The README's demo links to the video's file page, where GitHub plays it;
-  to play inline in the README, the clip needs uploading to GitHub (drag it
-  into an issue or PR comment) and that `user-attachments` link placing in
-  the README.
-
-### For 6.5 (release), from 6.1
-
-- Before the first publish, check the image against the GPL and LGPL
-  parts it carries (`NOTICE.md`): that naming their upstream and Debian
-  sources is enough, or ship a written offer or the sources themselves.
-- The publish workflow (`.github/workflows/docker.yml`) has not run yet:
-  the first `v*` tag runs it. A new GHCR package is private; make
-  `ghcr.io/bybash/explain-it` public after the first publish.
+The release is prepared (version 0.1.0, `CHANGELOG.md`); what is left needs
+a maintainer, and is listed as steps in [`docs/RELEASING.md`](docs/RELEASING.md):
+the licence check of the image's GPL and LGPL parts, uploading the demo
+video so the README plays it inline, the `v0.1.0` tag (which runs the
+publish workflow for the first time), and making the GHCR package public.
 
 ### Not placed yet, from 6.3
 
