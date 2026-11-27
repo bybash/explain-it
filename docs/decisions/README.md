@@ -63,3 +63,4 @@ later record supersedes an earlier one and says so.
 | [051](051-explain-change.md) | Explaining a code change over MCP |
 | [052](052-gif.md) | One scene as a GIF |
 | [053](053-card.md) | The TL;DR card |
+| [054](054-smaller-image.md) | A smaller image, built faster |
