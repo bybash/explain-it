@@ -16,6 +16,7 @@ import {
   GetProjectArgsSchema,
   ListProjectsArgsSchema,
   SetBriefArgsSchema,
+  SetCardArgsSchema,
   SetStoryboardArgsSchema,
   SetStyleArgsSchema,
   UpdateGraphArgsSchema,
@@ -32,7 +33,7 @@ import {
   projectDir,
   withProjectLock,
 } from "../server/projects.ts";
-import { readHouseRules, saveBrief } from "../server/stories.ts";
+import { readHouseRules, saveBrief, saveCard } from "../server/stories.ts";
 import { saveStoryboard } from "../server/storyboards.ts";
 import { saveStyle } from "../server/styles.ts";
 import { allOf, timingOf } from "./edits.ts";
@@ -114,6 +115,20 @@ export const setBriefTool = async (context: ToolContext, input: Args) => {
     if (!saved.ok) return fail(under("brief", saved.errors));
     context.events.publish({ type: "project-updated", slug });
     return ok({ brief: saved.value, preview: context.previewUrl(slug) });
+  });
+};
+
+export const setCardTool = async (context: ToolContext, input: Args) => {
+  const args = parseWith(SetCardArgsSchema, input);
+  if (!args.ok) return args;
+  const { slug } = args.value;
+  return withProjectLock(context.projectsDir, slug, async () => {
+    const opened = await openOrFail(context, slug);
+    if (!opened.ok) return opened;
+    const saved = await saveCard(context.projectsDir, opened.value, args.value.card, context.now());
+    if (!saved.ok) return fail(under("card", saved.errors));
+    context.events.publish({ type: "project-updated", slug });
+    return ok({ card: saved.value, preview: context.previewUrl(slug) });
   });
 };
 

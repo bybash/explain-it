@@ -1,5 +1,6 @@
 import { readFile, stat } from "node:fs/promises";
 import { extname, join } from "node:path";
+import { type Card, parseCard } from "../schema/card.ts";
 import {
   BYTES_PER_MB,
   type Config,
@@ -29,6 +30,8 @@ export type ProjectFiles = {
   readonly logo?: LogoImages;
   /** Measured narration by beat, once the voice is generated (see `run.ts`). */
   readonly narration?: Narration;
+  /** The TL;DR card (`card.json`), when the project has one; else it is made from the script. */
+  readonly card?: Card;
 };
 
 /** Where a missing file's fix is not obvious. */
@@ -65,15 +68,19 @@ export const inFile = (file: string, errors: readonly ValidationError[]): Valida
   errors.map((e) => ({ path: `${file}: ${e.path}`, message: e.message }));
 
 /**
- * Reads a project folder's graph, storyboard, layout and config, each through
- * its schema. A missing config means every default. The storyboard and layout
+ * Reads a project folder's graph, storyboard, layout and config, and its
+ * card when it has one, each through its schema. A missing config means every
+ * default. The storyboard and layout
  * are checked against the graph, so they are skipped while the graph is broken.
  */
 export const loadProject = async (dir: string): Promise<Validated<ProjectFiles>> => {
-  const [graphFile, storyboardFile, layoutFile, configFile] = await Promise.all(
-    ["graph.json", "storyboard.json", "layout.json", "config.json"].map((f) => readJson(dir, f)),
+  const [graphFile, storyboardFile, layoutFile, configFile, cardFile] = await Promise.all(
+    ["graph.json", "storyboard.json", "layout.json", "config.json", "card.json"].map((f) =>
+      readJson(dir, f),
+    ),
   );
-  if (!graphFile || !storyboardFile || !layoutFile || !configFile) throw new Error("unreachable");
+  if (!graphFile || !storyboardFile || !layoutFile || !configFile || !cardFile)
+    throw new Error("unreachable");
   const errors: ValidationError[] = [];
 
   let config = DEFAULT_CONFIG;
@@ -97,6 +104,11 @@ export const loadProject = async (dir: string): Promise<Validated<ProjectFiles>>
   if (!layoutFile.ok) errors.push(layoutFile.error);
   else if (layout && !layout.ok) errors.push(...inFile("layout.json", layout.errors));
 
+  // A missing card is made from the script; a broken one is reported like any broken file.
+  const card = cardFile.ok ? parseCard(cardFile.data) : undefined;
+  if (!cardFile.ok && !cardFile.missing) errors.push(cardFile.error);
+  else if (card && !card.ok) errors.push(...inFile("card.json", card.errors));
+
   const logo = config.logo ? await readLogo(dir, config.logo) : undefined;
   if (logo && !logo.ok) errors.push(...inFile("config.json", logo.errors));
 
@@ -107,6 +119,7 @@ export const loadProject = async (dir: string): Promise<Validated<ProjectFiles>>
     layout: layout.value,
     config,
     ...(logo?.ok ? { logo: logo.value } : {}),
+    ...(card?.ok ? { card: card.value } : {}),
   });
 };
 

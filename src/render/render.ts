@@ -17,6 +17,8 @@ import {
   type RenderProgress,
   type RenderStep,
 } from "../schema/render.ts";
+import { defaultCard } from "../share/card.ts";
+import { drawCard } from "./card.ts";
 import { encodeArgs, gifArgs, posterArgs } from "./encode.ts";
 import { pipeFrames, runFfmpeg } from "./ffmpeg.ts";
 import { FPS, frameTimes, gifClip, posterTime } from "./frames.ts";
@@ -148,6 +150,7 @@ const renderTheme = async (
     poster: join(dir, RENDER_FILES.poster),
     contactSheet: join(dir, RENDER_FILES.contactSheet),
     gif: join(dir, RENDER_FILES.gif),
+    card: join(dir, RENDER_FILES.card),
     ...(audio ? { audio: join(dir, RENDER_FILES.audio) } : {}),
   };
   const narrationShown = project.config.captions.narration;
@@ -212,7 +215,16 @@ const renderTheme = async (
     await pipeFrames(posterArgs({ resolution, out: files.poster }), (write) => write(poster));
     await writeFile(files.captions, toSrt(cues));
     await writeFile(files.contactSheet, await contactSheetOf(browsers[0] as Browser, first));
-    await writeGif(files.video, gifClip(plan), files.gif, signal);
+    const clip = gifClip(plan);
+    await writeGif(files.video, clip, files.gif, signal);
+    // The card's still is the GIF scene's last beat, all drawn; the poster may be the title card, which the card already names.
+    const landing = plan.beats.filter((b) => b.scene === clip.scene).at(-1);
+    const still = landing ? await frameAt(first, Math.min(stillAt(landing), duration)) : poster;
+    const card = project.card ?? defaultCard(project.graph.title, project.storyboard);
+    await writeFile(
+      files.card,
+      await drawCard(browsers[0] as Browser, card, { still, dark: theme === "dark" }),
+    );
     return files;
   } finally {
     await closeAll(pages, (page) => page.close());

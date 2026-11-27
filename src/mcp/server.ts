@@ -4,6 +4,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { CHANGE_GUIDE } from "../guidance/change.ts";
 import { graphSummary, storyboardSummary } from "../guidance/guide.ts";
+import { CARD_LIMITS } from "../schema/card.ts";
 import { RESOLUTIONS, THEME_MODES } from "../schema/config.ts";
 import { formatErrors, type Validated } from "../schema/errors.ts";
 import {
@@ -17,6 +18,7 @@ import {
   RenderArgsSchema,
   RenderJobArgsSchema,
   SetBriefArgsSchema,
+  SetCardArgsSchema,
   SetStoryboardArgsSchema,
   SetStyleArgsSchema,
   TOOL_NAMES,
@@ -39,6 +41,7 @@ import {
   guideTool,
   listProjectsTool,
   setBriefTool,
+  setCardTool,
   setStoryboardTool,
   setStyleTool,
   type ToolContext,
@@ -135,6 +138,12 @@ const TOOLS = [
     run: setBriefTool,
     description:
       "Saves a project's story brief, brief.json, replacing the one before: who the video is for (`audience`), the one thing to remember (`takeaway`), its `shape`, its `hook`, and the user's `notes` for this story; every field but `version` is optional. Agree it with the user before writing the storyboard, and follow it when you do. Returns the brief and a preview link.",
+  },
+  {
+    name: TOOL_NAMES.setCard,
+    schema: SetCardArgsSchema,
+    run: setCardTool,
+    description: `Saves a project's TL;DR card, card.json, replacing the one before: a \`title\` of at most ${CARD_LIMITS.title} characters and ${CARD_LIMITS.bullets} \`bullets\` at most, of at most ${CARD_LIMITS.bullet} characters each, such as what changed, why, and what to look at. Every render draws it beside a still of the video as card.png; without one, the card is made from the script. Returns the card and a preview link.`,
   },
   {
     name: TOOL_NAMES.setStoryboard,

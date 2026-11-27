@@ -10,6 +10,7 @@ import { beatOptions, buildBeats } from "../engine/beats/build.ts";
 import { formatErrors } from "../schema/errors.ts";
 import { GIF_LIMITS, GIF_SIZES } from "../schema/render.ts";
 import { parseStoryboard } from "../schema/storyboard.ts";
+import { CARD_SIZE } from "../share/card.ts";
 import { hasChrome } from "./chrome.testing.ts";
 import { FPS, frameTimes } from "./frames.ts";
 import { loadProject } from "./load.ts";
@@ -128,6 +129,13 @@ describe.skipIf(!hasFfmpeg || !hasChrome)("renderProject (Chrome and ffmpeg)", (
     expect(gif.subarray(0, 6).toString()).toBe("GIF89a");
     expect(gif.length).toBeLessThanOrEqual(GIF_LIMITS.bytes);
     expect(gif.readUInt16LE(6)).toBe(GIF_SIZES[0].width);
+
+    // The card: the link-preview size, made from the script when the project has no card.json.
+    const card = readFileSync(light.card);
+    expect([card.readUInt32BE(16), card.readUInt32BE(20)]).toEqual([
+      CARD_SIZE.width,
+      CARD_SIZE.height,
+    ]);
 
     const poster = readFileSync(light.poster);
     expect(poster.subarray(1, 4).toString()).toBe("PNG");

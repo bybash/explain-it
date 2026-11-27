@@ -37,6 +37,7 @@ const steppedRenderer = () => {
               poster: `/out/${request.slug}/poster.png`,
               contactSheet: `/out/${request.slug}/contact-sheet.png`,
               gif: `/out/${request.slug}/scene.gif`,
+              card: `/out/${request.slug}/card.png`,
             },
           ]),
         fail: (message) => reject(new Error(message)),

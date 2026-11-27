@@ -95,6 +95,7 @@ const fakePages = ({ failWith }: { failWith?: string } = {}) => {
         captions: join(folder, "captions.srt"),
         poster: join(folder, "poster.png"),
         gif: join(folder, "scene.gif"),
+        card: join(folder, "card.png"),
         contactSheet: join(folder, "contact-sheet.png"),
       };
     });
