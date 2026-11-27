@@ -161,6 +161,8 @@ const listFitter = (root: HTMLElement, regions: StageRegions): (() => void) => {
     lines.sort((a, b) => Number(a.el.dataset.index) - Number(b.el.dataset.index));
   return () => {
     for (const lines of byScene.values()) {
+      // A line off screen goes back to no place, so a frame never keeps one from an earlier seek.
+      for (const line of lines) line.el.style.top = "";
       const shown = lines.filter((line) => line.el.style.visibility === "visible");
       let total = shown.reduce((sum, line) => sum + line.height + LIST_GAP, -LIST_GAP);
       let dropped = 0;

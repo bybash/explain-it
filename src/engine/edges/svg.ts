@@ -70,7 +70,15 @@ export const renderEdges = (
       const visibility = draw > 0 ? "visible" : "hidden";
       g.setAttribute("visibility", visibility);
       pill?.setAttribute("visibility", visibility);
-      if (draw <= 0) return;
+      if (draw <= 0) {
+        // Back as drawn, so the page at a moment never depends on the moments sought before it.
+        g.removeAttribute("opacity");
+        for (const el of [line, dashes, arrow]) el.removeAttribute("points");
+        dashes.removeAttribute("stroke-dashoffset");
+        for (const name of ["cx", "cy", "opacity"]) dot.removeAttribute(name);
+        pill?.setAttribute("opacity", "0");
+        return;
+      }
       const faded = dimOpacity(s.dim);
       g.setAttribute("opacity", faded.toFixed(3));
       const points = pointList(geometry.drawn(draw));
