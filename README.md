@@ -13,9 +13,9 @@ a palette, font and voice, shows a live preview, and renders an MP4.
   including local models.
 - **Open source**: MIT. The videos you make are yours.
 
-[![A still from the checkout example: the shopper's order, the stock held before the payment](docs/screenshots/6.4-demo-still.png)](docs/clips/6.4-demo-checkout.mp4)
+[![The checkout example playing: the shopper pays in the web app, which passes the order on](docs/screenshots/demo-checkout.gif)](https://github.com/bybash/explain-it/releases/download/v0.1.0/6.4-demo-checkout.mp4)
 
-**[Watch the checkout example](docs/clips/6.4-demo-checkout.mp4)** (64 s, with
+**[Watch the checkout example](https://github.com/bybash/explain-it/releases/download/v0.1.0/6.4-demo-checkout.mp4)** (64 s, with
 voice and music), one of the three in [`examples/`](examples/), made from
 the assistant's own draft.
 

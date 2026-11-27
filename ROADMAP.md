@@ -163,7 +163,7 @@ user works by hand or over MCP.
 | ✅ 6.2 | **Examples**: `ci-pipeline` and `checkout`, approved and rendered | All three examples render without a key |
 | ✅ 6.3 | **Golden stills in CI**: stills of each example compared against stored images | CI fails on a visual regression |
 | ✅ 6.4 | **Docs**: README with a demo video, `docs/ARCHITECTURE.md`, final `CONTRIBUTING.md`, tested models list | A new contributor can run the app from the README alone |
-| 6.5 | **Release v0.1.0**: changelog, tag, image | The release is published |
+| ✅ 6.5 | **Release v0.1.0**: changelog, tag, image | The release is published: [v0.1.0](https://github.com/bybash/explain-it/releases/tag/v0.1.0), `ghcr.io/bybash/explain-it:0.1.0` pulled with no login and rendering the checkout example |
 
 ## Milestone 7: share outputs
 
