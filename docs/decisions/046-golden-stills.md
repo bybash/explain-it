@@ -11,7 +11,9 @@ render test never ran there (1.9, 6.1).
 
 - **One golden still per beat of each example**, at the moment the checks
   look at it, light, and one per scene in dark, at its last beat, when the
-  most is drawn, timed by the estimated voice (no voice model needed),
+  most is drawn; and, for oauth-login, one per scene for each setting that
+  draws a scene differently (the wide and high angles, the beat list, the
+  titles at the bottom), timed by the estimated voice (no voice model needed),
   shrunk to 960 px wide by Chrome's own canvas, which also compares them, so
   the check needs nothing but the browser it already runs: large enough to
   see a label or an edge change, small enough to keep in `golden/`. A still

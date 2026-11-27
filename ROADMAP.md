@@ -343,7 +343,7 @@ publish workflow for the first time), and making the GHCR package public.
 - With the titles at the bottom and the wide angle, the CI pipeline's area
   label leaves the frame by 12 px: the framing fits the area's outline, not
   its label, which lies outside it.
-- No golden still covers the titles at the bottom.
+- ✅ Golden stills now cover the titles at the bottom (`bottom-` stills of oauth-login).
 
 ### Not placed yet, from 3.19
 
@@ -351,7 +351,7 @@ publish workflow for the first time), and making the GHCR package public.
   examples, checkout gets a 9 px badge overlap and the CI pipeline's
   camera, tuned for the full width, puts Staging out of the frame. The
   checks report both; the examples keep the list off.
-- No golden still covers the beat list, and no test shows a list too long
+- ✅ Golden stills now cover the beat list (`list-` stills of oauth-login); no test shows a list too long
   for its column: there the oldest lines leave from the top
   (`listFitter`), which was checked only by reading the code.
 - The list shows the step captions, the only title a beat has; a separate,
@@ -362,7 +362,7 @@ publish workflow for the first time), and making the GHCR package public.
 - At the high angle, labels and badges keep their size while the drawing
   is stretched, so some meet: in the examples, an edge label over a zone's
   label (18 px) and a badge over a node (22 px). The checks report them.
-- The golden stills cover isometric only; wide and high have stills by eye.
+- ✅ Golden stills now cover the wide and high angles (`wide-` and `high-` stills of oauth-login).
 
 ### Not placed yet, from 6.3
 
