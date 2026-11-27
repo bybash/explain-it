@@ -2,7 +2,7 @@ import { convexHull } from "../checks/geometry.ts";
 import type { Shape } from "../schema/checks.ts";
 import { STAGE } from "../schema/checks.ts";
 import { DEFAULT_CATEGORY } from "../schema/colours.ts";
-import type { Camera, Config, LogoImages } from "../schema/config.ts";
+import { ANGLE_ELEVATIONS, type Camera, type Config, type LogoImages } from "../schema/config.ts";
 import { orThrow } from "../schema/errors.ts";
 import type { Graph } from "../schema/graph.ts";
 import type { Layout } from "../schema/layout.ts";
@@ -94,7 +94,19 @@ export const mountPlayer = async (frame: HTMLElement, input: PlayerInput): Promi
   const plan = buildBeats(storyboard, graph, beatOptions(config, input.narration));
   frame.replaceChildren();
   const posers = plan.scenes.map((scene) =>
-    drawScene(frame, { graph, layout, routes, plan, regions, cameras: config.camera ?? {} }, scene),
+    drawScene(
+      frame,
+      {
+        graph,
+        layout,
+        routes,
+        plan,
+        regions,
+        cameras: config.camera ?? {},
+        elevation: ANGLE_ELEVATIONS[config.angle],
+      },
+      scene,
+    ),
   );
   for (const card of plan.cards) posers.push(drawCard(frame, card.id, config, logo));
   if (onEveryFrame) posers.push(renderLogoLayer(frame, onEveryFrame));
@@ -143,6 +155,8 @@ type Drawing = {
   readonly regions: StageRegions;
   /** Each scene's camera, by scene id (decision 044). */
   readonly cameras: Readonly<Record<string, Camera>>;
+  /** The degrees the scenes are seen from, for an angle other than isometric (decision 047). */
+  readonly elevation: number | undefined;
 };
 
 /** The graph cut down to one scene: its nodes, and the edges it flows. */
@@ -158,7 +172,7 @@ const sceneGraph = (graph: Graph, scene: ScenePlan): Graph => {
 
 /** Frames a scene's nodes, zones and routes into the content region. */
 const framed = (
-  { layout, routes, regions, cameras }: Drawing,
+  { layout, routes, regions, cameras, elevation }: Drawing,
   scene: ScenePlan,
   cut: Graph,
 ): { view: View; shape: Scene } => {
@@ -169,7 +183,7 @@ const framed = (
     }),
   );
   const shapeAt = (view: View) => orThrow(buildScene(cut, positions, view), `scene ${scene.id}`);
-  const unitView = { scale: 1, originX: 0, originY: 0 };
+  const unitView: View = { scale: 1, originX: 0, originY: 0, elevation };
   const unit = shapeAt(unitView);
   const fitted = fitView(
     [
@@ -181,7 +195,7 @@ const framed = (
     ],
     regions.content,
   );
-  const view = withCamera(fitted, regions.content, cameras[scene.id]);
+  const view = withCamera({ ...fitted, elevation }, regions.content, cameras[scene.id]);
   return { view, shape: shapeAt(view) };
 };
 

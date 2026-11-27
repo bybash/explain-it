@@ -1,10 +1,10 @@
 import { FONTS } from "../engine/theme/fonts.ts";
 import { PALETTES } from "../engine/theme/palettes.ts";
-import { type Config, type LogoMode, RESOLUTIONS, THEME_MODES } from "../schema/config.ts";
+import { ANGLES, type Config, type LogoMode, RESOLUTIONS, THEME_MODES } from "../schema/config.ts";
 import type { ValidationError } from "../schema/errors.ts";
 import type { Storyboard } from "../schema/storyboard.ts";
 import { CameraCard } from "./CameraCard.tsx";
-import { capitalised, THEME_MODE_LABELS } from "./labels.ts";
+import { ANGLE_LABELS, capitalised, THEME_MODE_LABELS } from "./labels.ts";
 import { CardFields, INPUT_CLASS, LABEL_CLASS, LogoFields, Section } from "./style-fields.tsx";
 
 /** The cards in a tab: two to a row when the panel is wide enough. */
@@ -73,6 +73,23 @@ export const LookTab = ({
           </label>
         ))}
       </div>
+      <label className={LABEL_CLASS} htmlFor="style-angle">
+        Angle
+      </label>
+      <select
+        id="style-angle"
+        className={INPUT_CLASS}
+        value={draft.angle}
+        onChange={(e) =>
+          change({ ...draft, angle: ANGLES.find((a) => a === e.target.value) ?? draft.angle })
+        }
+      >
+        {ANGLES.map((angle) => (
+          <option key={angle} value={angle}>
+            {ANGLE_LABELS[angle]}
+          </option>
+        ))}
+      </select>
     </Section>
 
     <Section title="Text">

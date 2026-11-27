@@ -21,3 +21,28 @@ describe("project", () => {
     expect(project({ x: 0, y: 0, z: 2 }, view)).toEqual({ x: 100, y: 30 });
   });
 });
+
+describe("project: another angle", () => {
+  // Looking down from `elevation` degrees; isometric is about 35.26.
+  const at = (elevation: number) => ({ ...view, elevation });
+
+  it("draws the isometric angle exactly as the default view", () => {
+    const point = { x: 3, y: -1, z: 2 };
+    const iso = project(point, view);
+    const named = project(point, at(Math.atan(Math.SQRT1_2) * (180 / Math.PI)));
+    expect(named.x).toBeCloseTo(iso.x, 9);
+    expect(named.y).toBeCloseTo(iso.y, 9);
+  });
+
+  it("keeps widths, and draws the floor and heights shallower from lower down, in isometric's ratio", () => {
+    const low = at(25);
+    const down = 10 * Math.cos(Math.PI / 6) * Math.sin((25 * Math.PI) / 180);
+    expect(project({ x: 1, y: 0, z: 0 }, low).x).toBeCloseTo(108.660254, 5);
+    expect(project({ x: 1, y: 0, z: 0 }, low).y).toBeCloseTo(50 + down, 9);
+    // A unit up is twice a unit down the floor, as in isometric (10 and 5 px there).
+    expect(project({ x: 0, y: 0, z: 1 }, low).y).toBeCloseTo(50 - 2 * down, 9);
+    expect(project({ x: 1, y: 0, z: 0 }, low).y).toBeLessThan(
+      project({ x: 1, y: 0, z: 0 }, view).y,
+    );
+  });
+});

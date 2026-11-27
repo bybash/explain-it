@@ -112,6 +112,7 @@ The goal: the CLI renders a hand-written example to an MP4, with no LLM and no v
 | ✅ 3.11 | **Style gate panel, the sound**: voice picker with a sample, voice speed, pacing, captions, music | A voice sample plays from the panel |
 | ✅ 3.13 | **Preview gate checks**: run the checks from the panel, warnings that jump to their beat, the contact sheet | A warning in the example jumps to its beat |
 | ✅ 3.10 | **App styles in Tailwind**: Tailwind v4 through its Vite plugin; the colour tokens and the dark set become `@theme` values; `app.css` moves to utility classes, keeping plain CSS only for CodeMirror's and Mermaid's own classes; the video's styles (`src/engine/`) are untouched; a decision record | Screenshots of each page, light and dark, look the same before and after |
+| ✅ 3.18 | **Angle**: an `angle` in `config.json` (isometric, wide or high) and in the Look tab; the projection seen from an elevation, isometric unchanged to the pixel | Wide and high stills of the example; isometric stills byte-identical to before |
 | ✅ 3.17 | **Badges and arrowheads**: a badge is a tag with pointed ends and a grey fill, apart from the edge label pills; an edge that arrives from behind its target stops just outside the box's outline, so its arrowhead is in sight | Stills show tags apart from pills, and arrowheads in sight on edges from behind |
 | ✅ 3.16 | **Framing**: no scene number when there is only one scene; a shorter title card (20 characters a second, 3 to 5 s) with a "How long" setting (`cards.title.seconds`, 2 to 10 s); a camera for each scene (`config.camera`, zoom 1 to 2, moved up to half the frame), set with sliders and Reset in the Look tab, and by agents with `set_style` | A one-scene video shows no number; a set title card holds as set; a zoomed and moved scene shows in the preview and the render, and stills without a camera are unchanged |
 | ✅ 3.15 | **Colours tab**: a Colours tab in the Style gate, a palette category for each node, edge and area with the default marked, "every node of this kind", saved to `graph.json` alone (`PUT /api/projects/:slug/colours`); a change of colour marks no beat stale; `get_project` and the chat's graph edits see what each category looks like, so "make it green" finds its category | A colour picked in the tab shows in the preview and is saved, with no beat stale; a recorded edit turns "make the identity provider pink" into its category |
@@ -231,8 +232,11 @@ gate, in the user's words where possible. The first three are slice 3.16
   right, up and down, so a graph fills the frame. In the neuron video the
   beat's title sits at the top left and the graph leaves space to the right
   and at the top; zoomed and moved, the graph could be larger.
-- Another angle as an option: a steeper view, about 60°, could fit a 16:9
-  frame better than isometric and leave room to zoom in.
+- ✅ Another angle as an option: "about 60°" could fit a 16:9 frame better
+  than isometric and leave room to zoom in. Slice 3.18: wide draws the floor
+  as from 25° above it (60° from the vertical is 30°), which fits a 16:9
+  frame better when the frame's height is what limits a layout; high is
+  there for tall layouts (decision 047).
 - Or keep the angle and use the empty left side for the beat titles, listed
   from top to bottom: the current beat's title solid, the ones before it
   semi-dimmed.
@@ -316,6 +320,13 @@ a maintainer, and is listed as steps in [`docs/RELEASING.md`](docs/RELEASING.md)
 the licence check of the image's GPL and LGPL parts, uploading the demo
 video so the README plays it inline, the `v0.1.0` tag (which runs the
 publish workflow for the first time), and making the GHCR package public.
+
+### Not placed yet, from 3.18
+
+- At the high angle, labels and badges keep their size while the drawing
+  is stretched, so some meet: in the examples, an edge label over a zone's
+  label (18 px) and a badge over a node (22 px). The checks report them.
+- The golden stills cover isometric only; wide and high have stills by eye.
 
 ### Not placed yet, from 6.3
 

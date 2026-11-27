@@ -64,6 +64,16 @@ export const CARD_LIMITS = {
   credit: 80,
 } as const;
 
+/** The angles a video's scenes are drawn at (decision 047). */
+export const ANGLES = ["isometric", "wide", "high"] as const;
+export type Angle = (typeof ANGLES)[number];
+/** The elevation, in degrees, whose floor depth each angle draws; isometric is the engine's own (about 35.3). */
+export const ANGLE_ELEVATIONS: Readonly<Record<Angle, number | undefined>> = {
+  isometric: undefined,
+  wide: 25,
+  high: 50,
+};
+
 /** How far the camera zooms in, and moves, as a share of the area the scene is framed in (below the titles, above the captions). */
 export const CAMERA_LIMITS = { zoom: { min: 1, max: 2 }, move: 0.5 } as const;
 
@@ -281,6 +291,12 @@ export const ConfigSchema = z
       .optional()
       .describe("Cards that open and close the video; each can be left out."),
     logo: LogoSchema.optional(),
+    angle: z
+      .enum(ANGLES)
+      .default("isometric")
+      .describe(
+        "How the scenes are drawn: isometric; wide (flatter, so a layout fills a 16:9 frame); or high (deeper, for a tall layout).",
+      ),
     camera: z
       .record(z.string(), CameraSchema)
       .optional()

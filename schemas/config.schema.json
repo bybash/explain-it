@@ -371,6 +371,16 @@
         }
       ]
     },
+    "angle": {
+      "default": "isometric",
+      "description": "How the scenes are drawn: isometric; wide (flatter, so a layout fills a 16:9 frame); or high (deeper, for a tall layout).",
+      "type": "string",
+      "enum": [
+        "isometric",
+        "wide",
+        "high"
+      ]
+    },
     "camera": {
       "description": "Each scene's camera, by scene id; a scene not named is framed as it fits.",
       "type": "object",

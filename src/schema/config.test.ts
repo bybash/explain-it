@@ -9,6 +9,17 @@ const errorsFor = (data: unknown) => {
   return formatErrors(result.errors);
 };
 
+describe("parseConfig: the angle", () => {
+  it("is isometric unless set, and takes only the angles there are", () => {
+    const fresh = parseConfig({});
+    expect(fresh.ok && fresh.value.angle).toBe("isometric");
+    const wide = parseConfig({ angle: "wide" });
+    expect(wide.ok && wide.value.angle).toBe("wide");
+    const odd = parseConfig({ angle: "fisheye" });
+    expect(odd.ok ? [] : formatErrors(odd.errors)[0]).toMatch(/^angle: /);
+  });
+});
+
 describe("parseConfig", () => {
   it("fills every default from an empty object", () => {
     expect(parseConfig({})).toEqual({ ok: true, value: DEFAULT_CONFIG });

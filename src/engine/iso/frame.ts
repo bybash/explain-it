@@ -46,6 +46,7 @@ export const withCamera = (view: View, region: Region, camera: Camera | undefine
   const cx = region.x + region.width / 2;
   const cy = region.y + region.height / 2;
   return {
+    ...view,
     scale: view.scale * camera.zoom,
     originX: cx + (view.originX - cx) * camera.zoom + camera.x * region.width,
     originY: cy + (view.originY - cy) * camera.zoom + camera.y * region.height,
