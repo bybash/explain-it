@@ -82,6 +82,7 @@ const IDE_STEPS = `## Steps
 5. Optionally call \`${T.setStyle}\`: a palette, a title card that names the video, an end card with a link, a logo.
 6. Point the user at the preview link to watch it.
 7. When the user wants the video, call \`${T.check}\` to see that the project is ready (${CHECK_NOTE}), then \`${T.render}\`. Follow the job with \`${T.renderStatus}\` until it is done, and give the user the paths of the files it wrote; \`${T.cancelRender}\` stops it. ${RENDER_NOTE}
+8. For a video of a code change, \`${T.explainChange}\` then gives a short summary of it, made from the script, to post with the video where the change is discussed (the \`explain_change\` prompt has the steps).
 
 Every tool result carries a preview link to the project in the web app. When a tool returns errors, each one names its place (\`graph.nodes[2].kind: …\`): fix those and call it again. Use \`${T.listProjects}\` and \`${T.getProject}\` to pick up a project you made before.
 

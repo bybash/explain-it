@@ -2,12 +2,14 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
+import { CHANGE_GUIDE } from "../guidance/change.ts";
 import { graphSummary, storyboardSummary } from "../guidance/guide.ts";
 import { RESOLUTIONS, THEME_MODES } from "../schema/config.ts";
 import { formatErrors, type Validated } from "../schema/errors.ts";
 import {
   CheckArgsSchema,
   CreateProjectArgsSchema,
+  ExplainChangeArgsSchema,
   GetGuideArgsSchema,
   GetProjectArgsSchema,
   ListProjectsArgsSchema,
@@ -23,6 +25,7 @@ import {
 import { RENDER_STATES } from "../schema/render.ts";
 import { isSlug } from "../server/projects.ts";
 import { VERSION } from "../version.ts";
+import { explainChangeTool } from "./change-tools.ts";
 import {
   cancelRenderTool,
   checkImages,
@@ -174,11 +177,18 @@ const TOOLS = [
     run: cancelRenderTool,
     description: "Cancels a queued or running render job by its id, leaving no partial files.",
   },
+  {
+    name: TOOL_NAMES.explainChange,
+    schema: ExplainChangeArgsSchema,
+    run: explainChangeTool,
+    description:
+      "Returns a project's summary as Markdown, to post where a code change is discussed (a pull request, a chat): its name, the one thing to remember, each scene's title and captions, the files it covers, and a link to the video when you pass `video_url`. Also returns the newest render's video and poster paths on this machine (null before a render), for you to attach. It is made from the script, so it says what the video says. Use it after render, as the explain_change prompt describes; post it only when the user says so.",
+  },
 ];
 
 /**
  * An MCP server with explAIn-it's project tools, working on `context`'s
- * projects folder, and the `explain_flow` prompt.
+ * projects folder, and the `explain_flow` and `explain_change` prompts.
  */
 export const createMcpServer = (context: ToolContext): McpServer => {
   const server = new McpServer({ name: "explain-it", version: VERSION });
@@ -223,6 +233,35 @@ export const createMcpServer = (context: ToolContext): McpServer => {
               text: topic
                 ? `Make an explAIn-it video explaining ${topic}. Follow this guide.\n\n${guide}`
                 : guide,
+            },
+          },
+        ],
+      };
+    },
+  );
+  server.registerPrompt(
+    PROMPT_NAMES.explainChange,
+    {
+      description:
+        "Explain a code change with explAIn-it (decision 051): the parts it touches as the graph, then before, after and what to review as the script, and a summary to post with the video.",
+      argsSchema: {
+        change: z
+          .string()
+          .optional()
+          .describe('The change to explain, such as "pull request #105" or "this branch".'),
+      },
+    },
+    async ({ change }) => {
+      const read = await guideTool(context);
+      if (!read.ok) throw new Error(formatErrors(read.errors).join("\n"));
+      const opening = `Make an explAIn-it video explaining ${change ?? "this change"}, for the people who review it.`;
+      return {
+        messages: [
+          {
+            role: "user" as const,
+            content: {
+              type: "text" as const,
+              text: `${opening}\n\n${CHANGE_GUIDE}\n\n${read.value}`,
             },
           },
         ],

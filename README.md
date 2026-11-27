@@ -175,7 +175,10 @@ place of `mcpServers`.
    > authenticated in this repository.
 
    In Claude Code you can also start from the `explain_flow` prompt: type
-   `/mcp__explain-it__explain_flow` and give it the topic.
+   `/mcp__explain-it__explain_flow` and give it the topic. To explain a
+   code change, such as a pull request, use `/mcp__explain-it__explain_change`
+   instead: the video shows before, after and what to review, and the agent
+   gets a summary to post with it.
 3. The agent reads the guide (`get_guide`), then your code, and drafts the
    flow as a graph with `create_project`. It shows you the graph as Mermaid
    and a link to the preview. Ask for changes, or approve it.
