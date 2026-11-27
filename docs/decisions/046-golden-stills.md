@@ -10,14 +10,15 @@ render test never ran there (1.9, 6.1).
 ## Decision
 
 - **One golden still per beat of each example**, at the moment the checks
-  look at it, light, timed by the estimated voice (no voice model needed),
+  look at it, light, and one per scene in dark, at its last beat, when the
+  most is drawn, timed by the estimated voice (no voice model needed),
   shrunk to 960 px wide by Chrome's own canvas, which also compares them, so
   the check needs nothing but the browser it already runs: large enough to
   see a label or an edge change, small enough to keep in `golden/`. A still
   fails when more than 0.1% of its pixels (about 500) move by more than 32
   steps in a channel, so a change smaller than that, such as one arrowhead,
-  can pass; only the moment at each beat's middle is compared, and only in
-  light.
+  can pass; only the moment at each beat's middle is compared, and dark
+  only at each scene's last beat.
 - **Made and checked in the same place: the Docker image's test stage** (the
   build stage with Debian's Chromium and ffmpeg). Text is drawn differently
   by Chrome on a Mac and on Linux, so stills made on a laptop would fail on

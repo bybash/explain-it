@@ -343,8 +343,8 @@ publish workflow for the first time), and making the GHCR package public.
 
 ### Not placed yet, from 6.3
 
-- The golden stills are light only: a regression that shows only in dark
-  passes CI. A dark still of each example's busiest beat would catch most.
+- ✅ The golden stills were light only; each scene's last beat is now kept
+  in dark too.
 - A still fails past about 500 changed pixels at 960 px: one arrowhead or
   a short label can change by less.
 - The CI smoke test starts the image and checks that it answers, but does
