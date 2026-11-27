@@ -2,6 +2,7 @@ import { readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import type { Browser, Page } from "playwright-core";
 import { stillAt } from "../checks/sheet.ts";
+import type { Config } from "../schema/config.ts";
 import { formatErrors } from "../schema/errors.ts";
 import { loadProject } from "./load.ts";
 import { beatsOnPage, openPage } from "./render.ts";
@@ -14,6 +15,19 @@ export const exampleNames = (): string[] =>
     .filter((entry) => entry.isDirectory())
     .map((entry) => entry.name)
     .sort();
+
+/**
+ * The settings that draw a scene differently, each kept as golden stills of
+ * one example at each scene's last beat, light: the angles (047), the beat
+ * list (048) and the titles in the bottom-left corner (049).
+ */
+const VARIANTS_EXAMPLE = "oauth-login";
+const VARIANTS: Readonly<Record<string, (config: Config) => Config>> = {
+  wide: (config) => ({ ...config, angle: "wide" }),
+  high: (config) => ({ ...config, angle: "high" }),
+  list: (config) => ({ ...config, captions: { ...config.captions, list: true } }),
+  bottom: (config) => ({ ...config, captions: { ...config.captions, place: "bottom" } }),
+};
 
 /** Stills are kept at this width: large enough to see a label or an arrowhead go, small enough to keep in the repository. */
 export const GOLDEN_WIDTH = 960;
@@ -47,8 +61,34 @@ export const exampleStills = async (
   try {
     const light = await stillsIn(browser, tools, pageUrl, { ...project.value, mode: "light" });
     // Dark at each scene's last beat, when the most is drawn: a regression only dark shows is caught.
-    const dark = await stillsIn(browser, tools, pageUrl, { ...project.value, mode: "dark" }, true);
-    return [...light, ...dark];
+    const dark = await stillsIn(
+      browser,
+      tools,
+      pageUrl,
+      { ...project.value, mode: "dark" },
+      {
+        lastOfScene: true,
+        prefix: "dark-",
+      },
+    );
+    const variants: Still[] = [];
+    if (name === VARIANTS_EXAMPLE)
+      for (const [id, change] of Object.entries(VARIANTS)) {
+        const config = change(project.value.config);
+        variants.push(
+          ...(await stillsIn(
+            browser,
+            tools,
+            pageUrl,
+            { ...project.value, config, mode: "light" },
+            {
+              lastOfScene: true,
+              prefix: `${id}-`,
+            },
+          )),
+        );
+      }
+    return [...light, ...dark, ...variants];
   } finally {
     await tools.close();
   }
@@ -60,7 +100,10 @@ const stillsIn = async (
   tools: Page,
   pageUrl: string,
   project: Parameters<typeof openPage>[2] & { readonly mode: "light" | "dark" },
-  lastOfScene = false,
+  {
+    lastOfScene = false,
+    prefix = "",
+  }: { readonly lastOfScene?: boolean; readonly prefix?: string } = {},
 ): Promise<Still[]> => {
   const page = await openPage(browser, pageUrl, project);
   try {
@@ -73,7 +116,6 @@ const stillsIn = async (
         stillAt(beat),
       );
       const full = await page.screenshot({ type: "png" });
-      const prefix = project.mode === "dark" ? "dark-" : "";
       stills.push({
         name: `${prefix}${String(i + 1).padStart(2, "0")}-${beat.id}`,
         png: await shrink(tools, full),
