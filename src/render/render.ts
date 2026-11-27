@@ -11,13 +11,14 @@ import type { Resolution } from "../schema/config.ts";
 import { formatErrors, parseWith } from "../schema/errors.ts";
 import {
   GIF_LIMITS,
+  GIF_SIZES,
   RENDER_FILES,
   type RenderedTheme,
   type RenderProgress,
   type RenderStep,
 } from "../schema/render.ts";
-import { encodeArgs, GIF_SIZES, gifArgs, posterArgs } from "./encode.ts";
-import { pipeFrames } from "./ffmpeg.ts";
+import { encodeArgs, gifArgs, posterArgs } from "./encode.ts";
+import { pipeFrames, runFfmpeg } from "./ffmpeg.ts";
 import { FPS, frameTimes, gifClip, posterTime } from "./frames.ts";
 import type { ProjectFiles } from "./load.ts";
 import { captureInOrder } from "./parallel.ts";
@@ -211,7 +212,7 @@ const renderTheme = async (
     await pipeFrames(posterArgs({ resolution, out: files.poster }), (write) => write(poster));
     await writeFile(files.captions, toSrt(cues));
     await writeFile(files.contactSheet, await contactSheetOf(browsers[0] as Browser, first));
-    await writeGif(files.video, gifClip(plan), files.gif);
+    await writeGif(files.video, gifClip(plan), files.gif, signal);
     return files;
   } finally {
     await closeAll(pages, (page) => page.close());
@@ -291,10 +292,11 @@ const writeGif = async (
   video: string,
   clip: { readonly start: number; readonly end: number },
   out: string,
+  signal: AbortSignal | undefined,
 ): Promise<void> => {
   for (const size of GIF_SIZES) {
-    // ffmpeg reads the video itself, so there are no frames to feed it.
-    await pipeFrames(gifArgs({ video, ...clip, ...size, out }), async () => {});
+    signal?.throwIfAborted();
+    await runFfmpeg(gifArgs({ video, ...clip, ...size, out }));
     if ((await stat(out)).size <= GIF_LIMITS.bytes) return;
   }
 };

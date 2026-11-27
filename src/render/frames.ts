@@ -1,5 +1,15 @@
 import { GIF_LIMITS } from "../schema/render.ts";
 
+/** What of a beat plan the poster and the GIF are timed by: the scenes in order, and each beat's scene and time. */
+type ScenesAndBeats = {
+  readonly scenes: readonly { readonly id: string }[];
+  readonly beats: readonly {
+    readonly scene: string;
+    readonly start: number;
+    readonly end: number;
+  }[];
+};
+
 /** Frames captured per second of timeline (SPEC, Rendering). */
 export const FPS = 30;
 
@@ -16,15 +26,11 @@ export const frameTimes = (duration: number): number[] => {
  * The poster: the title card when there is one, else the middle of the first
  * scene's last beat, when that scene is all drawn.
  */
-export const posterTime = (plan: {
-  readonly cards: readonly { readonly id: string; readonly start: number }[];
-  readonly scenes: readonly { readonly id: string }[];
-  readonly beats: readonly {
-    readonly scene: string;
-    readonly start: number;
-    readonly end: number;
-  }[];
-}): number => {
+export const posterTime = (
+  plan: ScenesAndBeats & {
+    readonly cards: readonly { readonly id: string; readonly start: number }[];
+  },
+): number => {
   const title = plan.cards.find((card) => card.id === "title");
   if (title) return title.start;
   const first = plan.scenes[0];
@@ -37,16 +43,12 @@ export const posterTime = (plan: {
  * there is one, the heart of most stories (the "after" of a change, the "how
  * it works" of a problem), else the first; from its first beat to the last
  * beat that ends within the GIF's limit, so it never stops mid-beat, or cut
- * at the limit when even the first beat is longer.
+ * at the limit when even the first beat is longer. A storyboard always has
+ * a scene of beats (its schema says so), so the plan here always has one.
  */
-export const gifClip = (plan: {
-  readonly scenes: readonly { readonly id: string }[];
-  readonly beats: readonly {
-    readonly scene: string;
-    readonly start: number;
-    readonly end: number;
-  }[];
-}): { readonly scene: string; readonly start: number; readonly end: number } => {
+export const gifClip = (
+  plan: ScenesAndBeats,
+): { readonly scene: string; readonly start: number; readonly end: number } => {
   const scene = (plan.scenes[1] ?? plan.scenes[0])?.id ?? "";
   const beats = plan.beats.filter((b) => b.scene === scene);
   const start = beats[0]?.start ?? 0;

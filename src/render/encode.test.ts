@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { encodeArgs, GIF_SIZES, gifArgs, posterArgs } from "./encode.ts";
+import { GIF_SIZES } from "../schema/render.ts";
+import { encodeArgs, gifArgs, posterArgs } from "./encode.ts";
 
 const argAfter = (args: readonly string[], flag: string) => args[args.indexOf(flag) + 1];
 

@@ -282,7 +282,10 @@ From watching the examples rendered in 6.2.
 ### Not placed yet, from 7.2
 
 - The GIF's scene is chosen by a rule (the second scene, else the first);
-  there is no setting to pick another.
+  there is no setting to pick another, and the rule agreed first (the scene
+  the brief's takeaway lands in) needs the brief in the render and a way to
+  place the takeaway (decision 052).
+- A GIF over 5 MB even at the smallest size is kept, with no warning.
 - The GIF is checked to play inline on GitHub (the PR shows it); Slack's
   inline playback is by its documented limits, not tried.
 - Every render makes the GIF, adding a few seconds per theme.

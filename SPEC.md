@@ -584,8 +584,9 @@ Decision 018 says why.
     plays inline and a video does not. It is the second scene when there
     is one, else the first, from its first beat to the last that ends within
     15 s, cut from `video.mp4` (so its captions are burned in), with no
-    sound, under 5 MB: ffmpeg makes a palette for the clip and tries
-    smaller sizes until one fits (decision 052).
+    sound, aiming under 5 MB: ffmpeg makes a palette for the clip and
+    tries smaller sizes until one fits, keeping the smallest when none does
+    (decision 052).
 
 ## LLM
 
