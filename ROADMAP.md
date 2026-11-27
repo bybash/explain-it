@@ -440,15 +440,19 @@ publish workflow for the first time), and making the GHCR package public.
   chat's shorter-words fix (5.8) asks for fewer characters; plainer words
   would help more.
 
-- Edge labels can overlap each other: in the example, the `authorization
-  code` and `authorize` pills (label placement from 1.5).
-- An edge label pill can cover a node's label: `GET /photos + token` over
-  `Photos API` in the example's second scene (label placement from 1.5).
-- A zone label can be hidden behind a node box: `Your…` behind `Web app`
-  in the example's first scene (zones from 1.3 and 1.4).
-- Seeking leaves stale attributes on hidden edges (points, dash offsets
-  set by a later time). Nothing hidden is drawn, so frames are unaffected,
-  but the DOM at time `t` depends on earlier seeks (edges from 1.5).
+- ✅ Edge labels could overlap each other (`authorization code` and
+  `authorize`), an edge label could cover a node's label (`GET /photos +
+  token` over `Photos API`), and a zone label could hide behind a node box
+  (`Your…` behind `Web app`). Fixed since by label placement that keeps
+  clear of boxes and earlier labels (`placeLabel`) and by the layout's
+  routes (2.5): the stills show none of them, and the layout checks report
+  each case (two overlays, an overlay on a node, a zone's label covered),
+  where oauth-login, checkout and ci-pipeline check clean (2026-11-27).
+- ✅ Seeking left stale attributes on hidden edges (points, dash offsets set
+  by a later time), and on hidden lines of the beat list (their place).
+  Nothing hidden is drawn, so frames were unaffected, but the page at time
+  `t` depended on earlier seeks. A hidden edge and a hidden list line now go
+  back to how they were drawn (`edges/svg.test.ts`, `overlays/html.test.ts`).
 
 ## Later
 
