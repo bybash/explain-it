@@ -241,27 +241,61 @@ body {
   line-height: 1.35;
 }
 
+/*
+ * A badge is a tag with pointed ends (decision 045): a node's state, told
+ * apart from an edge's label pill. Its outline is the tone; its fill a grey
+ * from the palette, so it reads in light and dark.
+ */
 .badge {
+  --point: 14px;
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 5px 13px 5px 10px;
-  border-radius: 999px;
-  background: var(--surface);
-  border: 2px solid var(--tone);
+  padding: 7px 24px 7px 22px;
   font-size: 17px;
   font-weight: 650;
   white-space: nowrap;
   transform-origin: center bottom;
-  box-shadow: 0 4px 12px color-mix(in srgb, var(--text) 12%, transparent);
+  filter: drop-shadow(0 4px 8px color-mix(in srgb, var(--text) 14%, transparent));
+}
+
+.badge-shape,
+.badge-fill {
+  position: absolute;
+  clip-path: polygon(
+    var(--point) 0,
+    calc(100% - var(--point)) 0,
+    100% 50%,
+    calc(100% - var(--point)) 100%,
+    var(--point) 100%,
+    0 50%
+  );
+}
+
+.badge-shape {
+  inset: 0;
+  background: var(--tone);
+}
+
+.badge-fill {
+  --point: 13px;
+  inset: 2px;
+  background: color-mix(in srgb, var(--surface) 84%, var(--muted));
 }
 
 .badge::before {
   content: "";
+  position: relative;
+  z-index: 1;
   width: 10px;
   height: 10px;
   border-radius: 50%;
   background: var(--tone);
+}
+
+.badge-text {
+  position: relative;
+  z-index: 1;
 }
 
 .scene-layer {

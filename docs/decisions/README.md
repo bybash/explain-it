@@ -54,3 +54,4 @@ later record supersedes an earlier one and says so.
 | [042](042-dim-what-belongs-to-a-node.md) | A dim fades what belongs to the nodes it fades |
 | [043](043-colours.md) | Colours for nodes, edges and areas |
 | [044](044-framing.md) | Framing: the scene number, the title card and the camera |
+| [045](045-badges-and-arrowheads.md) | Badges as tags, and arrowheads in sight |

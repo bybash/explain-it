@@ -210,9 +210,11 @@ const drawScene = (
   });
 
   const occluders = shape.nodes.flatMap((n) => [n.faces.top, n.faces.left, n.faces.right]);
-  const boxes = shape.nodes.map((n) =>
-    convexHull([...n.faces.top, ...n.faces.left, ...n.faces.right]),
+  /** Each box's outline on screen: labels keep clear of them, and an edge stops at its target's. */
+  const outlines = new Map(
+    shape.nodes.map((n) => [n.id, convexHull([...n.faces.top, ...n.faces.left, ...n.faces.right])]),
   );
+  const boxes = [...outlines.values()];
   const lines = stage.querySelector<SVGGElement>(".edges");
   const labels = stage.querySelector<SVGGElement>(".edge-labels");
   if (!lines || !labels) throw new Error("missing edge layers");
@@ -222,7 +224,12 @@ const drawScene = (
       const label = scene.edgeLabels[edge.id] ?? edge.label;
       return {
         id: scoped(scene.id, edge.id),
-        geometry: edgeGeometry(drawing.routes[edge.id] ?? [], view, occluders),
+        geometry: edgeGeometry(
+          drawing.routes[edge.id] ?? [],
+          view,
+          occluders,
+          outlines.get(edge.to),
+        ),
         ...(label === undefined ? {} : { label }),
         category: edge.category ?? DEFAULT_CATEGORY,
       };

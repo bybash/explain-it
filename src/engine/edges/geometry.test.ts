@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { overlapDepth } from "../../checks/geometry.ts";
+import { insideLength, overlapDepth } from "../../checks/geometry.ts";
 import { project, type ScreenPoint, type View } from "../iso/project.ts";
-import { edgeGeometry, placeLabel } from "./geometry.ts";
+import { ARROW_GAP, edgeGeometry, placeLabel } from "./geometry.ts";
 
 const view: View = { scale: 10, originX: 100, originY: 50 };
 const floor = (x: number, y: number): ScreenPoint => project({ x, y, z: 0 }, view);
@@ -116,5 +116,23 @@ describe("placeLabel", () => {
     const placed = rect(240, 85, 120, 30);
     const at = placeLabel(line, size, [placed], { x: 300, y: 100 });
     expect(overlapDepth(rect(at.x - 60, at.y - 15, 120, 30), placed)).toBe(0);
+  });
+});
+
+describe("edgeGeometry: the end at its target", () => {
+  /** The target box's outline on screen: its end lies inside it, as a box drawn over an edge from behind. */
+  const target = rect(3, 1, 2, 2);
+
+  it("ends just outside the target's outline, so its arrowhead is not hidden behind the box", () => {
+    const edge = edgeGeometry(route, view, [], target);
+    const end = edge.points.at(-1) ?? { x: 0, y: 0 };
+    expect(insideLength(edge.points, target)).toBe(0);
+    // The line meets the outline at floor (4, 1), 10 px up the last leg; the end stops a gap short.
+    expect(edge.length).toBeCloseTo(60 - 10 - ARROW_GAP, 6);
+    expect(Math.hypot(end.x - floor(4, 1).x, end.y - floor(4, 1).y)).toBeCloseTo(ARROW_GAP, 6);
+  });
+
+  it("keeps its end when it already stops at or outside the target's outline", () => {
+    expect(edgeGeometry(route, view, [], rect(6, 6, 1, 1)).length).toBeCloseTo(60, 6);
   });
 });
