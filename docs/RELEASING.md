@@ -8,9 +8,11 @@ once; the image is built and published by CI from the tag.
    packages, and Debian's ffmpeg and Chromium. Decide whether naming their
    upstream and Debian sources is enough, or whether the release offers the
    sources in writing or ships them, and say so in `NOTICE.md`.
-2. **Upload the demo video to GitHub** (drag `docs/clips/6.4-demo-checkout.mp4`
-   into an issue or PR comment) and put the `user-attachments` link it gives
-   on its own line under the README's still, so the README plays it inline.
+2. **The demo**: the README shows the checkout example's GIF
+   (`docs/screenshots/demo-checkout.gif`, the `scene.gif` of a render), which
+   plays inline, and links the full video, attached to the release once it
+   is made: `gh release upload v<version> docs/clips/6.4-demo-checkout.mp4`.
+   A new release with a new demo changes the link's version.
 3. **Merge** the release PR into `main`, with the version in
    `package.json`, `package-lock.json` and `src/version.ts`, and its
    section in `CHANGELOG.md`.
