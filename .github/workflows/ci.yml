@@ -73,4 +73,15 @@ jobs:
           for i in $(seq 1 30); do curl -sf -o /dev/null http://127.0.0.1:3000/ && break; sleep 1; done
           curl -sf http://127.0.0.1:3000/api/projects
           docker exec explain-it explain-it 2>&1 | grep -q usage
+          # The server's Mermaid worker loads Mermaid's parser (what scripts/prune-image.sh keeps).
+          curl -sf -H 'content-type: application/json' -d '{"name":"Smoke"}' http://127.0.0.1:3000/api/projects
+          curl -sf -H 'content-type: application/json' -d '{"mermaid":"flowchart LR\n  user[User] --> app[Web app]"}' \
+            http://127.0.0.1:3000/api/projects/smoke/graph/read | grep -q '"Web app"'
           docker rm -f explain-it
+      # A whole render in the image, voice included: the voice, ffmpeg and Chromium all
+      # run, so the image misses nothing they load (6.6). Its size goes in the log.
+      - name: The image renders an example
+        run: |
+          docker image inspect explain-it:ci --format 'image size: {{.Size}} bytes'
+          docker run --rm explain-it:ci sh -c \
+            'cp -R examples/checkout /tmp/checkout && explain-it render /tmp/checkout --theme light --resolution 720p && ls /tmp/checkout/out/*/light'

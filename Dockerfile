@@ -30,12 +30,12 @@ COPY --from=build /app /app
 FROM browser
 WORKDIR /app
 COPY package.json package-lock.json .npmrc ./
-# Without Vite, a render uses the page built above (src/render/page.ts). The
-# voice's ONNX runtime ships a build for every system; only this one stays.
+COPY scripts/prune-image.sh /tmp/prune-image.sh
+# Without Vite, a render uses the page built above (src/render/page.ts). What
+# Node never loads in the image goes: source maps, browser builds, other
+# systems' binaries (scripts/prune-image.sh says which, and why).
 RUN npm ci --omit=dev && npm cache clean --force \
-  && cd node_modules/onnxruntime-node/bin/napi-v3 \
-  && find . -mindepth 1 -maxdepth 1 ! -name linux -exec rm -rf {} + \
-  && find linux -mindepth 1 -maxdepth 1 ! -name "$(node -p process.arch)" -exec rm -rf {} +
+  && sh /tmp/prune-image.sh && rm /tmp/prune-image.sh
 COPY --from=build /app/dist ./dist
 COPY src ./src
 COPY assets ./assets

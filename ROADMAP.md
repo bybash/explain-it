@@ -164,6 +164,7 @@ user works by hand or over MCP.
 | ✅ 6.3 | **Golden stills in CI**: stills of each example compared against stored images | CI fails on a visual regression |
 | ✅ 6.4 | **Docs**: README with a demo video, `docs/ARCHITECTURE.md`, final `CONTRIBUTING.md`, tested models list | A new contributor can run the app from the README alone |
 | ✅ 6.5 | **Release v0.1.0**: changelog, tag, image | The release is published: [v0.1.0](https://github.com/bybash/explain-it/releases/tag/v0.1.0), `ghcr.io/bybash/explain-it:0.1.0` pulled with no login and rendering the checkout example |
+| ✅ 6.6 | **A smaller image, built faster**: the image leaves out what Node never loads in it (source maps, browser builds, other systems' binaries); Arm builds on GitHub's Arm runner, not emulated; CI renders an example in the image | CI's image job prints the size and renders the checkout example, voice and all, in the image |
 
 ## Milestone 7: share outputs
 
@@ -499,10 +500,13 @@ publish workflow for the first time), and making the GHCR package public.
   change explainer and posts the GIF, the card and the summary. It needs the
   LLM key in CI and changes Milestone 7's open question on sharing beyond
   the machine (2026-11-27).
-- **A smaller image** (about 1.65 GB now): Chrome's headless shell instead
-  of Debian's Chromium, an ffmpeg with only the codecs used, and the voice
-  runtime without its GPU files could take a third or more off; each step
-  needs the golden stills to hold (2026-11-27).
+- **A smaller image, the browser and ffmpeg** (the node modules were
+  pruned in 6.6): Chrome's headless shell instead of Debian's Chromium,
+  which brings a desktop toolkit and software 3D (`libllvm15`, Mesa) a
+  headless render never uses, about 500 MB with them; and an ffmpeg with
+  only the codecs used. It changes the browser that draws the frames, so
+  the golden stills are made again and their differences looked at
+  (2026-11-27).
 - A desktop app was considered and left: the app already runs in the browser
   on this machine, and a desktop shell would still need Chrome and ffmpeg,
   and add packaging, signing and updates for each OS (2026-11-27).
