@@ -158,7 +158,7 @@ user works by hand or over MCP.
 | ✅ 6.1 | **Docker**: a slim image with Chromium and ffmpeg, volumes for projects and cache, a GHCR publish workflow on tags | `docker run` works on a clean machine |
 | ✅ 6.2 | **Examples**: `ci-pipeline` and `checkout`, approved and rendered | All three examples render without a key |
 | ✅ 6.3 | **Golden stills in CI**: stills of each example compared against stored images | CI fails on a visual regression |
-| 6.4 | **Docs**: README with a demo video, `docs/ARCHITECTURE.md`, final `CONTRIBUTING.md`, tested models list | A new contributor can run the app from the README alone |
+| ✅ 6.4 | **Docs**: README with a demo video, `docs/ARCHITECTURE.md`, final `CONTRIBUTING.md`, tested models list | A new contributor can run the app from the README alone |
 | 6.5 | **Release v0.1.0**: changelog, tag, image | The release is published |
 
 ## Milestone 7: share outputs
