@@ -1,6 +1,6 @@
 {
   "name": "explain-it",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Turn any flow into an isometric explainer video.",
   "license": "MIT",
   "private": true,
