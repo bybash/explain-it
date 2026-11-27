@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
@@ -546,6 +546,7 @@ describe("explaining a change", () => {
       }),
       video: null,
       poster: null,
+      outdated: false,
       preview: preview(created.slug),
     });
   });
@@ -554,10 +555,43 @@ describe("explaining a change", () => {
     const slug = await exampleProject();
     const url = "https://github.com/acme/app/assets/video.mp4";
     const linked = await succeeds("explain_change", { slug, video_url: url });
-    expect(linked.summary).toContain(`[Watch the video](${url})`);
-    expect(
-      await fails("explain_change", { slug, video_url: "file:///Users/me/video.mp4" }),
-    ).toEqual(expect.arrayContaining([expect.stringMatching(/^video_url: /)]));
+    expect(linked.summary).toContain(`[Watch the video](<${url}>)`);
+    for (const local of ["file:///Users/me/video.mp4", "http://127.0.0.1:3000/video.mp4"])
+      expect(await fails("explain_change", { slug, video_url: local }), local).toEqual(
+        expect.arrayContaining([expect.stringMatching(/^video_url: /)]),
+      );
+  });
+
+  it("gives the newest render's light video and poster, and says when the script changed since", async () => {
+    const slug = await exampleProject();
+    const render = (stamp: string, createdAt: string) => {
+      const dir = join(projectsDir, slug, "out", stamp);
+      for (const theme of ["dark", "light"]) mkdirSync(join(dir, theme), { recursive: true });
+      for (const file of ["dark/video.mp4", "light/video.mp4", "light/poster.png"])
+        writeFileSync(join(dir, file), "x");
+      writeFileSync(
+        join(dir, "render.json"),
+        JSON.stringify({
+          version: 1,
+          createdAt,
+          resolution: "1080p",
+          themes: ["dark", "light"],
+          seconds: 60,
+        }),
+      );
+      return dir;
+    };
+    render("2026-11-20T09-00-00.000Z", "2026-11-20T09:00:00.000Z");
+    const newest = render("2026-11-20T11-00-00.000Z", "2026-11-20T11:00:00.000Z");
+    const body = await succeeds("explain_change", { slug });
+    expect(body).toMatchObject({
+      video: join(newest, "light", "video.mp4"),
+      poster: join(newest, "light", "poster.png"),
+      outdated: false,
+    });
+    // The project was last changed at 10:00 (NOW); a render from before then shows an older script.
+    rmSync(newest, { recursive: true });
+    expect((await succeeds("explain_change", { slug })).outdated).toBe(true);
   });
 
   it("asks for the script first, as the summary is made from it", async () => {

@@ -56,7 +56,11 @@ export type ToolContext = {
 
 type Args = Readonly<Record<string, unknown>>;
 
-const open = async (context: ToolContext, slug: string): Promise<Validated<OpenedProject>> =>
+/** The project at `slug`, or the error that names it as missing. */
+export const openOrFail = async (
+  context: ToolContext,
+  slug: string,
+): Promise<Validated<OpenedProject>> =>
   (await openProject(context.projectsDir, slug)) ??
   fail([{ path: "slug", message: `no project "${slug}"` }]);
 
@@ -73,7 +77,7 @@ export const listProjectsTool = async (context: ToolContext, input: Args) => {
 export const getProjectTool = async (context: ToolContext, input: Args) => {
   const args = parseWith(GetProjectArgsSchema, input);
   if (!args.ok) return args;
-  const opened = await open(context, args.value.slug);
+  const opened = await openOrFail(context, args.value.slug);
   if (!opened.ok) return opened;
   const { graph, config } = opened.value;
   const houseRules = await readHouseRules(context.projectsDir);
@@ -99,7 +103,7 @@ export const setBriefTool = async (context: ToolContext, input: Args) => {
   if (!args.ok) return args;
   const { slug } = args.value;
   return withProjectLock(context.projectsDir, slug, async () => {
-    const opened = await open(context, slug);
+    const opened = await openOrFail(context, slug);
     if (!opened.ok) return opened;
     const saved = await saveBrief(
       context.projectsDir,
@@ -139,7 +143,7 @@ export const updateGraphTool = async (context: ToolContext, input: Args) => {
   if (!args.ok) return args;
   const { slug } = args.value;
   return withProjectLock(context.projectsDir, slug, async () => {
-    const opened = await open(context, slug);
+    const opened = await openOrFail(context, slug);
     if (!opened.ok) return opened;
     const before = opened.value;
     const next = edited("graph", before.graph, args.value.graph, args.value.patch);
@@ -165,7 +169,7 @@ export const setStoryboardTool = async (context: ToolContext, input: Args) => {
   if (!args.ok) return args;
   const { slug } = args.value;
   return withProjectLock(context.projectsDir, slug, async () => {
-    const opened = await open(context, slug);
+    const opened = await openOrFail(context, slug);
     if (!opened.ok) return opened;
     const before = opened.value;
     if (!before.graph)
@@ -215,7 +219,7 @@ export const setStyleTool = async (context: ToolContext, input: Args) => {
   if (!args.ok) return args;
   const { slug, config, logo } = args.value;
   return withProjectLock(context.projectsDir, slug, async () => {
-    const opened = await open(context, slug);
+    const opened = await openOrFail(context, slug);
     if (!opened.ok) return opened;
     const saved = await saveStyle(
       context.projectsDir,

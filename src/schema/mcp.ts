@@ -3,6 +3,7 @@ import { SlugSchema } from "./common.ts";
 import { LOGO_CORNERS, LOGO_SHOWS } from "./config.ts";
 import { ProjectSchema } from "./project.ts";
 import { JobIdSchema, RenderRequestSchema } from "./render.ts";
+import { isThisMachine } from "./settings.ts";
 
 /**
  * The MCP tools' arguments. The documents they carry (graph, storyboard,
@@ -63,6 +64,9 @@ export const ExplainChangeArgsSchema = z.strictObject({
   slug: SlugSchema,
   video_url: z
     .url({ protocol: /^https?$/ })
+    .refine((url) => !isThisMachine(new URL(url).hostname), {
+      error: "is on this machine, where no reader of the summary can open it",
+    })
     .optional()
     .describe(
       "Where the video was put for others to watch, such as an attachment on the pull request; the summary links it.",

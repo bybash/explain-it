@@ -38,17 +38,41 @@ describe("changeSummary", () => {
   });
 
   it("says which files it covers, by their short commit", () => {
-    expect(summary()).toContain("Covers `src/auth/login.ts` at 9a4df3c.");
+    expect(summary()).toContain("Covers src/auth/login.ts at 9a4df3c.");
   });
 
   it("says when the files it covers were not recorded, rather than nothing", () => {
     expect(summary({ sources: undefined })).toContain("The files it covers were not recorded.");
   });
 
-  it("links the video when there is one", () => {
-    expect(summary({ video: "out/2026/light/video.mp4" })).toContain(
-      "[Watch the video](out/2026/light/video.mp4)",
+  it("links the video at the address it was put", () => {
+    expect(summary({ videoUrl: "https://example.com/a (1).mp4" })).toContain(
+      "[Watch the video](<https://example.com/a (1).mp4>)",
     );
+  });
+
+  it("writes the script's words as plain text, so a posted summary pings no one and breaks nothing", () => {
+    const text = changeSummary({
+      name: "**Bold** <details>",
+      storyboard: {
+        ...storyboard,
+        scenes: storyboard.scenes.map((scene, i) =>
+          i === 0
+            ? {
+                ...scene,
+                beats: scene.beats.map((b, j) =>
+                  j === 0 ? { ...b, caption: "Thanks @octocat, fixes #12 > `x` [a](b)" } : b,
+                ),
+              }
+            : scene,
+        ),
+      },
+      brief: null,
+      sources: [{ path: "src/we`ird.ts" }],
+    });
+    expect(text.split("\n")[0]).toBe("### \\*\\*Bold\\*\\* &lt;details&gt;");
+    expect(text).toContain("- Thanks &#64;octocat, fixes &#35;12 &gt; \\`x\\` \\[a\\]\\(b\\)");
+    expect(text).toContain("Covers src/we\\`ird.ts.");
   });
 
   it("leaves out the takeaway when there is no brief", () => {

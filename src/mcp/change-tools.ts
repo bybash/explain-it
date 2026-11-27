@@ -1,11 +1,11 @@
-import { join } from "node:path";
 import { changeSummary } from "../guidance/change-summary.ts";
-import { rendersIn } from "../render/renders.ts";
+import { renderFilePath, rendersIn } from "../render/renders.ts";
 import { parseWith } from "../schema/errors.ts";
 import { ExplainChangeArgsSchema, TOOL_NAMES } from "../schema/mcp.ts";
+import { RENDER_FILES } from "../schema/render.ts";
 import { fail, ok } from "../schema/result.ts";
-import { openProject, projectDir } from "../server/projects.ts";
-import type { ToolContext } from "./tools.ts";
+import { projectDir } from "../server/projects.ts";
+import { openOrFail, type ToolContext } from "./tools.ts";
 
 type Args = Readonly<Record<string, unknown>>;
 
@@ -14,14 +14,14 @@ type Args = Readonly<Record<string, unknown>>;
  * a change is discussed, made from its script and linking `video_url` when
  * given, and the newest render's video and poster on this machine (light
  * first), or null before one is made. A local path is never linked: no one
- * the summary is posted to could open it.
+ * the summary is posted to could open it. `outdated` says the project changed
+ * after that render, so the video may not show what the summary says.
  */
 export const explainChangeTool = async (context: ToolContext, input: Args) => {
   const args = parseWith(ExplainChangeArgsSchema, input);
   if (!args.ok) return args;
   const { slug } = args.value;
-  const opened = await openProject(context.projectsDir, slug);
-  if (!opened) return fail([{ path: "slug", message: `no project "${slug}"` }]);
+  const opened = await openOrFail(context, slug);
   if (!opened.ok) return opened;
   const { project, storyboard, brief } = opened.value;
   if (!storyboard)
@@ -33,10 +33,17 @@ export const explainChangeTool = async (context: ToolContext, input: Args) => {
     ]);
   const dir = projectDir(context.projectsDir, slug);
   const [newest] = await rendersIn(dir);
-  const fileOf = (file: "video" | "poster") => {
-    const found = (newest?.files ?? []).filter((f) => f.file === file);
-    const chosen = found.find((f) => f.theme === "light") ?? found[0];
-    return newest && chosen ? join(dir, "out", newest.stamp, chosen.theme, chosen.name) : null;
+  const fileOf = async (file: "video" | "poster") => {
+    if (!newest) return null;
+    const themes = [
+      ...newest.themes.filter((t) => t === "light"),
+      ...newest.themes.filter((t) => t !== "light"),
+    ];
+    for (const theme of themes) {
+      const path = await renderFilePath(dir, newest.stamp, theme, RENDER_FILES[file]);
+      if (path) return path;
+    }
+    return null;
   };
   return ok({
     summary: changeSummary({
@@ -44,10 +51,11 @@ export const explainChangeTool = async (context: ToolContext, input: Args) => {
       storyboard,
       brief,
       sources: project.sources,
-      video: args.value.video_url,
+      videoUrl: args.value.video_url,
     }),
-    video: fileOf("video"),
-    poster: fileOf("poster"),
+    video: await fileOf("video"),
+    poster: await fileOf("poster"),
+    outdated: newest !== undefined && newest.createdAt < project.updatedAt,
     preview: context.previewUrl(slug),
   });
 };
