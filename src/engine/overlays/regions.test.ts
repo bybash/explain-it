@@ -19,6 +19,8 @@ describe("stageRegions: a step caption on two lines at the top", () => {
     expect(two.step.height).toBeGreaterThan(one.step.height);
     expect(two.content.y).toBeGreaterThan(one.content.y);
     expect(stageRegions(captions, undefined, 1)).toEqual(one);
+    // At the top a caption shows two lines at most, however many it needs.
+    expect(stageRegions(captions, undefined, 3)).toEqual(two);
   });
 });
 
@@ -41,6 +43,16 @@ describe("stageRegions: titles at the bottom left", () => {
     expect(stageRegions(bottomLeft).content.height).toBeGreaterThan(
       stageRegions(captions).content.height,
     );
+  });
+
+  it("gives the step band a third line when a caption needs it, and keeps two otherwise", () => {
+    const two = stageRegions(bottomLeft);
+    const three = stageRegions(bottomLeft, undefined, 3);
+    if (!two.step || !three.step) throw new Error("the step captions are on by default");
+    expect([two.stepLines, three.stepLines]).toEqual([2, 3]);
+    expect(three.step.height).toBeGreaterThan(two.step.height);
+    expect(three.title.y).toBeLessThan(two.title.y);
+    expect(stageRegions(bottomLeft, undefined, 1)).toEqual(two);
   });
 
   it("frames the scene in the whole height, from the top of the safe area to the narration", () => {

@@ -20,6 +20,8 @@ export type StageRegions = {
   readonly list?: Rect;
   /** Missing when narration captions are off. */
   readonly narration?: Rect;
+  /** The lines the step band holds, and the step caption shows at most. */
+  readonly stepLines: number;
   /** Where the scene title and the step captions are: at the top, or in the bottom-left corner (decision 049). */
   readonly place: Config["captions"]["place"];
   /** What is left for nodes, edges and callouts. */
@@ -43,8 +45,10 @@ const TITLE_FONT = 22;
 export const LINE_HEIGHT = 1.3;
 /** Narration shows at most this many lines at once; longer lines are split into cues (beats/cues.ts). */
 export const NARRATION_LINES = 2;
-/** A step caption shows at most this many lines (decision 049). */
-export const STEP_LINES = 2;
+/** The most lines a step caption takes: at the top, and in the bottom-left corner, which is narrower (decision 049). */
+export const STEP_LINES = { top: 2, bottom: 3 } as const;
+/** The lines the corner keeps for a step caption, however short: its look stays the same from beat to beat. */
+const CORNER_MIN_LINES = 2;
 /** How much of the safe area's width the bottom-left corner's title and step caption take. */
 const CORNER_SHARE = 0.42;
 /** How much of the safe area's width the beat list takes, when the captions are listed. */
@@ -86,15 +90,18 @@ const lines = (font: number, count: number): number => Math.ceil(font * LINE_HEI
 export const stageRegions = (
   captions: Config["captions"],
   logoOnEveryFrame?: Logo["corner"],
-  /** How many lines the step band at the top needs: two when a step caption does not fit on one. */
-  stepLines: 1 | typeof STEP_LINES = 1,
+  /** How many lines the longest step caption needs at the band's width, as the page measures it. */
+  stepLines = 1,
 ): StageRegions => {
-  const regions = captions.place === "bottom" ? bottomLeft(captions) : atTop(captions, stepLines);
+  const regions =
+    captions.place === "bottom"
+      ? bottomLeft(captions, Math.min(STEP_LINES.bottom, Math.max(CORNER_MIN_LINES, stepLines)))
+      : atTop(captions, Math.min(STEP_LINES.top, Math.max(1, stepLines)));
   return logoOnEveryFrame ? clearOf(regions, logoBox(logoOnEveryFrame)) : regions;
 };
 
 /** The title and the step caption at the top, the content under them (the default). */
-const atTop = (captions: Config["captions"], stepLines: 1 | typeof STEP_LINES): StageRegions => {
+const atTop = (captions: Config["captions"], stepLines: number): StageRegions => {
   const safe = safeArea();
   const font = CAPTION_FONT[captions.size];
   const band = (y: number, height: number): Rect => ({ x: safe.x, y, width: safe.width, height });
@@ -122,6 +129,7 @@ const atTop = (captions: Config["captions"], stepLines: 1 | typeof STEP_LINES): 
     ...(list ? { list } : {}),
     ...(narration ? { narration } : {}),
     place: "top",
+    stepLines,
     content: list ? rightOf(content, list) : content,
     fonts: { title: TITLE_FONT, ...font },
   };
@@ -134,7 +142,7 @@ const atTop = (captions: Config["captions"], stepLines: 1 | typeof STEP_LINES): 
  * when it does not. The step caption may take two lines; the beat list, when
  * on, rises above the title.
  */
-const bottomLeft = (captions: Config["captions"]): StageRegions => {
+const bottomLeft = (captions: Config["captions"], stepLines: number): StageRegions => {
   const safe = safeArea();
   const font = CAPTION_FONT[captions.size];
   const narration = narrationBand(captions, safe);
@@ -142,7 +150,7 @@ const bottomLeft = (captions: Config["captions"]): StageRegions => {
   const corner = safe.width * CORNER_SHARE;
   const listed = listsSteps(captions);
 
-  const stepHeight = lines(font.step, STEP_LINES);
+  const stepHeight = lines(font.step, stepLines);
   const step =
     captions.step && !listed
       ? { x: safe.x, y: bottom - stepHeight, width: corner, height: stepHeight }
@@ -165,6 +173,7 @@ const bottomLeft = (captions: Config["captions"]): StageRegions => {
     ...(list ? { list } : {}),
     ...(narration ? { narration } : {}),
     place: "bottom",
+    stepLines,
     content: list ? rightOf(content, list) : content,
     fonts: { title: TITLE_FONT, ...font },
   };

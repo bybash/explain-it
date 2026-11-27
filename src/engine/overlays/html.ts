@@ -5,13 +5,7 @@ import { dimOpacity } from "../iso/tweens.ts";
 import { categoryStyle } from "../theme/kinds.ts";
 import type { State } from "../timeline.ts";
 import { type CalloutPlacement, placeBadge, placeCallout } from "./place.ts";
-import {
-  LINE_HEIGHT,
-  NARRATION_LINES,
-  type Rect,
-  STEP_LINES,
-  type StageRegions,
-} from "./regions.ts";
+import { LINE_HEIGHT, NARRATION_LINES, type Rect, type StageRegions } from "./regions.ts";
 import { overlayTarget } from "./tweens.ts";
 
 /** When an overlay is on screen, in seconds. */
@@ -103,7 +97,7 @@ export const renderOverlays = (
   // The bands were sized for these, so the CSS takes them from here.
   root.style.setProperty("--caption-line", String(LINE_HEIGHT));
   root.style.setProperty("--narration-lines", String(NARRATION_LINES));
-  root.style.setProperty("--step-lines", String(STEP_LINES));
+  root.style.setProperty("--step-lines", String(regions.stepLines));
   const lines = document.createElementNS(SVG_NS, "svg");
   lines.setAttribute("class", "callout-lines");
   lines.setAttribute("viewBox", `0 0 ${STAGE.width} ${STAGE.height}`);
