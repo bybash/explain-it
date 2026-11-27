@@ -13,15 +13,21 @@ a palette, font and voice, shows a live preview, and renders an MP4.
   including local models.
 - **Open source**: MIT. The videos you make are yours.
 
+[![A still from the checkout example: the shopper's order, the stock held before the payment](docs/screenshots/6.4-demo-still.png)](docs/clips/6.4-demo-checkout.mp4)
+
+**[Watch the checkout example](docs/clips/6.4-demo-checkout.mp4)** (64 s, with
+voice and music), one of the three in [`examples/`](examples/), made from
+the assistant's own draft.
+
 ## Status
 
-In development. In the web app, a chat with your own LLM key drafts the
-graph and the script with you; from your IDE, its agent can do the same
-over MCP. Either way the result is an MP4 with voice, music and captions,
-in a light or dark theme, made on your machine with `npm` or Docker. The
-first release comes next: more examples, the docs and golden stills. The
-design is in [`SPEC.md`](SPEC.md) and the plan, one pull request at a time,
-is in [`ROADMAP.md`](ROADMAP.md).
+Nearly at its first release (v0.1.0). In the web app, a chat with your own
+LLM key drafts the graph and the script with you; from your IDE, its agent
+can do the same over MCP. Either way the result is an MP4 with voice, music
+and captions, in a light or dark theme, made on your machine with `npm` or
+Docker. The design is in [`SPEC.md`](SPEC.md), how it is built in
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md), and the plan, one pull
+request at a time, in [`ROADMAP.md`](ROADMAP.md).
 
 ## Requirements
 
@@ -30,6 +36,9 @@ is in [`ROADMAP.md`](ROADMAP.md).
 - ffmpeg on your `PATH`, for rendering.
 - About 100 MB of disk for the voice model (Kokoro-82M), which downloads
   into `cache/` the first time a project's voice is generated.
+- For the app's chat: an LLM key, from OpenRouter, Anthropic or another
+  provider, or a local model (see Models). Making a video by hand in the
+  app, from your IDE's agent, or rendering the examples needs none.
 
 ## Start the app
 
@@ -46,6 +55,30 @@ your own machine. Projects are kept in `projects/`. Keep it running while
 your IDE uses it. `HOST`, `PORT`, `PROJECTS_DIR` and `CACHE_DIR` change these; with
 another address, change the URL in your IDE's config to match.
 
+Then:
+
+1. Open **Settings**, choose your provider (OpenRouter is the default;
+   Anthropic's API or any OpenAI-compatible endpoint, such as Ollama, also
+   works), and paste its key. The key is saved to `.env`, which only you
+   can read, and shown as its last four characters.
+2. On the home page, name a **New project** and **Create** it, then
+   describe the flow in the chat. The assistant drafts the graph; approve
+   it, agree the story, approve the script, pick a style, preview it and
+   render it.
+
+To try an example first, copy one into your projects and open it:
+
+```sh
+cp -R examples/checkout projects/
+```
+
+Or render one straight from the terminal; the video goes to
+`examples/checkout/out/`:
+
+```sh
+npx explain-it render examples/checkout
+```
+
 ## Or run it with Docker
 
 The image carries Node, Chromium and ffmpeg, so Docker is all you need
@@ -60,7 +93,7 @@ docker run -p 127.0.0.1:3000:3000 \
 ```
 
 Open <http://127.0.0.1:3000>. Give Docker at least 4 GB of memory: a render runs
-four Chrome pages. The voice model downloads into `cache/` the
+four Chrome browsers. The voice model downloads into `cache/` the
 first time; a key saved in Settings is kept in `config/.env`. On Linux, add
 `--user "$(id -u):$(id -g)"` when the folders you mount belong to another
 user than uid 1000. Render from the command line with
@@ -77,7 +110,18 @@ Studio. Models tested for structured output:
 
 | Model | Endpoint | Tested |
 |---|---|---|
-| `anthropic/claude-haiku-5.5` | OpenRouter | The recorded fixtures in `src/llm/fixtures/`: structured calls, drafting and the assistant (5.1 to 5.8) |
+| `anthropic/claude-haiku-5.5` | OpenRouter | The recorded fixtures in `src/llm/fixtures/`: structured calls, graph and script drafting, edits, layout repair, shorter words, and a whole conversation with the assistant (5.1 to 6.2) |
+
+The app suggests `anthropic/claude-sonnet-5.5` on OpenRouter when no model
+is set; it has not been recorded, though a stronger model of the same
+family is expected to do at least as well.
+
+Other models should work if they answer with structured output (a JSON
+Schema); they have not been recorded yet. To test one, set it in Settings
+(or `LLM_MODEL` in `.env`), delete the fixtures, run `npm run llm:record`
+(a few dozen calls; with Haiku, a few cents), and run `npm test`: the tests then replay that
+model's answers. A model that cannot keep to the schemas shows up there,
+as a call that ran out of repairs.
 
 ## Use it from your IDE
 
@@ -165,10 +209,17 @@ in the browser at any point. To render again from a terminal:
 npx explain-it render projects/<project> --theme both
 ```
 
-## Contributing
+## Develop
 
-See [`CONTRIBUTING.md`](CONTRIBUTING.md). Coding agents start at
-[`AGENTS.md`](AGENTS.md).
+```sh
+npm install
+npm run dev         # the app with hot reload on http://127.0.0.1:3000
+npm test            # the tests; the Chrome and ffmpeg ones skip themselves without them
+```
+
+[`CONTRIBUTING.md`](CONTRIBUTING.md) says how a change is made and reviewed,
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) how the code fits together, and
+[`AGENTS.md`](AGENTS.md) every command and rule (coding agents start there).
 
 ## Licence
 

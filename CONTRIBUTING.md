@@ -10,6 +10,20 @@ one thing and leave `main` working.
   something not on the roadmap, open an issue first so we can agree on it.
 - Coding agents: read [`AGENTS.md`](AGENTS.md).
 
+## Set up
+
+```sh
+nvm use             # Node 24, from .nvmrc
+npm install
+npm run dev         # the app on http://127.0.0.1:3000, with hot reload
+npm test
+```
+
+Google Chrome (or a Chromium at `CHROME_PATH`) and ffmpeg are needed to
+render, and for the tests that render; without them, those tests skip
+themselves. Docker is needed only for the golden stills (below). How the
+code fits together is in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+
 ## Making a change
 
 1. Fork the repo (or branch, if you have access) from `main`.
@@ -25,18 +39,35 @@ title ending with the slice ID, for example
 `feat(engine): isometric primitives [1.3]`. PRs are squash-merged, and the PR
 title becomes the commit title on `main`.
 
+## Two things a change may need
+
+- **Golden stills.** A change to how the examples are drawn fails the
+  golden stills in CI. Make them again with `npm run golden` (in Docker,
+  for CI's browser and processor, so on an Arm Mac it runs emulated and
+  takes several minutes), look at the difference in the PR, and say why it
+  is right. `npm run golden:check` runs the check as CI does and writes any
+  difference to `golden-out/`.
+- **LLM recordings.** The tests replay recorded LLM answers from
+  `src/llm/fixtures/` and never call an LLM. A change to a prompt, the
+  authoring guide or a schema an LLM answers with changes what is asked, so
+  the tests say which calls have no recording. A maintainer records them
+  with `npm run llm:record`, which needs a key and costs a few dozen calls
+  (a few cents with Haiku).
+
 ## Review
 
 A maintainer checks the slice's **Done when** line in `ROADMAP.md`, the
 architecture, code rules and test rules in `AGENTS.md`, and the evidence in
-the PR. CI (lint, typecheck, tests) must pass, and the branch must be up to
-date with `main`.
+the PR. CI must pass: lint, typecheck, the module boundaries and the tests,
+and, in the Docker image, the golden stills and every test of the renderer
+and the checks (the ones that need Chromium or ffmpeg run there). The web
+app's browser tests run in the first job, on the runner's Google Chrome. The branch must be up to date with `main`.
 
 The short version of the engineering rules:
 
 - **Test first for logic; look first for visuals.** Core logic and handlers
-  are written test first. Visual work shows a screenshot or still, and gets a
-  golden still once approved.
+  are written test first. Visual work shows a screenshot or still; the
+  examples' golden stills then guard it.
 - **Functional core, imperative shell.** Pure functions inside; files,
   browsers, ffmpeg, TTS, HTTP, MCP and the LLM at the edges, behind small
   interfaces with test fakes.

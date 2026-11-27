@@ -158,7 +158,7 @@ user works by hand or over MCP.
 | ✅ 6.1 | **Docker**: a slim image with Chromium and ffmpeg, volumes for projects and cache, a GHCR publish workflow on tags | `docker run` works on a clean machine |
 | ✅ 6.2 | **Examples**: `ci-pipeline` and `checkout`, approved and rendered | All three examples render without a key |
 | ✅ 6.3 | **Golden stills in CI**: stills of each example compared against stored images | CI fails on a visual regression |
-| 6.4 | **Docs**: README with a demo video, `docs/ARCHITECTURE.md`, final `CONTRIBUTING.md`, tested models list | A new contributor can run the app from the README alone |
+| ✅ 6.4 | **Docs**: README with a demo video, `docs/ARCHITECTURE.md`, final `CONTRIBUTING.md`, tested models list | A new contributor can run the app from the README alone |
 | 6.5 | **Release v0.1.0**: changelog, tag, image | The release is published |
 
 ## Milestone 7: share outputs
@@ -308,6 +308,13 @@ that finishes it.
 - The Script gate's hints (`beatHints` in `src/web/script-model.ts`) and the
   chat's problems (`wordProblems`) read the same quick checks each their
   own way; a Fix in the editor beside a hint could share the chat's.
+
+### For 6.5 (release), from 6.4
+
+- The README's demo links to the video's file page, where GitHub plays it;
+  to play inline in the README, the clip needs uploading to GitHub (drag it
+  into an issue or PR comment) and that `user-attachments` link placing in
+  the README.
 
 ### For 6.5 (release), from 6.1
 
