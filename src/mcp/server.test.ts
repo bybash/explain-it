@@ -371,13 +371,13 @@ describe("set_style", () => {
       await fails("set_style", {
         slug,
         config: {
-          camera: { sign_in: { zoom: 3, x: 0, y: 0.9 } },
+          camera: { sign_in: { zoom: 3.5, x: 0, y: 0.9 } },
           cards: { title: { seconds: 1 } },
         },
       }),
     ).toEqual(
       expect.arrayContaining([
-        "config.camera.sign_in.zoom: must be at most 2",
+        "config.camera.sign_in.zoom: must be at most 3",
         "config.camera.sign_in.y: must be at most 0.5",
         "config.cards.title.seconds: must be at least 2",
       ]),

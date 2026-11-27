@@ -58,3 +58,4 @@ later record supersedes an earlier one and says so.
 | [046](046-golden-stills.md) | Golden stills in the Docker image |
 | [047](047-angle.md) | The angle the scenes are seen from |
 | [048](048-beat-list.md) | The beat list |
+| [049](049-titles-bottom-left.md) | The titles in the bottom-left corner |

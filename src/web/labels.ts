@@ -1,4 +1,4 @@
-import type { Angle, THEME_MODES } from "../schema/config.ts";
+import type { Angle, CaptionPlace, THEME_MODES } from "../schema/config.ts";
 import type { Gate } from "../schema/project.ts";
 
 /** How each gate is named in the app (SPEC, User flow). */
@@ -48,4 +48,10 @@ export const ANGLE_LABELS: Readonly<Record<Angle, string>> = {
   isometric: "Isometric",
   wide: "Wide: flatter, fills a 16:9 frame",
   high: "High: deeper, for a tall layout",
+};
+
+/** Where the scene title and the step captions go, as the Captions card offers it (decision 049). */
+export const CAPTION_PLACE_LABELS: Readonly<Record<CaptionPlace, string>> = {
+  top: "At the top",
+  bottom: "Bottom left",
 };

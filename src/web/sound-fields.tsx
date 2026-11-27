@@ -1,4 +1,5 @@
 import {
+  CAPTION_PLACES,
   CAPTION_SIZES,
   type Config,
   MUSIC_MOODS,
@@ -8,7 +9,7 @@ import {
   VOICE_SPEEDS,
 } from "../schema/config.ts";
 import { musicSample, voiceSample } from "./api.ts";
-import { capitalised } from "./labels.ts";
+import { CAPTION_PLACE_LABELS, capitalised } from "./labels.ts";
 import { INPUT_CLASS, LABEL_CLASS, Section } from "./style-fields.tsx";
 import { Pill } from "./ui.tsx";
 import type { SamplePlayer, SampleSource } from "./useSamplePlayer.ts";
@@ -193,6 +194,20 @@ export const CaptionsCard = (form: Form) => {
         />
         Listed down the left, the current one solid
       </label>
+      <span className={LABEL_CLASS}>Scene title and step captions</span>
+      <div className={RADIOS_CLASS} role="radiogroup" aria-label="Where the titles go">
+        {CAPTION_PLACES.map((place) => (
+          <label key={place} className="flex items-center gap-2">
+            <input
+              type="radio"
+              name="style-caption-place"
+              checked={captions.place === place}
+              onChange={() => set({ place })}
+            />
+            {CAPTION_PLACE_LABELS[place]}
+          </label>
+        ))}
+      </div>
       <span className={LABEL_CLASS}>Size</span>
       <div className={RADIOS_CLASS} role="radiogroup" aria-label="Caption size">
         {CAPTION_SIZES.map((size) => (

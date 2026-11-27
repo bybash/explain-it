@@ -64,6 +64,10 @@ export const CARD_LIMITS = {
   credit: 80,
 } as const;
 
+/** Where the scene title and the step captions go (decision 049). */
+export const CAPTION_PLACES = ["top", "bottom"] as const;
+export type CaptionPlace = (typeof CAPTION_PLACES)[number];
+
 /** The angles a video's scenes are drawn at (decision 047). */
 export const ANGLES = ["isometric", "wide", "high"] as const;
 export type Angle = (typeof ANGLES)[number];
@@ -74,8 +78,8 @@ export const ANGLE_ELEVATIONS: Readonly<Record<Angle, number | undefined>> = {
   high: 50,
 };
 
-/** How far the camera zooms in, and moves, as a share of the area the scene is framed in (below the titles, above the captions). */
-export const CAMERA_LIMITS = { zoom: { min: 1, max: 2 }, move: 0.5 } as const;
+/** How far the camera zooms in, and moves, as a share of the area the scene is framed in (clear of the titles and captions that take room from it). */
+export const CAMERA_LIMITS = { zoom: { min: 1, max: 3 }, move: 0.5 } as const;
 
 export const CameraSchema = z
   .strictObject({
@@ -83,7 +87,7 @@ export const CameraSchema = z
       .number()
       .min(CAMERA_LIMITS.zoom.min)
       .max(CAMERA_LIMITS.zoom.max)
-      .describe("1 frames the scene as it fits; 2 is twice as close."),
+      .describe("1 frames the scene as it fits; 3 is three times as close."),
     x: z
       .number()
       .min(-CAMERA_LIMITS.move)
@@ -284,6 +288,12 @@ export const ConfigSchema = z
             "Lists the scene's step captions down the left side, the current one solid and the ones before it faded, in place of the step caption at the top (decision 048).",
           ),
         size: z.enum(CAPTION_SIZES).default("M"),
+        place: z
+          .enum(CAPTION_PLACES)
+          .default("top")
+          .describe(
+            "Where the scene title and the step captions go: at the top, or in the bottom-left corner, above the narration, so the scene is framed in the whole height and the step captions can take two lines (decision 049).",
+          ),
       })
       .prefault({}),
     music: MusicSchema.prefault({}),
