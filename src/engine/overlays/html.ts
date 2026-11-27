@@ -38,6 +38,14 @@ export type OverlayDrawing = { readonly shown?: Interval } & (
       readonly tone: (typeof BADGE_TONES)[number];
     }
   | { readonly kind: "title" | "step" | "narration"; readonly id: string; readonly text: string }
+  | {
+      readonly kind: "list";
+      readonly id: string;
+      readonly text: string;
+      /** Which scene's list it is in, and its place there. */
+      readonly scene: string;
+      readonly index: number;
+    }
 );
 
 /** Sets every overlay from the timeline's state; overlays missing from it stay hidden. */
@@ -108,8 +116,9 @@ export const renderOverlays = (
       cards.push({ box: boxOf(main), ...(overlay.shown ? { shown: overlay.shown } : {}) });
     return (state: State): void => {
       const s = state[overlayTarget(overlay.id)] ?? {};
-      // A badge or callout fades with the node it is on (`dim`, see `focusTweens`).
-      const opacity = (s.opacity ?? 0) * dimOpacity(s.dim);
+      // A badge or callout fades with the node it is on (`dim`, see `focusTweens`); a line of the
+      // beat list fades once its beat is over (`faded`).
+      const opacity = (s.opacity ?? 0) * dimOpacity(s.dim) * (1 - LIST_FADE * (s.faded ?? 0));
       for (const part of el) {
         part.style.visibility = opacity > 0 ? "visible" : "hidden";
         part.style.opacity = opacity.toFixed(3);
@@ -119,8 +128,54 @@ export const renderOverlays = (
         main.style.transform = `translateY(${(s.shift ?? 0).toFixed(2)}px) scale(${(s.scale ?? 1).toFixed(3)})`;
     };
   });
+  const fitList = listFitter(root, regions);
   return (state) => {
     for (const pose of posers) pose(state);
+    fitList();
+  };
+};
+
+/** How much a line of the beat list fades once its beat is over: to 45% (decision 048). */
+const LIST_FADE = 0.55;
+/** The gap between the lines of the beat list, in pixels. */
+const LIST_GAP = 18;
+
+/**
+ * Stacks each scene's list lines down the list's column, in order, the lines
+ * on screen only. When they do not fit the column, the oldest (faded) ones
+ * leave from the top and the rest move up, so a long scene's list never
+ * runs into the narration. It depends only on which lines are on screen, so
+ * a frame is the same however it was reached.
+ */
+const listFitter = (root: HTMLElement, regions: StageRegions): (() => void) => {
+  const column = regions.list;
+  if (!column) return () => {};
+  const byScene = new Map<string, { readonly el: HTMLElement; readonly height: number }[]>();
+  for (const el of root.querySelectorAll<HTMLElement>(".list-line")) {
+    const scene = el.dataset.scene ?? "";
+    byScene.set(scene, [...(byScene.get(scene) ?? []), { el, height: el.offsetHeight }]);
+  }
+  for (const lines of byScene.values())
+    lines.sort((a, b) => Number(a.el.dataset.index) - Number(b.el.dataset.index));
+  return () => {
+    for (const lines of byScene.values()) {
+      const shown = lines.filter((line) => line.el.style.visibility === "visible");
+      let total = shown.reduce((sum, line) => sum + line.height + LIST_GAP, -LIST_GAP);
+      let dropped = 0;
+      while (total > column.height && dropped < shown.length - 1) {
+        total -= (shown[dropped]?.height ?? 0) + LIST_GAP;
+        dropped++;
+      }
+      let top = column.y;
+      for (const [i, line] of shown.entries()) {
+        if (i < dropped) {
+          line.el.style.visibility = "hidden";
+          continue;
+        }
+        line.el.style.top = `${top}px`;
+        top += line.height + LIST_GAP;
+      }
+    }
   };
 };
 
@@ -155,6 +210,16 @@ const draw = (
       positionAt(band, regions.title);
       div("scene-title-chip", band, overlay.text);
       return [band];
+    }
+    case "list": {
+      if (!regions.list) return [];
+      const line = div("overlay caption list-line", root);
+      line.dataset.scene = overlay.scene;
+      line.dataset.index = String(overlay.index);
+      line.style.left = `${regions.list.x}px`;
+      line.style.width = `${regions.list.width}px`;
+      div("caption-text", line, overlay.text);
+      return [line];
     }
     case "step":
     case "narration": {

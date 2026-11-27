@@ -85,3 +85,13 @@ export const overlayTweens = (
     },
   ];
 };
+
+/** A line of the beat list fading once its beat is over (decision 048): `faded` goes 0..1. */
+export const listFadeTween = (id: string, at: number): TweenSpec => ({
+  target: overlayTarget(id),
+  from: { faded: 0 },
+  to: { faded: 1 },
+  duration: OVERLAY_TIMING.exit,
+  ease: "inOutSine",
+  at,
+});

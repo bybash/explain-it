@@ -194,6 +194,19 @@ body {
   letter-spacing: -0.01em;
 }
 
+/* A line of the beat list (decision 048): a little smaller than the step caption, with a bar in the accent. */
+.list-line {
+  font-size: calc(var(--step-size) * 0.8);
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  padding-left: 16px;
+  border-left: 4px solid var(--accent);
+}
+
+.list-line .caption-text {
+  -webkit-line-clamp: 3;
+}
+
 .narration-caption {
   align-items: flex-end;
   justify-content: center;

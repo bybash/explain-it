@@ -1,6 +1,7 @@
 import {
   type Config,
   type EndCard,
+  listsSteps,
   type Pace,
   TITLE_CARD_AUTO,
   type TitleCard,
@@ -11,7 +12,7 @@ import type { BADGE_TONES, Storyboard } from "../../schema/storyboard.ts";
 import { EDGE_TIMING, flowTweens } from "../edges/flow.ts";
 import { appearTweens, highlightTweens, nodeTarget, zoneTarget } from "../iso/tweens.ts";
 import { sceneTitleText } from "../overlays/html.ts";
-import { type Entrance, overlayTweens } from "../overlays/tweens.ts";
+import { type Entrance, listFadeTween, overlayTweens } from "../overlays/tweens.ts";
 import type { TweenSpec } from "../timeline.ts";
 import { splitCues } from "./cues.ts";
 import { type Focus, focusTweens } from "./focus.ts";
@@ -79,6 +80,13 @@ export type PlannedOverlay = Shown &
         readonly tone: (typeof BADGE_TONES)[number];
       }
     | { readonly kind: "title" | "step" | "narration"; readonly text: string }
+    | {
+        /** A line of the beat list (decision 048): the beat's caption, its place in its scene's list, and when it fades. */
+        readonly kind: "list";
+        readonly text: string;
+        readonly index: number;
+        readonly fadesAt: number;
+      }
   );
 
 /**
@@ -121,6 +129,8 @@ export type BuildOptions = {
   readonly endCard?: EndCard;
   /** Whether there is a logo, which closes the video when there is no card. */
   readonly logo?: boolean;
+  /** Whether the step captions are listed down the left side (decision 048). */
+  readonly list?: boolean;
 };
 
 /** The build options a project sets: its config's pace, voice, cards and logo, and its measured narration. */
@@ -133,6 +143,7 @@ export const beatOptions = (config: Config, narration?: Narration): BuildOptions
     ...(title ? { titleCard: title } : {}),
     ...(end ? { endCard: end } : {}),
     ...(config.logo ? { logo: true } : {}),
+    ...(listsSteps(config.captions) ? { list: true } : {}),
   };
 };
 
@@ -148,6 +159,7 @@ export const projectBeats = (project: {
 const ENTRANCES: Readonly<Record<PlannedOverlay["kind"], Entrance>> = {
   title: "fade",
   step: "rise",
+  list: "rise",
   narration: "fade",
   callout: "rise",
   badge: "pop",
@@ -254,20 +266,36 @@ export const buildBeats = (
     });
 
     const inScene = (id: string) => scoped(scene.id, id);
+    let listed = 0;
     const appears = new Map<string, number>();
     /** The scene's focus as it changes: each dim, and the start of each beat without one. */
     const focuses: Focus[] = [];
     for (const { beat, timing, start: beatStart, end: beatEnd } of sceneBeats) {
       beats.push({ id: beat.id, scene: scene.id, start: beatStart, end: beatEnd });
       if (!beat.actions.some((a) => a.type === "dim")) focuses.push({ at: beatStart });
-      show({
-        kind: "step",
-        id: `step:${beat.id}`,
-        scene: scene.id,
-        text: beat.caption,
-        at: beatStart,
-        until: beatEnd,
-      });
+      if (options.list) {
+        // The line stays to the scene's end, fading once its beat is over (`faded`, 0..1).
+        const id = `list:${beat.id}`;
+        show({
+          kind: "list",
+          id,
+          scene: scene.id,
+          text: beat.caption,
+          index: listed++,
+          fadesAt: beatEnd,
+          at: beatStart,
+          until: layerGoneAt,
+        });
+        if (beatEnd < end) tweens.push(listFadeTween(id, beatEnd));
+      } else
+        show({
+          kind: "step",
+          id: `step:${beat.id}`,
+          scene: scene.id,
+          text: beat.caption,
+          at: beatStart,
+          until: beatEnd,
+        });
       const narrationEnd =
         timing.narration && beatStart + timing.narration.at + timing.narration.length;
       if (beat.say !== undefined && timing.narration) {

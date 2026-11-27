@@ -10,6 +10,19 @@ const inside = (inner: Rect, outer: Rect) =>
   inner.x + inner.width <= outer.x + outer.width &&
   bottom(inner) <= bottom(outer);
 
+describe("stageRegions: the beat list", () => {
+  it("puts the list down the left, below the title, moves the content to its right, and drops the step band", () => {
+    const { title, step, list, content, safe } = stageRegions({ ...captions, list: true });
+    if (!list) throw new Error("the list is on");
+    expect(step).toBeUndefined();
+    expect(list.x).toBe(safe.x);
+    expect(list.y).toBeGreaterThan(bottom(title));
+    expect(content.x).toBeGreaterThan(list.x + list.width);
+    expect(content.x + content.width).toBe(safe.x + safe.width);
+    expect(content.y).toBeLessThanOrEqual(list.y);
+  });
+});
+
 describe("stageRegions", () => {
   it("keeps everything inside the 1920×1080 frame's 5% safe area", () => {
     const regions = stageRegions(captions);

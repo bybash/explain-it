@@ -199,6 +199,11 @@
           "default": true,
           "type": "boolean"
         },
+        "list": {
+          "default": false,
+          "description": "Lists the scene's step captions down the left side, the current one solid and the ones before it faded, in place of the step caption at the top (decision 048).",
+          "type": "boolean"
+        },
         "size": {
           "default": "M",
           "type": "string",

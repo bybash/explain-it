@@ -102,6 +102,7 @@ export const drawnShapes = (frame: ParentNode, graph: Graph): Shape[] => {
   const overlays: readonly [string, Extract<Shape, { kind: "overlay" }>["role"], string?][] = [
     [".scene-title .scene-title-chip", "title"],
     [".step-caption .caption-text", "step"],
+    [".list-line .caption-text", "step"],
     [".narration-caption .caption-text", "narration"],
     [".overlay.callout", "callout"],
     [".overlay.badge", "badge"],

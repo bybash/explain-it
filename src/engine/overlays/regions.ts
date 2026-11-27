@@ -1,5 +1,5 @@
 import { SAFE_MARGIN, STAGE } from "../../schema/checks.ts";
-import type { Config, Logo } from "../../schema/config.ts";
+import { type Config, type Logo, listsSteps } from "../../schema/config.ts";
 
 /** An axis-aligned box in stage pixels. */
 export type Rect = {
@@ -14,8 +14,10 @@ export type StageRegions = {
   /** The frame minus the safe margin; nothing is drawn outside it. */
   readonly safe: Rect;
   readonly title: Rect;
-  /** Missing when step captions are off. */
+  /** Missing when step captions are off, or listed (`list`). */
   readonly step?: Rect;
+  /** The beat list's column down the left, when the captions are listed (decision 048). */
+  readonly list?: Rect;
   /** Missing when narration captions are off. */
   readonly narration?: Rect;
   /** What is left for nodes, edges and callouts. */
@@ -39,6 +41,8 @@ const TITLE_FONT = 22;
 export const LINE_HEIGHT = 1.3;
 /** Narration shows at most this many lines at once; longer lines are split into cues (beats/cues.ts). */
 export const NARRATION_LINES = 2;
+/** How much of the safe area's width the beat list takes, when the captions are listed. */
+const LIST_SHARE = 0.3;
 /** Space between bands, and between a band and the content. */
 const GAP = 24;
 /** The title chip's padding above and below its text. */
@@ -83,7 +87,8 @@ export const stageRegions = (
 
   const title = band(safe.y, lines(TITLE_FONT, 1) + 2 * TITLE_PADDING);
   let top = title.y + title.height;
-  const step = captions.step ? band(top + GAP / 2, lines(font.step, 1)) : undefined;
+  const listed = listsSteps(captions);
+  const step = captions.step && !listed ? band(top + GAP / 2, lines(font.step, 1)) : undefined;
   if (step) top = step.y + step.height;
 
   let bottom = safe.y + safe.height;
@@ -94,12 +99,20 @@ export const stageRegions = (
   if (narration) bottom = narration.y - GAP;
 
   const contentTop = top + GAP;
+  const width = safe.width * LIST_SHARE;
+  const list = listed
+    ? { x: safe.x, y: contentTop, width, height: bottom - contentTop }
+    : undefined;
+  const content = band(contentTop, bottom - contentTop);
   const regions = {
     safe,
     title,
     ...(step ? { step } : {}),
+    ...(list ? { list } : {}),
     ...(narration ? { narration } : {}),
-    content: band(contentTop, bottom - contentTop),
+    content: list
+      ? { ...content, x: list.x + list.width + GAP, width: content.width - list.width - GAP }
+      : content,
     fonts: { title: TITLE_FONT, ...font },
   };
   return logoOnEveryFrame ? clearOf(regions, logoBox(logoOnEveryFrame)) : regions;
@@ -109,7 +122,8 @@ const overlaps = (a: Rect, b: Rect): boolean =>
   a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
 
 /**
- * Keeps the regions clear of the logo's box. The title and step caption read
+ * Keeps the regions clear of the logo's box (the beat list, down the left,
+ * never meets it). The title and step caption read
  * from the left, so they lose their right end; the narration is centred, so
  * it loses both ends and stays centred. The content gives up the rows the
  * logo is in.

@@ -770,3 +770,33 @@ describe("buildBeats: a scene whose dims went semi-transparent", () => {
       expect(at(t, edgeTarget(scoped(scene.id, edge))).dim ?? 0, edge).toBe(0);
   });
 });
+
+describe("buildBeats: the beat list", () => {
+  const plan = buildBeats(storyboard, graph, { list: true });
+  const at = seeker(plan);
+  const items = plan.overlays.filter((o) => o.kind === "list");
+  const scene = spanOf(plan.scenes, "sign_in");
+  const firstBeats = storyboard.scenes[0]?.beats ?? [];
+
+  it("lists each beat's caption from its start to its scene's end, in place of the step captions", () => {
+    expect(plan.overlays.filter((o) => o.kind === "step")).toEqual([]);
+    expect(items).toHaveLength(plan.beats.length);
+    const first = items[0];
+    expect(first).toMatchObject({
+      scene: "sign_in",
+      text: firstBeats[0]?.caption,
+      index: 0,
+      at: 0,
+    });
+    expect(first?.until).toBeCloseTo(scene.end + transition);
+    expect(items[1]).toMatchObject({ index: 1 });
+  });
+
+  it("keeps the current beat's line solid and fades the ones before it", () => {
+    const [first, second] = plan.beats;
+    if (!first || !second) throw new Error("the example has beats");
+    const line = overlayTarget("list:start");
+    expect(at((first.start + first.end) / 2, line).faded ?? 0).toBe(0);
+    expect(at(second.end, line).faded).toBe(1);
+  });
+});

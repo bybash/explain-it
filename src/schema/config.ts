@@ -277,6 +277,12 @@ export const ConfigSchema = z
       .strictObject({
         narration: z.boolean().default(true),
         step: z.boolean().default(true),
+        list: z
+          .boolean()
+          .default(false)
+          .describe(
+            "Lists the scene's step captions down the left side, the current one solid and the ones before it faded, in place of the step caption at the top (decision 048).",
+          ),
         size: z.enum(CAPTION_SIZES).default("M"),
       })
       .prefault({}),
@@ -305,6 +311,9 @@ export const ConfigSchema = z
   .describe("Style and output settings. Every field has a default.");
 
 export type Config = z.output<typeof ConfigSchema>;
+
+/** Whether the step captions are drawn as the beat list: only when they are drawn at all (decision 048). */
+export const listsSteps = (captions: Config["captions"]): boolean => captions.step && captions.list;
 /** How the narration is spoken: whether, with which voice, how fast. */
 export type VoiceConfig = Config["voice"];
 export type CustomPalette = z.output<typeof CustomPaletteSchema>;

@@ -4,6 +4,7 @@
 //   ?fallback   moves "user" by hand, so "click" takes the fallback route
 //   ?palette=ocean&mode=dark&font=barlow   another theme; the example's config by default
 //   ?angle=wide                             another angle: isometric, wide or high
+//   ?list=on                                the step captions listed down the left side
 //   ?size=L     caption size S, M or L;  ?captions=off  no step or narration captions
 //   ?logo=all   the logo on every frame;  ?logo=bottom  in the bottom-right corner;  ?logo=off  none
 //   ?cards=title  only the title card (it closes the video too);  ?cards=end  only the end card;  ?cards=none
@@ -61,6 +62,7 @@ const config: Config = {
     size: CAPTION_SIZES.find((s) => s === params.get("size")) ?? example.captions.size,
     step: captionsOn && example.captions.step,
     narration: captionsOn && example.captions.narration,
+    list: params.get("list") === "on" || example.captions.list,
   },
 };
 

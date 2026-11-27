@@ -33,13 +33,14 @@ export const readingProblems = (plan: BeatPlan): ReadingProblem[] => {
   const beats = new Map(plan.beats.map((b) => [b.id, b]));
   const captions = [
     ...plan.overlays.flatMap((o) =>
-      o.kind === "step"
+      o.kind === "step" || o.kind === "list"
         ? [
             {
-              beat: beats.get(o.id.replace(/^step:/, "")),
+              beat: beats.get(o.id.replace(/^(step|list):/, "")),
               text: o.text,
+              // A line of the beat list stays on screen, but is read while its beat is on.
               at: o.at,
-              until: o.until,
+              until: o.kind === "list" ? o.fadesAt : o.until,
               kind: "step" as const,
             },
           ]
