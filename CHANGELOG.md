@@ -3,6 +3,14 @@
 What each release adds, for people who use explAIn-it. The plan and the
 reasons are in [`ROADMAP.md`](ROADMAP.md) and [`docs/decisions/`](docs/decisions/README.md).
 
+## 0.1.1
+
+- **The start-up line gives the address to open.** In Docker it said
+  `http://0.0.0.0:3000`, which the app refuses; it now says
+  `open http://127.0.0.1:3000`.
+- **The README's demo plays inline** as a GIF of the checkout example, and
+  links the full video on the release.
+
 ## 0.1.0
 
 The first release: a described flow becomes an isometric explainer video
