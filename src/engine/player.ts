@@ -36,6 +36,7 @@ import { renderScene } from "./iso/svg.ts";
 import { nodeTarget, zoneTarget } from "./iso/tweens.ts";
 import { type OverlayDrawing, renderOverlays } from "./overlays/html.ts";
 import { type StageRegions, stageRegions } from "./overlays/regions.ts";
+import { wrappedLines } from "./overlays/wrap.ts";
 import { drawnShapes } from "./shapes.ts";
 import { applyTheme, loadFont } from "./theme/apply.ts";
 import { fontFor } from "./theme/fonts.ts";
@@ -153,25 +154,29 @@ const drawCard = (
 };
 
 /**
- * The regions with a two-line step band at the top when a step caption does
- * not fit on one line in the video's font (decision 049); the font is loaded
- * first, so the measure is the one the page draws with.
+ * The regions with a step band as tall as the longest step caption needs,
+ * wrapped at the band's width in the video's font (decision 049); the font is
+ * loaded first, so the measure is the one the page draws with.
  */
 const withStepLines = (
   regions: StageRegions,
   storyboard: Storyboard,
   family: string,
-  twoLines: (lines: 2) => StageRegions,
+  sized: (lines: number) => StageRegions,
 ): StageRegions => {
-  if (regions.place !== "top" || !regions.step) return regions;
+  const band = regions.step;
+  if (!band) return regions;
   const context = document.createElement("canvas").getContext("2d");
   if (!context) return regions;
   context.font = `700 ${regions.fonts.step}px "${family}"`;
-  const width = regions.step.width;
-  const tooLong = storyboard.scenes.some((scene) =>
-    scene.beats.some((beat) => context.measureText(beat.caption).width > width),
+  const measure = (text: string) => context.measureText(text).width;
+  const needed = Math.max(
+    1,
+    ...storyboard.scenes.flatMap((scene) =>
+      scene.beats.map((beat) => wrappedLines(beat.caption, band.width, measure)),
+    ),
   );
-  return tooLong ? twoLines(2) : regions;
+  return needed === 1 ? regions : sized(needed);
 };
 
 type Drawing = {

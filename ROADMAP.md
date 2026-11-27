@@ -335,9 +335,11 @@ publish workflow for the first time), and making the GHCR package public.
 
 ### Not placed yet, from 3.20
 
-- In the bottom-left corner (42% of the width), a step caption at the
-  60-character limit in size L can need three lines; it is cut at two,
-  and no check says so.
+- ✅ In the bottom-left corner (42% of the width), a step caption at the
+  60-character limit in size L could need three lines and was cut at two:
+  the player now wraps every step caption at the band's width, word by word
+  in the video's font, and gives the band the lines the longest one needs
+  (two at most at the top, three in the corner).
 - With the titles at the bottom and the wide angle, the CI pipeline's area
   label leaves the frame by 12 px: the framing fits the area's outline, not
   its label, which lies outside it.

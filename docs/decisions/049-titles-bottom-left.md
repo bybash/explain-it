@@ -19,10 +19,11 @@ corner empty.
   layout that reaches into it is reported by the checks, as any overlap is.
 - **The beat list (048) rises from above the title**, the current line at
   the bottom and the oldest leaving from the top.
-- **At the top, the step band takes two lines only when a caption needs
-  them**: the player measures the step captions in the video's font, so a
-  video whose captions fit on one line keeps the band, and its look, as it
-  was.
+- **The step band takes the lines its longest caption needs**: the player
+  wraps each step caption at the band's width, word by word in the video's
+  font, as the page will. At the top that is one line or two, so a video
+  whose captions fit on one keeps the band, and its look, as it was; in the
+  corner it is two, or three for a long caption in a large size.
 - **The camera zooms to 3×** (was 2×), so the height given back can be used.
 
 ## Alternatives
