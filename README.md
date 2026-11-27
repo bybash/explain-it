@@ -19,13 +19,34 @@ a palette, font and voice, shows a live preview, and renders an MP4.
 voice and music), one of the three in [`examples/`](examples/), made from
 the assistant's own draft.
 
+## Try it
+
+The quickest way is Docker. You need Docker with at least 4 GB of memory,
+and an [OpenRouter](https://openrouter.ai) key for the chat (you can also
+paste a key in the app's Settings later, or make a video by hand with none):
+
+```sh
+docker run -p 127.0.0.1:3000:3000 \
+  -v ./projects:/app/projects -v ./cache:/app/cache -v ./config:/app/config \
+  -e OPENROUTER_API_KEY=... ghcr.io/bybash/explain-it:0.1.0
+```
+
+Open <http://127.0.0.1:3000>, create a project and describe a flow in the
+chat. The first time a voice is made, for the preview or a render, the
+voice model downloads (about 100 MB), which takes a minute or two. More on Docker, `npm` and your IDE below.
+
+Found a problem, or have an idea? [Open an issue](https://github.com/bybash/explain-it/issues/new/choose):
+what you did, what you expected, and what happened. A screenshot, the
+project folder or `checks.json` helps.
+
 ## Status
 
-Nearly at its first release (v0.1.0). In the web app, a chat with your own
-LLM key drafts the graph and the script with you; from your IDE, its agent
-can do the same over MCP. Either way the result is an MP4 with voice, music
-and captions, in a light or dark theme, made on your machine with `npm` or
-Docker. The design is in [`SPEC.md`](SPEC.md), how it is built in
+The first release, v0.1.0. In the web app, a chat with your own LLM key
+drafts the graph and the script with you; from your IDE, its agent can do
+the same over MCP, and explain a code change as before, after and what to
+review, with a GIF, a TL;DR card and a summary to post on the pull request.
+Either way the result is an MP4 with voice, music and captions, in a light
+or dark theme, made on your machine with `npm` or Docker. The design is in [`SPEC.md`](SPEC.md), how it is built in
 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md), and the plan, one pull
 request at a time, in [`ROADMAP.md`](ROADMAP.md).
 
@@ -82,22 +103,24 @@ npx explain-it render examples/checkout
 ## Or run it with Docker
 
 The image carries Node, Chromium and ffmpeg, so Docker is all you need
-(on Windows, it is the way to run explAIn-it). Build it from this
-repository until the first release is published to GHCR:
+(on Windows, it is the way to run explAIn-it). It is published to GHCR for
+Intel and Arm; it is about 1.65 GB, pulled once:
 
 ```sh
-docker build -t explain-it .
 docker run -p 127.0.0.1:3000:3000 \
   -v ./projects:/app/projects -v ./cache:/app/cache -v ./config:/app/config \
-  -e OPENROUTER_API_KEY=... explain-it
+  -e OPENROUTER_API_KEY=... ghcr.io/bybash/explain-it:0.1.0
 ```
+
+Or build it from this repository: `docker build -t explain-it .`, then run
+`explain-it` in place of the GHCR name.
 
 Open <http://127.0.0.1:3000>. Give Docker at least 4 GB of memory: a render runs
 four Chrome browsers. The voice model downloads into `cache/` the
 first time; a key saved in Settings is kept in `config/.env`. On Linux, add
 `--user "$(id -u):$(id -g)"` when the folders you mount belong to another
 user than uid 1000. Render from the command line with
-`docker run --rm -v ./projects:/app/projects -v ./cache:/app/cache explain-it explain-it render projects/<name>`.
+`docker run --rm -v ./projects:/app/projects -v ./cache:/app/cache ghcr.io/bybash/explain-it:0.1.0 explain-it render projects/<name>`.
 To reach an LLM on your own machine (Ollama, LM Studio), use
 `http://host.docker.internal:<port>` as its base URL (on Linux, also pass
 `--add-host=host.docker.internal:host-gateway`).
@@ -106,7 +129,9 @@ To reach an LLM on your own machine (Ollama, LM Studio), use
 
 The app's own LLM (Settings) can be OpenRouter, Anthropic's API with a
 Claude key, or any OpenAI-compatible endpoint, including Ollama and LM
-Studio. Models tested for structured output:
+Studio. Pick the model from a list, in Settings or above the chat's message
+box: Claude, Gemini, GPT and others on OpenRouter, each with a word on what
+it suits, or type any model's id. Models tested for structured output:
 
 | Model | Endpoint | Tested |
 |---|---|---|
