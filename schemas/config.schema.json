@@ -371,6 +371,16 @@
         }
       ]
     },
+    "angle": {
+      "default": "isometric",
+      "description": "The angle the scenes are seen from: isometric; wide (from lower down, flatter, filling a 16:9 frame); or high (from higher up, for a tall layout).",
+      "type": "string",
+      "enum": [
+        "isometric",
+        "wide",
+        "high"
+      ]
+    },
     "camera": {
       "description": "Each scene's camera, by scene id; a scene not named is framed as it fits.",
       "type": "object",

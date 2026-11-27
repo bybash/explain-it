@@ -3,6 +3,7 @@
 //   ?t=4.5      a still at 4.5 s instead of playing
 //   ?fallback   moves "user" by hand, so "click" takes the fallback route
 //   ?palette=ocean&mode=dark&font=barlow   another theme; the example's config by default
+//   ?angle=wide                             another angle: isometric, wide or high
 //   ?size=L     caption size S, M or L;  ?captions=off  no step or narration captions
 //   ?logo=all   the logo on every frame;  ?logo=bottom  in the bottom-right corner;  ?logo=off  none
 //   ?cards=title  only the title card (it closes the video too);  ?cards=end  only the end card;  ?cards=none
@@ -11,7 +12,7 @@ import graphJson from "../examples/oauth-login/graph.json" with { type: "json" }
 import layoutJson from "../examples/oauth-login/layout.json" with { type: "json" };
 import storyboardJson from "../examples/oauth-login/storyboard.json" with { type: "json" };
 import { expose, mountPlayer } from "../src/engine/player.ts";
-import { CAPTION_SIZES, type Config, parseConfig } from "../src/schema/config.ts";
+import { ANGLES, CAPTION_SIZES, type Config, parseConfig } from "../src/schema/config.ts";
 import { orThrow } from "../src/schema/errors.ts";
 import { parseGraph } from "../src/schema/graph.ts";
 import { type Layout, parseLayout } from "../src/schema/layout.ts";
@@ -55,6 +56,7 @@ const config: Config = {
   ...(cards ? { cards } : {}),
   theme: { ...example.theme, palette: params.get("palette") ?? example.theme.palette },
   font: params.get("font") ?? example.font,
+  angle: ANGLES.find((a) => a === params.get("angle")) ?? example.angle,
   captions: {
     size: CAPTION_SIZES.find((s) => s === params.get("size")) ?? example.captions.size,
     step: captionsOn && example.captions.step,

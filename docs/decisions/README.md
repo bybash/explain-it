@@ -56,3 +56,4 @@ later record supersedes an earlier one and says so.
 | [044](044-framing.md) | Framing: the scene number, the title card and the camera |
 | [045](045-badges-and-arrowheads.md) | Badges as tags, and arrowheads in sight |
 | [046](046-golden-stills.md) | Golden stills in the Docker image |
+| [047](047-angle.md) | The angle the scenes are seen from |
