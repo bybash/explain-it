@@ -318,6 +318,15 @@ describe("set_storyboard", () => {
 });
 
 describe("set_style", () => {
+  it("sets the angle the scenes are seen from", async () => {
+    const slug = await exampleProject();
+    await succeeds("set_style", { slug, config: { angle: "wide" } });
+    expect((await succeeds("get_project", { slug })).config.angle).toBe("wide");
+    expect(await fails("set_style", { slug, config: { angle: "sideways" } })).toEqual(
+      expect.arrayContaining([expect.stringMatching(/^config\.angle: /)]),
+    );
+  });
+
   const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
   it("merges settings into config.json, imports the logo and returns a preview link", async () => {

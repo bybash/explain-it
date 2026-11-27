@@ -195,7 +195,7 @@ const framed = (
     ],
     regions.content,
   );
-  const view = { ...withCamera(fitted, regions.content, cameras[scene.id]), elevation };
+  const view = withCamera({ ...fitted, elevation }, regions.content, cameras[scene.id]);
   return { view, shape: shapeAt(view) };
 };
 

@@ -34,8 +34,6 @@ export const project = (point: GridPoint, view: View): ScreenPoint => {
       x: view.originX + across,
       y: view.originY + (point.x + point.y) * view.scale * 0.5 - point.z * view.scale,
     };
-  // How far down the floor goes for a unit across it; heights stand twice that, as in isometric,
-  // so a box hides as much of the floor behind it at any angle and routes stay in sight.
   const down = view.scale * COS_30 * Math.sin((view.elevation * Math.PI) / 180);
   return {
     x: view.originX + across,

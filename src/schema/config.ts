@@ -64,14 +64,10 @@ export const CARD_LIMITS = {
   credit: 80,
 } as const;
 
-/**
- * The angles a video's scenes can be seen from (decision 047): isometric; wide,
- * from lower down, flatter, so a layout fills a 16:9 frame; or high, from
- * higher up, for a tall layout.
- */
+/** The angles a video's scenes are drawn at (decision 047). */
 export const ANGLES = ["isometric", "wide", "high"] as const;
 export type Angle = (typeof ANGLES)[number];
-/** Degrees above the floor each angle looks down from; isometric is the engine's own. */
+/** The elevation, in degrees, whose floor depth each angle draws; isometric is the engine's own (about 35.3). */
 export const ANGLE_ELEVATIONS: Readonly<Record<Angle, number | undefined>> = {
   isometric: undefined,
   wide: 25,
@@ -299,7 +295,7 @@ export const ConfigSchema = z
       .enum(ANGLES)
       .default("isometric")
       .describe(
-        "The angle the scenes are seen from: isometric; wide (from lower down, flatter, filling a 16:9 frame); or high (from higher up, for a tall layout).",
+        "How the scenes are drawn: isometric; wide (flatter, so a layout fills a 16:9 frame); or high (deeper, for a tall layout).",
       ),
     camera: z
       .record(z.string(), CameraSchema)

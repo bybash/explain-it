@@ -1,25 +1,11 @@
 import { FONTS } from "../engine/theme/fonts.ts";
 import { PALETTES } from "../engine/theme/palettes.ts";
-import {
-  ANGLES,
-  type Angle,
-  type Config,
-  type LogoMode,
-  RESOLUTIONS,
-  THEME_MODES,
-} from "../schema/config.ts";
+import { ANGLES, type Config, type LogoMode, RESOLUTIONS, THEME_MODES } from "../schema/config.ts";
 import type { ValidationError } from "../schema/errors.ts";
 import type { Storyboard } from "../schema/storyboard.ts";
 import { CameraCard } from "./CameraCard.tsx";
-import { capitalised, THEME_MODE_LABELS } from "./labels.ts";
+import { ANGLE_LABELS, capitalised, THEME_MODE_LABELS } from "./labels.ts";
 import { CardFields, INPUT_CLASS, LABEL_CLASS, LogoFields, Section } from "./style-fields.tsx";
-
-/** What each angle is for, as the Look tab offers it (decision 047). */
-const ANGLE_LABELS: Readonly<Record<Angle, string>> = {
-  isometric: "Isometric",
-  wide: "Wide: from lower down, fills a 16:9 frame",
-  high: "High: from higher up, for a tall layout",
-};
 
 /** The cards in a tab: two to a row when the panel is wide enough. */
 export const CARDS_CLASS = "grid grid-cols-[1fr] items-start gap-4 @2xl:grid-cols-2";
@@ -94,7 +80,9 @@ export const LookTab = ({
         id="style-angle"
         className={INPUT_CLASS}
         value={draft.angle}
-        onChange={(e) => change({ ...draft, angle: e.target.value as Angle })}
+        onChange={(e) =>
+          change({ ...draft, angle: ANGLES.find((a) => a === e.target.value) ?? draft.angle })
+        }
       >
         {ANGLES.map((angle) => (
           <option key={angle} value={angle}>

@@ -232,9 +232,10 @@ gate, in the user's words where possible. The first three are slice 3.16
   right, up and down, so a graph fills the frame. In the neuron video the
   beat's title sits at the top left and the graph leaves space to the right
   and at the top; zoomed and moved, the graph could be larger.
-- ✅ Another angle as an option: a steeper view, about 60°, could fit a 16:9
-  frame better than isometric and leave room to zoom in. Slice 3.18: wide
-  (from lower down) is the angle that fits a 16:9 frame better; high is
+- ✅ Another angle as an option: "about 60°" could fit a 16:9 frame better
+  than isometric and leave room to zoom in. Slice 3.18: wide draws the floor
+  as from 25° above it (60° from the vertical is 30°), which fits a 16:9
+  frame better when the frame's height is what limits a layout; high is
   there for tall layouts (decision 047).
 - Or keep the angle and use the empty left side for the beat titles, listed
   from top to bottom: the current beat's title solid, the ones before it
@@ -319,6 +320,13 @@ a maintainer, and is listed as steps in [`docs/RELEASING.md`](docs/RELEASING.md)
 the licence check of the image's GPL and LGPL parts, uploading the demo
 video so the README plays it inline, the `v0.1.0` tag (which runs the
 publish workflow for the first time), and making the GHCR package public.
+
+### Not placed yet, from 3.18
+
+- At the high angle, labels and badges keep their size while the drawing
+  is stretched, so some meet: in the examples, an edge label over a zone's
+  label (18 px) and a badge over a node (22 px). The checks report them.
+- The golden stills cover isometric only; wide and high have stills by eye.
 
 ### Not placed yet, from 6.3
 

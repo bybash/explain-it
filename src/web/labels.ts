@@ -1,4 +1,4 @@
-import type { THEME_MODES } from "../schema/config.ts";
+import type { Angle, THEME_MODES } from "../schema/config.ts";
 import type { Gate } from "../schema/project.ts";
 
 /** How each gate is named in the app (SPEC, User flow). */
@@ -42,3 +42,10 @@ export const capitalised = (name: string): string => name.charAt(0).toUpperCase(
 /** "1 warning", "3 warnings": a count with its noun. */
 export const counted = (n: number, one: string, many = `${one}s`): string =>
   `${n} ${n === 1 ? one : many}`;
+
+/** What each angle is for, as the Look tab offers it (decision 047). */
+export const ANGLE_LABELS: Readonly<Record<Angle, string>> = {
+  isometric: "Isometric",
+  wide: "Wide: flatter, fills a 16:9 frame",
+  high: "High: deeper, for a tall layout",
+};

@@ -310,12 +310,12 @@ for frame capture, so what the user approves is what gets rendered.
 - **Isometric drawing.** One projection function maps grid positions to the
   screen. A node is three faces of a box with a flat top carrying the icon and
   label. The floor is a dotted grid. Elements are depth-sorted.
-  The `angle` setting sees the scenes from another height (decision 047):
-  isometric is the default; wide looks from lower down (25° above the
-  floor), so the floor is flatter and a layout fills a 16:9 frame with
-  larger boxes; high looks from higher up (50°), for a tall layout.
-  Widths stay the same; the floor and the boxes' heights are drawn shallower
-  or deeper together, so a box hides as much of the floor as in isometric.
+  The `angle` setting draws the scenes flatter or deeper than isometric
+  (decision 047): wide draws the floor as it looks from 25° above it, so a
+  layout fills a 16:9 frame with larger boxes; high as from 50°, for a tall
+  layout. Box heights keep isometric's ratio to the floor, so a box hides
+  as much of the floor as it does in isometric: wide and high are the
+  isometric picture squashed or stretched vertically, not a new viewpoint.
 - **Theme.** A palette (a preset or a custom palette) and a mode become CSS
   custom properties on the page; the stylesheet only refers to them. Presets
   carry a hand-picked dark variant; a custom palette without one gets a

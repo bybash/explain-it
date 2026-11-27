@@ -62,6 +62,20 @@ describe("fitView", () => {
 });
 
 describe("withCamera", () => {
+  it("keeps the angle the view is seen from", () => {
+    const fromLow = {
+      ...fitView(
+        [
+          { x: 0, y: 0 },
+          { x: 10, y: 5 },
+        ],
+        content,
+      ),
+      elevation: 25,
+    };
+    expect(withCamera(fromLow, content, { zoom: 1.2, x: 0.1, y: 0 }).elevation).toBe(25);
+  });
+
   const points = [
     { x: -10, y: 0 },
     { x: 10, y: 5 },
