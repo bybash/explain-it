@@ -90,6 +90,8 @@ export type Comparison = {
   readonly changed: number;
   readonly total: number;
   readonly diff: Buffer;
+  /** When the sizes differ, what they are; every pixel then counts as changed. */
+  readonly resized?: string;
 };
 
 export const compareStills = async (
@@ -135,9 +137,21 @@ export const compareStills = async (
         out.data[i + 3] = 255;
       }
       before.context.putImageData(out, 0, 0);
-      return { changed, total: width * height, diff: before.canvas.toDataURL("image/png") };
+      return {
+        changed,
+        total: width * height,
+        diff: before.canvas.toDataURL("image/png"),
+        resized: sizeChanged
+          ? `${second.width}×${second.height}, where the golden still is ${width}×${height}`
+          : "",
+      };
     },
     { a: dataUrl(golden), b: dataUrl(actual), channel: GOLDEN_TOLERANCE.channel },
   );
-  return { changed: result.changed, total: result.total, diff: pngOf(result.diff) };
+  return {
+    changed: result.changed,
+    total: result.total,
+    diff: pngOf(result.diff),
+    ...(result.resized ? { resized: result.resized } : {}),
+  };
 };

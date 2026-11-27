@@ -318,6 +318,17 @@ that finishes it.
   the first `v*` tag runs it. A new GHCR package is private; make
   `ghcr.io/bybash/explain-it` public after the first publish.
 
+### Not placed yet, from 6.3
+
+- The golden stills are light only: a regression that shows only in dark
+  passes CI. A dark still of each example's busiest beat would catch most.
+- A still fails past about 500 changed pixels at 960 px: one arrowhead or
+  a short label can change by less.
+- The CI smoke test starts the image and checks that it answers, but does
+  not render in it: that needs the voice model (about 300 MB) or a project
+  with the voice off. The render test runs in the test stage, which shares
+  the image's browser and ffmpeg.
+
 ### Not placed yet, from 3.16
 
 - The Camera card has no browser test of its own (3.16 agreed the pure,

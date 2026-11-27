@@ -2,6 +2,17 @@
 # The voice model is not in it: the voice downloads it into /app/cache on first use.
 # How to run it: README, "Or run it with Docker". Licences: NOTICE.md.
 
+# Node with Chromium, ffmpeg and tini, shared by the tests and the app, and
+# installed before any source is copied, so a change to the code keeps the
+# same browser (the golden stills are drawn with it; decision 046). Chromium
+# renders, ffmpeg encodes and measures loudness, and tini passes on signals
+# and reaps the Chrome processes a render leaves behind.
+FROM node:24-bookworm-slim AS browser
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends chromium ffmpeg tini \
+  && rm -rf /var/lib/apt/lists/*
+ENV CHROME_PATH=/usr/bin/chromium
+
 # The web app and the render page, built with the dev dependencies (Vite).
 FROM node:24-bookworm-slim AS build
 WORKDIR /app
@@ -12,18 +23,11 @@ RUN npm run build && npm run build:engine
 
 # The tests that need Chromium and ffmpeg, as CI runs them (6.3): the golden
 # stills, the render test and the layout repair, in the image's own browser.
-FROM build AS test
-RUN apt-get update \
-  && apt-get install -y --no-install-recommends chromium ffmpeg \
-  && rm -rf /var/lib/apt/lists/*
-ENV CHROME_PATH=/usr/bin/chromium
+FROM browser AS test
+WORKDIR /app
+COPY --from=build /app /app
 
-FROM node:24-bookworm-slim
-# Chromium renders, ffmpeg encodes and measures loudness, and tini passes on
-# signals and reaps the Chrome processes a render leaves behind.
-RUN apt-get update \
-  && apt-get install -y --no-install-recommends chromium ffmpeg tini \
-  && rm -rf /var/lib/apt/lists/*
+FROM browser
 WORKDIR /app
 COPY package.json package-lock.json .npmrc ./
 # Without Vite, a render uses the page built above (src/render/page.ts). The
@@ -48,8 +52,7 @@ ENV NODE_ENV=production \
   PORT=3000 \
   PROJECTS_DIR=/app/projects \
   CACHE_DIR=/app/cache \
-  ENV_FILE=/app/config/.env \
-  CHROME_PATH=/usr/bin/chromium
+  ENV_FILE=/app/config/.env
 USER node
 EXPOSE 3000
 VOLUME ["/app/projects", "/app/cache", "/app/config"]

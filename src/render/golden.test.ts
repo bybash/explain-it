@@ -17,9 +17,9 @@ import { launchBrowser } from "./render.ts";
  * the stills kept in golden/. They are made in the Docker image's Chromium
  * and fonts, so they run there only, where GOLDEN_STILLS=1 is set: in CI and
  * with `npm run golden:check`. A still that differs is written, with an image of
- * the difference, to GOLDEN_OUT (golden-out/ by default).
+ * the difference, to golden-out/.
  */
-const OUT = resolve(process.env.GOLDEN_OUT ?? "golden-out");
+const OUT = resolve("golden-out");
 
 describe.skipIf(process.env.GOLDEN_STILLS !== "1")("golden stills", () => {
   let build: RenderPageBuild;
@@ -38,6 +38,16 @@ describe.skipIf(process.env.GOLDEN_STILLS !== "1")("golden stills", () => {
     await build?.remove();
   });
 
+  it("keeps golden stills only for the examples there are", () => {
+    const kept = existsSync(GOLDEN_DIR)
+      ? readdirSync(GOLDEN_DIR, { withFileTypes: true })
+          .filter((entry) => entry.isDirectory())
+          .map((entry) => entry.name)
+      : [];
+    expect(exampleNames().length).toBeGreaterThan(0);
+    expect(kept.sort()).toEqual(exampleNames());
+  });
+
   it.each(exampleNames())(
     "%s looks as its golden stills do",
     async (name) => {
@@ -54,7 +64,11 @@ describe.skipIf(process.env.GOLDEN_STILLS !== "1")("golden stills", () => {
         const compared = await compareStills(tools, readFileSync(file), still.png);
         if (compared.changed <= compared.total * GOLDEN_TOLERANCE.share) continue;
         const share = ((100 * compared.changed) / compared.total).toFixed(2);
-        problems.push(`${still.name}: ${share}% of its pixels changed`);
+        problems.push(
+          compared.resized
+            ? `${still.name}: ${compared.resized}`
+            : `${still.name}: ${share}% of its pixels changed`,
+        );
         mkdirSync(join(OUT, name), { recursive: true });
         writeFileSync(join(OUT, name, `${still.name}.png`), still.png);
         writeFileSync(join(OUT, name, `${still.name}-diff.png`), compared.diff);
