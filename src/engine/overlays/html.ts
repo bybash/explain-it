@@ -141,8 +141,9 @@ const LIST_FADE = 0.55;
 const LIST_GAP = 18;
 
 /**
- * Stacks each scene's list lines down the list's column, in order, the lines
- * on screen only. When they do not fit the column, the oldest (faded) ones
+ * Stacks each scene's list lines in the list's column, in order, the lines
+ * on screen only: down from its top, or, in the bottom-left corner, up to its
+ * bottom. When they do not fit the column, the oldest (faded) ones
  * leave from the top and the rest move up, so a long scene's list never
  * runs into the narration. It depends only on which lines are on screen, so
  * a frame is the same however it was reached.
@@ -166,7 +167,9 @@ const listFitter = (root: HTMLElement, regions: StageRegions): (() => void) => {
         total -= (shown[dropped]?.height ?? 0) + LIST_GAP;
         dropped++;
       }
-      let top = column.y;
+      // At the top the list hangs from the column's top; in the bottom-left corner it rises from its bottom.
+      let top =
+        regions.place === "bottom" ? column.y + column.height - Math.max(0, total) : column.y;
       for (const [i, line] of shown.entries()) {
         if (i < dropped) {
           line.el.style.visibility = "hidden";
@@ -225,7 +228,9 @@ const draw = (
     case "narration": {
       const rect = regions[overlay.kind];
       if (!rect) return [];
-      const band = div(`overlay caption ${overlay.kind}-caption`, root);
+      // In the bottom-left corner, a step caption sits on the bottom of its band, over the narration.
+      const corner = overlay.kind === "step" && regions.place === "bottom" ? " in-corner" : "";
+      const band = div(`overlay caption ${overlay.kind}-caption${corner}`, root);
       positionAt(band, rect);
       div("caption-text", band, overlay.text);
       return [band];

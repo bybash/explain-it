@@ -229,8 +229,9 @@ type Config = {
   font: string;                         // a bundled font id or an uploaded font file
   pacing: "relaxed" | "normal" | "brisk";                   // how unhurried the video is; "relaxed" by default
   voice: { enabled: boolean; id: string; speed: number };   // a kokoro voice, e.g. "af_heart"
-  captions: { narration: boolean; step: boolean; list: boolean; size: "S" | "M" | "L" };
+  captions: { narration: boolean; step: boolean; list: boolean; size: "S" | "M" | "L"; place: "top" | "bottom" };
                                         // list: the step captions down the left side (off by default)
+                                        // place: the scene title and step captions at the top (default) or bottom left
   music: { enabled: boolean; mood: "calm" | "upbeat" | "technical"; seed: number; volumeDb: number }; // volumeDb: under the voice, −12 by default
   output: { resolution: "1080p" | "720p" };
   cards?: {
@@ -344,7 +345,13 @@ for frame capture, so what the user approves is what gets rendered.
   column on the left, a third of the width, under the scene title: each
   beat's caption appears as its beat starts and stays to the scene's end,
   solid while its beat is on and faded to 45% after, and the content moves
-  to the right of the column. A callout card
+  to the right of the column. With `captions.place` at "bottom" (decision 049), the
+  scene title and the step caption go in the bottom-left corner (42% of the
+  width), above the narration, the step caption on up to two lines, and the
+  scene is framed in the whole height above the narration: an isometric
+  layout usually leaves that corner empty, and the checks report it when it
+  does not. The beat list then rises from above the title, the current line
+  at the bottom. A callout card
   sits beside its node, to the right if that side is free, else the left,
   above or below, sliding along a side before covering a box or an edge
   label. A badge stands on its node's back corner: a tag with pointed ends,

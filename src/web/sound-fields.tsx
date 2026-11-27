@@ -1,4 +1,5 @@
 import {
+  CAPTION_PLACES,
   CAPTION_SIZES,
   type Config,
   MUSIC_MOODS,
@@ -193,6 +194,20 @@ export const CaptionsCard = (form: Form) => {
         />
         Listed down the left, the current one solid
       </label>
+      <span className={LABEL_CLASS}>Scene title and step captions</span>
+      <div className={RADIOS_CLASS} role="radiogroup" aria-label="Where the titles go">
+        {CAPTION_PLACES.map((place) => (
+          <label key={place} className="flex items-center gap-2">
+            <input
+              type="radio"
+              name="style-caption-place"
+              checked={captions.place === place}
+              onChange={() => set({ place })}
+            />
+            {CAPTION_PLACE_LABELS[place]}
+          </label>
+        ))}
+      </div>
       <span className={LABEL_CLASS}>Size</span>
       <div className={RADIOS_CLASS} role="radiogroup" aria-label="Caption size">
         {CAPTION_SIZES.map((size) => (
@@ -210,6 +225,9 @@ export const CaptionsCard = (form: Form) => {
     </Section>
   );
 };
+
+/** Where the scene title and the step captions go, as the Captions card offers it (decision 049). */
+const CAPTION_PLACE_LABELS = { top: "At the top", bottom: "Bottom left, two lines" } as const;
 
 /** The music: its mood, which take of it, how loud under the voice, with a sample. */
 export const MusicCard = ({ player, ...form }: Form & { player: SamplePlayer }) => {

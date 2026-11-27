@@ -207,6 +207,10 @@ body {
   -webkit-line-clamp: 3;
 }
 
+.step-caption.in-corner {
+  align-items: flex-end;
+}
+
 .narration-caption {
   align-items: flex-end;
   justify-content: center;

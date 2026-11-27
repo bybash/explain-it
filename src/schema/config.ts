@@ -64,6 +64,9 @@ export const CARD_LIMITS = {
   credit: 80,
 } as const;
 
+/** Where the scene title and the step captions go (decision 049). */
+export const CAPTION_PLACES = ["top", "bottom"] as const;
+
 /** The angles a video's scenes are drawn at (decision 047). */
 export const ANGLES = ["isometric", "wide", "high"] as const;
 export type Angle = (typeof ANGLES)[number];
@@ -284,6 +287,12 @@ export const ConfigSchema = z
             "Lists the scene's step captions down the left side, the current one solid and the ones before it faded, in place of the step caption at the top (decision 048).",
           ),
         size: z.enum(CAPTION_SIZES).default("M"),
+        place: z
+          .enum(CAPTION_PLACES)
+          .default("top")
+          .describe(
+            "Where the scene title and the step captions go: at the top, or in the bottom-left corner, above the narration, so the scene is framed in the whole height and the step captions can take two lines (decision 049).",
+          ),
       })
       .prefault({}),
     music: MusicSchema.prefault({}),

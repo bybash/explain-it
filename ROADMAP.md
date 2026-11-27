@@ -112,6 +112,7 @@ The goal: the CLI renders a hand-written example to an MP4, with no LLM and no v
 | ✅ 3.11 | **Style gate panel, the sound**: voice picker with a sample, voice speed, pacing, captions, music | A voice sample plays from the panel |
 | ✅ 3.13 | **Preview gate checks**: run the checks from the panel, warnings that jump to their beat, the contact sheet | A warning in the example jumps to its beat |
 | ✅ 3.10 | **App styles in Tailwind**: Tailwind v4 through its Vite plugin; the colour tokens and the dark set become `@theme` values; `app.css` moves to utility classes, keeping plain CSS only for CodeMirror's and Mermaid's own classes; the video's styles (`src/engine/`) are untouched; a decision record | Screenshots of each page, light and dark, look the same before and after |
+| ✅ 3.20 | **Titles bottom left**: `captions.place` puts the scene title and a two-line step caption in the bottom-left corner, above the narration, the scene framed in the whole height; the beat list rises from there; in the Captions card | Stills at the bottom, with the wide angle and the list; oauth-login and checkout check clean at the bottom with the wide angle |
 | ✅ 3.19 | **Beat list**: `captions.list` lists the step captions down a column on the left, the current one solid and the ones before it faded, the content to its right; in the Captions card; measured and read by the checks | A still of the list; the plan's lines and their fade tested; oauth-login checks clean with it on |
 | ✅ 3.18 | **Angle**: an `angle` in `config.json` (isometric, wide or high) and in the Look tab; the projection seen from an elevation, isometric unchanged to the pixel | Wide and high stills of the example; isometric stills byte-identical to before |
 | ✅ 3.17 | **Badges and arrowheads**: a badge is a tag with pointed ends and a grey fill, apart from the edge label pills; an edge that arrives from behind its target stops just outside the box's outline, so its arrowhead is in sight | Stills show tags apart from pills, and arrowheads in sight on edges from behind |
@@ -251,6 +252,14 @@ From watching the examples rendered in 6.2.
 - ✅ Badges and zone labels did not fade with a dim: fixed in #87 (decision
   042), which the 6.2 videos had not yet included.
 
+## Feedback (2026-11-27, later)
+
+- ✅ With the wide angle, the titles at the top hold the scene down from a
+  bigger zoom, and a step caption cannot break onto a second line: titles
+  can go in the bottom-left corner, two lines for the step caption (3.20).
+- ✅ The beat list as an option: there since 3.19, and it rises from the
+  bottom-left corner when the titles are there (3.20).
+
 ## Carried over
 
 Work a finished slice left for a later one. Each list is removed by the slice
@@ -321,6 +330,15 @@ a maintainer, and is listed as steps in [`docs/RELEASING.md`](docs/RELEASING.md)
 the licence check of the image's GPL and LGPL parts, uploading the demo
 video so the README plays it inline, the `v0.1.0` tag (which runs the
 publish workflow for the first time), and making the GHCR package public.
+
+### Not placed yet, from 3.20
+
+- At the top, a step caption is still one line; two lines there would
+  need a band sized to the longest caption.
+- With the titles at the bottom and the wide angle, the CI pipeline's area
+  label leaves the frame by 12 px: the framing fits the area's outline, not
+  its label, which lies outside it.
+- No golden still covers the titles at the bottom.
 
 ### Not placed yet, from 3.19
 

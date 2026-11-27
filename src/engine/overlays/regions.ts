@@ -20,6 +20,8 @@ export type StageRegions = {
   readonly list?: Rect;
   /** Missing when narration captions are off. */
   readonly narration?: Rect;
+  /** Where the scene title and the step captions are: at the top, or in the bottom-left corner (decision 049). */
+  readonly place: Config["captions"]["place"];
   /** What is left for nodes, edges and callouts. */
   readonly content: Rect;
   /** Font sizes in pixels, which the bands were measured for. */
@@ -41,6 +43,8 @@ const TITLE_FONT = 22;
 export const LINE_HEIGHT = 1.3;
 /** Narration shows at most this many lines at once; longer lines are split into cues (beats/cues.ts). */
 export const NARRATION_LINES = 2;
+/** How much of the safe area's width the bottom-left corner's title and step caption take. */
+const CORNER_SHARE = 0.42;
 /** How much of the safe area's width the beat list takes, when the captions are listed. */
 const LIST_SHARE = 0.3;
 /** Space between bands, and between a band and the content. */
@@ -81,6 +85,12 @@ export const stageRegions = (
   captions: Config["captions"],
   logoOnEveryFrame?: Logo["corner"],
 ): StageRegions => {
+  const regions = captions.place === "bottom" ? bottomLeft(captions) : atTop(captions);
+  return logoOnEveryFrame ? clearOf(regions, logoBox(logoOnEveryFrame)) : regions;
+};
+
+/** The title and the step caption at the top, the content under them (the default). */
+const atTop = (captions: Config["captions"]): StageRegions => {
   const safe = safeArea();
   const font = CAPTION_FONT[captions.size];
   const band = (y: number, height: number): Rect => ({ x: safe.x, y, width: safe.width, height });
@@ -91,12 +101,8 @@ export const stageRegions = (
   const step = captions.step && !listed ? band(top + GAP / 2, lines(font.step, 1)) : undefined;
   if (step) top = step.y + step.height;
 
-  let bottom = safe.y + safe.height;
-  const narrationHeight = lines(font.narration, NARRATION_LINES);
-  const narration = captions.narration
-    ? band(bottom - narrationHeight, narrationHeight)
-    : undefined;
-  if (narration) bottom = narration.y - GAP;
+  const narration = narrationBand(captions, safe);
+  const bottom = narration ? narration.y - GAP : safe.y + safe.height;
 
   const contentTop = top + GAP;
   const width = safe.width * LIST_SHARE;
@@ -104,19 +110,75 @@ export const stageRegions = (
     ? { x: safe.x, y: contentTop, width, height: bottom - contentTop }
     : undefined;
   const content = band(contentTop, bottom - contentTop);
-  const regions = {
+  return {
     safe,
     title,
     ...(step ? { step } : {}),
     ...(list ? { list } : {}),
     ...(narration ? { narration } : {}),
-    content: list
-      ? { ...content, x: list.x + list.width + GAP, width: content.width - list.width - GAP }
-      : content,
+    place: "top",
+    content: list ? rightOf(content, list) : content,
     fonts: { title: TITLE_FONT, ...font },
   };
-  return logoOnEveryFrame ? clearOf(regions, logoBox(logoOnEveryFrame)) : regions;
 };
+
+/**
+ * The title and the step caption in the bottom-left corner, above the
+ * narration (decision 049): the scene is framed in the whole height, and a
+ * diamond-shaped layout usually leaves that corner empty; the checks say
+ * when it does not. The step caption may take two lines; the beat list, when
+ * on, rises above the title.
+ */
+const bottomLeft = (captions: Config["captions"]): StageRegions => {
+  const safe = safeArea();
+  const font = CAPTION_FONT[captions.size];
+  const narration = narrationBand(captions, safe);
+  const bottom = narration ? narration.y - GAP : safe.y + safe.height;
+  const corner = safe.width * CORNER_SHARE;
+  const listed = listsSteps(captions);
+
+  const stepHeight = lines(font.step, 2);
+  const step =
+    captions.step && !listed
+      ? { x: safe.x, y: bottom - stepHeight, width: corner, height: stepHeight }
+      : undefined;
+  const titleHeight = lines(TITLE_FONT, 1) + 2 * TITLE_PADDING;
+  const title = {
+    x: safe.x,
+    y: (step ? step.y - GAP / 2 : bottom) - titleHeight,
+    width: corner,
+    height: titleHeight,
+  };
+  const list = listed
+    ? { x: safe.x, y: safe.y, width: safe.width * LIST_SHARE, height: title.y - GAP - safe.y }
+    : undefined;
+  const content = { x: safe.x, y: safe.y, width: safe.width, height: bottom - safe.y };
+  return {
+    safe,
+    title,
+    ...(step ? { step } : {}),
+    ...(list ? { list } : {}),
+    ...(narration ? { narration } : {}),
+    place: "bottom",
+    content: list ? rightOf(content, list) : content,
+    fonts: { title: TITLE_FONT, ...font },
+  };
+};
+
+/** The narration's band along the bottom of the safe area, when it is on. */
+const narrationBand = (captions: Config["captions"], safe: Rect): Rect | undefined => {
+  const height = lines(CAPTION_FONT[captions.size].narration, NARRATION_LINES);
+  return captions.narration
+    ? { x: safe.x, y: safe.y + safe.height - height, width: safe.width, height }
+    : undefined;
+};
+
+/** The content to the right of the beat list's column. */
+const rightOf = (content: Rect, list: Rect): Rect => ({
+  ...content,
+  x: list.x + list.width + GAP,
+  width: content.width - list.width - GAP,
+});
 
 const overlaps = (a: Rect, b: Rect): boolean =>
   a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;

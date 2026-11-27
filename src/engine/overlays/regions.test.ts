@@ -10,6 +10,38 @@ const inside = (inner: Rect, outer: Rect) =>
   inner.x + inner.width <= outer.x + outer.width &&
   bottom(inner) <= bottom(outer);
 
+describe("stageRegions: titles at the bottom left", () => {
+  const bottomLeft = { ...captions, place: "bottom" as const };
+
+  it("puts the scene title and a two-line step caption in the bottom-left corner, above the narration", () => {
+    const { title, step, narration, safe, fonts } = stageRegions(bottomLeft);
+    if (!step || !narration) throw new Error("both captions are on by default");
+    for (const rect of [title, step]) {
+      expect(rect.x).toBe(safe.x);
+      expect(rect.width).toBeLessThan(safe.width / 2);
+    }
+    expect(bottom(title)).toBeLessThanOrEqual(step.y);
+    expect(bottom(step)).toBeLessThan(narration.y);
+    expect(step.height).toBeGreaterThanOrEqual(2 * fonts.step);
+  });
+
+  it("frames the scene in the whole height, from the top of the safe area to the narration", () => {
+    const { content, narration, safe } = stageRegions(bottomLeft);
+    if (!narration) throw new Error("the narration is on by default");
+    expect(content.y).toBe(safe.y);
+    expect(content.width).toBe(safe.width);
+    expect(bottom(content)).toBeLessThan(narration.y);
+  });
+
+  it("lists the beats above the scene title, filling from the bottom", () => {
+    const { list, title, step, place } = stageRegions({ ...bottomLeft, list: true });
+    if (!list) throw new Error("the list is on");
+    expect(step).toBeUndefined();
+    expect(place).toBe("bottom");
+    expect(bottom(list)).toBeLessThanOrEqual(title.y);
+  });
+});
+
 describe("stageRegions: the beat list", () => {
   it("puts the list down the left, below the title, moves the content to its right, and drops the step band", () => {
     const { title, step, list, content, safe } = stageRegions({ ...captions, list: true });

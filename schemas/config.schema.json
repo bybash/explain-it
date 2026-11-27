@@ -212,6 +212,15 @@
             "M",
             "L"
           ]
+        },
+        "place": {
+          "default": "top",
+          "description": "Where the scene title and the step captions go: at the top, or in the bottom-left corner, above the narration, so the scene is framed in the whole height and the step captions can take two lines (decision 049).",
+          "type": "string",
+          "enum": [
+            "top",
+            "bottom"
+          ]
         }
       },
       "additionalProperties": false
