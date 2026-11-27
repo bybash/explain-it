@@ -12,7 +12,10 @@ const isFitted = (camera: Camera) =>
   camera.x === FITTED_CAMERA.x &&
   camera.y === FITTED_CAMERA.y;
 
-/** One slider, in percent of the value it sets. */
+/** A share as a percent, to a tenth where it has one: a camera set over MCP keeps its precision. */
+const asPercent = (value: number) => `${Math.round(value * 1000) / 10}%`;
+
+/** One slider, in percent of the value it sets, a tenth of a percent at a step. */
 const Slider = ({
   id,
   label,
@@ -40,8 +43,8 @@ const Slider = ({
       className="mt-1.5 w-full accent-accent"
       min={Math.round(min * 100)}
       max={Math.round(max * 100)}
-      step={1}
-      value={Math.round(value * 100)}
+      step={0.1}
+      value={Math.round(value * 1000) / 10}
       onChange={(e) => set(Number(e.target.value) / 100)}
     />
   </>
@@ -79,9 +82,9 @@ export const CameraCard = ({
     editing(scene.id);
   };
   const { zoom, move } = CAMERA_LIMITS;
-  const percent = (value: number) => `${Math.round(value * 100)}%`;
+  const percent = asPercent;
   const signed = (less: string, more: string) => (value: number) =>
-    value === 0 ? "centred" : `${Math.round(Math.abs(value) * 100)}% ${value < 0 ? less : more}`;
+    value === 0 ? "centred" : `${asPercent(Math.abs(value))} ${value < 0 ? less : more}`;
   return (
     <Section title="Camera">
       <p className="text-muted text-sm">

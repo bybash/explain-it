@@ -332,8 +332,8 @@ publish workflow for the first time), and making the GHCR package public.
 
 - The Camera card has no browser test of its own (3.16 agreed the pure,
   schema and MCP seams, and stills by eye).
-- The camera's sliders show whole percents; a camera set more finely over
-  MCP shows rounded, and moving a slider rounds it.
+- ✅ The camera's sliders showed whole percents, so a camera set more
+  finely over MCP showed rounded; they now go by a tenth of a percent.
 - The layout repair's recording (5.6) holds only for some answers: three
   fresh recordings of the same prompt each left a zone label covered by
   about 12 px. Record it again only with `repair.test.ts` run after.
