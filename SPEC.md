@@ -836,8 +836,11 @@ comes later.
   each with light and dark variants.
 - Layout: elkjs (EPL-2.0, used as a dependency).
 - Tests: Vitest. LLM calls are recorded as fixtures and replayed in CI, so CI
-  needs no API key. Example projects are rendered to stills and compared
-  against golden images.
+  needs no API key. Each example's beats are drawn as stills (light, timed
+  by the estimated voice, 960 px wide) and compared with the golden stills
+  in `golden/` within a small tolerance; CI runs them, the render test and
+  the layout repair inside the Docker image's test stage, where the golden
+  stills are made, so the browser and fonts match (decision 046).
 - Lint and format: Biome.
 
 ### CLI
@@ -895,6 +898,7 @@ src/
   cli/         render and check
 assets/        bundled fonts with their licences (palettes are in src/engine/theme; icons come from lucide)
 examples/      oauth-login, ci-pipeline, checkout (approved projects)
+golden/        the examples' golden stills, one per beat
 schemas/       generated JSON Schemas
 docs/          ARCHITECTURE.md and other docs
 ```

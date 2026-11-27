@@ -136,14 +136,14 @@
               "except": ["gate", "lint", "tests", "build", "actions"]
             },
             {
-              "type": "flow",
-              "edge": "report_failure"
-            },
-            {
               "type": "badge",
               "node": "gate",
               "text": "blocked",
               "tone": "error"
+            },
+            {
+              "type": "flow",
+              "edge": "report_failure"
             }
           ]
         },

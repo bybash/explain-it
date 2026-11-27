@@ -3,20 +3,18 @@ import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:f
 import { connect } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { type Browser, chromium, type Page } from "playwright-core";
+import type { Browser, Page } from "playwright-core";
 import { build } from "vite";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { hasChrome } from "../render/chrome.testing.ts";
 import { isProjectOutput } from "../render/project-output.ts";
+import { launchBrowser } from "../render/render.ts";
 import { MAX_PROJECT_NAME } from "../schema/project.ts";
 import { clockTime } from "../web/preview-time.ts";
 import { CONVERSATION, CONVERSATION_PROJECT } from "./assistant-conversation.ts";
 import { DEFAULT_HOST } from "./listen.ts";
 
 // The web app in a real browser (AGENTS.md, Tests, layer 5): skipped without Chrome, as on CI.
-const hasChrome = await chromium
-  .launch({ channel: "chrome" })
-  .then((browser) => browser.close().then(() => true))
-  .catch(() => false);
 
 /** The preview's soundtrack is mastered with ffmpeg, as the render's is. */
 const hasFfmpeg = await new Promise<boolean>((done) =>
@@ -167,7 +165,7 @@ const flow = (
     await needFree(...ports);
     projectsDir = mkdtempSync(join(tmpdir(), "explain-it-web-"));
     server = await serve(projectsDir);
-    browser = await chromium.launch({ channel: "chrome" });
+    browser = await launchBrowser();
     page = await browser.newPage();
   }, 120_000);
   afterAll(async () => {

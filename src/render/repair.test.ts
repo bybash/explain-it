@@ -1,7 +1,6 @@
 import { cpSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { chromium } from "playwright-core";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { problemKey, sayProblem } from "../checks/chat-report.ts";
 import { repairLayout } from "../llm/editing.ts";
@@ -13,13 +12,9 @@ import type { Graph } from "../schema/graph.ts";
 import type { Storyboard } from "../schema/storyboard.ts";
 import { laidOut } from "../server/graphs.ts";
 import { checkLayout } from "./check.ts";
+import { hasChrome } from "./chrome.testing.ts";
 import { loadProject } from "./load.ts";
 import { buildRenderPage, serveRenderPage } from "./page.ts";
-
-const hasChrome = await chromium
-  .launch({ channel: "chrome" })
-  .then((browser) => browser.close().then(() => true))
-  .catch(() => false);
 
 /** The layout problems Chrome finds in a project of these files, with the example's style. */
 const layoutProblems = async (url: string, files: { graph: Graph; storyboard: Storyboard }) => {

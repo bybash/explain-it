@@ -27,3 +27,50 @@ jobs:
       - run: npm run typecheck
       - run: npm run deps
       - run: npm test
+
+  # The tests that need Chromium and ffmpeg, which the runner above lacks
+  # (6.3): run in the Docker image's test stage, the same browser and fonts
+  # the golden stills were made with. Then the image itself is started.
+  image:
+    name: golden stills, renders and the image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: docker/setup-buildx-action@v4
+      - name: Build the test image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          target: test
+          tags: explain-it:test
+          load: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      # Every test of the renderer and the checks, so the ones that need
+      # Chromium or ffmpeg run, and the render test that drives the server,
+      # one file at a time: renders side by side outlast their time on the runner.
+      - name: Golden stills, the renders and the checks
+        run: >
+          docker run --rm -e GOLDEN_STILLS=1 -v "$PWD/golden-out:/app/golden-out" explain-it:test
+          npx vitest run --no-file-parallelism src/render src/server/render-e2e.test.ts
+      - name: Keep the stills that differ
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: golden-out
+          path: golden-out
+          if-no-files-found: ignore
+      - name: Build the image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          tags: explain-it:ci
+          load: true
+          cache-from: type=gha
+      - name: The image starts and answers
+        run: |
+          docker run -d --name explain-it -p 127.0.0.1:3000:3000 explain-it:ci
+          for i in $(seq 1 30); do curl -sf -o /dev/null http://127.0.0.1:3000/ && break; sleep 1; done
+          curl -sf http://127.0.0.1:3000/api/projects
+          docker exec explain-it explain-it 2>&1 | grep -q usage
+          docker rm -f explain-it

@@ -23,3 +23,4 @@ dev/
 **/contact-sheet.*
 *.log
 .DS_Store
+golden-out/

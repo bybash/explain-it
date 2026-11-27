@@ -68,6 +68,8 @@ npm run build:engine                               # build the render page into 
 npx explain-it render examples/oauth-login         # render a project to out/ (needs Chrome and ffmpeg)
 npx explain-it check examples/oauth-login          # all checks into checks.json, and contact-sheet.png (needs Chrome and ffmpeg)
 docker build -t explain-it .                       # the image: the app and the CLI with Chromium and ffmpeg (README, Docker)
+npm run golden                                     # make the examples' golden stills again, in the Docker test image (needs Docker)
+npm run golden:check                               # compare the examples with their golden stills, as CI does; differences go to golden-out/
 ```
 
 After changing anything in `src/schema/`, run `npm run schemas` and commit
@@ -167,7 +169,10 @@ golden still guards it.
 3. **Integration:** the server API against a temporary projects folder; MCP
    through an in-memory client; a 2-second render with real Chromium and
    ffmpeg.
-4. **Golden stills** of the examples, compared within a small tolerance.
+4. **Golden stills** of the examples, compared within a small tolerance, in
+   the Docker test image (`npm run golden:check`). After a change that
+   moves what the examples draw, make them again with `npm run golden` and
+   look at the difference before committing it.
 5. **End to end:** a few Playwright tests of the web UI, one per gate.
 
 Rules:

@@ -19,3 +19,5 @@ contact-sheet.jpg
 
 # npm run shots
 shots/
+# What the golden stills check writes when a still differs.
+golden-out/
