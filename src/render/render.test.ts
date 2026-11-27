@@ -2,7 +2,6 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { chromium } from "playwright-core";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { AUDIO_RATE } from "../audio/level.ts";
 import { encodeWav } from "../audio/wav.ts";
@@ -10,6 +9,7 @@ import { sheetLayout } from "../checks/sheet.ts";
 import { beatOptions, buildBeats } from "../engine/beats/build.ts";
 import { formatErrors } from "../schema/errors.ts";
 import { parseStoryboard } from "../schema/storyboard.ts";
+import { hasChrome } from "./chrome.testing.ts";
 import { FPS, frameTimes } from "./frames.ts";
 import { loadProject } from "./load.ts";
 import { buildRenderPage, serveRenderPage } from "./page.ts";
@@ -17,10 +17,6 @@ import { renderProject } from "./render.ts";
 
 // A real render needs Chrome and ffmpeg; without them the test is skipped, not failed.
 const hasFfmpeg = ["ffmpeg", "ffprobe"].every((tool) => spawnSync(tool, ["-version"]).status === 0);
-const hasChrome = await chromium
-  .launch({ channel: "chrome" })
-  .then((browser) => browser.close().then(() => true))
-  .catch(() => false);
 
 /** The example's graph and layout with a short storyboard: about four seconds. */
 const shortProject = async () => {

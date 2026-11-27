@@ -10,6 +10,14 @@ RUN npm ci
 COPY . .
 RUN npm run build && npm run build:engine
 
+# The tests that need Chromium and ffmpeg, as CI runs them (6.3): the golden
+# stills, the render test and the layout repair, in the image's own browser.
+FROM build AS test
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends chromium ffmpeg \
+  && rm -rf /var/lib/apt/lists/*
+ENV CHROME_PATH=/usr/bin/chromium
+
 FROM node:24-bookworm-slim
 # Chromium renders, ffmpeg encodes and measures loudness, and tini passes on
 # signals and reaps the Chrome processes a render leaves behind.

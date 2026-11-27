@@ -2,22 +2,18 @@ import { spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { chromium } from "playwright-core";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { sheetLayout } from "../checks/sheet.ts";
 import { beatOptions, buildBeats } from "../engine/beats/build.ts";
 import { CheckReportSchema } from "../schema/checks.ts";
 import { checkLayout, checkProjectFolder } from "./check.ts";
 import { checkedFilesKey } from "./check-files.ts";
+import { hasChrome } from "./chrome.testing.ts";
 import { loadProject, type ProjectFiles } from "./load.ts";
 import { buildRenderPage, serveRenderPage } from "./page.ts";
 
 // The whole check also measures a soundtrack, so it needs ffmpeg too.
 const hasFfmpeg = spawnSync("ffmpeg", ["-version"]).status === 0;
-const hasChrome = await chromium
-  .launch({ channel: "chrome" })
-  .then((browser) => browser.close().then(() => true))
-  .catch(() => false);
 
 const example = async (): Promise<ProjectFiles> => {
   const loaded = await loadProject(resolve("examples/oauth-login"));

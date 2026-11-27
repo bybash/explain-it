@@ -2,19 +2,15 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { chromium } from "playwright-core";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import graphJson from "../../examples/oauth-login/graph.json" with { type: "json" };
 import { fakeTts } from "../audio/fake-tts.testing.ts";
+import { hasChrome } from "../render/chrome.testing.ts";
 import { createApp } from "./app.ts";
 import { settingsStore } from "./settings.ts";
 
 // A real render needs Chrome and ffmpeg; without them the test is skipped, not failed.
 const hasFfmpeg = ["ffmpeg", "ffprobe"].every((tool) => spawnSync(tool, ["-version"]).status === 0);
-const hasChrome = await chromium
-  .launch({ channel: "chrome" })
-  .then((browser) => browser.close().then(() => true))
-  .catch(() => false);
 
 const { $schema: _schema, ...graph } = graphJson;
 

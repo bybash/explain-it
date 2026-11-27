@@ -32,7 +32,9 @@
     "shots:compare": "node scripts/compare-shots.ts",
     "layout": "node scripts/layout.ts",
     "music": "node scripts/music.ts",
-    "explain-it": "node src/cli/main.ts"
+    "explain-it": "node src/cli/main.ts",
+    "golden": "docker build --platform linux/amd64 --target test -t explain-it:test . && docker run --rm --platform linux/amd64 -v \"$PWD/golden:/app/golden\" explain-it:test node scripts/golden.ts",
+    "golden:check": "docker build --platform linux/amd64 --target test -t explain-it:test . && docker run --rm --platform linux/amd64 -e GOLDEN_STILLS=1 -v \"$PWD/golden-out:/app/golden-out\" explain-it:test npx vitest run src/render/golden.test.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.8",

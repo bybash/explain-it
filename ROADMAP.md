@@ -157,7 +157,7 @@ user works by hand or over MCP.
 |---|---|---|
 | ✅ 6.1 | **Docker**: a slim image with Chromium and ffmpeg, volumes for projects and cache, a GHCR publish workflow on tags | `docker run` works on a clean machine |
 | ✅ 6.2 | **Examples**: `ci-pipeline` and `checkout`, approved and rendered | All three examples render without a key |
-| 6.3 | **Golden stills in CI**: stills of each example compared against stored images | CI fails on a visual regression |
+| ✅ 6.3 | **Golden stills in CI**: stills of each example compared against stored images | CI fails on a visual regression |
 | 6.4 | **Docs**: README with a demo video, `docs/ARCHITECTURE.md`, final `CONTRIBUTING.md`, tested models list | A new contributor can run the app from the README alone |
 | 6.5 | **Release v0.1.0**: changelog, tag, image | The release is published |
 
@@ -309,15 +309,6 @@ that finishes it.
   chat's problems (`wordProblems`) read the same quick checks each their
   own way; a Fix in the editor beside a hint could share the chat's.
 
-### For 6.3 (golden stills in CI), from 1.9 and 6.1
-
-- The end-to-end render test skips itself without Chrome or ffmpeg, and CI
-  has no ffmpeg, so it never runs there. Golden stills need both: install
-  ffmpeg in CI, or run the stills in the Docker image.
-- Not checked yet: that the image's Chromium gives identical videos with 1
-  and 4 pages (`src/render/render.test.ts` in the image). The example
-  rendered in the container looks right by eye.
-
 ### For 6.5 (release), from 6.1
 
 - Before the first publish, check the image against the GPL and LGPL
@@ -326,9 +317,6 @@ that finishes it.
 - The publish workflow (`.github/workflows/docker.yml`) has not run yet:
   the first `v*` tag runs it. A new GHCR package is private; make
   `ghcr.io/bybash/explain-it` public after the first publish.
-- No CI job builds the image before a release (6.1 checked it by hand). A
-  smoke test (build, run, answer, render the example) on PRs that change
-  the `Dockerfile` would catch a broken image earlier.
 
 ### Not placed yet, from 3.16
 
