@@ -1,6 +1,7 @@
 import {
   type Config,
   type EndCard,
+  listsSteps,
   type Pace,
   TITLE_CARD_AUTO,
   type TitleCard,
@@ -11,7 +12,7 @@ import type { BADGE_TONES, Storyboard } from "../../schema/storyboard.ts";
 import { EDGE_TIMING, flowTweens } from "../edges/flow.ts";
 import { appearTweens, highlightTweens, nodeTarget, zoneTarget } from "../iso/tweens.ts";
 import { sceneTitleText } from "../overlays/html.ts";
-import { type Entrance, OVERLAY_TIMING, overlayTarget, overlayTweens } from "../overlays/tweens.ts";
+import { type Entrance, listFadeTween, overlayTweens } from "../overlays/tweens.ts";
 import type { TweenSpec } from "../timeline.ts";
 import { splitCues } from "./cues.ts";
 import { type Focus, focusTweens } from "./focus.ts";
@@ -142,7 +143,7 @@ export const beatOptions = (config: Config, narration?: Narration): BuildOptions
     ...(title ? { titleCard: title } : {}),
     ...(end ? { endCard: end } : {}),
     ...(config.logo ? { logo: true } : {}),
-    ...(config.captions.list ? { list: true } : {}),
+    ...(listsSteps(config.captions) ? { list: true } : {}),
   };
 };
 
@@ -274,9 +275,10 @@ export const buildBeats = (
       if (!beat.actions.some((a) => a.type === "dim")) focuses.push({ at: beatStart });
       if (options.list) {
         // The line stays to the scene's end, fading once its beat is over (`faded`, 0..1).
+        const id = `list:${beat.id}`;
         show({
           kind: "list",
-          id: `list:${beat.id}`,
+          id,
           scene: scene.id,
           text: beat.caption,
           index: listed++,
@@ -284,15 +286,7 @@ export const buildBeats = (
           at: beatStart,
           until: layerGoneAt,
         });
-        if (beatEnd < end)
-          tweens.push({
-            target: overlayTarget(`list:${beat.id}`),
-            from: { faded: 0 },
-            to: { faded: 1 },
-            duration: OVERLAY_TIMING.exit,
-            ease: "inOutSine",
-            at: beatEnd,
-          });
+        if (beatEnd < end) tweens.push(listFadeTween(id, beatEnd));
       } else
         show({
           kind: "step",

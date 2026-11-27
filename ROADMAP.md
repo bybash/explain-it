@@ -328,7 +328,11 @@ publish workflow for the first time), and making the GHCR package public.
   examples, checkout gets a 9 px badge overlap and the CI pipeline's
   camera, tuned for the full width, puts Staging out of the frame. The
   checks report both; the examples keep the list off.
-- No golden still covers the beat list.
+- No golden still covers the beat list, and no test shows a list too long
+  for its column: there the oldest lines leave from the top
+  (`listFitter`), which was checked only by reading the code.
+- The list shows the step captions, the only title a beat has; a separate,
+  shorter beat title would read better in a narrow column.
 
 ### Not placed yet, from 3.18
 

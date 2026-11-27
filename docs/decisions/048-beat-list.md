@@ -17,7 +17,9 @@ top shows one beat at a time.
 - **A line per beat**: its caption appears as its beat starts and stays to
   the scene's end; it is solid while its beat is on and fades to 45% once
   it is over. Later beats are not shown before they start, so the list
-  never gives away what comes next. Each scene starts its own list.
+  never gives away what comes next. Each scene starts its own list. When a
+  scene's lines no longer fit the column, the oldest leave from the top and
+  the rest move up.
 - **The content moves right** of the column, so the scene is framed in
   what is left; a camera or a layout made for the full width may need
   another look, and the checks say where.

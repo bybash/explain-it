@@ -1,5 +1,5 @@
 import { SAFE_MARGIN, STAGE } from "../../schema/checks.ts";
-import type { Config, Logo } from "../../schema/config.ts";
+import { type Config, type Logo, listsSteps } from "../../schema/config.ts";
 
 /** An axis-aligned box in stage pixels. */
 export type Rect = {
@@ -87,7 +87,7 @@ export const stageRegions = (
 
   const title = band(safe.y, lines(TITLE_FONT, 1) + 2 * TITLE_PADDING);
   let top = title.y + title.height;
-  const listed = captions.step && captions.list;
+  const listed = listsSteps(captions);
   const step = captions.step && !listed ? band(top + GAP / 2, lines(font.step, 1)) : undefined;
   if (step) top = step.y + step.height;
 
@@ -122,7 +122,8 @@ const overlaps = (a: Rect, b: Rect): boolean =>
   a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
 
 /**
- * Keeps the regions clear of the logo's box. The title and step caption read
+ * Keeps the regions clear of the logo's box (the beat list, down the left,
+ * never meets it). The title and step caption read
  * from the left, so they lose their right end; the narration is centred, so
  * it loses both ends and stays centred. The content gives up the rows the
  * logo is in.

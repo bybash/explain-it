@@ -311,6 +311,9 @@ export const ConfigSchema = z
   .describe("Style and output settings. Every field has a default.");
 
 export type Config = z.output<typeof ConfigSchema>;
+
+/** Whether the step captions are drawn as the beat list: only when they are drawn at all (decision 048). */
+export const listsSteps = (captions: Config["captions"]): boolean => captions.step && captions.list;
 /** How the narration is spoken: whether, with which voice, how fast. */
 export type VoiceConfig = Config["voice"];
 export type CustomPalette = z.output<typeof CustomPaletteSchema>;
