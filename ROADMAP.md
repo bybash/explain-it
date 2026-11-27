@@ -273,6 +273,8 @@ From watching the examples rendered in 6.2.
   call and a very long list.
 - The model is one setting for the whole app, not per project or per chat.
 - The chat's picker cuts a long note at a narrow column's edge.
+- The chat reads the model when it opens, so a change in Settings in another
+  tab shows there only once the chat opens again.
 
 ## Carried over
 

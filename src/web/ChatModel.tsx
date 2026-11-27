@@ -3,6 +3,7 @@ import type { ValidationError } from "../schema/errors.ts";
 import { ENV_NAMES, modelChoices, type SettingsView } from "../schema/settings.ts";
 import { getSettings, saveSettings } from "./api.ts";
 import { Errors } from "./Errors.tsx";
+import { FromEnvironment } from "./FromEnvironment.tsx";
 import { ModelPicker } from "./ModelPicker.tsx";
 import { pickedModel } from "./model-picker.ts";
 
@@ -39,7 +40,11 @@ export const ChatModel = ({ className = "" }: { readonly className?: string }) =
     setSaving(true);
     const result = await saveSettings({ model });
     setSaving(false);
-    if (!result.ok) return setErrors(result.errors);
+    if (!result.ok) {
+      // The chat keeps the model it had, so the picker shows that one.
+      setDraft(view.model);
+      return setErrors(result.errors);
+    }
     setErrors([]);
     setView(result.value);
     setDraft(result.value.model);
@@ -56,10 +61,10 @@ export const ChatModel = ({ className = "" }: { readonly className?: string }) =
         id="chat-model"
         choices={choices}
         model={draft}
-        disabled={locked || saving}
-        pick={(model) => {
+        disabled={locked}
+        pick={(model, how) => {
           setDraft(model);
-          if (choices.some((c) => c.id === model)) void save(model);
+          if (how === "listed") void save(model);
         }}
       />
       {typed && draft.trim() !== view.model && (
@@ -72,11 +77,7 @@ export const ChatModel = ({ className = "" }: { readonly className?: string }) =
           Use
         </button>
       )}
-      {locked && (
-        <span className="text-muted text-xs">
-          set by <code>{ENV_NAMES.model}</code>
-        </span>
-      )}
+      {locked && <FromEnvironment variable={ENV_NAMES.model} />}
       <Errors className="w-full" errors={errors} />
     </div>
   );

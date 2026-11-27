@@ -376,7 +376,9 @@ const flow = (
     const chatModel = page.locator("#chat-model");
     await expect.poll(() => chatModel.inputValue(), SOON).toBe(SUGGESTED_MODEL);
     await chatModel.selectOption("google/gemini-4-carbon");
-    await expect.poll(() => chatModel.isEnabled(), SOON).toBe(true);
+    const savedModel = async () =>
+      ((await (await fetch(`${server.url}/api/settings`)).json()) as { model: string }).model;
+    await expect.poll(savedModel, SOON).toBe("google/gemini-4-carbon");
     await page.goto(`${server.url}/#/settings`);
     await expect
       .poll(() => page.locator("#settings-model").inputValue(), SOON)

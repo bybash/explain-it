@@ -18,13 +18,20 @@ Gemini, GPT and other models that could do the job.
   OpenAI's own APIs list their own models by their own ids. A local or custom
   endpoint has no list: its models are its own.
 - **Grouped by family, with a few words on each** ("fast and cheap",
-  "flagship"), the suggested model first.
+  "flagship"), the provider's own suggestion first: Sonnet 5.5 on
+  OpenRouter, Opus 5.5 on Anthropic's API.
+- **Switching provider drops a model picked from another provider's list**
+  for the new provider's preset or first listed model, as each names its
+  models its own way (`google/gemini-4-carbon` would fail at Anthropic). A
+  typed model is kept.
 - **"Another model…" opens the box**, so any id can still be typed.
 - **The chat has the same picker above its message box.** It writes the same
   setting, `LLM_MODEL`, so a pick there or in Settings is one choice, and
   the next message uses it (the client reads the settings on each call). A
   listed model saves as it is picked; a typed one with "Use".
 - **A model the environment sets** is shown, and cannot be changed, as before.
+- **The CLI and MCP are unchanged**: the CLI renders with no LLM, and an MCP
+  client's agent brings its own model.
 
 ## Alternatives
 
