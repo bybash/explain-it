@@ -46,10 +46,12 @@ jobs:
           load: true
           cache-from: type=gha
           cache-to: type=gha,mode=max
-      - name: Golden stills, the render test and the layout repair
+      # Every test of the renderer and the checks, so the ones that need
+      # Chromium or ffmpeg run, and the render test that drives the server.
+      - name: Golden stills, the renders and the checks
         run: >
           docker run --rm -e GOLDEN_STILLS=1 -v "$PWD/golden-out:/app/golden-out" explain-it:test
-          npx vitest run src/render/golden.test.ts src/render/render.test.ts src/render/repair.test.ts
+          npx vitest run src/render src/server/render-e2e.test.ts
       - name: Keep the stills that differ
         if: failure()
         uses: actions/upload-artifact@v7
