@@ -38,3 +38,11 @@ emulation.
   runtime have their own builds there.
 - **A separate image without the voice.** Smaller for those who do not want
   narration, but two images to build, test and explain.
+
+## Result (v0.1.2)
+
+| | v0.1.0 | v0.1.2 |
+|---|---|---|
+| Download, Intel / Arm (GHCR, compressed) | 597 / 585 MB | 525 / 513 MB |
+| On disk, unpacked (Arm) | 1.65 GB | 1.33 GB |
+| Release build | 8 min (v0.1.1's, emulated: stopped after 40 min) | 4 min, both platforms side by side |
