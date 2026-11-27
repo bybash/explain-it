@@ -1,4 +1,4 @@
-import { overlapDepth } from "../../checks/geometry.ts";
+import { insideLength, overlapDepth } from "../../checks/geometry.ts";
 import type { FloorPoint } from "../../schema/layout.ts";
 import { project, type ScreenPoint, type View } from "../iso/project.ts";
 import type { Polygon } from "../iso/scene.ts";
@@ -19,17 +19,31 @@ export type EdgeGeometry = {
   readonly label: ScreenPoint;
 };
 
+/** Pixels between an edge's end and its target box's outline, when the box would hide the end. */
+export const ARROW_GAP = 6;
+/** An edge cut back shorter than this would have no room for its arrowhead, so it is left whole. */
+const MIN_CUT_LENGTH = 32;
+/** Less of an end inside the outline than this is rounding, not a box hiding it. */
+const HIDDEN_TOLERANCE = 0.5;
+
 /**
  * The screen geometry of one edge drawn on the floor. `occluders` are the
  * screen polygons of everything drawn over the edges (node faces), so the
- * label never lands behind a box. They must be convex.
+ * label never lands behind a box. They must be convex. `target` is the
+ * target box's outline on screen: an edge that arrives from behind the box
+ * ends inside it, where the box would hide its arrowhead, so it is cut back
+ * to just outside the outline.
  */
 export const edgeGeometry = (
   route: readonly FloorPoint[],
   view: View,
   occluders: readonly Polygon[],
+  target?: Polygon,
 ): EdgeGeometry => {
-  const points = route.map((p) => project({ x: p.x, y: p.y, z: 0 }, view));
+  const floor = route.map((p) => project({ x: p.x, y: p.y, z: 0 }, view));
+  const hidden = target ? hiddenEnd(floor, target) : 0;
+  const keep = lengthOf(floor) - hidden - ARROW_GAP;
+  const points = hidden > HIDDEN_TOLERANCE && keep >= MIN_CUT_LENGTH ? cutTo(floor, keep) : floor;
   const starts: number[] = [];
   let length = 0;
   for (const [i, a] of points.entries()) {
@@ -75,6 +89,62 @@ export const edgeGeometry = (
 };
 
 const distance = (a: ScreenPoint, b: ScreenPoint): number => Math.hypot(b.x - a.x, b.y - a.y);
+
+const lengthOf = (points: readonly ScreenPoint[]): number =>
+  points.reduce((sum, p, i) => {
+    const q = points[i + 1];
+    return q ? sum + distance(p, q) : sum;
+  }, 0);
+
+/** Whether a point lies inside a convex polygon, whichever way it winds. */
+const insideConvex = (p: ScreenPoint, polygon: Polygon): boolean => {
+  let sign = 0;
+  for (const [i, a] of polygon.entries()) {
+    const b = polygon[(i + 1) % polygon.length] ?? a;
+    const cross = (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x);
+    if (cross === 0) continue;
+    if (sign === 0) sign = Math.sign(cross);
+    else if (Math.sign(cross) !== sign) return false;
+  }
+  return true;
+};
+
+/**
+ * How much of the path's end lies inside a convex outline: walking back from
+ * the end while it is inside, so a stretch that passes the outline earlier
+ * is not counted.
+ */
+const hiddenEnd = (points: readonly ScreenPoint[], outline: Polygon): number => {
+  let hidden = 0;
+  for (let i = points.length - 1; i > 0; i--) {
+    const a = points[i - 1];
+    const b = points[i];
+    if (!a || !b || !insideConvex(b, outline)) break;
+    const inside = insideLength([a, b], outline);
+    hidden += inside;
+    // The segment leaves the outline on its way back: the end's stretch is over.
+    if (inside < distance(a, b) - 1e-9) break;
+  }
+  return hidden;
+};
+
+/** The path up to `keep` pixels from its start; at least its first point twice. */
+const cutTo = (points: readonly ScreenPoint[], keep: number): ScreenPoint[] => {
+  const kept: ScreenPoint[] = [];
+  let left = Math.max(0, keep);
+  for (const [i, a] of points.entries()) {
+    kept.push(a);
+    const b = points[i + 1];
+    if (!b) break;
+    const span = distance(a, b);
+    if (span >= left) {
+      kept.push(lerp(a, b, span === 0 ? 0 : left / span));
+      break;
+    }
+    left -= span;
+  }
+  return kept.length > 1 ? kept : [kept[0] ?? { x: 0, y: 0 }, kept[0] ?? { x: 0, y: 0 }];
+};
 
 const lerp = (a: ScreenPoint, b: ScreenPoint, t: number): ScreenPoint => ({
   x: a.x + (b.x - a.x) * t,

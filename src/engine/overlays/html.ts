@@ -169,6 +169,9 @@ const draw = (
       const badge = div(`overlay badge tone-${overlay.tone}`, root);
       badge.dataset.node = overlay.nodeId;
       badge.style.setProperty("--tone", `var(--tone-${overlay.tone})`);
+      // A tag with pointed ends, so a node's state never reads as an edge's label pill: its outline in the tone, a grey fill.
+      div("badge-shape", badge);
+      div("badge-fill", badge);
       div("badge-text", badge, overlay.text);
       const size = { width: badge.offsetWidth, height: badge.offsetHeight };
       const box = placeBadge(overlay.node, size, regions.content, obstacles);
